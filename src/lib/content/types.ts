@@ -22,17 +22,21 @@ export interface Day {
 	ex: string[];
 }
 
-interface Exercise {
+/** A full exercise variant — each swap is one of these. */
+interface Variant {
 	name: string;
-	cat: string;
-	/** CSS custom-property name driving this exercise's accent colour. */
-	catVar: string;
 	what: string;
 	spec: string;
 	/** Rationale paragraphs (may contain inline <b> emphasis). */
 	why: string[];
-	/** Swap alternates; index 0 is the default prescription. */
-	swaps: string[];
+}
+
+interface Exercise {
+	cat: string;
+	/** CSS custom-property name driving this exercise's accent colour. */
+	catVar: string;
+	/** Swappable variants; index 0 is the default prescription. */
+	variants: Variant[];
 }
 
 interface Metric {

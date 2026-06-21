@@ -72,9 +72,21 @@ export function resolveSwapIndex(week: number, weekday: string, exId: string): n
 	return appState.swaps[exId] ?? 0;
 }
 
+interface VariantLike {
+	name: string;
+	what: string;
+	spec: string;
+	why: string[];
+}
+
+/** The exercise variant at a swap index, falling back to the default (index 0). */
+export function variantOf<T extends { variants: VariantLike[] }>(ex: T, idx: number): VariantLike {
+	return ex.variants[idx] ?? ex.variants[0];
+}
+
 /** Display label for an exercise at a swap index (index 0 = its default name). */
-export function exerciseLabel(ex: { name: string; swaps: string[] }, idx: number): string {
-	return idx > 0 && ex.swaps[idx] ? ex.swaps[idx] : ex.name;
+export function exerciseLabel(ex: { variants: VariantLike[] }, idx: number): string {
+	return variantOf(ex, idx).name;
 }
 
 /** Set/clear a per-day protocol override for a slot. */

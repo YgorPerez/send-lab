@@ -15,6 +15,7 @@ import {
 	removeDayExercise,
 	resolveExerciseIds,
 	resolveSwapIndex,
+	variantOf,
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today, type WorkoutSet } from '$lib/state.svelte';
@@ -39,7 +40,7 @@ const items = $derived<Item[]>(
 		if (!ex) return [];
 		const idx = resolveSwapIndex(week, weekday, exId);
 		if (exId === 'rest' && idx === 0) return [];
-		return [{ exId, name: exerciseLabel(ex, idx), spec: ex.spec }];
+		return [{ exId, name: exerciseLabel(ex, idx), spec: variantOf(ex, idx).spec }];
 	}),
 );
 const avail = $derived(
@@ -156,7 +157,7 @@ function finish() {
 				</SelectTrigger>
 				<SelectContent>
 					{#each avail as [id, ex] (id)}
-						<SelectItem value={id}>{ex.name}</SelectItem>
+						<SelectItem value={id}>{ex.variants[0].name}</SelectItem>
 					{/each}
 				</SelectContent>
 			</Select>
