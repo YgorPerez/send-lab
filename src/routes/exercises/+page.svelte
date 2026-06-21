@@ -85,7 +85,7 @@ function setSwap(id: string, i: number, label: string) {
 				</AccordionTrigger>
 				<AccordionContent class="px-[18px] pb-[18px]">
 					<div class="my-3.5 rounded-lg border border-line bg-panel-2 px-3.5 py-3">
-						<PrescriptionView spec={active.spec} />
+						<PrescriptionView spec={active} />
 					</div>
 					{#each active.why as w (w)}
 						<p class="mb-2 text-[13.5px] text-ink-dim"><Prose value={w} /></p>

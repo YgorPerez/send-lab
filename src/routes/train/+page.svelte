@@ -7,13 +7,15 @@ import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
-import type { Prescription } from '$lib/content/types';
+import type { Variant } from '$lib/content/types';
 import PrescriptionView from '$lib/PrescriptionView.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
 	addDayExercise,
 	exerciseLabel,
+	GRIPS,
+	gripLabel,
 	removeDayExercise,
 	resolveExerciseIds,
 	resolveSwapIndex,
@@ -33,27 +35,29 @@ const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? we
 const dayExIds = $derived(resolveExerciseIds(content, week, weekday));
 
 /** A loggable column, shown only when the exercise's prescription uses it. */
-type ColKey = 'weight' | 'edge' | 'time' | 'reps' | 'rest';
+type ColKey = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe' | 'grip';
 interface Col {
 	key: ColKey;
 	label: () => string;
 }
-function colsFor(spec: Prescription): Col[] {
+function colsFor(spec: Variant): Col[] {
 	const c: Col[] = [];
-	if (spec.load) c.push({ key: 'weight', label: m.field_weight });
-	if (spec.edge) c.push({ key: 'edge', label: m.field_edge });
-	if (spec.workSec != null) c.push({ key: 'time', label: m.field_time });
+	if (spec.loadKg) c.push({ key: 'weight', label: m.field_weight });
+	if (spec.edgeMm) c.push({ key: 'edge', label: m.field_edge });
+	if (spec.workSec) c.push({ key: 'time', label: m.field_time });
 	if (spec.reps) c.push({ key: 'reps', label: m.field_reps });
 	// Fall back to a generic reps column for sessions with no measured field.
 	if (c.length === 0) c.push({ key: 'reps', label: m.field_reps });
+	if (spec.grip) c.push({ key: 'grip', label: m.field_grip });
 	c.push({ key: 'rest', label: m.field_rest });
+	c.push({ key: 'rpe', label: m.field_rpe });
 	return c;
 }
 
 interface Item {
 	exId: string;
 	name: string;
-	spec: Prescription;
+	spec: Variant;
 	cols: Col[];
 }
 const items = $derived<Item[]>(
@@ -62,7 +66,7 @@ const items = $derived<Item[]>(
 		if (!ex) return [];
 		const idx = resolveSwapIndex(week, weekday, exId);
 		if (exId === 'rest' && idx === 0) return [];
-		const spec = variantOf(ex, idx).spec;
+		const spec = variantOf(ex, idx);
 		return [{ exId, name: exerciseLabel(ex, idx), spec, cols: colsFor(spec) }];
 	}),
 );
@@ -84,9 +88,10 @@ const timerSeed = $derived.by(() => {
 });
 
 function addSet(exId: string) {
+	const grip = items.find((it) => it.exId === exId)?.spec.grip ?? null;
 	sets[exId] = [
 		...(sets[exId] ?? []),
-		{ weight: null, edge: null, time: null, reps: null, rest: null },
+		{ weight: null, edge: null, time: null, reps: null, rest: null, rpe: null, grip },
 	];
 }
 function removeSet(exId: string, i: number) {
@@ -140,7 +145,7 @@ function finish() {
 						</button>
 					</div>
 					{@const cols = it.cols}
-					{@const grid = `grid-template-columns:repeat(${cols.length},minmax(0,1fr)) auto`}
+					{@const grid = `grid-template-columns:repeat(${cols.length},minmax(54px,1fr)) auto`}
 					<div
 						class="rounded-lg border border-line bg-panel-2 px-3 py-2.5"
 						aria-label={m.train_target()}
@@ -149,33 +154,52 @@ function finish() {
 					</div>
 
 					{#if (sets[it.exId] ?? []).length > 0}
-						<div class="grid gap-1.5 text-[10px] text-ink-faint" style={grid}>
-							{#each cols as col (col.key)}
-								<span>{col.label()}</span>
+						<div class="flex flex-col gap-1.5 overflow-x-auto">
+							<div class="grid gap-1.5 text-[10px] text-ink-faint" style={grid}>
+								{#each cols as col (col.key)}
+									<span class="truncate">{col.label()}</span>
+								{/each}
+								<span></span>
+							</div>
+							{#each sets[it.exId] ?? [] as set, i (i)}
+								<div class="grid items-center gap-1.5" style={grid}>
+									{#each cols as col (col.key)}
+										{#if col.key === 'grip'}
+											<Select
+												type="single"
+												value={set.grip ?? ''}
+												onValueChange={(v) => (set.grip = v || null)}
+											>
+												<SelectTrigger class="h-8 bg-panel-2 px-2 text-xs">
+													{set.grip ? gripLabel(set.grip) : '—'}
+												</SelectTrigger>
+												<SelectContent>
+													{#each GRIPS as g (g)}
+														<SelectItem value={g}>{gripLabel(g)}</SelectItem>
+													{/each}
+												</SelectContent>
+											</Select>
+										{:else}
+											<Input
+												type="number"
+												step="any"
+												bind:value={set[col.key]}
+												class="h-8 bg-panel-2 text-sm"
+											/>
+										{/if}
+									{/each}
+									<button
+										type="button"
+										class="text-ink-faint transition hover:text-flag"
+										aria-label={m.btn_delete()}
+										onclick={() => removeSet(it.exId, i)}
+									>
+										<XIcon class="size-4" />
+									</button>
+								</div>
 							{/each}
-							<span></span>
 						</div>
 					{/if}
-					{#each sets[it.exId] ?? [] as set, i (i)}
-						<div class="grid items-center gap-1.5" style={grid}>
-							{#each cols as col (col.key)}
-								<Input
-									type="number"
-									step="any"
-									bind:value={set[col.key]}
-									class="h-8 bg-panel-2 text-sm"
-								/>
-							{/each}
-							<button
-								type="button"
-								class="text-ink-faint transition hover:text-flag"
-								aria-label={m.btn_delete()}
-								onclick={() => removeSet(it.exId, i)}
-							>
-								<XIcon class="size-4" />
-							</button>
-						</div>
-					{/each}
 
 					<Button
 						variant="outline"

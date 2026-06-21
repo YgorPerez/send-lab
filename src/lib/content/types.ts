@@ -1,9 +1,96 @@
-// Shared shapes for the localized training content. Structural fields (ids,
-// colors, exercise refs) are identical across locales; only the prose differs.
+// Shared shapes for the training content. Exercise *parameters* (ranges +
+// metadata) are language-neutral and live once in `exercises.ts`; only prose
+// (names, cues, rationale) differs per locale. `getContent()` merges the two.
 
 export type VerdictId = 'rest' | 'tissue' | 'moderate' | 'short' | 'green';
 export type PhaseId = 'phase1' | 'phase2' | 'deload';
 export type MetricId = 'rfd' | 'contact' | 'cf' | 'pinch' | 'pull' | 'maxhang' | 'density';
+
+/** Inclusive numeric range. A fixed value has `min === max`. */
+export interface Range {
+	min: number;
+	max: number;
+}
+
+/** Primary grip an exercise loads. */
+export type Grip = 'half-crimp' | 'open-hand' | 'full-crimp' | 'pinch' | 'sloper' | 'wrist' | 'jug';
+
+/** Adaptation an exercise trains (an exercise may hit several). */
+type Quality =
+	| 'max-strength'
+	| 'rfd'
+	| 'strength-endurance'
+	| 'hypertrophy'
+	| 'tissue'
+	| 'power'
+	| 'aerobic'
+	| 'skill';
+
+/** Body region an exercise loads. */
+type Region = 'fingers' | 'wrist' | 'pull' | 'antagonist';
+
+/** Relative systemic / skin / joint cost. */
+export type Cost = 'low' | 'mod' | 'high';
+
+/** Language-neutral, fully-parametrized targets + metadata for one variant.
+ *  Targets are ranges in canonical units: counts, **seconds**, kg, mm, % and
+ *  RPE (0–10). Only the fields that apply are set. */
+export interface VariantParams {
+	sets?: Range;
+	reps?: Range;
+	/** On/off cycles (or holds) per timed set. */
+	rounds?: Range;
+	/** Work / hold time per rep, seconds. */
+	workSec?: Range;
+	/** Rest between reps within a set, seconds. */
+	restSec?: Range;
+	/** Rest between sets, seconds. */
+	setRestSec?: Range;
+	/** Added load, kg (negative = assisted). */
+	loadKg?: Range;
+	/** Edge depth, mm. */
+	edgeMm?: Range;
+	/** Relative intensity, % of MVC / max. */
+	intensityPct?: Range;
+	/** Target effort, RPE 0–10. */
+	rpe?: Range;
+	/** Whether the last set(s) go to failure. */
+	toFailure?: boolean;
+	grip?: Grip;
+	qualities?: Quality[];
+	region?: Region[];
+	cnsCost?: Cost;
+	/** Tracked metrics this variant feeds (for progression graphs). */
+	metricIds?: MetricId[];
+}
+
+/** Localized prose for one variant. */
+interface VariantProse {
+	name: string;
+	what: string;
+	/** Rationale paragraphs (may contain inline <b> emphasis). */
+	why: string[];
+	/** Cue that doesn't fit a numeric field (may contain inline <b>). */
+	note?: string;
+}
+
+/** A merged variant (params + prose), as consumed by the UI. */
+export type Variant = VariantParams & VariantProse;
+
+/** Shared (language-neutral) parameters for one exercise. */
+export interface ExerciseParams {
+	/** CSS custom-property name driving this exercise's accent colour. */
+	catVar: string;
+	/** Swappable variants; index 0 is the default prescription. */
+	variants: VariantParams[];
+}
+
+/** A merged exercise (params + localized prose). */
+export interface Exercise {
+	cat: string;
+	catVar: string;
+	variants: Variant[];
+}
 
 export interface Day {
 	/** Stable id (Mon..Sun) — used in storage keys and exercise refs. */
@@ -20,50 +107,6 @@ export interface Day {
 	color: string;
 	/** Exercise ids referenced by this day, primary first. */
 	ex: string[];
-}
-
-/** Structured prescription for a variant — only the fields that apply are set.
- *  Counts/loads stay short display strings so they can carry ranges
- *  ("2–3", "~20mm", "~60% MVC"); all timings are numeric **seconds** (the
- *  standard unit) so they render consistently, can be edited, and feed the timer. */
-export interface Prescription {
-	/** Working sets (e.g. "3", "2–3", "4–6 problems"). */
-	sets?: string;
-	/** Reps per set (e.g. "4/side", "10–15"). */
-	reps?: string;
-	/** Work / hold time per rep, in seconds. */
-	workSec?: number;
-	/** Rest between reps within a set, in seconds. */
-	restSec?: number;
-	/** Rest between sets, in seconds. */
-	setRestSec?: number;
-	/** Reps / on-off cycles per timed set (interval protocols). */
-	rounds?: number;
-	/** Added load when applicable (e.g. "+30–45kg", "bodyweight"). */
-	load?: string;
-	/** Edge depth when applicable (mm). */
-	edge?: string;
-	/** Relative intensity when applicable (e.g. "~60% MVC", "~90% 7s max"). */
-	intensity?: string;
-	/** Free-text cue that doesn't fit a numeric field. */
-	note?: string;
-}
-
-/** A full exercise variant — each swap is one of these. */
-interface Variant {
-	name: string;
-	what: string;
-	spec: Prescription;
-	/** Rationale paragraphs (may contain inline <b> emphasis). */
-	why: string[];
-}
-
-interface Exercise {
-	cat: string;
-	/** CSS custom-property name driving this exercise's accent colour. */
-	catVar: string;
-	/** Swappable variants; index 0 is the default prescription. */
-	variants: Variant[];
 }
 
 interface Metric {
@@ -100,13 +143,19 @@ interface Phase {
 	cat: string;
 }
 
-export interface Content {
+/** The localized half of the content (prose only; params come from exercises.ts). */
+export interface LocaleContent {
 	days: Day[];
-	exercises: Record<string, Exercise>;
+	exercises: Record<string, { cat: string; variants: VariantProse[] }>;
 	metrics: Metric[];
 	quiz: QuizQuestion[];
 	verdicts: Record<VerdictId, Verdict>;
 	phases: Record<PhaseId, Phase>;
 	/** Jargon/acronym → plain-language definition, surfaced as tooltips in prose. */
 	glossary: Record<string, string>;
+}
+
+/** The fully-merged content the UI consumes. */
+export interface Content extends Omit<LocaleContent, 'exercises'> {
+	exercises: Record<string, Exercise>;
 }

@@ -25,6 +25,10 @@ export interface WorkoutSet {
 	time: number | null;
 	reps: number | null;
 	rest: number | null;
+	/** Rated effort, RPE 0–10. */
+	rpe: number | null;
+	/** Grip used (a Grip id, or null). */
+	grip: string | null;
 }
 
 interface WorkoutLogExercise {

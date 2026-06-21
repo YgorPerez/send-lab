@@ -1,7 +1,8 @@
 // Resolution helpers for the per-week training plan: which protocol a calendar
 // slot runs, and which swap applies to each exercise on that specific day.
 // Read inside a reactive context (e.g. $derived) so they track appState.
-import type { Content, Day, Prescription } from './content/types';
+import * as m from '$lib/paraglide/messages';
+import type { Content, Cost, Day, Grip, Range, Variant, VariantParams } from './content/types';
 import { appState } from './state.svelte';
 
 export function slotKey(week: number, weekday: string): string {
@@ -72,20 +73,13 @@ export function resolveSwapIndex(week: number, weekday: string, exId: string): n
 	return appState.swaps[exId] ?? 0;
 }
 
-interface VariantLike {
-	name: string;
-	what: string;
-	spec: Prescription;
-	why: string[];
-}
-
 /** The exercise variant at a swap index, falling back to the default (index 0). */
-export function variantOf<T extends { variants: VariantLike[] }>(ex: T, idx: number): VariantLike {
+export function variantOf<T extends { variants: Variant[] }>(ex: T, idx: number): Variant {
 	return ex.variants[idx] ?? ex.variants[0];
 }
 
 /** Display label for an exercise at a swap index (index 0 = its default name). */
-export function exerciseLabel(ex: { variants: VariantLike[] }, idx: number): string {
+export function exerciseLabel(ex: { variants: Variant[] }, idx: number): string {
 	return variantOf(ex, idx).name;
 }
 
@@ -112,12 +106,63 @@ export function isDayCustomized(week: number, weekday: string): boolean {
 }
 
 /** Format a duration given in seconds (the standard unit) for display. */
-export function formatSeconds(s: number): string {
+function formatSeconds(s: number): string {
 	if (s < 60) return `${s}s`;
 	const min = s / 60;
 	if (Number.isInteger(min)) return `${min} min`;
 	return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+
+/** Format a count range ("3" or "2–3"). */
+export function formatRange(r: Range): string {
+	return r.min === r.max ? `${r.min}` : `${r.min}–${r.max}`;
+}
+
+/** Format a seconds range ("10s", "20–40s", "3 min–5 min"). */
+export function formatSecondsRange(r: Range): string {
+	if (r.min === r.max) return formatSeconds(r.min);
+	if (r.max < 60) return `${r.min}–${r.max}s`;
+	return `${formatSeconds(r.min)}–${formatSeconds(r.max)}`;
+}
+
+/** All grips, in display order (for grip pickers). */
+export const GRIPS: Grip[] = [
+	'half-crimp',
+	'open-hand',
+	'full-crimp',
+	'pinch',
+	'sloper',
+	'wrist',
+	'jug',
+];
+
+const GRIP_LABEL: Record<Grip, () => string> = {
+	'half-crimp': m.grip_half_crimp,
+	'open-hand': m.grip_open_hand,
+	'full-crimp': m.grip_full_crimp,
+	pinch: m.grip_pinch,
+	sloper: m.grip_sloper,
+	wrist: m.grip_wrist,
+	jug: m.grip_jug,
+};
+
+/** Localized label for a grip id (falls back to the raw id). */
+export function gripLabel(grip: string): string {
+	return GRIP_LABEL[grip as Grip]?.() ?? grip;
+}
+
+const COST_LABEL: Record<Cost, () => string> = {
+	low: m.cost_low,
+	mod: m.cost_mod,
+	high: m.cost_high,
+};
+
+/** Localized label for a cost level. */
+export function costLabel(c: Cost): string {
+	return COST_LABEL[c]();
+}
+
+const mid = (r: Range): number => Math.round((r.min + r.max) / 2);
 
 /** Timer intervals seeded from an exercise, ready to drive the interval timer. */
 export interface TimerSeed {
@@ -129,12 +174,11 @@ export interface TimerSeed {
 }
 
 /** Interval-timer settings for an exercise, or null when it isn't a timed protocol. */
-export function timerSeedFor(spec: Prescription, key: string, name: string): TimerSeed | null {
-	if (spec.workSec == null) return null;
-	const rest = spec.restSec ?? spec.setRestSec ?? 0;
-	const setsInt = spec.sets ? Number.parseInt(spec.sets.match(/\d+/)?.[0] ?? '', 10) : Number.NaN;
-	const rounds = spec.rounds ?? (Number.isNaN(setsInt) ? 1 : setsInt);
-	return { key, name, work: spec.workSec, rest, rounds };
+export function timerSeedFor(spec: VariantParams, key: string, name: string): TimerSeed | null {
+	if (!spec.workSec) return null;
+	const rest = spec.restSec ? mid(spec.restSec) : spec.setRestSec ? mid(spec.setRestSec) : 0;
+	const rounds = spec.rounds ? spec.rounds.max : spec.sets ? spec.sets.min : 1;
+	return { key, name, work: mid(spec.workSec), rest, rounds };
 }
 
 /** Clear all per-day customizations for a slot, reverting it to the recommendation. */

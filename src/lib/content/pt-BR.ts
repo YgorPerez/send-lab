@@ -1,6 +1,6 @@
-import type { Content } from './types';
+import type { LocaleContent } from './types';
 
-const content: Content = {
+const content: LocaleContent = {
 	days: [
 		{
 			k: 'Mon',
@@ -76,20 +76,11 @@ const content: Content = {
 	exercises: {
 		recruit: {
 			cat: 'RFD / Contato',
-			catVar: '--flag',
 			variants: [
 				{
 					name: 'Recruitment Pulls',
 					what: '1 braço · régua ~20mm ou reta',
-					spec: {
-						workSec: 4,
-						restSec: 5,
-						rounds: 4,
-						reps: '4/lado',
-						sets: '2–3',
-						edge: '~20mm',
-						note: 'Puxada máxima rápida e explosiva.',
-					},
+					note: 'Puxada máxima rápida e explosiva.',
 					why: [
 						'O estímulo de dedo de maior retorno pra quem já é forte — treina a <b>taxa de desenvolvimento de força</b> e a força de contato com pouquíssima fadiga.',
 						'Tyler Nelson: em nível alto, vale mais a <b>aplicação</b> da força do que mais força máxima.',
@@ -98,11 +89,7 @@ const content: Content = {
 				{
 					name: 'Toques máximos controlados no campus',
 					what: 'Toques máximos controlados',
-					spec: {
-						reps: '4–6/lado',
-						sets: '3–4',
-						note: 'Toques precisos até uma régua fixa — descanso completo, qualidade e não campus desleixado.',
-					},
+					note: 'Toques precisos até uma régua fixa — descanso completo, qualidade e não campus desleixado.',
 					why: [
 						'Mesma intenção de recruitment com uma pegada controlada — qualidade, não campus desleixado.',
 					],
@@ -110,15 +97,7 @@ const content: Content = {
 				{
 					name: 'Levantamento máximo de 1 braço no Lattice-block',
 					what: 'Levantada de 1 braço no block · ~20mm',
-					spec: {
-						workSec: 4,
-						restSec: 5,
-						rounds: 4,
-						reps: '4/lado',
-						sets: '2–3',
-						edge: '~20mm',
-						note: 'Levantada quase máxima de 1 braço no block.',
-					},
+					note: 'Levantada quase máxima de 1 braço no block.',
 					why: [
 						'Levantadas medidas por aparelho carregam com precisão e dão pra acompanhar a força de contato.',
 					],
@@ -126,10 +105,7 @@ const content: Content = {
 				{
 					name: 'Tentativas pesadas do primeiro movimento no limite',
 					what: 'Primeiros movimentos duros, do chão',
-					spec: {
-						reps: '6–10 tentativas',
-						note: 'Tentativas máximas repetidas num primeiro movimento duro · descanso completo.',
-					},
+					note: 'Tentativas máximas repetidas num primeiro movimento duro · descanso completo.',
 					why: [
 						'Recruitment expresso em agarras reais — puxadas máximas num único movimento duro.',
 					],
@@ -138,16 +114,11 @@ const content: Content = {
 		},
 		limitboulder: {
 			cat: 'Potência / Técnica',
-			catVar: '--flag',
 			variants: [
 				{
 					name: 'Boulder no Limite',
 					what: 'Os boulders mais duros · descansos longos',
-					spec: {
-						sets: '4–6 boulders',
-						setRestSec: 240,
-						note: 'Priorize movimentos de crimpa / contato. Qualidade acima de quantidade.',
-					},
+					note: 'Priorize movimentos de crimpa / contato. Qualidade acima de quantidade.',
 					why: [
 						'Onde a força vira escalada. Qualidade acima de quantidade — descanse por completo entre as tentativas.',
 					],
@@ -155,48 +126,30 @@ const content: Content = {
 				{
 					name: 'Problemas no limite no Moonboard / Kilter',
 					what: 'Problemas no limite na board',
-					spec: {
-						sets: '4–6 problemas',
-						setRestSec: 240,
-						note: 'Benchmarks de crimpa na board.',
-					},
+					note: 'Benchmarks de crimpa na board.',
 					why: ['Agarras padronizadas tornam a potência no limite repetível e mensurável.'],
 				},
 				{
 					name: 'Boulders de potência tipo 4×4 duros',
 					what: 'Circuitos de potência no limite',
-					spec: {
-						sets: '4 problemas ×4 rodadas',
-						setRestSec: 180,
-						note: 'Descanso curto dentro, longo entre rodadas — toque de potência-resistência no limite.',
-					},
+					note: 'Descanso curto dentro, longo entre rodadas — toque de potência-resistência no limite.',
 					why: ['Adiciona um toque de potência-resistência sem sair de perto da força no limite.'],
 				},
 				{
 					name: 'Sessão de projeto de boulder na rocha',
 					what: 'Projeto na rocha',
-					spec: {
-						note: 'Aquecimento completo · trabalhe um projeto de verdade · descanso generoso entre tentativas.',
-					},
+					note: 'Aquecimento completo · trabalhe um projeto de verdade · descanso generoso entre tentativas.',
 					why: ['A rocha recruta potência e técnica que o ginásio não reproduz.'],
 				},
 			],
 		},
 		pinch: {
 			cat: 'Pinça',
-			catVar: '--gold',
 			variants: [
 				{
 					name: 'Pinch Block — Máximo',
 					what: 'Bloco com profundidade de uma falange',
-					spec: {
-						workSec: 8,
-						setRestSec: 180,
-						rounds: 5,
-						sets: '5–7',
-						intensity: '~90% máx 7s',
-						note: 'Ombros encaixados, braço junto ao corpo, levante com as pernas · ~30s entre braços.',
-					},
+					note: 'Ombros encaixados, braço junto ao corpo, levante com as pernas · ~30s entre braços.',
 					why: [
 						'Ombros encaixados, braço junto ao corpo, levante com as pernas. <b>Nunca</b> faça pinch hang de frente — risco de De Quervain (López).',
 						'Varie a largura do bloco ao longo das 8 semanas; vá mais estreito / só na polpa na Fase 2.',
@@ -205,54 +158,30 @@ const content: Content = {
 				{
 					name: 'Terra de pinça com as duas mãos na barra',
 					what: 'Pinça com as duas mãos, do chão',
-					spec: {
-						workSec: 6,
-						setRestSec: 180,
-						rounds: 4,
-						sets: '4–5',
-						note: 'Levantada de pinça quase máxima com as duas mãos, do chão.',
-					},
+					note: 'Levantada de pinça quase máxima com as duas mãos, do chão.',
 					why: ['Carga maior com as duas mãos — ótimo pra força bruta de pinça.'],
 				},
 				{
 					name: 'Pinch hangs largos numa board 40°+',
 					what: 'Pinças largas numa board inclinada',
-					spec: {
-						sets: '4–6 tentativas',
-						intensity: 'submáximo',
-						note: 'Segurar / mover em pinças largas · descanso completo.',
-					},
+					note: 'Segurar / mover em pinças largas · descanso completo.',
 					why: ['Treina a oposição do polegar numa posição específica de escalada.'],
 				},
 				{
 					name: 'Máximo no trilho de pinça Rockstar / Tension',
 					what: 'Trilho de pinça comercial',
-					spec: {
-						workSec: 8,
-						setRestSec: 120,
-						rounds: 4,
-						sets: '4–5',
-						note: 'Levantadas máximas por largura; alterne as larguras.',
-					},
+					note: 'Levantadas máximas por largura; alterne as larguras.',
 					why: ['Um trilho de pinça repetível facilita carregar e acompanhar.'],
 				},
 			],
 		},
 		wrist: {
 			cat: 'Punho / Slopers',
-			catVar: '--gold',
 			variants: [
 				{
 					name: 'Força de Punho / Sloper',
 					what: 'Wrist-wrench / levantamentos radiais',
-					spec: {
-						workSec: 30,
-						setRestSec: 120,
-						rounds: 4,
-						sets: '3–5',
-						intensity: '65–75% máx',
-						note: 'Até a falha · dose de hipertrofia pro FRC + estabilizadores do punho.',
-					},
+					note: 'Até a falha · dose de hipertrofia pro FRC + estabilizadores do punho.',
 					why: [
 						'Desenvolve o FRC e os estabilizadores do punho pra slopers e compressão.',
 						'Ferrer-Uris 2023: sloper de 60mm ≈ ativação do FPD em half-crimp, com <b>melhor</b> FRC/FDS e menos risco de lesão.',
@@ -261,55 +190,30 @@ const content: Content = {
 				{
 					name: 'Density hangs em sloper grande (60mm)',
 					what: 'Sloper de 60mm · mão aberta',
-					spec: {
-						workSec: 40,
-						rounds: 3,
-						sets: '3–4',
-						edge: '60mm',
-						note: '2 braços · mão aberta.',
-					},
+					note: '2 braços · mão aberta.',
 					why: ['Carrega o punho + FRC numa posição de sloper com baixo custo de polia.'],
 				},
 				{
 					name: 'Flexão de punho reversa + normal (pesadas)',
 					what: 'Flexões de punho com carga',
-					spec: {
-						reps: '10–15 cada direção',
-						sets: '3–4',
-						setRestSec: 120,
-						note: 'Hipertrofia de punho pesada e escalável.',
-					},
+					note: 'Hipertrofia de punho pesada e escalável.',
 					why: ['Hipertrofia de punho direta e escalável pra resiliência de cotovelo e punho.'],
 				},
 				{
 					name: 'Board de compressão / sistema pinça-sloper',
 					what: 'Pegadas de compressão',
-					spec: {
-						sets: '4–6 tentativas',
-						intensity: 'submáximo',
-						note: 'Segurar / mover em pegadas de compressão.',
-					},
+					note: 'Segurar / mover em pegadas de compressão.',
 					why: ['Treina a estabilidade do punho sob compressão.'],
 				},
 			],
 		},
 		repeaters: {
 			cat: 'Resistência / FC',
-			catVar: '--gold',
 			variants: [
 				{
 					name: 'Repeaters 7/3',
 					what: '20mm · half-crimp + mão aberta',
-					spec: {
-						workSec: 7,
-						restSec: 3,
-						rounds: 6,
-						setRestSec: 180,
-						sets: '3–4/pegada',
-						edge: '20mm',
-						intensity: '~60% MVC',
-						note: '2 pegadas: half-crimp + mão aberta.',
-					},
+					note: '2 pegadas: half-crimp + mão aberta.',
 					why: [
 						'Desenvolve capacidade glicolítica, resistência ao pump e <b>força crítica</b> — provavelmente sua lacuna real, já que seu máximo é alto.',
 						'Fase 2: caia pra 2–3 séries/pegada @ ~65–70% pra chegar explosivo no fim de semana.',
@@ -318,15 +222,7 @@ const content: Content = {
 				{
 					name: 'Repeaters 6:10 (recuperação maior)',
 					what: '6s on / 10s off',
-					spec: {
-						workSec: 6,
-						restSec: 10,
-						rounds: 6,
-						setRestSec: 180,
-						sets: '3–4/pegada',
-						intensity: '~60% MVC',
-						note: 'Descansos mais longos puxam pra capacidade aeróbica.',
-					},
+					note: 'Descansos mais longos puxam pra capacidade aeróbica.',
 					why: [
 						'Descansos mais longos puxam pra capacidade aeróbica em vez do estresse glicolítico.',
 					],
@@ -334,80 +230,53 @@ const content: Content = {
 				{
 					name: 'Protocolo de força crítica (4s/4s até a falha)',
 					what: '4s on / 4s off até a falha',
-					spec: {
-						workSec: 4,
-						restSec: 4,
-						setRestSec: 180,
-						sets: '2–3 pegadas',
-						note: 'On/off até a falha — até a força estabilizar.',
-					},
+					note: 'On/off até a falha — até a força estabilizar.',
 					why: ['Mede e desenvolve diretamente seu piso de <b>força crítica</b>.'],
 				},
 				{
 					name: 'Voltas/laps na parede · boulder 4×4',
 					what: 'Voltas na parede / 4×4',
-					spec: {
-						sets: 'voltas ou 4 problemas ×4',
-						note: 'Sub-limite · faça pump, pare antes da falha.',
-					},
+					note: 'Sub-limite · faça pump, pare antes da falha.',
 					why: ['Transfere a capacidade dos repeaters pro movimento real.'],
 				},
 			],
 		},
 		sport: {
 			cat: 'Resistência / FC',
-			catVar: '--gold',
 			variants: [
 				{
 					name: 'Escalada Esportiva / Voltas na Board',
 					what: 'Submáximo, pump controlado',
-					spec: {
-						note: 'Vias ou voltas na board · faça pump, mas nunca até a falha.',
-					},
+					note: 'Vias ou voltas na board · faça pump, mas nunca até a falha.',
 					why: ['Transfere o estímulo dos repeaters pro movimento real e pra capacidade aeróbica.'],
 				},
 				{
 					name: 'Vias / voltas no auto-belay',
 					what: 'Rodagem de vias',
-					spec: {
-						sets: '4–8 voltas',
-						note: 'Vias fáceis–moderadas contínuas · descanse conforme precisar.',
-					},
+					note: 'Vias fáceis–moderadas contínuas · descanse conforme precisar.',
 					why: ['Base aeróbica em vias reais — mantenha o esforço moderado.'],
 				},
 				{
 					name: 'Volume na board (ângulo fácil)',
 					what: 'Volume em ângulo fácil',
-					spec: {
-						note: 'Muitos problemas fáceis na board · ~20–30 min de pump constante.',
-					},
+					note: 'Muitos problemas fáceis na board · ~20–30 min de pump constante.',
 					why: ['Volume alto de qualidade de movimento e capilarização.'],
 				},
 				{
 					name: 'Circuito / travessia ARC 2×15–20 min',
 					what: 'Travessia ARC',
-					spec: {
-						intensity: 'só pump leve',
-						note: '2×15–20 min de travessia fácil contínua (<b>ARC</b>).',
-					},
+					note: '2×15–20 min de travessia fácil contínua (<b>ARC</b>).',
 					why: ['Trabalho clássico de <b>ARC</b> pra base de resistência e recuperação.'],
 				},
 			],
 		},
 		pull: {
 			cat: 'Potência de tração',
-			catVar: '--violet',
 			variants: [
 				{
 					name: 'Dia de Tração Pesada',
 					what: 'Barras com peso + trabalho de OAP',
-					spec: {
-						sets: '4–6',
-						reps: '3–5',
-						load: '~+30–45kg',
-						setRestSec: 180,
-						note: 'Duro mas limpo · OAP negativas / assistidas 3–4 séries/lado.',
-					},
+					note: 'Duro mas limpo · OAP negativas / assistidas 3–4 séries/lado.',
 					why: [
 						'De propósito num dia de baixo custo pros dedos — potência de tração sem gastar pele nem polias.',
 						'Fase 2: vá pra menos reps / mais carga, ou mais trabalho técnico de OAP.',
@@ -416,11 +285,7 @@ const content: Content = {
 				{
 					name: 'Escada de barra de 1 braço (técnica)',
 					what: 'Progressões de OAP',
-					spec: {
-						sets: '4–5/lado',
-						setRestSec: 180,
-						note: 'Assistida → negativas → simples · descanso completo.',
-					},
+					note: 'Assistida → negativas → simples · descanso completo.',
 					why: [
 						'Constrói rumo à barra de um braço, com alta demanda neural e baixo custo de dedo.',
 					],
@@ -428,36 +293,24 @@ const content: Content = {
 				{
 					name: 'Frenchies / barras com peso em tempo controlado',
 					what: 'Tempo + isometria',
-					spec: {
-						sets: '3–4',
-						note: 'Frenchies (pausa 90° / lock completo) ou barras com peso em tempo.',
-					},
+					note: 'Frenchies (pausa 90° / lock completo) ou barras com peso em tempo.',
 					why: ['Adiciona tempo sob tensão e força de lock-off.'],
 				},
 				{
 					name: 'Combo front-lever + barra com peso',
 					what: 'Front-lever + barra',
-					spec: {
-						sets: '3–4',
-						note: 'Progressões de front-lever + barras com peso.',
-					},
+					note: 'Progressões de front-lever + barras com peso.',
 					why: ['Potência de tração comandada pelo core pra terreno inclinado.'],
 				},
 			],
 		},
 		slopdens: {
 			cat: 'Tecido',
-			catVar: '--teal',
 			variants: [
 				{
 					name: 'Density Hangs em Sloper',
 					what: 'Parte de baixo de um sloper',
-					spec: {
-						workSec: 40,
-						rounds: 3,
-						sets: '3',
-						note: '2 braços · mão aberta.',
-					},
+					note: '2 braços · mão aberta.',
 					why: [
 						'Trabalho de tecido em mão aberta que não castiga as polias — encaixa bem depois do dia de tração.',
 					],
@@ -465,53 +318,30 @@ const content: Content = {
 				{
 					name: 'Density hangs de mão aberta em 35mm',
 					what: '35mm · mão aberta',
-					spec: {
-						workSec: 40,
-						rounds: 3,
-						sets: '3',
-						edge: '35mm',
-						note: '2 braços · mão aberta · quase submáx.',
-					},
+					note: '2 braços · mão aberta · quase submáx.',
 					why: ['Carga de tecido em mão aberta numa régua definida.'],
 				},
 				{
 					name: 'Repeaters em régua grande (mão aberta)',
 					what: 'Régua grande · mão aberta',
-					spec: {
-						sets: '3',
-						intensity: '% baixo',
-						note: 'Repeaters longos numa régua grande.',
-					},
+					note: 'Repeaters longos numa régua grande.',
 					why: ['Volume de tecido com estresse mínimo nas polias.'],
 				},
 				{
 					name: 'Sustentações longas de mão aberta no no-hang',
 					what: 'No-hang · mão aberta',
-					spec: {
-						workSec: 40,
-						rounds: 3,
-						sets: '3',
-						note: '2 braços · no-hang block.',
-					},
+					note: '2 braços · no-hang block.',
 					why: ['Fácil de carregar e amigável às polias — ótimo pra dias sensíveis.'],
 				},
 			],
 		},
 		maxhang: {
 			cat: 'Força máxima',
-			catVar: '--violet',
 			variants: [
 				{
 					name: 'Max Hangs — Manutenção',
 					what: 'Dose curta · régua de ~10mm',
-					spec: {
-						workSec: 10,
-						setRestSec: 180,
-						rounds: 3,
-						sets: '3',
-						edge: '~10mm',
-						note: 'Deixe 2–3s de margem (<b>MAW</b>/<b>MED</b> da López, mínimo).',
-					},
+					note: 'Deixe 2–3s de margem (<b>MAW</b>/<b>MED</b> da López, mínimo).',
 					why: [
 						'Aqui é <b>manutenção</b>, não recorde — seu máximo está perto do teto e volume extra vira mais custo de lesão do que ganho.',
 					],
@@ -519,59 +349,30 @@ const content: Content = {
 				{
 					name: 'MED — peso corporal em régua menor',
 					what: 'Profundidade mínima · peso corporal',
-					spec: {
-						workSec: 10,
-						setRestSec: 180,
-						rounds: 3,
-						sets: '3',
-						load: 'peso corporal',
-						note: 'Menor régua que aguentar (<b>MED</b> da López).',
-					},
+					note: 'Menor régua que aguentar (<b>MED</b> da López).',
 					why: ['<b>MED</b> da López: diminua a régua em vez de adicionar peso.'],
 				},
 				{
 					name: 'MAW — 18–20mm + peso',
 					what: 'Peso adicional · 18–20mm',
-					spec: {
-						workSec: 10,
-						setRestSec: 180,
-						rounds: 3,
-						sets: '3',
-						edge: '18–20mm',
-						load: '+ peso',
-						note: '2–3s de margem (<b>MAW</b> da López).',
-					},
+					note: '2–3s de margem (<b>MAW</b> da López).',
 					why: ['<b>MAW</b> da López: adicione peso numa régua mais amigável.'],
 				},
 				{
 					name: 'Levantamento máximo no no-hang block (10s)',
 					what: 'Máximo no no-hang block',
-					spec: {
-						workSec: 10,
-						setRestSec: 180,
-						rounds: 3,
-						sets: '3',
-						note: 'Levantadas quase máximas no block.',
-					},
+					note: 'Levantadas quase máximas no block.',
 					why: ['Força máxima amigável às polias, que dá pra carregar com precisão.'],
 				},
 			],
 		},
 		density: {
 			cat: 'Tecido',
-			catVar: '--teal',
 			variants: [
 				{
 					name: 'Density Hangs',
 					what: 'Sustentações longas perto da falha',
-					spec: {
-						workSec: 30,
-						setRestSec: 180,
-						rounds: 5,
-						sets: '5–6',
-						intensity: '~70–75% MVC',
-						note: 'Perto da falha · half-crimp.',
-					},
+					note: 'Perto da falha · half-crimp.',
 					why: [
 						'Seu principal investimento em tecido conjuntivo. Aumenta a rigidez do músculo e da JMT e <b>reduz</b> a rigidez tendínea patológica — no saldo, um sistema mais resistente a lesão (Nelson).',
 					],
@@ -579,52 +380,30 @@ const content: Content = {
 				{
 					name: 'Density hangs (mão aberta)',
 					what: 'Mão aberta · sustentações longas',
-					spec: {
-						workSec: 30,
-						setRestSec: 180,
-						rounds: 5,
-						sets: '5–6',
-						note: 'Perto da falha · mão aberta.',
-					},
+					note: 'Perto da falha · mão aberta.',
 					why: ['Mesmo estímulo de tecido deslocado pra mão aberta.'],
 				},
 				{
 					name: 'Levantamento de densidade no no-hang block',
 					what: 'No-hang block',
-					spec: {
-						workSec: 30,
-						setRestSec: 180,
-						rounds: 5,
-						sets: '5–6',
-						note: 'Perto da falha · no-hang block.',
-					},
+					note: 'Perto da falha · no-hang block.',
 					why: ['Carga de densidade amigável às polias.'],
 				},
 				{
 					name: 'Repeaters longos @ % baixo',
 					what: 'Repeaters longos de % baixo',
-					spec: {
-						intensity: '~50–60%',
-						note: 'Repeaters longos on/off · várias séries.',
-					},
+					note: 'Repeaters longos on/off · várias séries.',
 					why: ['Acumula tempo de tecido sob carga com pico de força baixo.'],
 				},
 			],
 		},
 		abra: {
 			cat: 'Tecido',
-			catVar: '--teal',
 			variants: [
 				{
 					name: 'Abrahangs (carga baixa)',
 					what: 'De manhã · 18–22mm · pés no chão',
-					spec: {
-						workSec: 10,
-						rounds: 20,
-						edge: '18–22mm',
-						intensity: '~40% máx',
-						note: '"Só tensão leve" · ~10 min no total · entre pegadas · ≥6h do trabalho pesado.',
-					},
+					note: '"Só tensão leve" · ~10 min no total · entre pegadas · ≥6h do trabalho pesado.',
 					why: [
 						'Complementa o trabalho máximo pela saúde do tecido (Gilmore/Baar 2024). Na sua força, mantenha bem <b>leves</b> — erre pra baixo de 40%.',
 						'Isto é treino, não descanso — corte <b>estes</b> primeiro a qualquer incômodo.',
@@ -633,148 +412,106 @@ const content: Content = {
 				{
 					name: 'Sustentações leves no no-hang block',
 					what: 'No-hang · leve',
-					spec: {
-						workSec: 10,
-						rounds: 20,
-						intensity: '~40%',
-						note: 'Entre pegadas · pés apoiados.',
-					},
+					note: 'Entre pegadas · pés apoiados.',
 					why: ['Versão no-hang — fácil de manter genuinamente leve.'],
 				},
 				{
 					name: 'Repeaters longos de % baixo',
 					what: 'Repeaters de % baixo',
-					spec: {
-						intensity: 'bem abaixo do duro',
-						note: 'Repeaters longos e bem leves · ~10 min.',
-					},
+					note: 'Repeaters longos e bem leves · ~10 min.',
 					why: ['Estímulo de circulação / colágeno sem fadiga relevante.'],
 				},
 				{
 					name: 'Pule — descanso extra se estiver cansado',
 					what: 'Pular / descansar',
-					spec: {
-						note: 'Largue a sessão e descanse se estiver com fadiga ou incômodo.',
-					},
+					note: 'Largue a sessão e descanse se estiver com fadiga ou incômodo.',
 					why: ['Estes são complementares — corte primeiro quando cansado ou sensível.'],
 				},
 			],
 		},
 		antag: {
 			cat: 'Prevenção',
-			catVar: '--teal',
 			variants: [
 				{
 					name: 'Antagonistas',
 					what: '~10 min · seguro pro cotovelo + polias',
-					spec: {
-						note: 'Flexão de punho reversa 3×15 · extensão de dedo com elástico 3×20–30 · pronação/supinação 3×12 · flexões/dips.',
-					},
+					note: 'Flexão de punho reversa 3×15 · extensão de dedo com elástico 3×20–30 · pronação/supinação 3×12 · flexões/dips.',
 					why: ['Essencial pela sua dominância flexora — protege cotovelos e polias.'],
 				},
 				{
 					name: 'Balde de arroz + elásticos extensores',
 					what: 'Balde de arroz + elásticos',
-					spec: {
-						reps: '3×20–30 extensões',
-						note: '~5–8 min · balde de arroz + extensão de dedo com elástico.',
-					},
+					note: '~5–8 min · balde de arroz + extensão de dedo com elástico.',
 					why: ['Trabalho de baixo esforço pra extensores e resistência de antebraço.'],
 				},
 				{
 					name: 'Só extensão de dedo com Theraband',
 					what: 'Extensões com elástico',
-					spec: {
-						reps: '3–4×20–30',
-						note: 'Equilíbrio de extensores pra fazer todo dia.',
-					},
+					note: 'Equilíbrio de extensores pra fazer todo dia.',
 					why: ['Equilíbrio mínimo de extensores quando o tempo é curto.'],
 				},
 				{
 					name: 'Circuito de empurrar / pronação',
 					what: 'Empurrar + pronação',
-					spec: {
-						reps: '3×12',
-						note: '~8–10 min · flexões / dips + pronação/supinação.',
-					},
+					note: '~8–10 min · flexões / dips + pronação/supinação.',
 					why: ['Equilíbrio de empurrar + rotação pra ombros e cotovelos.'],
 				},
 			],
 		},
 		perform: {
 			cat: 'Técnica',
-			catVar: '--flag',
 			variants: [
 				{
 					name: 'Rocha / Performance',
 					what: 'Hangboard = só aquecimento',
-					spec: {
-						note: 'Sua escalada real mais difícil da semana · aquecimento completo · cabeça de send.',
-					},
+					note: 'Sua escalada real mais difícil da semana · aquecimento completo · cabeça de send.',
 					why: ['Em janela de send, o hangboard vira só ferramenta de aquecimento (Hörst).'],
 				},
 				{
 					name: 'Dia de performance forte no ginásio',
 					what: 'Performance no ginásio',
-					spec: {
-						note: 'Escalada mais difícil do ginásio · aquecimento completo · tentativas de send de verdade.',
-					},
+					note: 'Escalada mais difícil do ginásio · aquecimento completo · tentativas de send de verdade.',
 					why: ['Estímulo de performance quando não dá pra ir na rocha.'],
 				},
 				{
 					name: 'Sessão flash estilo competição',
 					what: 'Sessão flash',
-					spec: {
-						note: 'Onsight / flash numa variedade de problemas · pouca preparação por problema.',
-					},
+					note: 'Onsight / flash numa variedade de problemas · pouca preparação por problema.',
 					why: ['Treina leitura e execução de primeira.'],
 				},
 				{
 					name: 'Dia longo de vários boulders na rocha',
 					what: 'Volume na rocha',
-					spec: {
-						note: 'Muitos boulders ao longo do dia · cuide da pele e da energia.',
-					},
+					note: 'Muitos boulders ao longo do dia · cuide da pele e da energia.',
 					why: ['Rodagem e técnica de qualidade na rocha.'],
 				},
 			],
 		},
 		rest: {
 			cat: 'Recuperação',
-			catVar: '--ink-faint',
 			variants: [
 				{
 					name: 'Descanso Total',
 					what: 'Sem carga nos dedos',
-					spec: {
-						note: 'Caminhe · mobilidade · durma · coma. A adaptação acontece agora, não na parede.',
-					},
+					note: 'Caminhe · mobilidade · durma · coma. A adaptação acontece agora, não na parede.',
 					why: ['Mesmo no seu nível, o teto é ~3 dias de alto SNC por semana. Inegociável.'],
 				},
 				{
 					name: 'Só caminhada leve + mobilidade',
 					what: 'Caminhada + mobilidade',
-					spec: {
-						note: 'Caminhada leve + 10–15 min de mobilidade · sem carga de pegada.',
-					},
+					note: 'Caminhada leve + 10–15 min de mobilidade · sem carga de pegada.',
 					why: ['Recuperação ativa que não sobrecarrega os dedos.'],
 				},
 				{
 					name: 'Aeróbico leve (sem pegada)',
 					what: 'Aeróbico leve',
-					spec: {
-						intensity: 'ritmo de conversa',
-						note: '20–40 min de cardio leve · sem pegada.',
-					},
+					note: '20–40 min de cardio leve · sem pegada.',
 					why: ['Favorece recuperação e base aeróbica sem carga nos dedos.'],
 				},
 				{
 					name: 'Abrahangs leves só se estiver doido pra mexer',
 					what: 'Abrahangs leves',
-					spec: {
-						intensity: 'bem abaixo de 40%',
-						note: 'Abrahangs bem leves só se for necessário.',
-					},
+					note: 'Abrahangs bem leves só se for necessário.',
 					why: ['O máximo que você deve fazer num dia de descanso, e só se estiver inteiro.'],
 				},
 			],
