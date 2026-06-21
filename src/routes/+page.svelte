@@ -6,13 +6,7 @@ import { Card, CardContent } from '$lib/components/ui/card';
 import { type Answers, computeVerdictId, getContent } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import {
-	exerciseLabel,
-	resolveDay,
-	resolveExerciseIds,
-	resolveSwapIndex,
-	taskKey,
-} from '$lib/plan';
+import { resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -42,7 +36,7 @@ const tasks = $derived<Task[]>(
 		return [
 			{
 				id: exId,
-				label: exerciseLabel(ex, idx),
+				label: ex.name,
 				done: !!appState.taskDone[taskKey(week, weekday, exId)],
 			},
 		];

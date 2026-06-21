@@ -87,6 +87,8 @@ export interface ExerciseParams {
 
 /** A merged exercise (params + localized prose). */
 export interface Exercise {
+	/** The exercise's own name (e.g. "Abrahangs"); variants are its options. */
+	name: string;
 	cat: string;
 	catVar: string;
 	variants: Variant[];
@@ -146,7 +148,7 @@ interface Phase {
 /** The localized half of the content (prose only; params come from exercises.ts). */
 export interface LocaleContent {
 	days: Day[];
-	exercises: Record<string, { cat: string; variants: VariantProse[] }>;
+	exercises: Record<string, { name: string; cat: string; variants: VariantProse[] }>;
 	metrics: Metric[];
 	quiz: QuizQuestion[];
 	verdicts: Record<VerdictId, Verdict>;

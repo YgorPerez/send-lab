@@ -75,10 +75,11 @@ const content: LocaleContent = {
 	],
 	exercises: {
 		recruit: {
+			name: 'Recruitment Pulls',
 			cat: 'RFD / Contato',
 			variants: [
 				{
-					name: 'Recruitment Pulls',
+					name: 'Hangboard · 1 braço ~20mm',
 					what: '1 braço · régua ~20mm ou reta',
 					note: 'Puxada máxima rápida e explosiva.',
 					why: [
@@ -95,7 +96,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Levantamento máximo de 1 braço no Lattice-block',
+					name: 'Levantamento de 1 braço no Lattice-block',
 					what: 'Levantada de 1 braço no block · ~20mm',
 					note: 'Levantada quase máxima de 1 braço no block.',
 					why: [
@@ -103,7 +104,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Tentativas pesadas do primeiro movimento no limite',
+					name: 'Tentativas pesadas do primeiro movimento',
 					what: 'Primeiros movimentos duros, do chão',
 					note: 'Tentativas máximas repetidas num primeiro movimento duro · descanso completo.',
 					why: [
@@ -113,10 +114,11 @@ const content: LocaleContent = {
 			],
 		},
 		limitboulder: {
+			name: 'Boulder no Limite',
 			cat: 'Potência / Técnica',
 			variants: [
 				{
-					name: 'Boulder no Limite',
+					name: 'Os mais duros · descansos longos',
 					what: 'Os boulders mais duros · descansos longos',
 					note: 'Priorize movimentos de crimpa / contato. Qualidade acima de quantidade.',
 					why: [
@@ -130,13 +132,13 @@ const content: LocaleContent = {
 					why: ['Agarras padronizadas tornam a potência no limite repetível e mensurável.'],
 				},
 				{
-					name: 'Boulders de potência tipo 4×4 duros',
+					name: 'Boulders de potência tipo 4×4',
 					what: 'Circuitos de potência no limite',
 					note: 'Descanso curto dentro, longo entre rodadas — toque de potência-resistência no limite.',
 					why: ['Adiciona um toque de potência-resistência sem sair de perto da força no limite.'],
 				},
 				{
-					name: 'Sessão de projeto de boulder na rocha',
+					name: 'Projeto de boulder na rocha',
 					what: 'Projeto na rocha',
 					note: 'Aquecimento completo · trabalhe um projeto de verdade · descanso generoso entre tentativas.',
 					why: ['A rocha recruta potência e técnica que o ginásio não reproduz.'],
@@ -144,10 +146,11 @@ const content: LocaleContent = {
 			],
 		},
 		pinch: {
+			name: 'Pinch Block',
 			cat: 'Pinça',
 			variants: [
 				{
-					name: 'Pinch Block — Máximo',
+					name: 'Máximo · bloco de uma falange',
 					what: 'Bloco com profundidade de uma falange',
 					note: 'Ombros encaixados, braço junto ao corpo, levante com as pernas · ~30s entre braços.',
 					why: [
@@ -156,7 +159,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Terra de pinça com as duas mãos na barra',
+					name: 'Terra de pinça com as duas mãos',
 					what: 'Pinça com as duas mãos, do chão',
 					note: 'Levantada de pinça quase máxima com as duas mãos, do chão.',
 					why: ['Carga maior com as duas mãos — ótimo pra força bruta de pinça.'],
@@ -168,7 +171,7 @@ const content: LocaleContent = {
 					why: ['Treina a oposição do polegar numa posição específica de escalada.'],
 				},
 				{
-					name: 'Máximo no trilho de pinça Rockstar / Tension',
+					name: 'Máximo no trilho Rockstar / Tension',
 					what: 'Trilho de pinça comercial',
 					note: 'Levantadas máximas por largura; alterne as larguras.',
 					why: ['Um trilho de pinça repetível facilita carregar e acompanhar.'],
@@ -176,10 +179,11 @@ const content: LocaleContent = {
 			],
 		},
 		wrist: {
+			name: 'Força de Punho / Sloper',
 			cat: 'Punho / Slopers',
 			variants: [
 				{
-					name: 'Força de Punho / Sloper',
+					name: 'Wrist-wrench / levantamentos radiais',
 					what: 'Wrist-wrench / levantamentos radiais',
 					note: 'Até a falha · dose de hipertrofia pro FRC + estabilizadores do punho.',
 					why: [
@@ -200,7 +204,7 @@ const content: LocaleContent = {
 					why: ['Hipertrofia de punho direta e escalável pra resiliência de cotovelo e punho.'],
 				},
 				{
-					name: 'Board de compressão / sistema pinça-sloper',
+					name: 'Board de compressão / pinça-sloper',
 					what: 'Pegadas de compressão',
 					note: 'Segurar / mover em pegadas de compressão.',
 					why: ['Treina a estabilidade do punho sob compressão.'],
@@ -208,10 +212,11 @@ const content: LocaleContent = {
 			],
 		},
 		repeaters: {
+			name: 'Repeaters',
 			cat: 'Resistência / FC',
 			variants: [
 				{
-					name: 'Repeaters 7/3',
+					name: '7/3 · 20mm half-crimp + mão aberta',
 					what: '20mm · half-crimp + mão aberta',
 					note: '2 pegadas: half-crimp + mão aberta.',
 					why: [
@@ -220,7 +225,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Repeaters 6:10 (recuperação maior)',
+					name: '6:10 (recuperação maior)',
 					what: '6s on / 10s off',
 					note: 'Descansos mais longos puxam pra capacidade aeróbica.',
 					why: [
@@ -228,13 +233,13 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Protocolo de força crítica (4s/4s até a falha)',
+					name: 'Força crítica (4s/4s até a falha)',
 					what: '4s on / 4s off até a falha',
 					note: 'On/off até a falha — até a força estabilizar.',
 					why: ['Mede e desenvolve diretamente seu piso de <b>força crítica</b>.'],
 				},
 				{
-					name: 'Voltas/laps na parede · boulder 4×4',
+					name: 'Voltas na parede · boulder 4×4',
 					what: 'Voltas na parede / 4×4',
 					note: 'Sub-limite · faça pump, pare antes da falha.',
 					why: ['Transfere a capacidade dos repeaters pro movimento real.'],
@@ -242,10 +247,11 @@ const content: LocaleContent = {
 			],
 		},
 		sport: {
+			name: 'Escalada Esportiva',
 			cat: 'Resistência / FC',
 			variants: [
 				{
-					name: 'Escalada Esportiva / Voltas na Board',
+					name: 'Voltas na board · pump controlado',
 					what: 'Submáximo, pump controlado',
 					note: 'Vias ou voltas na board · faça pump, mas nunca até a falha.',
 					why: ['Transfere o estímulo dos repeaters pro movimento real e pra capacidade aeróbica.'],
@@ -263,7 +269,7 @@ const content: LocaleContent = {
 					why: ['Volume alto de qualidade de movimento e capilarização.'],
 				},
 				{
-					name: 'Circuito / travessia ARC 2×15–20 min',
+					name: 'Travessia ARC 2×15–20 min',
 					what: 'Travessia ARC',
 					note: '2×15–20 min de travessia fácil contínua (<b>ARC</b>).',
 					why: ['Trabalho clássico de <b>ARC</b> pra base de resistência e recuperação.'],
@@ -271,10 +277,11 @@ const content: LocaleContent = {
 			],
 		},
 		pull: {
+			name: 'Tração',
 			cat: 'Potência de tração',
 			variants: [
 				{
-					name: 'Dia de Tração Pesada',
+					name: 'Barras com peso pesadas + OAP',
 					what: 'Barras com peso + trabalho de OAP',
 					note: 'Duro mas limpo · OAP negativas / assistidas 3–4 séries/lado.',
 					why: [
@@ -283,7 +290,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Escada de barra de 1 braço (técnica)',
+					name: 'Escada de barra de 1 braço',
 					what: 'Progressões de OAP',
 					note: 'Assistida → negativas → simples · descanso completo.',
 					why: [
@@ -291,7 +298,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Frenchies / barras com peso em tempo controlado',
+					name: 'Frenchies / barras com peso em tempo',
 					what: 'Tempo + isometria',
 					note: 'Frenchies (pausa 90° / lock completo) ou barras com peso em tempo.',
 					why: ['Adiciona tempo sob tensão e força de lock-off.'],
@@ -305,10 +312,11 @@ const content: LocaleContent = {
 			],
 		},
 		slopdens: {
+			name: 'Density em Sloper',
 			cat: 'Tecido',
 			variants: [
 				{
-					name: 'Density Hangs em Sloper',
+					name: 'Parte de baixo de um sloper',
 					what: 'Parte de baixo de um sloper',
 					note: '2 braços · mão aberta.',
 					why: [
@@ -316,7 +324,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Density hangs de mão aberta em 35mm',
+					name: 'Mão aberta em 35mm',
 					what: '35mm · mão aberta',
 					note: '2 braços · mão aberta · quase submáx.',
 					why: ['Carga de tecido em mão aberta numa régua definida.'],
@@ -328,7 +336,7 @@ const content: LocaleContent = {
 					why: ['Volume de tecido com estresse mínimo nas polias.'],
 				},
 				{
-					name: 'Sustentações longas de mão aberta no no-hang',
+					name: 'No-hang · mão aberta',
 					what: 'No-hang · mão aberta',
 					note: '2 braços · no-hang block.',
 					why: ['Fácil de carregar e amigável às polias — ótimo pra dias sensíveis.'],
@@ -336,10 +344,11 @@ const content: LocaleContent = {
 			],
 		},
 		maxhang: {
+			name: 'Max Hangs',
 			cat: 'Força máxima',
 			variants: [
 				{
-					name: 'Max Hangs — Manutenção',
+					name: 'Manutenção · ~10mm',
 					what: 'Dose curta · régua de ~10mm',
 					note: 'Deixe 2–3s de margem (<b>MAW</b>/<b>MED</b> da López, mínimo).',
 					why: [
@@ -359,7 +368,7 @@ const content: LocaleContent = {
 					why: ['<b>MAW</b> da López: adicione peso numa régua mais amigável.'],
 				},
 				{
-					name: 'Levantamento máximo no no-hang block (10s)',
+					name: 'No-hang block máximo (10s)',
 					what: 'Máximo no no-hang block',
 					note: 'Levantadas quase máximas no block.',
 					why: ['Força máxima amigável às polias, que dá pra carregar com precisão.'],
@@ -367,10 +376,11 @@ const content: LocaleContent = {
 			],
 		},
 		density: {
+			name: 'Density Hangs',
 			cat: 'Tecido',
 			variants: [
 				{
-					name: 'Density Hangs',
+					name: 'Half-crimp · perto da falha',
 					what: 'Sustentações longas perto da falha',
 					note: 'Perto da falha · half-crimp.',
 					why: [
@@ -378,13 +388,13 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Density hangs (mão aberta)',
+					name: 'Mão aberta · sustentações longas',
 					what: 'Mão aberta · sustentações longas',
 					note: 'Perto da falha · mão aberta.',
 					why: ['Mesmo estímulo de tecido deslocado pra mão aberta.'],
 				},
 				{
-					name: 'Levantamento de densidade no no-hang block',
+					name: 'No-hang block',
 					what: 'No-hang block',
 					note: 'Perto da falha · no-hang block.',
 					why: ['Carga de densidade amigável às polias.'],
@@ -398,10 +408,11 @@ const content: LocaleContent = {
 			],
 		},
 		abra: {
+			name: 'Abrahangs',
 			cat: 'Tecido',
 			variants: [
 				{
-					name: 'Abrahangs (carga baixa)',
+					name: 'Carga baixa · pés no chão',
 					what: 'De manhã · 18–22mm · pés no chão',
 					note: '"Só tensão leve" · ~10 min no total · entre pegadas · ≥6h do trabalho pesado.',
 					why: [
@@ -410,7 +421,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Sustentações leves no no-hang block',
+					name: 'No-hang block leve',
 					what: 'No-hang · leve',
 					note: 'Entre pegadas · pés apoiados.',
 					why: ['Versão no-hang — fácil de manter genuinamente leve.'],
@@ -422,19 +433,19 @@ const content: LocaleContent = {
 					why: ['Estímulo de circulação / colágeno sem fadiga relevante.'],
 				},
 				{
-					name: 'Pule — descanso extra se estiver cansado',
+					name: 'Pule — descanso extra se cansado',
 					what: 'Pular / descansar',
 					note: 'Largue a sessão e descanse se estiver com fadiga ou incômodo.',
 					why: ['Estes são complementares — corte primeiro quando cansado ou sensível.'],
 				},
 				{
-					name: 'Abrahangs — pino/block, uma mão por vez',
+					name: 'Pino/block · uma mão',
 					what: 'No-hang no pino/block · uma mão por vez',
 					note: 'Uma mão por vez num pino de carga · mantenha bem leve.',
 					why: ['Carga no-hang por mão — precisa e fácil de manter bem abaixo de 40%.'],
 				},
 				{
-					name: 'Abrahangs — hangboard na parede, duas mãos',
+					name: 'Hangboard na parede · duas mãos',
 					what: 'Hangboard na parede · as duas mãos',
 					note: 'As duas mãos numa hangboard fixa na parede · pés apoiados.',
 					why: ['Versão de hangboard com as duas mãos — prática pro trabalho diário de tecido.'],
@@ -442,16 +453,17 @@ const content: LocaleContent = {
 			],
 		},
 		antag: {
+			name: 'Antagonistas',
 			cat: 'Prevenção',
 			variants: [
 				{
-					name: 'Antagonistas',
+					name: 'Circuito completo',
 					what: '~10 min · seguro pro cotovelo + polias',
 					note: 'Flexão de punho reversa 3×15 · extensão de dedo com elástico 3×20–30 · pronação/supinação 3×12 · flexões/dips.',
 					why: ['Essencial pela sua dominância flexora — protege cotovelos e polias.'],
 				},
 				{
-					name: 'Balde de arroz + elásticos extensores',
+					name: 'Balde de arroz + elásticos',
 					what: 'Balde de arroz + elásticos',
 					note: '~5–8 min · balde de arroz + extensão de dedo com elástico.',
 					why: ['Trabalho de baixo esforço pra extensores e resistência de antebraço.'],
@@ -463,7 +475,7 @@ const content: LocaleContent = {
 					why: ['Equilíbrio mínimo de extensores quando o tempo é curto.'],
 				},
 				{
-					name: 'Circuito de empurrar / pronação',
+					name: 'Empurrar / pronação',
 					what: 'Empurrar + pronação',
 					note: '~8–10 min · flexões / dips + pronação/supinação.',
 					why: ['Equilíbrio de empurrar + rotação pra ombros e cotovelos.'],
@@ -471,16 +483,17 @@ const content: LocaleContent = {
 			],
 		},
 		perform: {
+			name: 'Performance',
 			cat: 'Técnica',
 			variants: [
 				{
-					name: 'Rocha / Performance',
+					name: 'Dia de send na rocha',
 					what: 'Hangboard = só aquecimento',
 					note: 'Sua escalada real mais difícil da semana · aquecimento completo · cabeça de send.',
 					why: ['Em janela de send, o hangboard vira só ferramenta de aquecimento (Hörst).'],
 				},
 				{
-					name: 'Dia de performance forte no ginásio',
+					name: 'Performance forte no ginásio',
 					what: 'Performance no ginásio',
 					note: 'Escalada mais difícil do ginásio · aquecimento completo · tentativas de send de verdade.',
 					why: ['Estímulo de performance quando não dá pra ir na rocha.'],
@@ -492,7 +505,7 @@ const content: LocaleContent = {
 					why: ['Treina leitura e execução de primeira.'],
 				},
 				{
-					name: 'Dia longo de vários boulders na rocha',
+					name: 'Dia longo de vários boulders',
 					what: 'Volume na rocha',
 					note: 'Muitos boulders ao longo do dia · cuide da pele e da energia.',
 					why: ['Rodagem e técnica de qualidade na rocha.'],
@@ -500,16 +513,17 @@ const content: LocaleContent = {
 			],
 		},
 		rest: {
+			name: 'Descanso',
 			cat: 'Recuperação',
 			variants: [
 				{
-					name: 'Descanso Total',
+					name: 'Descanso total',
 					what: 'Sem carga nos dedos',
 					note: 'Caminhe · mobilidade · durma · coma. A adaptação acontece agora, não na parede.',
 					why: ['Mesmo no seu nível, o teto é ~3 dias de alto SNC por semana. Inegociável.'],
 				},
 				{
-					name: 'Só caminhada leve + mobilidade',
+					name: 'Caminhada leve + mobilidade',
 					what: 'Caminhada + mobilidade',
 					note: 'Caminhada leve + 10–15 min de mobilidade · sem carga de pegada.',
 					why: ['Recuperação ativa que não sobrecarrega os dedos.'],
@@ -521,7 +535,7 @@ const content: LocaleContent = {
 					why: ['Favorece recuperação e base aeróbica sem carga nos dedos.'],
 				},
 				{
-					name: 'Abrahangs leves só se estiver doido pra mexer',
+					name: 'Abrahangs gentis só se quiser mexer',
 					what: 'Abrahangs leves',
 					note: 'Abrahangs bem leves só se for necessário.',
 					why: ['O máximo que você deve fazer num dia de descanso, e só se estiver inteiro.'],

@@ -75,10 +75,11 @@ const content: LocaleContent = {
 	],
 	exercises: {
 		recruit: {
+			name: 'Recruitment Pulls',
 			cat: 'RFD / Contact',
 			variants: [
 				{
-					name: 'Recruitment Pulls',
+					name: 'Hangboard · 1-arm ~20mm',
 					what: '1-arm · ~20mm or flat edge',
 					note: 'Fast, explosive max pull.',
 					why: [
@@ -107,10 +108,11 @@ const content: LocaleContent = {
 			],
 		},
 		limitboulder: {
+			name: 'Limit Bouldering',
 			cat: 'Power / Skill',
 			variants: [
 				{
-					name: 'Limit Bouldering',
+					name: 'Hardest problems · long rests',
 					what: 'Hardest problems · long rests',
 					note: 'Prioritise crimp / contact moves. Quality over quantity.',
 					why: [
@@ -138,10 +140,11 @@ const content: LocaleContent = {
 			],
 		},
 		pinch: {
+			name: 'Pinch Block',
 			cat: 'Pinch',
 			variants: [
 				{
-					name: 'Pinch Block — Max',
+					name: 'Max — thumb-pad-depth block',
 					what: 'One thumb-pad-depth block',
 					note: 'Shoulders retracted, arm by side, lift with legs · ~30s between arms.',
 					why: [
@@ -170,10 +173,11 @@ const content: LocaleContent = {
 			],
 		},
 		wrist: {
+			name: 'Wrist / Sloper Strength',
 			cat: 'Wrist / Slopers',
 			variants: [
 				{
-					name: 'Wrist / Sloper Strength',
+					name: 'Wrist-wrench / radial lifts',
 					what: 'Wrist-wrench / radial lifts',
 					note: 'To failure · hypertrophy dose for FCR + wrist stabilisers.',
 					why: [
@@ -202,10 +206,11 @@ const content: LocaleContent = {
 			],
 		},
 		repeaters: {
+			name: 'Repeaters',
 			cat: 'Endurance / CF',
 			variants: [
 				{
-					name: '7/3 Repeaters',
+					name: '7/3 · 20mm half-crimp + open hand',
 					what: '20mm · half-crimp + open hand',
 					note: '2 grips: half-crimp + open hand.',
 					why: [
@@ -214,7 +219,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: '6:10 repeaters (longer recovery)',
+					name: '6:10 (longer recovery)',
 					what: '6s on / 10s off',
 					note: 'Longer rests bias aerobic capacity over glycolytic stress.',
 					why: ['Longer rests bias aerobic capacity over glycolytic stress.'],
@@ -234,10 +239,11 @@ const content: LocaleContent = {
 			],
 		},
 		sport: {
+			name: 'Sport Climbing',
 			cat: 'Endurance / CF',
 			variants: [
 				{
-					name: 'Sport Climbing / Board Laps',
+					name: 'Board laps · controlled pump',
 					what: 'Sub-maximal, controlled pump',
 					note: 'Routes or board laps · build a pump but never to failure.',
 					why: ['Translates the repeater stimulus to real movement and aerobic capacity.'],
@@ -263,10 +269,11 @@ const content: LocaleContent = {
 			],
 		},
 		pull: {
+			name: 'Pull Strength',
 			cat: 'Pull power',
 			variants: [
 				{
-					name: 'Heavy Pull Day',
+					name: 'Heavy weighted pull-ups + OAP',
 					what: 'Weighted pull-ups + OAP work',
 					note: 'Hard but clean · OAP negatives / assisted 3–4 sets/side.',
 					why: [
@@ -295,10 +302,11 @@ const content: LocaleContent = {
 			],
 		},
 		slopdens: {
+			name: 'Sloper Density',
 			cat: 'Tissue',
 			variants: [
 				{
-					name: 'Sloper Density Hangs',
+					name: 'Sloper bottom-edge hangs',
 					what: 'Bottom edge of a sloper',
 					note: '2 arms · open-hand position.',
 					why: ["Open-hand tissue work that doesn't tax pulleys — pairs well after the pull day."],
@@ -324,10 +332,11 @@ const content: LocaleContent = {
 			],
 		},
 		maxhang: {
+			name: 'Max Hangs',
 			cat: 'Max strength',
 			variants: [
 				{
-					name: 'Max Hangs — Maintenance',
+					name: 'Maintenance · ~10mm',
 					what: 'Short dose · ~10mm edge',
 					note: 'Leave a 2–3s margin (López <b>MAW</b>/<b>MED</b>, minimal).',
 					why: [
@@ -355,10 +364,11 @@ const content: LocaleContent = {
 			],
 		},
 		density: {
+			name: 'Density Hangs',
 			cat: 'Tissue',
 			variants: [
 				{
-					name: 'Density Hangs',
+					name: 'Half-crimp · near failure',
 					what: 'Near-failure long holds',
 					note: 'Near failure · half-crimp.',
 					why: [
@@ -366,7 +376,7 @@ const content: LocaleContent = {
 					],
 				},
 				{
-					name: 'Density hangs (open hand)',
+					name: 'Open hand · long holds',
 					what: 'Open hand · long holds',
 					note: 'Near failure · open hand.',
 					why: ['Same tissue stimulus shifted to the open-hand position.'],
@@ -386,10 +396,11 @@ const content: LocaleContent = {
 			],
 		},
 		abra: {
+			name: 'Abrahangs',
 			cat: 'Tissue',
 			variants: [
 				{
-					name: 'Abrahangs (low-load)',
+					name: 'Low-load · feet on floor',
 					what: 'AM · 18–22mm · feet on floor',
 					note: '"Light strain only" · ~10 min total · across grips · ≥6h from hard work.',
 					why: [
@@ -416,13 +427,13 @@ const content: LocaleContent = {
 					why: ['These are additive — cut them first when tired or tweaky.'],
 				},
 				{
-					name: 'Abrahangs — pin block, one hand',
+					name: 'Pin block · one hand',
 					what: 'No-hang pin/block · one hand at a time',
 					note: 'One arm at a time on a loading pin · keep it genuinely light.',
 					why: ['Per-hand no-hang loading — precise and easy to keep well under 40%.'],
 				},
 				{
-					name: 'Abrahangs — wall hangboard, two hands',
+					name: 'Wall hangboard · two hands',
 					what: 'Wall hangboard · both hands',
 					note: 'Both hands on a wall-mounted hangboard · feet supported.',
 					why: ['Two-hand hangboard version — convenient and low-fuss for daily tissue work.'],
@@ -430,10 +441,11 @@ const content: LocaleContent = {
 			],
 		},
 		antag: {
+			name: 'Antagonists',
 			cat: 'Prehab',
 			variants: [
 				{
-					name: 'Antagonists',
+					name: 'Full circuit',
 					what: '~10 min · elbow + pulley insurance',
 					note: 'Reverse wrist curls 3×15 · band finger extensions 3×20–30 · pronation/supination 3×12 · push-ups/dips.',
 					why: ['Essential given your flexor dominance — protects elbows and pulleys.'],
@@ -459,10 +471,11 @@ const content: LocaleContent = {
 			],
 		},
 		perform: {
+			name: 'Performance',
 			cat: 'Skill',
 			variants: [
 				{
-					name: 'Outdoor / Performance',
+					name: 'Outdoor send day',
 					what: 'Hangboard = warm-up only',
 					note: 'Your hardest real climbing of the week · full warm-up · send mindset.',
 					why: ['During send windows the hangboard drops to a warm-up tool (Hörst).'],
@@ -488,10 +501,11 @@ const content: LocaleContent = {
 			],
 		},
 		rest: {
+			name: 'Rest',
 			cat: 'Recovery',
 			variants: [
 				{
-					name: 'Full Rest',
+					name: 'Full rest',
 					what: 'No finger loading',
 					note: 'Walk · mobility · sleep · eat. Adaptation happens now, not on the wall.',
 					why: ['Even at your level the cap is ~3 high-CNS days/week. This is non-negotiable.'],

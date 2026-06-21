@@ -15,6 +15,7 @@ function merge(locale: LocaleContent): Content {
 	for (const [id, prose] of Object.entries(locale.exercises)) {
 		const params = exerciseParams[id];
 		exercises[id] = {
+			name: prose.name,
 			cat: prose.cat,
 			catVar: params?.catVar ?? '--ink-faint',
 			variants: prose.variants.map((p, i) => ({ ...(params?.variants[i] ?? {}), ...p })),

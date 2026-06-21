@@ -69,12 +69,12 @@ function setSwap(id: string, i: number, label: string) {
 					<span class="h-[38px] w-2 flex-none rounded" style:background={cat}></span>
 					<div class="flex-1 text-left">
 						<div class="text-[15.5px] font-bold">
-							{active.name}{#if sw != null && sw !== 0}<span
+							{e.name}{#if sw != null && sw !== 0}<span
 									class="font-mono text-[10px]"
 									style:color={cat}> {m.swapped_tag()}</span
 								>{/if}
 						</div>
-						<div class="font-mono text-[12.5px] text-ink-dim">{active.what}</div>
+						<div class="font-mono text-[12.5px] text-ink-dim">{active.name}</div>
 					</div>
 					<span
 						class="mr-1 font-mono text-[10px] font-bold tracking-wider whitespace-nowrap uppercase"

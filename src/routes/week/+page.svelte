@@ -193,7 +193,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 								{#if ex}
 									{@const idx = resolveSwapIndex(week, slot.k, exId)}
 									<div class="mb-1 flex items-center justify-between gap-2">
-										<span class="text-[11px] font-semibold text-ink-dim">{ex.variants[0].name}</span>
+										<span class="text-[11px] font-semibold text-ink-dim">{ex.name}</span>
 										<button
 											type="button"
 											class="text-ink-faint transition hover:text-flag"
@@ -238,7 +238,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 									</SelectTrigger>
 									<SelectContent>
 										{#each avail as [id, ex] (id)}
-											<SelectItem value={id}>{ex.variants[0].name}</SelectItem>
+											<SelectItem value={id}>{ex.name}</SelectItem>
 										{/each}
 									</SelectContent>
 								</Select>

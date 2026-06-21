@@ -13,12 +13,12 @@ import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
 	addDayExercise,
-	exerciseLabel,
 	GRIPS,
 	gripLabel,
 	removeDayExercise,
 	resolveExerciseIds,
 	resolveSwapIndex,
+	setDaySwap,
 	timerSeedFor,
 	variantOf,
 } from '$lib/plan';
@@ -56,7 +56,10 @@ function colsFor(spec: Variant): Col[] {
 
 interface Item {
 	exId: string;
-	name: string;
+	exName: string;
+	idx: number;
+	variantName: string;
+	variantNames: string[];
 	spec: Variant;
 	cols: Col[];
 }
@@ -67,9 +70,26 @@ const items = $derived<Item[]>(
 		const idx = resolveSwapIndex(week, weekday, exId);
 		if (exId === 'rest' && idx === 0) return [];
 		const spec = variantOf(ex, idx);
-		return [{ exId, name: exerciseLabel(ex, idx), spec, cols: colsFor(spec) }];
+		return [
+			{
+				exId,
+				exName: ex.name,
+				idx,
+				variantName: spec.name,
+				variantNames: ex.variants.map((v) => v.name),
+				spec,
+				cols: colsFor(spec),
+			},
+		];
 	}),
 );
+
+/** Name to record in the log: exercise, plus the variant when it differs. */
+function logName(it: Item): string {
+	return it.variantName && it.variantName !== it.exName
+		? `${it.exName} · ${it.variantName}`
+		: it.exName;
+}
 const avail = $derived(
 	Object.entries(content.exercises).filter(([id]) => id !== 'rest' && !dayExIds.includes(id)),
 );
@@ -81,7 +101,7 @@ let note = $state('');
 // The timer reflects your next task: the first timed exercise still un-logged,
 // falling back to the first timed exercise of the day.
 const timerSeed = $derived.by(() => {
-	const seeds = items.map((it) => timerSeedFor(it.spec, it.exId, it.name));
+	const seeds = items.map((it) => timerSeedFor(it.spec, it.exId, it.exName));
 	const next = items.findIndex((it, i) => seeds[i] && (sets[it.exId]?.length ?? 0) === 0);
 	if (next >= 0) return seeds[next];
 	return seeds.find((s) => s) ?? null;
@@ -124,7 +144,7 @@ function removeItem(exId: string) {
 
 function finish() {
 	const exercises = items
-		.map((it) => ({ exId: it.exId, name: it.name, sets: sets[it.exId] ?? [] }))
+		.map((it) => ({ exId: it.exId, name: logName(it), sets: sets[it.exId] ?? [] }))
 		.filter((e) => e.sets.length > 0);
 	if (exercises.length === 0) {
 		toast.error(m.train_nothing());
@@ -154,7 +174,7 @@ function finish() {
 			{#each items as it (it.exId)}
 				<Card class="gap-2.5 p-4">
 					<div class="flex items-start justify-between gap-2">
-						<div class="font-bold">{it.name}</div>
+						<div class="font-bold">{it.exName}</div>
 						<button
 							type="button"
 							class="text-ink-faint transition hover:text-flag"
@@ -164,6 +184,22 @@ function finish() {
 							<XIcon class="size-4" />
 						</button>
 					</div>
+					{#if it.variantNames.length > 1}
+						<Select
+							type="single"
+							value={String(it.idx)}
+							onValueChange={(v) => v != null && setDaySwap(week, weekday, it.exId, Number(v))}
+						>
+							<SelectTrigger class="h-8 w-full border-line bg-panel-2 text-xs">
+								{it.variantName}
+							</SelectTrigger>
+							<SelectContent>
+								{#each it.variantNames as vn, i (i)}
+									<SelectItem value={String(i)}>{vn}</SelectItem>
+								{/each}
+							</SelectContent>
+						</Select>
+					{/if}
 					{@const cols = it.cols}
 					{@const grid = `grid-template-columns:repeat(${cols.length},minmax(54px,1fr)) auto`}
 					<div
@@ -246,7 +282,7 @@ function finish() {
 				</SelectTrigger>
 				<SelectContent>
 					{#each avail as [id, ex] (id)}
-						<SelectItem value={id}>{ex.variants[0].name}</SelectItem>
+						<SelectItem value={id}>{ex.name}</SelectItem>
 					{/each}
 				</SelectContent>
 			</Select>
