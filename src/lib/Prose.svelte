@@ -69,8 +69,8 @@ const tokens = $derived.by<Token[]>(() => {
 						{...props}
 						tabindex="0"
 						class={cn(
-							'cursor-help underline decoration-dotted decoration-ink-faint underline-offset-2',
-							tok.bold && 'font-semibold text-chalk'
+							'cursor-help text-teal underline decoration-teal/50 decoration-dotted underline-offset-2 transition-colors hover:text-teal/80 hover:decoration-teal focus-visible:outline-none focus-visible:text-teal/80',
+							tok.bold && 'font-semibold'
 						)}>{tok.text}</span
 					>
 				{/snippet}
