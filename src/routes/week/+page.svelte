@@ -30,6 +30,7 @@ const week = $derived(appState.currentWeek);
 const phase = $derived(content.phases[phaseId(week)]);
 
 const COMPOUND = ['Mon', 'Wed', 'Thu', 'Fri'];
+const todayKey = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
 
 /** Primary prescription label for a slot, from its (possibly customized) list. */
 function dayPrime(slot: string): string {
@@ -106,12 +107,24 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 			{@const customized = resolved.k !== slot.k}
 			{@const done = !!appState.completed[slotKey(week, slot.k)]}
 			{@const exIds = resolveExerciseIds(content, week, slot.k)}
-			<Card class={cn('relative gap-2 overflow-hidden p-3.5', done && 'opacity-55')}>
+			{@const isToday = slot.k === todayKey}
+			<Card
+				class={cn(
+					'relative gap-2 overflow-hidden p-3.5',
+					done && 'opacity-55',
+					isToday && 'opacity-100 ring-1 ring-flag/70'
+				)}
+			>
 				<span class="absolute inset-x-0 top-0 h-[3px]" style:background={resolved.color}></span>
 
 				<div class="flex items-center justify-between">
-					<span class="font-mono text-[11px] tracking-wider text-ink-faint uppercase">
-						{slot.label}
+					<span
+						class={cn(
+							'font-mono text-[11px] tracking-wider uppercase',
+							isToday ? 'font-bold text-flag' : 'text-ink-faint'
+						)}
+					>
+						{slot.label}{#if isToday} · {m.td_today_label()}{/if}
 					</span>
 					<Popover>
 						<PopoverTrigger

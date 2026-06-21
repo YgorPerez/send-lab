@@ -82,11 +82,16 @@ function logVerdict() {
 
 	<!-- Today's plan + per-task checklist -->
 	<Card class="mb-[22px] gap-3 border-l-[3px] p-5" style="border-left-color: {day.color}">
-		<div class="flex items-baseline justify-between">
+		<div class="flex items-baseline justify-between gap-2">
 			<span class="font-bold">{m.td_today_label()} · {dayLabel}</span>
-			<span class="font-mono text-[11px] tracking-wider uppercase" style:color={day.color}>
-				{day.load}
-			</span>
+			<div class="flex items-baseline gap-2.5">
+				<a href="/week" class="font-mono text-[11px] text-ink-faint hover:text-ink">
+					{m.week_label({ n: week })}
+				</a>
+				<span class="font-mono text-[11px] tracking-wider uppercase" style:color={day.color}>
+					{day.load}
+				</span>
+			</div>
 		</div>
 		{#if isRestDay}
 			<p class="text-sm text-teal">{m.td_rest_day()}</p>
