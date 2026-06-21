@@ -1,0 +1,109 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+	color-scheme: dark;
+	--radius: 0.75rem;
+
+	/* ---- climbing palette (raw values) ---- */
+	--bg: #0c0d10;
+	--panel: #15171c;
+	--panel-2: #1c1f26;
+	--line: #2a2e38;
+	--ink: #eef1f5;
+	--ink-dim: #9aa3b0;
+	--ink-faint: #5d6470;
+	--chalk: #e8e4d8; /* climbing chalk */
+	--flag: #ff5a2c; /* signature vermilion — limit/effort */
+	--flag-deep: #c93b14;
+	--teal: #3fd0c9; /* recovery / tissue */
+	--gold: #f4c04e; /* endurance / metabolic */
+	--violet: #9b8cff; /* pull / power */
+
+	/* ---- shadcn semantic tokens, mapped to the dark climbing theme ---- */
+	--background: var(--bg);
+	--foreground: var(--ink);
+	--card: var(--panel);
+	--card-foreground: var(--ink);
+	--popover: var(--panel-2);
+	--popover-foreground: var(--ink);
+	--primary: var(--flag);
+	--primary-foreground: #ffffff;
+	--secondary: var(--panel-2);
+	--secondary-foreground: var(--ink);
+	--muted: var(--panel-2);
+	--muted-foreground: var(--ink-dim);
+	--accent: var(--panel-2);
+	--accent-foreground: var(--chalk);
+	--destructive: var(--flag-deep);
+	--destructive-foreground: #ffffff;
+	--border: var(--line);
+	--input: var(--line);
+	--ring: var(--flag);
+}
+
+@theme inline {
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+
+	/* climbing accents exposed as Tailwind color utilities */
+	--color-bg: var(--bg);
+	--color-panel: var(--panel);
+	--color-panel-2: var(--panel-2);
+	--color-line: var(--line);
+	--color-ink: var(--ink);
+	--color-ink-dim: var(--ink-dim);
+	--color-ink-faint: var(--ink-faint);
+	--color-chalk: var(--chalk);
+	--color-flag: var(--flag);
+	--color-flag-deep: var(--flag-deep);
+	--color-teal: var(--teal);
+	--color-gold: var(--gold);
+	--color-violet: var(--violet);
+
+	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-mono: 'Roboto Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground font-sans;
+		-webkit-font-smoothing: antialiased;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		::before,
+		::after {
+			animation-duration: 0.01ms !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+}

@@ -1,0 +1,20 @@
+{
+	// TypeScript 7 (native `tsgo`) quality gate.
+	// Scoped to plain .ts sources — `tsgo` cannot parse .svelte components, which
+	// are type-checked by `svelte-check` instead. Together they cover everything.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		// Pull in Svelte's rune globals and SvelteKit's `$app/*` ambient module
+		// declarations, which the scoped `include` below would otherwise drop.
+		"types": ["svelte", "@sveltejs/kit"],
+		"noEmit": true
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": [
+		"node_modules",
+		"build",
+		"**/*.svelte",
+		"src/lib/paraglide/**",
+		"src/lib/components/ui/**"
+	]
+}

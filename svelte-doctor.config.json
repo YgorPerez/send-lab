@@ -1,0 +1,6 @@
+{
+	"ignore": {
+		"files": ["src/lib/components/ui/**", "src/lib/paraglide/**", ".svelte-kit/**", "build/**"],
+		"rules": []
+	}
+}
