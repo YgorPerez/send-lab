@@ -20,7 +20,7 @@ export interface Day {
 	ex: string[];
 }
 
-export interface Exercise {
+interface Exercise {
 	name: string;
 	cat: string;
 	/** CSS custom-property name driving this exercise's accent colour. */
@@ -33,7 +33,7 @@ export interface Exercise {
 	swaps: string[];
 }
 
-export interface Metric {
+interface Metric {
 	id: MetricId;
 	name: string;
 	abbr: string;
@@ -42,18 +42,18 @@ export interface Metric {
 	desc: string;
 }
 
-export interface QuizOption {
+interface QuizOption {
 	t: string;
 	v: number;
 }
 
-export interface QuizQuestion {
+interface QuizQuestion {
 	id: string;
 	q: string;
 	a: QuizOption[];
 }
 
-export interface Verdict {
+interface Verdict {
 	title: string;
 	tag: string;
 	color: string;
@@ -61,7 +61,7 @@ export interface Verdict {
 	focus: string[];
 }
 
-export interface Phase {
+interface Phase {
 	name: string;
 	banner: string;
 	cat: string;

@@ -23,6 +23,48 @@ export function resolveDay(content: Content, week: number, weekday: string): Day
 	return content.days.find((d) => d.k === tk) ?? content.days[0];
 }
 
+/** The exercise ids for a slot: a per-day custom list if set, else the protocol's. */
+export function resolveExerciseIds(content: Content, week: number, weekday: string): string[] {
+	return appState.dayExercises[slotKey(week, weekday)] ?? resolveDay(content, week, weekday).ex;
+}
+
+/** Replace a slot's exercise list (materializes the per-day override). */
+function setDayExercises(content: Content, week: number, weekday: string, exIds: string[]): void {
+	const k = slotKey(week, weekday);
+	const base = resolveDay(content, week, weekday).ex;
+	// Clear the override when it matches the protocol's default list exactly.
+	if (exIds.length === base.length && exIds.every((id, i) => id === base[i])) {
+		delete appState.dayExercises[k];
+	} else {
+		appState.dayExercises[k] = exIds;
+	}
+}
+
+export function addDayExercise(
+	content: Content,
+	week: number,
+	weekday: string,
+	exId: string,
+): void {
+	const current = resolveExerciseIds(content, week, weekday);
+	if (!current.includes(exId)) setDayExercises(content, week, weekday, [...current, exId]);
+}
+
+export function removeDayExercise(
+	content: Content,
+	week: number,
+	weekday: string,
+	exId: string,
+): void {
+	const current = resolveExerciseIds(content, week, weekday);
+	setDayExercises(
+		content,
+		week,
+		weekday,
+		current.filter((id) => id !== exId),
+	);
+}
+
 /** Swap index for an exercise on a given day: per-day override → global → default. */
 export function resolveSwapIndex(week: number, weekday: string, exId: string): number {
 	const perDay = appState.daySwaps[taskKey(week, weekday, exId)];

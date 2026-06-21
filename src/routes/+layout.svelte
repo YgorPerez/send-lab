@@ -51,6 +51,7 @@ async function signOut() {
 
 const views = $derived([
 	{ href: '/', label: m.nav_today() },
+	{ href: '/train', label: m.nav_train() },
 	{ href: '/week', label: m.nav_week() },
 	{ href: '/exercises', label: m.nav_exercises() },
 	{ href: '/metrics', label: m.nav_metrics() },

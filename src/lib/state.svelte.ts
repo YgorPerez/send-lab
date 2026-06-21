@@ -18,6 +18,27 @@ interface LogEntry {
 	note: string;
 }
 
+/** One logged set within a workout (all fields optional — log what applies). */
+export interface WorkoutSet {
+	weight: number | null;
+	time: number | null;
+	reps: number | null;
+	rest: number | null;
+}
+
+interface WorkoutLogExercise {
+	exId: string;
+	name: string;
+	sets: WorkoutSet[];
+}
+
+interface WorkoutEntry {
+	date: string;
+	day: string;
+	exercises: WorkoutLogExercise[];
+	note: string;
+}
+
 interface AppState {
 	currentWeek: number;
 	/** Completed days, keyed "w1-Mon". */
@@ -28,10 +49,14 @@ interface AppState {
 	dayPlan: Record<string, string>;
 	/** Per-day exercise swap override: "w1-Tue:pinch" → swap index. */
 	daySwaps: Record<string, number>;
+	/** Per-day exercise-list override: "w1-Tue" → exercise ids (add/remove freely). */
+	dayExercises: Record<string, string[]>;
 	/** Per-task completion: "w1-Tue:pinch" → done. */
 	taskDone: Record<string, boolean>;
 	metrics: Record<MetricId, MetricEntry[]>;
 	log: LogEntry[];
+	/** Logged workouts (full sets: weight / time / reps / rest), newest first. */
+	workouts: WorkoutEntry[];
 }
 
 function defaultState(): AppState {
@@ -41,9 +66,11 @@ function defaultState(): AppState {
 		swaps: {},
 		dayPlan: {},
 		daySwaps: {},
+		dayExercises: {},
 		taskDone: {},
 		metrics: { rfd: [], contact: [], cf: [], pinch: [], pull: [], maxhang: [], density: [] },
 		log: [],
+		workouts: [],
 	};
 }
 
@@ -61,9 +88,11 @@ function applyData(data: Partial<AppState>): void {
 	appState.swaps = data.swaps ?? base.swaps;
 	appState.dayPlan = data.dayPlan ?? base.dayPlan;
 	appState.daySwaps = data.daySwaps ?? base.daySwaps;
+	appState.dayExercises = data.dayExercises ?? base.dayExercises;
 	appState.taskDone = data.taskDone ?? base.taskDone;
 	appState.metrics = { ...base.metrics, ...data.metrics };
 	appState.log = data.log ?? base.log;
+	appState.workouts = data.workouts ?? base.workouts;
 }
 
 /** Load the signed-in user's state from the server. Call once per login. */

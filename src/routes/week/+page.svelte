@@ -1,5 +1,7 @@
 <script lang="ts">
+import PlusIcon from '@lucide/svelte/icons/plus';
 import Settings2Icon from '@lucide/svelte/icons/settings-2';
+import XIcon from '@lucide/svelte/icons/x';
 import { toast } from 'svelte-sonner';
 import { Card } from '$lib/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
@@ -9,8 +11,11 @@ import { type Day, getContent, phaseId } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
+	addDayExercise,
 	exerciseLabel,
+	removeDayExercise,
 	resolveDay,
+	resolveExerciseIds,
 	resolveSwapIndex,
 	setDayPlan,
 	setDaySwap,
@@ -26,14 +31,15 @@ const phase = $derived(content.phases[phaseId(week)]);
 
 const COMPOUND = ['Mon', 'Wed', 'Thu', 'Fri'];
 
-/** Primary prescription label for a resolved day, with per-day swaps applied. */
-function dayPrime(slot: string, day: Day): string {
-	const ex = content.exercises[day.ex[0]];
-	if (!ex) return day.prime;
-	const base = exerciseLabel(ex, resolveSwapIndex(week, slot, day.ex[0]));
-	const ex2 = day.ex[1] ? content.exercises[day.ex[1]] : undefined;
-	if (ex2 && COMPOUND.includes(day.k)) {
-		return `${base} → ${exerciseLabel(ex2, resolveSwapIndex(week, slot, day.ex[1]))}`;
+/** Primary prescription label for a slot, from its (possibly customized) list. */
+function dayPrime(slot: string): string {
+	const ids = resolveExerciseIds(content, week, slot);
+	const first = ids[0] ? content.exercises[ids[0]] : undefined;
+	if (!first) return resolveDay(content, week, slot).prime;
+	const base = exerciseLabel(first, resolveSwapIndex(week, slot, ids[0]));
+	const second = ids[1] ? content.exercises[ids[1]] : undefined;
+	if (second && COMPOUND.includes(resolveDay(content, week, slot).k)) {
+		return `${base} → ${exerciseLabel(second, resolveSwapIndex(week, slot, ids[1]))}`;
 	}
 	return base;
 }
@@ -45,7 +51,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 		appState.log.unshift({
 			date: today(),
 			type: 'day',
-			label: `W${week} ${label} · ${dayPrime(slot, day)}`,
+			label: `W${week} ${label} · ${dayPrime(slot)}`,
 			color: day.color,
 			note: m.log_note_day({ load: day.load }),
 		});
@@ -99,6 +105,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 			{@const resolved = resolveDay(content, week, slot.k)}
 			{@const customized = resolved.k !== slot.k}
 			{@const done = !!appState.completed[slotKey(week, slot.k)]}
+			{@const exIds = resolveExerciseIds(content, week, slot.k)}
 			<Card class={cn('relative gap-2 overflow-hidden p-3.5', done && 'opacity-55')}>
 				<span class="absolute inset-x-0 top-0 h-[3px]" style:background={resolved.color}></span>
 
@@ -132,11 +139,21 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 								</SelectContent>
 							</Select>
 
-							{#each resolved.ex as exId (exId)}
+							{#each exIds as exId (exId)}
 								{@const ex = content.exercises[exId]}
 								{#if ex}
 									{@const idx = resolveSwapIndex(week, slot.k, exId)}
-									<div class="mb-1 text-[11px] font-semibold text-ink-dim">{ex.name}</div>
+									<div class="mb-1 flex items-center justify-between gap-2">
+										<span class="text-[11px] font-semibold text-ink-dim">{ex.name}</span>
+										<button
+											type="button"
+											class="text-ink-faint transition hover:text-flag"
+											aria-label={m.btn_delete()}
+											onclick={() => removeDayExercise(content, week, slot.k, exId)}
+										>
+											<XIcon class="size-3.5" />
+										</button>
+									</div>
 									<Select
 										type="single"
 										value={String(idx)}
@@ -155,6 +172,28 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 									</Select>
 								{/if}
 							{/each}
+
+							{@const avail = Object.entries(content.exercises).filter(
+								([id]) => id !== 'rest' && !exIds.includes(id)
+							)}
+							{#if avail.length}
+								<Select
+									type="single"
+									value=""
+									onValueChange={(v) => v && addDayExercise(content, week, slot.k, v)}
+								>
+									<SelectTrigger
+										class="h-9 w-full border-dashed border-line bg-panel-2 text-xs text-ink-dim"
+									>
+										<PlusIcon class="mr-1 size-3.5" />{m.wk_add_ex()}
+									</SelectTrigger>
+									<SelectContent>
+										{#each avail as [id, ex] (id)}
+											<SelectItem value={id}>{ex.name}</SelectItem>
+										{/each}
+									</SelectContent>
+								</Select>
+							{/if}
 						</PopoverContent>
 					</Popover>
 				</div>
@@ -165,7 +204,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 				>
 					{resolved.load}{#if customized}<span class="text-ink-faint"> · →{resolved.label}</span>{/if}
 				</div>
-				<div class="text-sm leading-snug font-bold">{dayPrime(slot.k, resolved)}</div>
+				<div class="text-sm leading-snug font-bold">{dayPrime(slot.k)}</div>
 				<div class="text-xs leading-snug text-ink-dim"><Prose value={resolved.sec} /></div>
 				<label
 					class="mt-auto flex cursor-pointer items-center gap-1.5 border-t border-line pt-2 text-xs text-ink-faint"
