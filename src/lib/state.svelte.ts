@@ -39,6 +39,20 @@ interface WorkoutEntry {
 	note: string;
 }
 
+export type Goal = 'boulder' | 'sport' | 'all';
+export type Focus = 'fingers' | 'power' | 'endurance' | 'tissue';
+export type Level = 'intermediate' | 'advanced' | 'elite';
+
+/** Baseline assessment captured at onboarding (goals + context). */
+interface Assessment {
+	goal: Goal;
+	focus: Focus;
+	level: Level;
+	daysPerWeek: number;
+	bodyweight: number | null;
+	completedAt: string;
+}
+
 interface AppState {
 	currentWeek: number;
 	/** Completed days, keyed "w1-Mon". */
@@ -57,6 +71,8 @@ interface AppState {
 	log: LogEntry[];
 	/** Logged workouts (full sets: weight / time / reps / rest), newest first. */
 	workouts: WorkoutEntry[];
+	/** Baseline assessment, or null until onboarding is completed. */
+	assessment: Assessment | null;
 }
 
 function defaultState(): AppState {
@@ -71,6 +87,7 @@ function defaultState(): AppState {
 		metrics: { rfd: [], contact: [], cf: [], pinch: [], pull: [], maxhang: [], density: [] },
 		log: [],
 		workouts: [],
+		assessment: null,
 	};
 }
 
@@ -80,6 +97,9 @@ export const appState = $state<AppState>(defaultState());
 /** Persistence is gated until the signed-in user's state has loaded, so we never
  *  clobber server data with defaults before hydration. */
 let hydrated = false;
+
+/** Reactive signal for "the signed-in user's state has loaded" (drives onboarding). */
+export const appReady = $state({ hydrated: false });
 
 function applyData(data: Partial<AppState>): void {
 	const base = defaultState();
@@ -93,6 +113,7 @@ function applyData(data: Partial<AppState>): void {
 	appState.metrics = { ...base.metrics, ...data.metrics };
 	appState.log = data.log ?? base.log;
 	appState.workouts = data.workouts ?? base.workouts;
+	appState.assessment = data.assessment ?? base.assessment;
 }
 
 /** Load the signed-in user's state from the server. Call once per login. */
@@ -105,12 +126,27 @@ export async function hydrate(): Promise<void> {
 		// network/parse failure — start from defaults
 	} finally {
 		hydrated = true;
+		appReady.hydrated = true;
+	}
+}
+
+/** Save the baseline assessment and seed any baseline metrics (first-time only). */
+export function saveAssessment(
+	assessment: Assessment,
+	baselines: Partial<Record<MetricId, number | null>>,
+): void {
+	appState.assessment = assessment;
+	for (const key of Object.keys(baselines) as MetricId[]) {
+		const v = baselines[key];
+		if (v == null || Number.isNaN(v)) continue;
+		if (appState.metrics[key].length === 0) appState.metrics[key].push({ date: today(), v });
 	}
 }
 
 /** Reset in-memory state to defaults and pause persistence (used on sign-out). */
 export function clearLocal(): void {
 	hydrated = false;
+	appReady.hydrated = false;
 	applyData({});
 }
 

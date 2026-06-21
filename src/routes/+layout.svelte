@@ -11,7 +11,7 @@ import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import { clearLocal, hydrate, startPersistence } from '$lib/state.svelte';
+import { appReady, appState, clearLocal, hydrate, startPersistence } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
 
 let { children } = $props();
@@ -44,6 +44,18 @@ $effect(() => {
 	}
 });
 
+// New accounts (no baseline assessment) start with onboarding.
+$effect(() => {
+	if (
+		appReady.hydrated &&
+		$session.data?.user &&
+		!appState.assessment &&
+		page.url.pathname !== '/welcome'
+	) {
+		void goto('/welcome');
+	}
+});
+
 async function signOut() {
 	await authClient.signOut();
 	await goto('/login');
@@ -65,6 +77,8 @@ const views = $derived([
 	{#if page.url.pathname === '/login'}
 		{@render children()}
 	{/if}
+{:else if page.url.pathname === '/welcome'}
+	{@render children()}
 {:else}
 	<TooltipProvider delayDuration={150}>
 		<header
