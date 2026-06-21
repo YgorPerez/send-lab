@@ -3,8 +3,8 @@ import { toast } from 'svelte-sonner';
 import { Card } from '$lib/components/ui/card';
 import { Progress } from '$lib/components/ui/progress';
 import { type Day, getContent, phaseId } from '$lib/content';
+import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import RichText from '$lib/RichText.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -77,12 +77,12 @@ function toggleDay(d: Day, checked: boolean) {
 			class="rounded-lg border-l-[3px] bg-panel-2 px-3 py-2.5 font-mono text-xs text-ink-dim"
 			style:border-left-color="var({phase.cat})"
 		>
-			{phase.banner}
+			<Prose value={phase.banner} />
 		</div>
 	</Card>
 
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim">
-		<RichText value={m.lede_week()} />
+		<Prose value={m.lede_week()} />
 	</p>
 
 	<div class="grid gap-3 md:grid-cols-7">
@@ -98,7 +98,7 @@ function toggleDay(d: Day, checked: boolean) {
 					{d.load}
 				</div>
 				<div class="text-sm leading-snug font-bold">{resolvePrime(d)}</div>
-				<div class="text-xs leading-snug text-ink-dim">{d.sec}</div>
+				<div class="text-xs leading-snug text-ink-dim"><Prose value={d.sec} /></div>
 				<label
 					class="mt-auto flex cursor-pointer items-center gap-1.5 border-t border-line pt-2 text-xs text-ink-faint"
 				>

@@ -4,8 +4,8 @@ import { Badge } from '$lib/components/ui/badge';
 import { Button } from '$lib/components/ui/button';
 import { Card, CardContent } from '$lib/components/ui/card';
 import { type Answers, computeVerdictId, getContent } from '$lib/content';
+import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import RichText from '$lib/RichText.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -37,7 +37,7 @@ function logVerdict() {
 <section class="animate-in fade-in duration-300">
 	<SectionHeading title={m.sec_today()} />
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim">
-		<RichText value={m.lede_today()} />
+		<Prose value={m.lede_today()} />
 	</p>
 
 	<Card class="mb-[22px] gap-0 p-6">
@@ -80,7 +80,7 @@ function logVerdict() {
 				</div>
 			</div>
 			<div class="p-5 text-[14.5px] text-ink-dim">
-				<div><RichText value={verdict.text} /></div>
+				<div><Prose value={verdict.text} /></div>
 				<div class="mt-3.5 flex flex-wrap gap-2">
 					{#each verdict.focus as f, i (f)}
 						<Badge
@@ -90,7 +90,7 @@ function logVerdict() {
 								i === 0 && 'border-flag text-flag'
 							)}
 						>
-							{f}
+							<Prose value={f} />
 						</Badge>
 					{/each}
 				</div>

@@ -447,6 +447,22 @@ const content: Content = {
 			cat: '--teal',
 		},
 	},
+	glossary: {
+		SNC: 'Sistema nervoso central — a fadiga sistêmica que limita esforços máximos e intensos.',
+		RFD: 'Taxa de desenvolvimento de força — quão rápido você atinge o pico de força.',
+		MVC: 'Contração voluntária máxima — sua força máxima numa dada pegada.',
+		JMT: 'Junção miotendínea — onde o músculo vira tendão.',
+		OAP: 'Pull-up de um braço (one-arm pull-up).',
+		FRC: 'Flexor radial do carpo — um flexor do punho do lado do polegar.',
+		FPD: 'Flexor profundo dos dedos — o flexor profundo que comanda o crimp.',
+		FDS: 'Flexor superficial dos dedos.',
+		FC: 'Força crítica — a maior força que você sustenta quase indefinidamente; seu piso de resistência.',
+		MAW: 'Max Added Weight — protocolo de hangboard da López: borda fixa, adicionar peso.',
+		MED: 'Minimum Edge Depth — protocolo da López: peso corporal em borda cada vez menor.',
+		ARC: 'Aerobic Restoration & Capillarity — escalada contínua fácil para base de resistência.',
+		'De Quervain':
+			'Tenossinovite de De Quervain — irritação dos tendões do punho do lado do polegar.',
+	},
 };
 
 export default content;

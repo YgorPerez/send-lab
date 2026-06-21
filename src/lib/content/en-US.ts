@@ -445,6 +445,21 @@ const content: Content = {
 			cat: '--teal',
 		},
 	},
+	glossary: {
+		CNS: 'Central nervous system — the systemic fatigue that caps maximal, high-intensity efforts.',
+		RFD: 'Rate of force development — how fast you reach peak force, not just how much.',
+		MVC: 'Maximal voluntary contraction — your maximum force on a given grip.',
+		MTJ: 'Muscle–tendon junction — where muscle transitions into tendon.',
+		OAP: 'One-arm pull-up.',
+		FCR: 'Flexor carpi radialis — a wrist flexor on the thumb side.',
+		FDP: 'Flexor digitorum profundus — the deep finger flexor that drives crimping.',
+		FDS: 'Flexor digitorum superficialis — a superficial finger flexor.',
+		CF: 'Critical force — the highest force you can sustain almost indefinitely; your endurance floor.',
+		MAW: 'Max Added Weight — a López hangboard protocol: fixed edge, add weight.',
+		MED: 'Minimum Edge Depth — a López protocol: bodyweight on a progressively smaller edge.',
+		ARC: 'Aerobic Restoration & Capillarity — easy continuous climbing to build an endurance base.',
+		"De Quervain's": "De Quervain's tenosynovitis — irritation of the thumb-side wrist tendons.",
+	},
 };
 
 export default content;

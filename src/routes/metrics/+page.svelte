@@ -4,8 +4,8 @@ import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { getContent, type MetricId } from '$lib/content';
+import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import RichText from '$lib/RichText.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import Sparkline from '$lib/Sparkline.svelte';
 import { appState, round, today } from '$lib/state.svelte';
@@ -47,7 +47,7 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 <section class="animate-in fade-in duration-300">
 	<SectionHeading title={m.sec_metrics()} />
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim">
-		<RichText value={m.lede_metrics()} />
+		<Prose value={m.lede_metrics()} />
 	</p>
 
 	<div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -62,10 +62,10 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 						class="font-mono text-[10px] font-bold tracking-wider"
 						style:color="var({metric.cat})"
 					>
-						{metric.abbr}
+						<Prose value={metric.abbr} />
 					</span>
 				</div>
-				<div class="mb-3.5 text-xs leading-snug text-ink-faint">{metric.desc}</div>
+				<div class="mb-3.5 text-xs leading-snug text-ink-faint"><Prose value={metric.desc} /></div>
 				<div>
 					<span class="font-mono text-[30px] leading-none font-bold text-chalk">
 						{last != null ? round(last) : '—'}

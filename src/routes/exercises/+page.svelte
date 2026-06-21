@@ -7,8 +7,8 @@ import {
 	AccordionTrigger,
 } from '$lib/components/ui/accordion';
 import { getContent } from '$lib/content';
+import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import RichText from '$lib/RichText.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -34,7 +34,7 @@ function setSwap(id: string, i: number, label: string) {
 <section class="animate-in fade-in duration-300">
 	<SectionHeading title={m.sec_exercises()} />
 	<p class="mb-[18px] max-w-[62ch] text-[15px] text-ink-dim">
-		<RichText value={m.lede_exercises()} />
+		<Prose value={m.lede_exercises()} />
 	</p>
 
 	<div class="mb-[18px] flex flex-wrap gap-[7px]">
@@ -85,10 +85,10 @@ function setSwap(id: string, i: number, label: string) {
 					<div
 						class="my-3.5 rounded-lg border border-line bg-panel-2 px-3.5 py-3 font-mono text-[13px] leading-relaxed text-chalk"
 					>
-						{e.spec}
+						<Prose value={e.spec} />
 					</div>
 					{#each e.why as w (w)}
-						<p class="mb-2 text-[13.5px] text-ink-dim"><RichText value={w} /></p>
+						<p class="mb-2 text-[13.5px] text-ink-dim"><Prose value={w} /></p>
 					{/each}
 					<div class="mt-3.5 border-t border-dashed border-line pt-3.5">
 						<div class="mb-2 font-mono text-[10px] tracking-wider text-ink-faint uppercase">

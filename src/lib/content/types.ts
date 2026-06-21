@@ -74,4 +74,6 @@ export interface Content {
 	quiz: QuizQuestion[];
 	verdicts: Record<VerdictId, Verdict>;
 	phases: Record<PhaseId, Phase>;
+	/** Jargon/acronym → plain-language definition, surfaced as tooltips in prose. */
+	glossary: Record<string, string>;
 }
