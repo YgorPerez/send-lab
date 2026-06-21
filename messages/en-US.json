@@ -88,6 +88,8 @@
 	"timer_work_s": "Work (s)",
 	"timer_rest_s": "Rest (s)",
 	"timer_rounds": "Rounds",
+	"timer_total": "Total",
+	"timer_left": "Left",
 	"btn_start": "Start",
 	"btn_pause": "Pause",
 	"btn_reset": "Reset",

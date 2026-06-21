@@ -133,6 +133,22 @@ const display = $derived(phase === 'idle' ? work : remaining);
 const accent = $derived(
 	phase === 'work' ? 'var(--flag)' : phase === 'rest' ? 'var(--teal)' : 'var(--ink-faint)',
 );
+
+function clock(s: number): string {
+	const sec = Math.max(0, Math.round(s));
+	return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+// Whole-exercise duration and how much is left (the timer rests after every
+// round, including the last, so total = rounds × (work + rest)).
+const totalSec = $derived(rounds * (work + Math.max(0, rest)));
+const leftSec = $derived.by(() => {
+	if (phase === 'idle') return totalSec;
+	if (phase === 'done') return 0;
+	const after = (rounds - round) * (work + Math.max(0, rest));
+	return phase === 'work' ? remaining + Math.max(0, rest) + after : remaining + after;
+});
+const doneFrac = $derived(totalSec > 0 ? (totalSec - leftSec) / totalSec : 0);
 </script>
 
 <div class="rounded-xl border border-line bg-panel-2 p-4">
@@ -147,8 +163,20 @@ const accent = $derived(
 		{/if}
 	</div>
 
-	<div class="my-2 text-center font-mono text-[56px] leading-none font-bold" style:color={accent}>
+	<div class="mt-2 text-center font-mono text-[56px] leading-none font-bold" style:color={accent}>
 		{display}<span class="text-2xl text-ink-faint">s</span>
+	</div>
+
+	<div class="mt-2 mb-1 flex items-center justify-between gap-3 font-mono text-[11px] text-ink-faint">
+		<span>{m.timer_left()} <span class="text-chalk">{clock(leftSec)}</span></span>
+		<span>{m.timer_total()} {clock(totalSec)}</span>
+	</div>
+	<div class="mb-3 h-1 overflow-hidden rounded bg-panel">
+		<div
+			class="h-full rounded transition-[width] duration-500"
+			style:width="{doneFrac * 100}%"
+			style:background={accent}
+		></div>
 	</div>
 
 	<div class="mb-3 flex justify-center gap-2.5">

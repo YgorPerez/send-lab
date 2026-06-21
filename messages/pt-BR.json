@@ -88,6 +88,8 @@
 	"timer_work_s": "Esforço (s)",
 	"timer_rest_s": "Descanso (s)",
 	"timer_rounds": "Séries",
+	"timer_total": "Total",
+	"timer_left": "Falta",
 	"btn_start": "Iniciar",
 	"btn_pause": "Pausar",
 	"btn_reset": "Zerar",
