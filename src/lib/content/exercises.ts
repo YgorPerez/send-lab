@@ -481,10 +481,13 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 	abra: {
 		catVar: '--teal',
 		variants: [
+			// Hangboard · 2 hands · Standard
 			{
+				prepareSec: 5,
 				workSec: n(10),
 				restSec: n(20),
 				rounds: n(20),
+				sets: n(1),
 				edgeMm: n(18, 22),
 				intensityPct: n(40),
 				rpe: n(3, 4),
@@ -493,10 +496,14 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 				region: ['fingers'],
 				cnsCost: 'low',
 			},
+			// Block · 1 hand · Standard (2s switch between hands, 2 cycles)
 			{
+				prepareSec: 5,
 				workSec: n(10),
-				restSec: n(20),
+				restSec: n(2),
 				rounds: n(20),
+				sets: n(2),
+				setRestSec: n(2),
 				intensityPct: n(40),
 				rpe: n(3, 4),
 				grip: 'half-crimp',
@@ -504,31 +511,29 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 				region: ['fingers'],
 				cnsCost: 'low',
 			},
+			// Hangboard · 2 hands · Fast (abrafast)
 			{
-				rpe: n(3, 4),
-				qualities: ['tissue'],
-				region: ['fingers'],
-				cnsCost: 'low',
-			},
-			{
-				cnsCost: 'low',
-			},
-			{
-				workSec: n(10),
+				prepareSec: 5,
+				workSec: n(15),
 				restSec: n(20),
-				rounds: n(20),
-				intensityPct: n(40),
-				rpe: n(3, 4),
-				grip: 'half-crimp',
-				qualities: ['tissue'],
-				region: ['fingers'],
-				cnsCost: 'low',
-			},
-			{
-				workSec: n(10),
-				restSec: n(20),
-				rounds: n(20),
+				rounds: n(13),
+				sets: n(1),
 				edgeMm: n(18, 22),
+				intensityPct: n(40),
+				rpe: n(3, 4),
+				grip: 'half-crimp',
+				qualities: ['tissue'],
+				region: ['fingers'],
+				cnsCost: 'low',
+			},
+			// Block · 1 hand · Fast (abrafast 1-handed)
+			{
+				prepareSec: 5,
+				workSec: n(15),
+				restSec: n(2),
+				rounds: n(13),
+				sets: n(2),
+				setRestSec: n(2),
 				intensityPct: n(40),
 				rpe: n(3, 4),
 				grip: 'half-crimp',

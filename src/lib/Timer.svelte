@@ -18,15 +18,17 @@ import {
 import { cn } from '$lib/utils';
 
 const phaseLabel = $derived(
-	timer.phase === 'work'
-		? m.timer_work()
-		: timer.phase === 'rest'
-			? m.timer_rest()
-			: timer.phase === 'setRest'
-				? m.timer_setrest()
-				: timer.phase === 'done'
-					? m.timer_done()
-					: m.timer_ready(),
+	timer.phase === 'prepare'
+		? m.timer_prepare()
+		: timer.phase === 'work'
+			? m.timer_work()
+			: timer.phase === 'rest'
+				? m.timer_rest()
+				: timer.phase === 'setRest'
+					? m.timer_setrest()
+					: timer.phase === 'done'
+						? m.timer_done()
+						: m.timer_ready(),
 );
 const display = $derived(timer.phase === 'idle' ? timer.work : timer.remaining);
 const accent = $derived(phaseColor(timer.phase));
@@ -82,6 +84,15 @@ const doneFrac = $derived(total > 0 ? (total - left) / total : 0);
 	</div>
 
 	<div class="grid grid-cols-3 gap-2">
+		<label class="flex flex-col gap-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+			{m.timer_prepare_s()}
+			<Input
+				type="number"
+				min="0"
+				bind:value={timer.prepare}
+				class="h-8 bg-panel text-center text-sm"
+			/>
+		</label>
 		<label class="flex flex-col gap-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 			{m.timer_work_s()}
 			<Input type="number" min="1" bind:value={timer.work} class="h-8 bg-panel text-center text-sm" />

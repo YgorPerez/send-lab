@@ -17,15 +17,17 @@ import {
 import { cn } from '$lib/utils';
 
 const phaseLabel = $derived(
-	timer.phase === 'work'
-		? m.timer_work()
-		: timer.phase === 'rest'
-			? m.timer_rest()
-			: timer.phase === 'setRest'
-				? m.timer_setrest()
-				: timer.phase === 'done'
-					? m.timer_done()
-					: m.timer_ready(),
+	timer.phase === 'prepare'
+		? m.timer_prepare()
+		: timer.phase === 'work'
+			? m.timer_work()
+			: timer.phase === 'rest'
+				? m.timer_rest()
+				: timer.phase === 'setRest'
+					? m.timer_setrest()
+					: timer.phase === 'done'
+						? m.timer_done()
+						: m.timer_ready(),
 );
 const accent = $derived(phaseColor(timer.phase));
 const display = $derived(timer.phase === 'idle' ? timer.work : timer.remaining);

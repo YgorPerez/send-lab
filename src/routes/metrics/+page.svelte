@@ -22,19 +22,20 @@ type Metric = (typeof content.metrics)[number];
 let openMetric = $state<Metric | null>(null);
 
 interface TestProtocol {
+	prepare: number;
 	work: number;
 	rest: number;
 	rounds: number;
 	sets: number;
 	setRest: number;
 }
-// Timer protocol for the assessment, where the test is timed.
+// Timer protocol for the assessment, where the test is timed (5s get-ready).
 const TEST: Partial<Record<MetricId, TestProtocol>> = {
-	rfd: { work: 5, rest: 0, rounds: 1, sets: 3, setRest: 120 },
-	contact: { work: 3, rest: 0, rounds: 1, sets: 3, setRest: 120 },
-	cf: { work: 7, rest: 3, rounds: 20, sets: 1, setRest: 0 },
-	pinch: { work: 7, rest: 0, rounds: 1, sets: 3, setRest: 120 },
-	maxhang: { work: 10, rest: 0, rounds: 1, sets: 3, setRest: 180 },
+	rfd: { prepare: 5, work: 5, rest: 0, rounds: 1, sets: 3, setRest: 120 },
+	contact: { prepare: 5, work: 3, rest: 0, rounds: 1, sets: 3, setRest: 120 },
+	cf: { prepare: 5, work: 7, rest: 3, rounds: 20, sets: 1, setRest: 0 },
+	pinch: { prepare: 5, work: 7, rest: 0, rounds: 1, sets: 3, setRest: 120 },
+	maxhang: { prepare: 5, work: 10, rest: 0, rounds: 1, sets: 3, setRest: 180 },
 };
 
 function sendToTimer(metric: Metric) {

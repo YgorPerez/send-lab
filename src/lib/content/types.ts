@@ -40,6 +40,8 @@ export interface VariantParams {
 	reps?: Range;
 	/** On/off cycles (or holds) per timed set. */
 	rounds?: Range;
+	/** Get-ready countdown before the first rep, seconds. */
+	prepareSec?: number;
 	/** Work / hold time per rep, seconds. */
 	workSec?: Range;
 	/** Rest between reps within a set, seconds. */
@@ -72,6 +74,11 @@ interface VariantProse {
 	why: string[];
 	/** Cue that doesn't fit a numeric field (may contain inline <b>). */
 	note?: string;
+	/** Tool/equipment axis label (e.g. "Block · 1 hand"). When variants carry
+	 *  `tool` + `speed`, the UI offers two pickers instead of one variant list. */
+	tool?: string;
+	/** Speed/timing axis label (e.g. "Fast"). */
+	speed?: string;
 }
 
 /** A merged variant (params + prose), as consumed by the UI. */

@@ -30,6 +30,7 @@ import { configureTimer, timer } from '$lib/timerStore.svelte';
 import { type Col, colsFor } from '$lib/trainColumns';
 import { loadTrainDraft, saveTrainDraft } from '$lib/trainDraft';
 import { cn } from '$lib/utils';
+import VariantPicker from '$lib/VariantPicker.svelte';
 
 const content = getContent();
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -44,7 +45,6 @@ interface Item {
 	exName: string;
 	idx: number;
 	variantName: string;
-	variantNames: string[];
 	spec: Variant;
 	cols: Col[];
 	/** Whether this exercise has interval timings the timer can run. */
@@ -63,7 +63,6 @@ const items = $derived<Item[]>(
 				exName: ex.name,
 				idx,
 				variantName: spec.name,
-				variantNames: ex.variants.map((v) => v.name),
 				spec,
 				cols: colsFor(spec),
 				timed: spec.workSec != null,
@@ -122,13 +121,12 @@ function useInTimer(it: Item) {
 	if (s) configureTimer(s, true);
 }
 
-/** When the timer is running this exercise, reflect a variant change immediately. */
-function changeVariant(it: Item, v: string) {
-	const nv = Number(v);
-	setDaySwap(week, weekday, it.exId, nv);
+/** Switch variant; if the timer is running this exercise, reflect it immediately. */
+function selectVariant(it: Item, i: number) {
+	setDaySwap(week, weekday, it.exId, i);
 	if (timer.key?.startsWith(`${it.exId}:`)) {
 		const ex = content.exercises[it.exId];
-		const s = ex && timerSeedFor(variantOf(ex, nv), `${it.exId}:${nv}`, ex.name);
+		const s = ex && timerSeedFor(variantOf(ex, i), `${it.exId}:${i}`, ex.name);
 		if (s) configureTimer(s, true);
 	}
 }
@@ -256,21 +254,9 @@ function finish() {
 							</button>
 						</div>
 					</div>
-					{#if it.variantNames.length > 1}
-						<Select
-							type="single"
-							value={String(it.idx)}
-							onValueChange={(v) => v != null && changeVariant(it, v)}
-						>
-							<SelectTrigger class="h-8 w-full border-line bg-panel-2 text-xs">
-								{it.variantName}
-							</SelectTrigger>
-							<SelectContent>
-								{#each it.variantNames as vn, i (i)}
-									<SelectItem value={String(i)}>{vn}</SelectItem>
-								{/each}
-							</SelectContent>
-						</Select>
+					{@const ex = content.exercises[it.exId]}
+					{#if ex}
+						<VariantPicker exercise={ex} idx={it.idx} onSelect={(i) => selectVariant(it, i)} />
 					{/if}
 					<div
 						class="rounded-lg border border-line bg-panel-2 px-3 py-2.5"

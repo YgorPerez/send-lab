@@ -169,6 +169,7 @@ const mid = (r: Range): number => Math.round((r.min + r.max) / 2);
 export interface TimerSeed {
 	key: string;
 	name: string;
+	prepare: number;
 	work: number;
 	rest: number;
 	rounds: number;
@@ -182,6 +183,7 @@ export function timerSeedFor(spec: VariantParams, key: string, name: string): Ti
 	return {
 		key,
 		name,
+		prepare: spec.prepareSec ?? 0,
 		work: mid(spec.workSec),
 		rest: spec.restSec ? mid(spec.restSec) : 0,
 		rounds: spec.rounds ? mid(spec.rounds) : 1,

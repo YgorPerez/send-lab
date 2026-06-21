@@ -26,6 +26,7 @@ import {
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
+import VariantPicker from '$lib/VariantPicker.svelte';
 
 const content = getContent();
 
@@ -203,22 +204,13 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 											<XIcon class="size-3.5" />
 										</button>
 									</div>
-									<Select
-										type="single"
-										value={String(idx)}
-										onValueChange={(v) => v != null && setDaySwap(week, slot.k, exId, Number(v))}
-									>
-										<SelectTrigger class="mb-2.5 h-9 w-full border-line bg-panel-2 text-xs">
-											{exerciseLabel(ex, idx)}
-										</SelectTrigger>
-										<SelectContent>
-											{#each ex.variants as v, i (v.name)}
-												<SelectItem value={String(i)}>
-													{i === 0 ? `${v.name} · ${m.wk_default()}` : v.name}
-												</SelectItem>
-											{/each}
-										</SelectContent>
-									</Select>
+									<div class="mb-2.5">
+										<VariantPicker
+											exercise={ex}
+											{idx}
+											onSelect={(i) => setDaySwap(week, slot.k, exId, i)}
+										/>
+									</div>
 								{/if}
 							{/each}
 

@@ -4,10 +4,11 @@
 // load a test protocol into it.
 import { browser } from '$app/environment';
 
-type TimerPhase = 'idle' | 'work' | 'rest' | 'setRest' | 'done';
+type TimerPhase = 'idle' | 'prepare' | 'work' | 'rest' | 'setRest' | 'done';
 
 interface TimerState {
 	name: string;
+	prepare: number;
 	work: number;
 	rest: number;
 	rounds: number;
@@ -26,6 +27,7 @@ interface TimerState {
 
 export const timer = $state<TimerState>({
 	name: '',
+	prepare: 0,
 	work: 7,
 	rest: 3,
 	rounds: 6,
@@ -97,7 +99,11 @@ function tick(): void {
 		timer.remaining -= 1;
 		return;
 	}
-	if (timer.phase === 'work') {
+	if (timer.phase === 'prepare') {
+		timer.phase = 'work';
+		timer.remaining = Math.max(1, timer.work);
+		beep(660);
+	} else if (timer.phase === 'work') {
 		if (timer.round < timer.rounds && timer.rest > 0) {
 			timer.phase = 'rest';
 			timer.remaining = timer.rest;
@@ -127,8 +133,13 @@ export function startTimer(): void {
 	if (timer.phase === 'idle' || timer.phase === 'done') {
 		timer.set = 1;
 		timer.round = 1;
-		timer.phase = 'work';
-		timer.remaining = Math.max(1, timer.work);
+		if (timer.prepare > 0) {
+			timer.phase = 'prepare';
+			timer.remaining = timer.prepare;
+		} else {
+			timer.phase = 'work';
+			timer.remaining = Math.max(1, timer.work);
+		}
 	}
 	timer.running = true;
 	timer.loaded = true;
@@ -161,6 +172,7 @@ export function dismissTimer(): void {
 
 interface TimerConfig {
 	name: string;
+	prepare: number;
 	work: number;
 	rest: number;
 	rounds: number;
@@ -175,6 +187,7 @@ interface TimerConfig {
 export function configureTimer(c: TimerConfig, force = false): void {
 	if (!force && timer.phase !== 'idle' && timer.phase !== 'done') return;
 	timer.name = c.name;
+	timer.prepare = c.prepare;
 	timer.work = c.work;
 	timer.rest = c.rest;
 	timer.rounds = c.rounds;
@@ -190,8 +203,12 @@ function perSet(): number {
 	return timer.rounds * timer.work + Math.max(0, timer.rounds - 1) * Math.max(0, timer.rest);
 }
 
-export function timerTotal(): number {
+function body(): number {
 	return timer.sets * perSet() + Math.max(0, timer.sets - 1) * Math.max(0, timer.setRest);
+}
+
+export function timerTotal(): number {
+	return Math.max(0, timer.prepare) + body();
 }
 
 export function timerLeft(): number {
@@ -199,6 +216,7 @@ export function timerLeft(): number {
 	const sr = Math.max(0, timer.setRest);
 	if (timer.phase === 'idle') return timerTotal();
 	if (timer.phase === 'done') return 0;
+	if (timer.phase === 'prepare') return timer.remaining + body();
 	if (timer.phase === 'setRest')
 		return timer.remaining + perSet() + Math.max(0, timer.sets - timer.set - 1) * (sr + perSet());
 	const inSet =
@@ -216,6 +234,7 @@ export function timerClock(s: number): string {
 }
 
 export function phaseColor(phase: TimerPhase): string {
+	if (phase === 'prepare') return 'var(--gold)';
 	if (phase === 'work') return 'var(--flag)';
 	if (phase === 'rest') return 'var(--teal)';
 	if (phase === 'setRest') return 'var(--violet)';
