@@ -56,6 +56,7 @@
 	"error_generic": "Algo deu errado.",
 	"td_today_label": "Hoje",
 	"td_next_task": "próxima tarefa",
+	"td_open_train": "Treino",
 	"td_recheck": "Reavaliar para a próxima",
 	"td_applies": "Esta leitura vale para a próxima tarefa:",
 	"td_all_done": "Tarefas de hoje concluídas — hora de recuperar.",

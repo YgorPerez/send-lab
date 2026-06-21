@@ -5,13 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/component
 import * as m from '$lib/paraglide/messages';
 import { GRIPS, gripLabel } from '$lib/plan';
 import type { WorkoutSet } from '$lib/state.svelte';
+import type { Col } from '$lib/trainColumns';
 import { cn } from '$lib/utils';
 
-type ColKey = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe' | 'grip';
-interface Col {
-	key: ColKey;
-	label: () => string;
-}
 interface Props {
 	rows: WorkoutSet[];
 	cols: Col[];

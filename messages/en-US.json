@@ -56,6 +56,7 @@
 	"error_generic": "Something went wrong.",
 	"td_today_label": "Today",
 	"td_next_task": "next task",
+	"td_open_train": "Train",
 	"td_recheck": "Re-check for next task",
 	"td_applies": "This read is for your next task:",
 	"td_all_done": "All tasks done for today — recover.",

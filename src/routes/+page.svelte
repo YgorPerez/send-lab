@@ -1,4 +1,5 @@
 <script lang="ts">
+import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 import { toast } from 'svelte-sonner';
 import { Badge } from '$lib/components/ui/badge';
 import { Button } from '$lib/components/ui/button';
@@ -6,7 +7,7 @@ import { Card, CardContent } from '$lib/components/ui/card';
 import { type Answers, computeVerdictId, getContent } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import { resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey } from '$lib/plan';
+import { resolveDay, resolveExerciseIds, resolveSwapIndex } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -23,7 +24,6 @@ const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? we
 interface Task {
 	id: string;
 	label: string;
-	done: boolean;
 }
 
 const tasks = $derived<Task[]>(
@@ -33,23 +33,10 @@ const tasks = $derived<Task[]>(
 		if (!ex) return [];
 		const idx = resolveSwapIndex(week, weekday, exId);
 		if (exId === 'rest' && idx === 0) return [];
-		return [
-			{
-				id: exId,
-				label: ex.name,
-				done: !!appState.taskDone[taskKey(week, weekday, exId)],
-			},
-		];
+		return [{ id: exId, label: ex.name }];
 	}),
 );
-const nextTask = $derived(tasks.find((t) => !t.done));
 const isRestDay = $derived(tasks.length === 0);
-
-function toggleTask(exId: string, checked: boolean) {
-	const k = taskKey(week, weekday, exId);
-	if (checked) appState.taskDone[k] = true;
-	else delete appState.taskDone[k];
-}
 
 let answers = $state<Answers>({});
 const complete = $derived(Object.keys(answers).length === content.quiz.length);
@@ -70,7 +57,7 @@ function logVerdict() {
 		type: 'rec',
 		label: verdict.title,
 		color: verdict.color,
-		note: nextTask ? `${dayLabel} · ${nextTask.label}` : verdict.tag,
+		note: tasks[0] ? `${dayLabel} · ${tasks[0].label}` : verdict.tag,
 	});
 	toast.success(m.toast_session_logged());
 }
@@ -101,35 +88,18 @@ function logVerdict() {
 		{:else}
 			<div class="flex flex-col gap-2">
 				{#each tasks as task (task.id)}
-					{@const isNext = nextTask?.id === task.id}
-					<label
-						class={cn(
-							'flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition',
-							task.done
-								? 'border-line bg-panel-2 text-ink-faint line-through'
-								: isNext
-									? 'border-flag bg-flag/10 text-chalk'
-									: 'border-line bg-panel-2 text-ink-dim'
-						)}
+					<a
+						href="/train?ex={task.id}"
+						class="flex items-center gap-2.5 rounded-lg border border-line bg-panel-2 px-3 py-2 text-sm text-ink-dim transition hover:border-flag hover:text-chalk"
 					>
-						<input
-							type="checkbox"
-							checked={task.done}
-							onchange={(e) => toggleTask(task.id, e.currentTarget.checked)}
-							class="size-[15px] cursor-pointer accent-teal"
-						/>
 						<span class="flex-1">{task.label}</span>
-						{#if isNext}
-							<span class="font-mono text-[10px] tracking-wider text-flag uppercase">
-								{m.td_next_task()}
-							</span>
-						{/if}
-					</label>
+						<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+							{m.td_open_train()}
+						</span>
+						<ChevronRightIcon class="size-4" />
+					</a>
 				{/each}
 			</div>
-			{#if !nextTask}
-				<p class="text-xs text-teal">{m.td_all_done()}</p>
-			{/if}
 		{/if}
 	</Card>
 
@@ -174,9 +144,9 @@ function logVerdict() {
 			</div>
 			<div class="p-5 text-[14.5px] text-ink-dim">
 				<div><Prose value={verdict.text} /></div>
-				{#if nextTask}
+				{#if tasks[0]}
 					<p class="mt-2.5 text-[13px] text-ink-faint">
-						{m.td_applies()} <b class="text-chalk">{nextTask.label}</b>
+						{m.td_applies()} <b class="text-chalk">{tasks[0].label}</b>
 					</p>
 				{/if}
 				<div class="mt-3.5 flex flex-wrap gap-2">

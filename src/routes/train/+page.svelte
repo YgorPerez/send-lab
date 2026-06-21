@@ -3,6 +3,7 @@ import PlusIcon from '@lucide/svelte/icons/plus';
 import TimerIcon from '@lucide/svelte/icons/timer';
 import XIcon from '@lucide/svelte/icons/x';
 import { toast } from 'svelte-sonner';
+import { page } from '$app/state';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
@@ -26,6 +27,7 @@ import SetRows from '$lib/SetRows.svelte';
 import { appState, today, type WorkoutSet } from '$lib/state.svelte';
 import Timer from '$lib/Timer.svelte';
 import { configureTimer, timer } from '$lib/timerStore.svelte';
+import { type Col, colsFor } from '$lib/trainColumns';
 import { loadTrainDraft, saveTrainDraft } from '$lib/trainDraft';
 import { cn } from '$lib/utils';
 
@@ -36,28 +38,6 @@ const week = $derived(appState.currentWeek);
 const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? weekday);
 
 const dayExIds = $derived(resolveExerciseIds(content, week, weekday));
-
-/** A loggable column, shown only when the exercise's prescription uses it. */
-type ColKey = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe' | 'grip';
-interface Col {
-	key: ColKey;
-	label: () => string;
-}
-// Weight (kg) and edge (mm) are always loggable — you can add load or change the
-// edge on any exercise even when its target doesn't specify them. The rest are
-// the universal per-set fields; grip shows when the exercise loads a grip.
-function colsFor(spec: Variant): Col[] {
-	const c: Col[] = [
-		{ key: 'weight', label: m.field_weight },
-		{ key: 'edge', label: m.field_edge },
-		{ key: 'time', label: m.field_time },
-		{ key: 'reps', label: m.field_reps },
-	];
-	if (spec.grip) c.push({ key: 'grip', label: m.field_grip });
-	c.push({ key: 'rest', label: m.field_rest });
-	c.push({ key: 'rpe', label: m.field_rpe });
-	return c;
-}
 
 interface Item {
 	exId: string;
@@ -153,6 +133,25 @@ function changeVariant(it: Item, v: string) {
 	}
 }
 
+// Arriving from the Today tab (/train?ex=<id>) focuses that exercise once.
+let consumedParam = $state(false);
+$effect(() => {
+	if (consumedParam) return;
+	const ex = page.url.searchParams.get('ex');
+	if (!ex) {
+		consumedParam = true;
+		return;
+	}
+	const it = items.find((i) => i.exId === ex);
+	if (!it) return; // items not ready yet — wait for the next run
+	consumedParam = true;
+	activeExId = ex;
+	if (it.timed) {
+		const s = seedOf(it);
+		if (s) configureTimer(s, true);
+	}
+});
+
 const mid = (r?: Range): number | null => (r ? Math.round((r.min + r.max) / 2) : null);
 
 /** A set pre-filled from the exercise's target prescription. */
@@ -228,8 +227,8 @@ function finish() {
 	{:else}
 		<div class="flex flex-col gap-3">
 			{#each items as it (it.exId)}
-				{@const activeForTimer = timer.key === `${it.exId}:${it.idx}`}
-				<Card class={cn('gap-2.5 p-4', activeForTimer && 'ring-1 ring-flag/60')}>
+				{@const isActive = timer.key === `${it.exId}:${it.idx}` || it.exId === activeExId}
+				<Card class={cn('gap-2.5 p-4', isActive && 'ring-1 ring-flag/60')}>
 					<div class="flex items-start justify-between gap-2">
 						<div class="font-bold">{it.exName}</div>
 						<div class="flex items-center gap-2">
@@ -238,7 +237,7 @@ function finish() {
 									type="button"
 									class={cn(
 										'transition',
-										activeForTimer ? 'text-flag' : 'text-ink-faint hover:text-ink'
+										isActive ? 'text-flag' : 'text-ink-faint hover:text-ink'
 									)}
 									aria-label={m.timer_use()}
 									title={m.timer_use()}

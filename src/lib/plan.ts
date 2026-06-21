@@ -9,7 +9,7 @@ export function slotKey(week: number, weekday: string): string {
 	return `w${week}-${weekday}`;
 }
 
-export function taskKey(week: number, weekday: string, exId: string): string {
+function taskKey(week: number, weekday: string, exId: string): string {
 	return `w${week}-${weekday}:${exId}`;
 }
 
