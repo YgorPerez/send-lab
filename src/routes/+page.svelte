@@ -6,19 +6,57 @@ import { Card, CardContent } from '$lib/components/ui/card';
 import { type Answers, computeVerdictId, getContent } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
+import { exerciseLabel, resolveDay, resolveSwapIndex, taskKey } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
 
 const content = getContent();
 
-let answers = $state<Answers>({});
+// Today's planned protocol = the microcycle slot for the real weekday.
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const weekday = WEEKDAYS[new Date().getDay()];
+const week = $derived(appState.currentWeek);
+const day = $derived(resolveDay(content, week, weekday));
+const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? weekday);
 
+interface Task {
+	id: string;
+	label: string;
+	done: boolean;
+}
+
+const tasks = $derived<Task[]>(
+	day.ex.flatMap((exId) => {
+		const ex = content.exercises[exId];
+		if (!ex) return [];
+		return [
+			{
+				id: exId,
+				label: exerciseLabel(ex, resolveSwapIndex(week, weekday, exId)),
+				done: !!appState.taskDone[taskKey(week, weekday, exId)],
+			},
+		];
+	}),
+);
+const nextTask = $derived(tasks.find((t) => !t.done));
+
+function toggleTask(exId: string, checked: boolean) {
+	const k = taskKey(week, weekday, exId);
+	if (checked) appState.taskDone[k] = true;
+	else delete appState.taskDone[k];
+}
+
+let answers = $state<Answers>({});
 const complete = $derived(Object.keys(answers).length === content.quiz.length);
 const verdict = $derived(complete ? content.verdicts[computeVerdictId(answers)] : null);
 
 function pick(qid: string, value: number) {
 	answers = { ...answers, [qid]: value };
+}
+
+function recheck() {
+	answers = {};
 }
 
 function logVerdict() {
@@ -28,7 +66,7 @@ function logVerdict() {
 		type: 'rec',
 		label: verdict.title,
 		color: verdict.color,
-		note: verdict.tag,
+		note: nextTask ? `${dayLabel} · ${nextTask.label}` : verdict.tag,
 	});
 	toast.success(m.toast_session_logged());
 }
@@ -39,6 +77,47 @@ function logVerdict() {
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim">
 		<Prose value={m.lede_today()} />
 	</p>
+
+	<!-- Today's plan + per-task checklist -->
+	<Card class="mb-[22px] gap-3 border-l-[3px] p-5" style="border-left-color: {day.color}">
+		<div class="flex items-baseline justify-between">
+			<span class="font-bold">{m.td_today_label()} · {dayLabel}</span>
+			<span class="font-mono text-[11px] tracking-wider uppercase" style:color={day.color}>
+				{day.load}
+			</span>
+		</div>
+		<div class="flex flex-col gap-2">
+			{#each tasks as task (task.id)}
+				{@const isNext = nextTask?.id === task.id}
+				<label
+					class={cn(
+						'flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition',
+						task.done
+							? 'border-line bg-panel-2 text-ink-faint line-through'
+							: isNext
+								? 'border-flag bg-flag/10 text-chalk'
+								: 'border-line bg-panel-2 text-ink-dim'
+					)}
+				>
+					<input
+						type="checkbox"
+						checked={task.done}
+						onchange={(e) => toggleTask(task.id, e.currentTarget.checked)}
+						class="size-[15px] cursor-pointer accent-teal"
+					/>
+					<span class="flex-1">{task.label}</span>
+					{#if isNext}
+						<span class="font-mono text-[10px] tracking-wider text-flag uppercase">
+							{m.td_next_task()}
+						</span>
+					{/if}
+				</label>
+			{/each}
+		</div>
+		{#if !nextTask}
+			<p class="text-xs text-teal">{m.td_all_done()}</p>
+		{/if}
+	</Card>
 
 	<Card class="mb-[22px] gap-0 p-6">
 		<CardContent class="space-y-[22px] p-0">
@@ -81,6 +160,11 @@ function logVerdict() {
 			</div>
 			<div class="p-5 text-[14.5px] text-ink-dim">
 				<div><Prose value={verdict.text} /></div>
+				{#if nextTask}
+					<p class="mt-2.5 text-[13px] text-ink-faint">
+						{m.td_applies()} <b class="text-chalk">{nextTask.label}</b>
+					</p>
+				{/if}
 				<div class="mt-3.5 flex flex-wrap gap-2">
 					{#each verdict.focus as f, i (f)}
 						<Badge
@@ -98,7 +182,8 @@ function logVerdict() {
 					<Button class="bg-flag text-white hover:bg-flag/90" onclick={logVerdict}>
 						{m.btn_log_session()}
 					</Button>
-					<Button href="/week" variant="outline">{m.btn_view_protocol()}</Button>
+					<Button variant="outline" onclick={recheck}>{m.td_recheck()}</Button>
+					<Button href="/week" variant="ghost">{m.btn_view_protocol()}</Button>
 				</div>
 			</div>
 		</Card>

@@ -24,8 +24,14 @@ interface AppState {
 	currentWeek: number;
 	/** Completed days, keyed "w1-Mon". */
 	completed: Record<string, boolean>;
-	/** Exercise id → chosen swap index. */
+	/** Global exercise id → chosen swap index (library-wide default). */
 	swaps: Record<string, number>;
+	/** Per-day protocol override: "w1-Tue" → template weekday key (e.g. "Fri"). */
+	dayPlan: Record<string, string>;
+	/** Per-day exercise swap override: "w1-Tue:pinch" → swap index. */
+	daySwaps: Record<string, number>;
+	/** Per-task completion: "w1-Tue:pinch" → done. */
+	taskDone: Record<string, boolean>;
 	metrics: Record<MetricId, MetricEntry[]>;
 	log: LogEntry[];
 }
@@ -35,6 +41,9 @@ function defaultState(): AppState {
 		currentWeek: 1,
 		completed: {},
 		swaps: {},
+		dayPlan: {},
+		daySwaps: {},
+		taskDone: {},
 		metrics: { rfd: [], contact: [], cf: [], pinch: [], pull: [], maxhang: [], density: [] },
 		log: [],
 	};
@@ -79,6 +88,9 @@ export function resetAll(): void {
 	appState.currentWeek = fresh.currentWeek;
 	appState.completed = fresh.completed;
 	appState.swaps = fresh.swaps;
+	appState.dayPlan = fresh.dayPlan;
+	appState.daySwaps = fresh.daySwaps;
+	appState.taskDone = fresh.taskDone;
 	appState.metrics = fresh.metrics;
 	appState.log = fresh.log;
 }

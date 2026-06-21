@@ -1,10 +1,21 @@
 <script lang="ts">
+import Settings2Icon from '@lucide/svelte/icons/settings-2';
 import { toast } from 'svelte-sonner';
 import { Card } from '$lib/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
 import { Progress } from '$lib/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { type Day, getContent, phaseId } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
+import {
+	exerciseLabel,
+	resolveDay,
+	resolveSwapIndex,
+	setDayPlan,
+	setDaySwap,
+	slotKey,
+} from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -13,34 +24,32 @@ const content = getContent();
 const week = $derived(appState.currentWeek);
 const phase = $derived(content.phases[phaseId(week)]);
 
-/** Primary prescription label for a day, with any swaps applied. */
-function resolvePrime(d: Day): string {
-	const ex = content.exercises[d.ex[0]];
-	if (!ex) return d.prime;
-	const sw = appState.swaps[d.ex[0]];
-	const base = sw != null && ex.swaps[sw] ? ex.swaps[sw] : ex.name;
+const COMPOUND = ['Mon', 'Wed', 'Thu', 'Fri'];
 
-	const ex2 = d.ex[1] ? content.exercises[d.ex[1]] : undefined;
-	if (ex2 && ['Mon', 'Wed', 'Thu', 'Fri'].includes(d.k)) {
-		const sw2 = appState.swaps[d.ex[1]];
-		const b2 = sw2 != null && ex2.swaps[sw2] ? ex2.swaps[sw2] : ex2.name;
-		return `${base} → ${b2}`;
+/** Primary prescription label for a resolved day, with per-day swaps applied. */
+function dayPrime(slot: string, day: Day): string {
+	const ex = content.exercises[day.ex[0]];
+	if (!ex) return day.prime;
+	const base = exerciseLabel(ex, resolveSwapIndex(week, slot, day.ex[0]));
+	const ex2 = day.ex[1] ? content.exercises[day.ex[1]] : undefined;
+	if (ex2 && COMPOUND.includes(day.k)) {
+		return `${base} → ${exerciseLabel(ex2, resolveSwapIndex(week, slot, day.ex[1]))}`;
 	}
 	return base;
 }
 
-function toggleDay(d: Day, checked: boolean) {
-	const id = `w${week}-${d.k}`;
+function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
+	const id = slotKey(week, slot);
 	if (checked) {
 		appState.completed[id] = true;
 		appState.log.unshift({
 			date: today(),
 			type: 'day',
-			label: `W${week} ${d.label} · ${resolvePrime(d)}`,
-			color: d.color,
-			note: m.log_note_day({ load: d.load }),
+			label: `W${week} ${label} · ${dayPrime(slot, day)}`,
+			color: day.color,
+			note: m.log_note_day({ load: day.load }),
 		});
-		toast.success(m.toast_day_logged({ day: d.label }));
+		toast.success(m.toast_day_logged({ day: label }));
 	} else {
 		delete appState.completed[id];
 	}
@@ -86,26 +95,85 @@ function toggleDay(d: Day, checked: boolean) {
 	</p>
 
 	<div class="grid gap-3 md:grid-cols-7">
-		{#each content.days as d (d.k)}
-			{@const id = `w${week}-${d.k}`}
-			{@const done = !!appState.completed[id]}
-			<Card
-				class={cn('relative gap-2 overflow-hidden p-3.5', done && 'opacity-55')}
-			>
-				<span class="absolute inset-x-0 top-0 h-[3px]" style:background={d.color}></span>
-				<div class="font-mono text-[11px] tracking-wider text-ink-faint uppercase">{d.label}</div>
-				<div class="font-mono text-[10px] font-bold tracking-wider uppercase" style:color={d.color}>
-					{d.load}
+		{#each content.days as slot (slot.k)}
+			{@const resolved = resolveDay(content, week, slot.k)}
+			{@const customized = resolved.k !== slot.k}
+			{@const done = !!appState.completed[slotKey(week, slot.k)]}
+			<Card class={cn('relative gap-2 overflow-hidden p-3.5', done && 'opacity-55')}>
+				<span class="absolute inset-x-0 top-0 h-[3px]" style:background={resolved.color}></span>
+
+				<div class="flex items-center justify-between">
+					<span class="font-mono text-[11px] tracking-wider text-ink-faint uppercase">
+						{slot.label}
+					</span>
+					<Popover>
+						<PopoverTrigger
+							class="text-ink-faint transition hover:text-ink"
+							aria-label={m.wk_customize()}
+						>
+							<Settings2Icon class="size-3.5" />
+						</PopoverTrigger>
+						<PopoverContent class="w-72 border-line bg-panel">
+							<div class="mb-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+								{m.wk_protocol()}
+							</div>
+							<Select
+								type="single"
+								value={resolved.k}
+								onValueChange={(v) => v && setDayPlan(week, slot.k, v)}
+							>
+								<SelectTrigger class="mb-3 h-9 w-full border-line bg-panel-2 text-xs">
+									{resolved.label} · {resolved.load}
+								</SelectTrigger>
+								<SelectContent>
+									{#each content.days as opt (opt.k)}
+										<SelectItem value={opt.k}>{opt.label} · {opt.prime}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+
+							{#each resolved.ex as exId (exId)}
+								{@const ex = content.exercises[exId]}
+								{#if ex}
+									{@const idx = resolveSwapIndex(week, slot.k, exId)}
+									<div class="mb-1 text-[11px] font-semibold text-ink-dim">{ex.name}</div>
+									<Select
+										type="single"
+										value={String(idx)}
+										onValueChange={(v) => v != null && setDaySwap(week, slot.k, exId, Number(v))}
+									>
+										<SelectTrigger class="mb-2.5 h-9 w-full border-line bg-panel-2 text-xs">
+											{exerciseLabel(ex, idx)}
+										</SelectTrigger>
+										<SelectContent>
+											{#each ex.swaps as sw, i (sw)}
+												<SelectItem value={String(i)}>
+													{i === 0 ? `${ex.name} · ${m.wk_default()}` : sw}
+												</SelectItem>
+											{/each}
+										</SelectContent>
+									</Select>
+								{/if}
+							{/each}
+						</PopoverContent>
+					</Popover>
 				</div>
-				<div class="text-sm leading-snug font-bold">{resolvePrime(d)}</div>
-				<div class="text-xs leading-snug text-ink-dim"><Prose value={d.sec} /></div>
+
+				<div
+					class="font-mono text-[10px] font-bold tracking-wider uppercase"
+					style:color={resolved.color}
+				>
+					{resolved.load}{#if customized}<span class="text-ink-faint"> · →{resolved.label}</span>{/if}
+				</div>
+				<div class="text-sm leading-snug font-bold">{dayPrime(slot.k, resolved)}</div>
+				<div class="text-xs leading-snug text-ink-dim"><Prose value={resolved.sec} /></div>
 				<label
 					class="mt-auto flex cursor-pointer items-center gap-1.5 border-t border-line pt-2 text-xs text-ink-faint"
 				>
 					<input
 						type="checkbox"
 						checked={done}
-						onchange={(e) => toggleDay(d, e.currentTarget.checked)}
+						onchange={(e) => toggleDay(slot.k, slot.label, resolved, e.currentTarget.checked)}
 						class="size-[15px] cursor-pointer accent-teal"
 					/>
 					{done ? m.lbl_done() : m.btn_mark_done()}
