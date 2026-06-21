@@ -6,7 +6,13 @@ import { Card, CardContent } from '$lib/components/ui/card';
 import { type Answers, computeVerdictId, getContent } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import { exerciseLabel, resolveDay, resolveSwapIndex, taskKey } from '$lib/plan';
+import {
+	exerciseLabel,
+	resolveDay,
+	resolveExerciseIds,
+	resolveSwapIndex,
+	taskKey,
+} from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -27,7 +33,7 @@ interface Task {
 }
 
 const tasks = $derived<Task[]>(
-	day.ex.flatMap((exId) => {
+	resolveExerciseIds(content, week, weekday).flatMap((exId) => {
 		const ex = content.exercises[exId];
 		// `rest` is not a task — a day with no tasks is a rest day.
 		if (!ex || exId === 'rest') return [];

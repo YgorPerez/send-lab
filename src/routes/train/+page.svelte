@@ -5,10 +5,17 @@ import { toast } from 'svelte-sonner';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import { exerciseLabel, resolveDay, resolveExerciseIds, resolveSwapIndex } from '$lib/plan';
+import {
+	addDayExercise,
+	exerciseLabel,
+	removeDayExercise,
+	resolveExerciseIds,
+	resolveSwapIndex,
+} from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today, type WorkoutSet } from '$lib/state.svelte';
 import Timer from '$lib/Timer.svelte';
@@ -17,8 +24,9 @@ const content = getContent();
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const weekday = WEEKDAYS[new Date().getDay()];
 const week = $derived(appState.currentWeek);
-const day = $derived(resolveDay(content, week, weekday));
 const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? weekday);
+
+const dayExIds = $derived(resolveExerciseIds(content, week, weekday));
 
 interface Item {
 	exId: string;
@@ -26,13 +34,16 @@ interface Item {
 	spec: string;
 }
 const items = $derived<Item[]>(
-	resolveExerciseIds(content, week, weekday).flatMap((exId) => {
+	dayExIds.flatMap((exId) => {
 		const ex = content.exercises[exId];
 		if (!ex || exId === 'rest') return [];
 		return [
 			{ exId, name: exerciseLabel(ex, resolveSwapIndex(week, weekday, exId)), spec: ex.spec },
 		];
 	}),
+);
+const avail = $derived(
+	Object.entries(content.exercises).filter(([id]) => id !== 'rest' && !dayExIds.includes(id)),
 );
 
 // In-progress sets, keyed by exercise id (committed on "finish").
@@ -44,6 +55,10 @@ function addSet(exId: string) {
 }
 function removeSet(exId: string, i: number) {
 	sets[exId] = (sets[exId] ?? []).filter((_, idx) => idx !== i);
+}
+function removeItem(exId: string) {
+	removeDayExercise(content, week, weekday, exId);
+	delete sets[exId];
 }
 
 function finish() {
@@ -70,14 +85,24 @@ function finish() {
 	<div class="mb-[22px]"><Timer /></div>
 
 	{#if items.length === 0}
-		<div class="rounded-xl border border-dashed border-line px-5 py-[46px] text-center text-sm text-ink-faint">
+		<div class="mb-3 rounded-xl border border-dashed border-line px-5 py-[34px] text-center text-sm text-ink-faint">
 			{m.train_empty()}
 		</div>
 	{:else}
 		<div class="flex flex-col gap-3">
 			{#each items as it (it.exId)}
 				<Card class="gap-2.5 p-4">
-					<div class="font-bold">{it.name}</div>
+					<div class="flex items-start justify-between gap-2">
+						<div class="font-bold">{it.name}</div>
+						<button
+							type="button"
+							class="text-ink-faint transition hover:text-flag"
+							aria-label={m.btn_delete()}
+							onclick={() => removeItem(it.exId)}
+						>
+							<XIcon class="size-4" />
+						</button>
+					</div>
 					<div class="font-mono text-[12px] text-ink-dim"><Prose value={it.spec} /></div>
 
 					{#if (sets[it.exId] ?? []).length > 0}
@@ -98,7 +123,7 @@ function finish() {
 							<button
 								type="button"
 								class="text-ink-faint transition hover:text-flag"
-								aria-label="remove"
+								aria-label={m.btn_delete()}
 								onclick={() => removeSet(it.exId, i)}
 							>
 								<XIcon class="size-4" />
@@ -117,7 +142,28 @@ function finish() {
 				</Card>
 			{/each}
 		</div>
+	{/if}
 
+	{#if avail.length}
+		<div class="mt-3">
+			<Select
+				type="single"
+				value=""
+				onValueChange={(v) => v && addDayExercise(content, week, weekday, v)}
+			>
+				<SelectTrigger class="h-9 w-full border-dashed border-line bg-panel-2 text-xs text-ink-dim">
+					<PlusIcon class="mr-1 size-3.5" />{m.wk_add_ex()}
+				</SelectTrigger>
+				<SelectContent>
+					{#each avail as [id, ex] (id)}
+						<SelectItem value={id}>{ex.name}</SelectItem>
+					{/each}
+				</SelectContent>
+			</Select>
+		</div>
+	{/if}
+
+	{#if items.length > 0}
 		<div class="mt-4 flex flex-col gap-2.5">
 			<Input bind:value={note} placeholder={m.train_note()} class="bg-panel-2 text-sm" />
 			<Button class="self-start bg-flag text-white hover:bg-flag/90" onclick={finish}>
