@@ -12,6 +12,8 @@ import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { appReady, appState, clearLocal, hydrate, startPersistence } from '$lib/state.svelte';
+import TimerBar from '$lib/TimerBar.svelte';
+import { timer } from '$lib/timerStore.svelte';
 import { cn } from '$lib/utils';
 
 let { children } = $props();
@@ -60,6 +62,12 @@ async function signOut() {
 	await authClient.signOut();
 	await goto('/login');
 }
+
+// Footer timer bar: visible whenever a timer is loaded/running, except on the
+// Train tab (which shows the full timer inline).
+const showTimerBar = $derived(
+	(timer.loaded || timer.phase !== 'idle') && page.url.pathname !== '/train',
+);
 
 const views = $derived([
 	{ href: '/', label: m.nav_today() },
@@ -127,15 +135,22 @@ const views = $derived([
 			</nav>
 		</header>
 
-		<main class="mx-auto max-w-[1080px] px-5 py-6">
+		<main class={cn('mx-auto max-w-[1080px] px-5 py-6', showTimerBar && 'pb-28')}>
 			{@render children()}
 		</main>
 
 		<footer
-			class="mx-auto mt-8 max-w-[1080px] border-t border-line px-5 py-5 text-xs leading-relaxed text-ink-faint"
+			class={cn(
+				'mx-auto mt-8 max-w-[1080px] border-t border-line px-5 py-5 text-xs leading-relaxed text-ink-faint',
+				showTimerBar && 'pb-28'
+			)}
 		>
 			<Prose value={m.footer_text()} />
 		</footer>
+
+		{#if showTimerBar}
+			<TimerBar />
+		{/if}
 	</TooltipProvider>
 {/if}
 

@@ -29,6 +29,8 @@ export interface WorkoutSet {
 	rpe: number | null;
 	/** Grip used (a Grip id, or null). */
 	grip: string | null;
+	/** Whether the set has been completed. */
+	done: boolean;
 }
 
 interface WorkoutLogExercise {

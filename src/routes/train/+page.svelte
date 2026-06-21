@@ -14,8 +14,6 @@ import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
 	addDayExercise,
-	GRIPS,
-	gripLabel,
 	removeDayExercise,
 	resolveExerciseIds,
 	resolveSwapIndex,
@@ -24,8 +22,10 @@ import {
 	variantOf,
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
+import SetRows from '$lib/SetRows.svelte';
 import { appState, today, type WorkoutSet } from '$lib/state.svelte';
 import Timer from '$lib/Timer.svelte';
+import { configureTimer, timer } from '$lib/timerStore.svelte';
 import { cn } from '$lib/utils';
 
 const content = getContent();
@@ -110,14 +110,39 @@ let activeExId = $state<string | null>(null);
 
 // The timer reflects: your explicit pick, else the first un-logged timed
 // exercise, else the first timed exercise of the day.
-const timerSeed = $derived.by(() => {
-	const picked = activeExId ? items.find((it) => it.exId === activeExId) : undefined;
-	if (picked?.timed) return seedOf(picked);
+const timerTarget = $derived.by(() => {
+	const picked = activeExId ? items.find((it) => it.exId === activeExId && it.timed) : undefined;
+	if (picked) return picked;
 	const next = items.find((it) => it.timed && (sets[it.exId]?.length ?? 0) === 0);
-	if (next) return seedOf(next);
-	const any = items.find((it) => it.timed);
-	return any ? seedOf(any) : null;
+	if (next) return next;
+	return items.find((it) => it.timed) ?? null;
 });
+
+// Keep the (global) timer loaded with the current target while it's idle.
+$effect(() => {
+	const t = timerTarget;
+	if (!t) return;
+	const s = seedOf(t);
+	if (s && s.key !== timer.key) configureTimer(s);
+});
+
+/** Load an exercise into the timer now (overrides a running session). */
+function useInTimer(it: Item) {
+	activeExId = it.exId;
+	const s = seedOf(it);
+	if (s) configureTimer(s, true);
+}
+
+/** When the timer is running this exercise, reflect a variant change immediately. */
+function changeVariant(it: Item, v: string) {
+	const nv = Number(v);
+	setDaySwap(week, weekday, it.exId, nv);
+	if (timer.key?.startsWith(`${it.exId}:`)) {
+		const ex = content.exercises[it.exId];
+		const s = ex && timerSeedFor(variantOf(ex, nv), `${it.exId}:${nv}`, ex.name);
+		if (s) configureTimer(s, true);
+	}
+}
 
 const mid = (r?: Range): number | null => (r ? Math.round((r.min + r.max) / 2) : null);
 
@@ -131,6 +156,7 @@ function defaultSet(spec: Variant): WorkoutSet {
 		rest: mid(spec.restSec ?? spec.setRestSec),
 		rpe: mid(spec.rpe),
 		grip: spec.grip ?? null,
+		done: false,
 	};
 }
 
@@ -140,10 +166,19 @@ function addSet(exId: string) {
 	// First set: prefill from the target. Later sets: carry over the previous one
 	// (so your edits become the default for what you add next).
 	const seed: WorkoutSet = existing.length
-		? { ...existing[existing.length - 1] }
+		? { ...existing[existing.length - 1], done: false }
 		: spec
 			? defaultSet(spec)
-			: { weight: null, edge: null, time: null, reps: null, rest: null, rpe: null, grip: null };
+			: {
+					weight: null,
+					edge: null,
+					time: null,
+					reps: null,
+					rest: null,
+					rpe: null,
+					grip: null,
+					done: false,
+				};
 	sets[exId] = [...existing, seed];
 }
 function removeSet(exId: string, i: number) {
@@ -175,7 +210,7 @@ function finish() {
 		<Prose value={m.lede_train()} />
 	</p>
 
-	<div class="mb-[22px]"><Timer seed={timerSeed} /></div>
+	<div class="mb-[22px]"><Timer /></div>
 
 	{#if items.length === 0}
 		<div class="mb-3 rounded-xl border border-dashed border-line px-5 py-[34px] text-center text-sm text-ink-faint">
@@ -184,7 +219,7 @@ function finish() {
 	{:else}
 		<div class="flex flex-col gap-3">
 			{#each items as it (it.exId)}
-				{@const activeForTimer = timerSeed?.key === `${it.exId}:${it.idx}`}
+				{@const activeForTimer = timer.key === `${it.exId}:${it.idx}`}
 				<Card class={cn('gap-2.5 p-4', activeForTimer && 'ring-1 ring-flag/60')}>
 					<div class="flex items-start justify-between gap-2">
 						<div class="font-bold">{it.exName}</div>
@@ -198,7 +233,7 @@ function finish() {
 									)}
 									aria-label={m.timer_use()}
 									title={m.timer_use()}
-									onclick={() => (activeExId = it.exId)}
+									onclick={() => useInTimer(it)}
 								>
 									<TimerIcon class="size-4" />
 								</button>
@@ -217,7 +252,7 @@ function finish() {
 						<Select
 							type="single"
 							value={String(it.idx)}
-							onValueChange={(v) => v != null && setDaySwap(week, weekday, it.exId, Number(v))}
+							onValueChange={(v) => v != null && changeVariant(it, v)}
 						>
 							<SelectTrigger class="h-8 w-full border-line bg-panel-2 text-xs">
 								{it.variantName}
@@ -229,8 +264,6 @@ function finish() {
 							</SelectContent>
 						</Select>
 					{/if}
-					{@const cols = it.cols}
-					{@const grid = `grid-template-columns:repeat(${cols.length},minmax(54px,1fr)) auto`}
 					<div
 						class="rounded-lg border border-line bg-panel-2 px-3 py-2.5"
 						aria-label={m.train_target()}
@@ -238,53 +271,11 @@ function finish() {
 						<PrescriptionView spec={it.spec} />
 					</div>
 
-					{#if (sets[it.exId] ?? []).length > 0}
-						<div class="flex flex-col gap-1.5 overflow-x-auto">
-							<div class="grid gap-1.5 text-[10px] text-ink-faint" style={grid}>
-								{#each cols as col (col.key)}
-									<span class="truncate">{col.label()}</span>
-								{/each}
-								<span></span>
-							</div>
-							{#each sets[it.exId] ?? [] as set, i (i)}
-								<div class="grid items-center gap-1.5" style={grid}>
-									{#each cols as col (col.key)}
-										{#if col.key === 'grip'}
-											<Select
-												type="single"
-												value={set.grip ?? ''}
-												onValueChange={(v) => (set.grip = v || null)}
-											>
-												<SelectTrigger class="h-8 bg-panel-2 px-2 text-xs">
-													{set.grip ? gripLabel(set.grip) : '—'}
-												</SelectTrigger>
-												<SelectContent>
-													{#each GRIPS as g (g)}
-														<SelectItem value={g}>{gripLabel(g)}</SelectItem>
-													{/each}
-												</SelectContent>
-											</Select>
-										{:else}
-											<Input
-												type="number"
-												step="any"
-												bind:value={set[col.key]}
-												class="h-8 bg-panel-2 text-sm"
-											/>
-										{/if}
-									{/each}
-									<button
-										type="button"
-										class="text-ink-faint transition hover:text-flag"
-										aria-label={m.btn_delete()}
-										onclick={() => removeSet(it.exId, i)}
-									>
-										<XIcon class="size-4" />
-									</button>
-								</div>
-							{/each}
-						</div>
-					{/if}
+					<SetRows
+						rows={sets[it.exId] ?? []}
+						cols={it.cols}
+						onRemove={(i) => removeSet(it.exId, i)}
+					/>
 
 					<Button
 						variant="outline"
