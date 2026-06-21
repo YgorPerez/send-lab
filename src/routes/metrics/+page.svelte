@@ -2,6 +2,7 @@
 import InfoIcon from '@lucide/svelte/icons/info';
 import TimerIcon from '@lucide/svelte/icons/timer';
 import { toast } from 'svelte-sonner';
+import { goto } from '$app/navigation';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
@@ -12,7 +13,6 @@ import * as m from '$lib/paraglide/messages';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import Sparkline from '$lib/Sparkline.svelte';
 import { appState, round, today } from '$lib/state.svelte';
-import { configureTimer } from '$lib/timerStore.svelte';
 import { cn } from '$lib/utils';
 
 const content = getContent();
@@ -21,29 +21,24 @@ let inputs = $state<Record<string, string>>({});
 type Metric = (typeof content.metrics)[number];
 let openMetric = $state<Metric | null>(null);
 
-interface TestProtocol {
-	prepare: number;
-	work: number;
-	rest: number;
-	rounds: number;
-	sets: number;
-	setRest: number;
-}
-// Timer protocol for the assessment, where the test is timed (5s get-ready).
-const TEST: Partial<Record<MetricId, TestProtocol>> = {
-	rfd: { prepare: 5, work: 5, rest: 0, rounds: 1, sets: 3, setRest: 120 },
-	contact: { prepare: 5, work: 3, rest: 0, rounds: 1, sets: 3, setRest: 120 },
-	cf: { prepare: 5, work: 7, rest: 3, rounds: 20, sets: 1, setRest: 0 },
-	pinch: { prepare: 5, work: 7, rest: 0, rounds: 1, sets: 3, setRest: 120 },
-	maxhang: { prepare: 5, work: 10, rest: 0, rounds: 1, sets: 3, setRest: 180 },
+// The exercise that produces each metric — the assessment is run as that
+// exercise in the Train tab.
+const METRIC_EXERCISE: Partial<Record<MetricId, string>> = {
+	rfd: 'recruit',
+	contact: 'recruit',
+	cf: 'repeaters',
+	pinch: 'pinch',
+	pull: 'pull',
+	maxhang: 'maxhang',
+	density: 'density',
 };
 
-function sendToTimer(metric: Metric) {
-	const t = TEST[metric.id];
-	if (!t) return;
-	configureTimer({ name: metric.name, key: `test:${metric.id}`, ...t }, true);
-	toast.success(m.toast_timer_loaded({ name: metric.name }));
+/** Open the Train tab, adding the metric's exercise to today and selecting it. */
+function openInTrain(metric: Metric) {
+	const exId = METRIC_EXERCISE[metric.id];
+	if (!exId) return;
 	openMetric = null;
+	void goto(`/train?ex=${exId}`);
 }
 
 function deltaFor(data: { v: number }[]): { text: string; cls: string } {
@@ -140,7 +135,8 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 </section>
 
 {#if openMetric}
-	{@const protocol = TEST[openMetric.id]}
+	{@const exId = METRIC_EXERCISE[openMetric.id]}
+	{@const ex = exId ? content.exercises[exId] : undefined}
 	<Modal open={true} title={openMetric.name} onClose={() => (openMetric = null)}>
 		<div class="mb-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 			{m.metric_howto()}
@@ -149,19 +145,15 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 		<div class="mb-4 font-mono text-xs text-ink-faint">
 			{m.metric_unit_label()}: <span class="text-chalk">{openMetric.unit}</span>
 		</div>
-		{#if protocol}
-			<div
-				class="mb-3 rounded-lg border border-line bg-panel-2 px-3 py-2.5 font-mono text-xs text-chalk"
-			>
-				{protocol.work}s × {protocol.sets}
-				{m.timer_sets().toLowerCase()}{#if protocol.rounds > 1} · {protocol.rounds}×{/if}{#if protocol.setRest > 0}
-					· {protocol.setRest}s {m.timer_setrest().toLowerCase()}{/if}
+		{#if ex}
+			<div class="mb-2 font-mono text-xs text-ink-faint">
+				{m.metric_via()} <span class="text-chalk">{ex.name}</span>
 			</div>
 			<Button
 				class="w-full bg-flag text-white hover:bg-flag/90"
-				onclick={() => openMetric && sendToTimer(openMetric)}
+				onclick={() => openMetric && openInTrain(openMetric)}
 			>
-				<TimerIcon class="mr-1.5 size-4" />{m.metric_send_timer()}
+				<TimerIcon class="mr-1.5 size-4" />{m.metric_to_train()}
 			</Button>
 		{/if}
 	</Modal>

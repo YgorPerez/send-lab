@@ -131,19 +131,24 @@ function selectVariant(it: Item, i: number) {
 	}
 }
 
-// Arriving from the Today tab (/train?ex=<id>) focuses that exercise once.
+// Arriving via /train?ex=<id> (Today or Metrics) adds that exercise to today if
+// missing, then focuses it — once.
 let consumedParam = $state(false);
 $effect(() => {
 	if (consumedParam) return;
-	const ex = page.url.searchParams.get('ex');
-	if (!ex) {
+	const exId = page.url.searchParams.get('ex');
+	if (!exId || !content.exercises[exId]) {
 		consumedParam = true;
 		return;
 	}
-	const it = items.find((i) => i.exId === ex);
-	if (!it) return; // items not ready yet — wait for the next run
+	if (!dayExIds.includes(exId)) {
+		addDayExercise(content, week, weekday, exId);
+		return; // wait for items to include it on the next run
+	}
+	const it = items.find((i) => i.exId === exId);
+	if (!it) return;
 	consumedParam = true;
-	activeExId = ex;
+	activeExId = exId;
 	if (it.timed) {
 		const s = seedOf(it);
 		if (s) configureTimer(s, true);
