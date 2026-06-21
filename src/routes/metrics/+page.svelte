@@ -33,12 +33,13 @@ const METRIC_EXERCISE: Partial<Record<MetricId, string>> = {
 	density: 'density',
 };
 
-/** Open the Train tab, adding the metric's exercise to today and selecting it. */
+/** Open the Train tab, adding the metric's exercise to today and selecting it.
+ *  The `assess` flag tells Train to auto-record this metric when the set is logged. */
 function openInTrain(metric: Metric) {
 	const exId = METRIC_EXERCISE[metric.id];
 	if (!exId) return;
 	openMetric = null;
-	void goto(`/train?ex=${exId}`);
+	void goto(`/train?ex=${exId}&assess=${metric.id}`);
 }
 
 function deltaFor(data: { v: number }[]): { text: string; cls: string } {
@@ -137,6 +138,7 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 {#if openMetric}
 	{@const exId = METRIC_EXERCISE[openMetric.id]}
 	{@const ex = exId ? content.exercises[exId] : undefined}
+	{@const history = appState.metrics[openMetric.id] ?? []}
 	<Modal open={true} title={openMetric.name} onClose={() => (openMetric = null)}>
 		<div class="mb-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 			{m.metric_howto()}
@@ -150,11 +152,27 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 				{m.metric_via()} <span class="text-chalk">{ex.name}</span>
 			</div>
 			<Button
-				class="w-full bg-flag text-white hover:bg-flag/90"
+				class="mb-4 w-full bg-flag text-white hover:bg-flag/90"
 				onclick={() => openMetric && openInTrain(openMetric)}
 			>
 				<TimerIcon class="mr-1.5 size-4" />{m.metric_to_train()}
 			</Button>
+		{/if}
+
+		<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+			{m.metric_history()}
+		</div>
+		{#if history.length}
+			<div class="flex flex-col gap-1">
+				{#each [...history].reverse().slice(0, 12) as e (e.date + e.v)}
+					<div class="flex justify-between border-b border-line/60 py-1 font-mono text-xs">
+						<span class="text-ink-faint">{e.date}</span>
+						<span class="text-chalk">{round(e.v)} {openMetric.unit}</span>
+					</div>
+				{/each}
+			</div>
+		{:else}
+			<p class="text-xs text-ink-faint">{m.metric_no_history()}</p>
 		{/if}
 	</Modal>
 {/if}

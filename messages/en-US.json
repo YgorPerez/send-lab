@@ -41,6 +41,8 @@
 	"metric_via": "Assess with:",
 	"metric_to_train": "Add to today's training",
 	"metric_unit_label": "Unit",
+	"metric_history": "History",
+	"metric_no_history": "No entries yet.",
 	"log_empty": "No sessions logged yet. Run the day recommender, tick a day, or log a marker test — it'll show up here.",
 	"log_type_rec": "rec",
 	"log_type_day": "day",

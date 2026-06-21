@@ -4,6 +4,7 @@ import TimerIcon from '@lucide/svelte/icons/timer';
 import XIcon from '@lucide/svelte/icons/x';
 import { toast } from 'svelte-sonner';
 import { page } from '$app/state';
+import { recordAssessedMetrics } from '$lib/assessment';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
@@ -95,6 +96,9 @@ $effect(() => {
 });
 // Exercise the timer follows when set; otherwise it auto-picks the next task.
 let activeExId = $state<string | null>(null);
+// Exercises opened as a metric assessment (exId → metricId): on finish, their
+// logged sets auto-record that metric.
+let assess = $state<Record<string, string>>({});
 
 // The timer reflects: your explicit pick, else the first un-logged timed
 // exercise, else the first timed exercise of the day.
@@ -141,6 +145,8 @@ $effect(() => {
 		consumedParam = true;
 		return;
 	}
+	const metricId = page.url.searchParams.get('assess');
+	if (metricId) assess[exId] = metricId;
 	if (!dayExIds.includes(exId)) {
 		addDayExercise(content, week, weekday, exId);
 		return; // wait for items to include it on the next run
@@ -209,8 +215,10 @@ function finish() {
 		return;
 	}
 	appState.workouts.unshift({ date: today(), day: dayLabel, exercises, note });
+	recordAssessedMetrics(assess, sets, content); // auto-record assessed metrics
 	sets = {};
 	note = '';
+	assess = {};
 	toast.success(m.train_logged());
 }
 </script>
