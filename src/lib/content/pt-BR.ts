@@ -179,7 +179,7 @@ const content: Content = {
 			],
 		},
 		wrist: {
-			cat: 'Punho',
+			cat: 'Punho / Slopers',
 			catVar: '--gold',
 			variants: [
 				{

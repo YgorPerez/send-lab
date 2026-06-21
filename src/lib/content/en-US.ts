@@ -173,7 +173,7 @@ const content: Content = {
 			],
 		},
 		wrist: {
-			cat: 'Wrist',
+			cat: 'Wrist / Slopers',
 			catVar: '--gold',
 			variants: [
 				{
