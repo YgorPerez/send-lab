@@ -76,6 +76,7 @@ const views = $derived([
 	{ href: '/week', label: m.nav_week() },
 	{ href: '/exercises', label: m.nav_exercises() },
 	{ href: '/metrics', label: m.nav_metrics() },
+	{ href: '/stats', label: m.nav_stats() },
 	{ href: '/log', label: m.nav_log() },
 ]);
 </script>

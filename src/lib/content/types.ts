@@ -16,7 +16,7 @@ export interface Range {
 export type Grip = 'half-crimp' | 'open-hand' | 'full-crimp' | 'pinch' | 'sloper' | 'wrist' | 'jug';
 
 /** Adaptation an exercise trains (an exercise may hit several). */
-type Quality =
+export type Quality =
 	| 'max-strength'
 	| 'rfd'
 	| 'strength-endurance'
@@ -27,7 +27,7 @@ type Quality =
 	| 'skill';
 
 /** Body region an exercise loads. */
-type Region = 'fingers' | 'wrist' | 'pull' | 'antagonist';
+export type Region = 'fingers' | 'wrist' | 'pull' | 'antagonist';
 
 /** Relative systemic / skin / joint cost. */
 export type Cost = 'low' | 'mod' | 'high';

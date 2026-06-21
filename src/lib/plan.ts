@@ -2,7 +2,17 @@
 // slot runs, and which swap applies to each exercise on that specific day.
 // Read inside a reactive context (e.g. $derived) so they track appState.
 import * as m from '$lib/paraglide/messages';
-import type { Content, Cost, Day, Grip, Range, Variant, VariantParams } from './content/types';
+import type {
+	Content,
+	Cost,
+	Day,
+	Grip,
+	Quality,
+	Range,
+	Region,
+	Variant,
+	VariantParams,
+} from './content/types';
 import { appState } from './state.svelte';
 
 export function slotKey(week: number, weekday: string): string {
@@ -160,6 +170,34 @@ const COST_LABEL: Record<Cost, () => string> = {
 /** Localized label for a cost level. */
 export function costLabel(c: Cost): string {
 	return COST_LABEL[c]();
+}
+
+const REGION_LABEL: Record<Region, () => string> = {
+	fingers: m.region_fingers,
+	wrist: m.region_wrist,
+	pull: m.region_pull,
+	antagonist: m.region_antagonist,
+};
+
+/** Localized label for a body region (falls back to the raw id). */
+export function regionLabel(r: string): string {
+	return REGION_LABEL[r as Region]?.() ?? r;
+}
+
+const QUALITY_LABEL: Record<Quality, () => string> = {
+	'max-strength': m.qual_max_strength,
+	rfd: m.qual_rfd,
+	'strength-endurance': m.qual_strength_endurance,
+	hypertrophy: m.qual_hypertrophy,
+	tissue: m.qual_tissue,
+	power: m.qual_power,
+	aerobic: m.qual_aerobic,
+	skill: m.qual_skill,
+};
+
+/** Localized label for a training quality (falls back to the raw id). */
+export function qualityLabel(q: string): string {
+	return QUALITY_LABEL[q as Quality]?.() ?? q;
 }
 
 const mid = (r: Range): number => Math.round((r.min + r.max) / 2);

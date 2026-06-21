@@ -39,7 +39,7 @@ interface WorkoutLogExercise {
 	sets: WorkoutSet[];
 }
 
-interface WorkoutEntry {
+export interface WorkoutEntry {
 	date: string;
 	day: string;
 	exercises: WorkoutLogExercise[];
