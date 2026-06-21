@@ -29,7 +29,8 @@ interface Task {
 const tasks = $derived<Task[]>(
 	day.ex.flatMap((exId) => {
 		const ex = content.exercises[exId];
-		if (!ex) return [];
+		// `rest` is not a task — a day with no tasks is a rest day.
+		if (!ex || exId === 'rest') return [];
 		return [
 			{
 				id: exId,
@@ -40,6 +41,7 @@ const tasks = $derived<Task[]>(
 	}),
 );
 const nextTask = $derived(tasks.find((t) => !t.done));
+const isRestDay = $derived(tasks.length === 0);
 
 function toggleTask(exId: string, checked: boolean) {
 	const k = taskKey(week, weekday, exId);
@@ -86,36 +88,41 @@ function logVerdict() {
 				{day.load}
 			</span>
 		</div>
-		<div class="flex flex-col gap-2">
-			{#each tasks as task (task.id)}
-				{@const isNext = nextTask?.id === task.id}
-				<label
-					class={cn(
-						'flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition',
-						task.done
-							? 'border-line bg-panel-2 text-ink-faint line-through'
-							: isNext
-								? 'border-flag bg-flag/10 text-chalk'
-								: 'border-line bg-panel-2 text-ink-dim'
-					)}
-				>
-					<input
-						type="checkbox"
-						checked={task.done}
-						onchange={(e) => toggleTask(task.id, e.currentTarget.checked)}
-						class="size-[15px] cursor-pointer accent-teal"
-					/>
-					<span class="flex-1">{task.label}</span>
-					{#if isNext}
-						<span class="font-mono text-[10px] tracking-wider text-flag uppercase">
-							{m.td_next_task()}
-						</span>
-					{/if}
-				</label>
-			{/each}
-		</div>
-		{#if !nextTask}
-			<p class="text-xs text-teal">{m.td_all_done()}</p>
+		{#if isRestDay}
+			<p class="text-sm text-teal">{m.td_rest_day()}</p>
+			<p class="text-xs text-ink-dim"><Prose value={day.sec} /></p>
+		{:else}
+			<div class="flex flex-col gap-2">
+				{#each tasks as task (task.id)}
+					{@const isNext = nextTask?.id === task.id}
+					<label
+						class={cn(
+							'flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition',
+							task.done
+								? 'border-line bg-panel-2 text-ink-faint line-through'
+								: isNext
+									? 'border-flag bg-flag/10 text-chalk'
+									: 'border-line bg-panel-2 text-ink-dim'
+						)}
+					>
+						<input
+							type="checkbox"
+							checked={task.done}
+							onchange={(e) => toggleTask(task.id, e.currentTarget.checked)}
+							class="size-[15px] cursor-pointer accent-teal"
+						/>
+						<span class="flex-1">{task.label}</span>
+						{#if isNext}
+							<span class="font-mono text-[10px] tracking-wider text-flag uppercase">
+								{m.td_next_task()}
+							</span>
+						{/if}
+					</label>
+				{/each}
+			</div>
+			{#if !nextTask}
+				<p class="text-xs text-teal">{m.td_all_done()}</p>
+			{/if}
 		{/if}
 	</Card>
 

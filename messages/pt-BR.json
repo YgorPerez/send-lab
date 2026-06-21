@@ -55,6 +55,7 @@
 	"td_recheck": "Reavaliar para a próxima tarefa",
 	"td_applies": "Esta leitura é para sua próxima tarefa:",
 	"td_all_done": "Todas as tarefas de hoje feitas — recupere.",
+	"td_rest_day": "Dia de descanso — sem tarefas de treino. Recupere.",
 	"wk_customize": "Personalizar dia",
 	"wk_protocol": "Protocolo do dia",
 	"wk_default": "padrão",
