@@ -13,7 +13,9 @@ import * as m from '$lib/paraglide/messages';
 import {
 	addDayExercise,
 	exerciseLabel,
+	isDayCustomized,
 	removeDayExercise,
+	resetDay,
 	resolveDay,
 	resolveExerciseIds,
 	resolveSwapIndex,
@@ -138,7 +140,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 	<div class="grid gap-3 md:grid-cols-7">
 		{#each content.days as slot (slot.k)}
 			{@const resolved = resolveDay(content, week, slot.k)}
-			{@const customized = resolved.k !== slot.k}
+			{@const customized = isDayCustomized(week, slot.k)}
 			{@const done = !!appState.completed[slotKey(week, slot.k)]}
 			{@const exIds = resolveExerciseIds(content, week, slot.k)}
 			{@const isToday = slot.k === todayKey && isCurrent}
@@ -241,7 +243,16 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 									</SelectContent>
 								</Select>
 							{/if}
-						</PopoverContent>
+						{#if customized}
+	<button
+		type="button"
+		onclick={() => resetDay(week, slot.k)}
+		class="mt-3 w-full rounded-md border border-line py-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase transition hover:border-flag hover:text-flag"
+	>
+		{m.wk_reset_day()}
+	</button>
+{/if}
+</PopoverContent>
 					</Popover>
 				</div>
 

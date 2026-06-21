@@ -91,3 +91,20 @@ export function setDaySwap(week: number, weekday: string, exId: string, idx: num
 	if (idx === globalDefault) delete appState.daySwaps[k];
 	else appState.daySwaps[k] = idx;
 }
+
+/** Whether a slot has any per-day customization (category, exercise list, or swaps). */
+export function isDayCustomized(week: number, weekday: string): boolean {
+	const k = slotKey(week, weekday);
+	if (appState.dayPlan[k] != null || appState.dayExercises[k] != null) return true;
+	return Object.keys(appState.daySwaps).some((key) => key.startsWith(`${k}:`));
+}
+
+/** Clear all per-day customizations for a slot, reverting it to the recommendation. */
+export function resetDay(week: number, weekday: string): void {
+	const k = slotKey(week, weekday);
+	delete appState.dayPlan[k];
+	delete appState.dayExercises[k];
+	for (const key of Object.keys(appState.daySwaps)) {
+		if (key.startsWith(`${k}:`)) delete appState.daySwaps[key];
+	}
+}

@@ -59,6 +59,7 @@
 	"wk_customize": "Customize day",
 	"wk_protocol": "Day category",
 	"wk_default": "default",
+	"wk_reset_day": "Reset to recommended",
 	"wk_current_week": "Current week",
 	"wk_set_current": "Set as current",
 	"wk_now_in": "Now in Week {n}",

@@ -59,6 +59,7 @@
 	"wk_customize": "Personalizar o dia",
 	"wk_protocol": "Categoria do dia",
 	"wk_default": "padrão",
+	"wk_reset_day": "Voltar ao recomendado",
 	"wk_current_week": "Semana atual",
 	"wk_set_current": "Definir como atual",
 	"wk_now_in": "Agora na Semana {n}",
