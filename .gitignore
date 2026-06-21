@@ -25,3 +25,8 @@ vite.config.ts.timestamp-*
 
 # Paraglide JS generated output (reproducible from messages/ + project.inlang/)
 /src/lib/paraglide
+
+# SQLite database (local dev data)
+*.db
+*.db-shm
+*.db-wal

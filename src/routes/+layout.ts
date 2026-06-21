@@ -1,3 +1,4 @@
-// Pure client-side SPA — prerender the shell, no SSR data fetching.
-export const prerender = true;
+// Client-rendered app on a Node server: keep SSR off (data + auth resolve on the
+// client via the API), and don't prerender — the auth/data routes are dynamic.
 export const ssr = false;
+export const prerender = false;

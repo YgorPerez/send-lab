@@ -1,11 +1,9 @@
 // ---------------- STATE ----------------
-// Reactive, localStorage-backed app state using Svelte 5 runes.
-// Replaces the original prototype's hand-rolled load()/save() + manual re-render.
+// Reactive app state (Svelte 5 runes), persisted per signed-in user via the
+// authenticated /api/state endpoint (SQLite). Replaces the old localStorage doc.
 import { browser } from '$app/environment';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { MetricId } from './content/types';
-
-const KEY = 'sendlab_v1';
 
 export interface MetricEntry {
 	date: string;
@@ -49,50 +47,64 @@ function defaultState(): AppState {
 	};
 }
 
-function load(): AppState {
-	if (!browser) return defaultState();
+/** The single reactive state object. Mutate its fields directly; persistence is automatic. */
+export const appState = $state<AppState>(defaultState());
+
+/** Persistence is gated until the signed-in user's state has loaded, so we never
+ *  clobber server data with defaults before hydration. */
+let hydrated = false;
+
+function applyData(data: Partial<AppState>): void {
+	const base = defaultState();
+	appState.currentWeek = data.currentWeek ?? base.currentWeek;
+	appState.completed = data.completed ?? base.completed;
+	appState.swaps = data.swaps ?? base.swaps;
+	appState.dayPlan = data.dayPlan ?? base.dayPlan;
+	appState.daySwaps = data.daySwaps ?? base.daySwaps;
+	appState.taskDone = data.taskDone ?? base.taskDone;
+	appState.metrics = { ...base.metrics, ...data.metrics };
+	appState.log = data.log ?? base.log;
+}
+
+/** Load the signed-in user's state from the server. Call once per login. */
+export async function hydrate(): Promise<void> {
+	if (!browser) return;
 	try {
-		const raw = localStorage.getItem(KEY);
-		if (!raw) return defaultState();
-		const parsed = JSON.parse(raw) as Partial<AppState>;
-		const base = defaultState();
-		return {
-			...base,
-			...parsed,
-			// Guard against a stored shape that predates a metric being added.
-			metrics: { ...base.metrics, ...parsed.metrics },
-		};
+		const res = await fetch('/api/state');
+		if (res.ok) applyData((await res.json()) as Partial<AppState>);
 	} catch {
-		return defaultState();
+		// network/parse failure — start from defaults
+	} finally {
+		hydrated = true;
 	}
 }
 
-/** The single reactive state object. Mutate its fields directly; persistence is automatic. */
-export const appState = $state<AppState>(load());
+/** Reset in-memory state to defaults and pause persistence (used on sign-out). */
+export function clearLocal(): void {
+	hydrated = false;
+	applyData({});
+}
 
-/** Persist on any deep change to `appState`. Call once from the root layout. */
+/** Persist to the server (debounced) on any change after hydration. */
 export function startPersistence(): void {
+	let timer: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
 		// Touch the whole tree so the effect tracks deep mutations.
 		const snapshot = JSON.stringify(appState);
-		try {
-			localStorage.setItem(KEY, snapshot);
-		} catch {
-			// Storage full or unavailable — ignore, same as the original.
-		}
+		if (!hydrated || !browser) return;
+		clearTimeout(timer);
+		timer = setTimeout(() => {
+			void fetch('/api/state', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: snapshot,
+			});
+		}, 600);
 	});
 }
 
 export function resetAll(): void {
-	const fresh = defaultState();
-	appState.currentWeek = fresh.currentWeek;
-	appState.completed = fresh.completed;
-	appState.swaps = fresh.swaps;
-	appState.dayPlan = fresh.dayPlan;
-	appState.daySwaps = fresh.daySwaps;
-	appState.taskDone = fresh.taskDone;
-	appState.metrics = fresh.metrics;
-	appState.log = fresh.log;
+	applyData({});
 }
 
 // ---------------- UTIL ----------------

@@ -19,7 +19,9 @@ Ported from a single-file HTML prototype to **SvelteKit + TypeScript**.
 - **Log** — newest-first history of recommended sessions, completed days, and
   marker tests.
 
-All state persists to `localStorage` — it is a pure client-side app.
+Login is required — each user's training state persists server-side in SQLite
+(no localStorage). The pages are still client-rendered; a Node server backs
+authentication and the per-user data API.
 
 The UI is fully bilingual (**English / Português-BR**) via a header language
 switcher; the choice persists across reloads.
@@ -37,7 +39,10 @@ switcher; the choice persists across reloads.
   content lives in locale modules under `src/lib/content/` selected by the
   active locale
 - `@lucide/svelte` icons
-- `@sveltejs/adapter-static` — prerendered SPA, deployable to any static host
+- [**better-auth**](https://better-auth.com) email+password authentication
+- [**Drizzle ORM**](https://orm.drizzle.team) over **SQLite** (`better-sqlite3`)
+  for auth tables + per-user state
+- `@sveltejs/adapter-node` — runs as a Node server (auth + data API are dynamic)
 - **pnpm** as the package manager
 - **Biome** for linting + formatting
 - **TypeScript 6** for the Svelte toolchain, plus **TypeScript 7** (`tsgo`, via
@@ -47,8 +52,23 @@ switcher; the choice persists across reloads.
 
 ```bash
 pnpm install
-pnpm dev          # http://localhost:5173
+cp .env.example .env      # then set BETTER_AUTH_SECRET (openssl rand -base64 33)
+pnpm exec drizzle-kit push # create the SQLite tables in ./local.db
+pnpm dev                   # http://localhost:5173
 ```
+
+## Auth & data
+
+- Email + password via **better-auth**; sign up / sign in at `/login`. Every
+  other route requires a session (client guard in the root layout).
+- Server pieces: `src/lib/server/auth.ts` (better-auth + Drizzle adapter),
+  `src/lib/server/db/` (schema + client), `src/hooks.server.ts` (mounts
+  `/api/auth/*` and resolves the session into `locals`).
+- Per-user training state is one JSON document in the `app_state` table, read
+  and written through `/api/state` (`src/routes/api/state/+server.ts`); the
+  client store hydrates on login and debounce-saves on change.
+- Env: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DATABASE_URL` (see `.env.example`).
+  The `.env` and `*.db` files are git-ignored.
 
 ## Build
 

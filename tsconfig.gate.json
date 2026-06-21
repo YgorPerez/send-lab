@@ -9,7 +9,7 @@
 		"types": ["svelte", "@sveltejs/kit"],
 		"noEmit": true
 	},
-	"include": ["src/**/*.ts"],
+	"include": [".svelte-kit/ambient.d.ts", ".svelte-kit/non-ambient.d.ts", "src/**/*.ts"],
 	"exclude": [
 		"node_modules",
 		"build",

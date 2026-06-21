@@ -1,5 +1,6 @@
 allowBuilds:
   esbuild: true
+  better-sqlite3: true
 minimumReleaseAgeExclude:
   - '@fallow-cli/darwin-arm64@2.101.0'
   - '@fallow-cli/darwin-x64@2.101.0'

@@ -1,16 +1,13 @@
-import adapter from '@sveltejs/adapter-static';
+import adapter from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
-		// Pure client-side app (localStorage persistence) — prerender to a static site.
-		// `200.html` SPA fallback keeps the prerendered index.html intact while
-		// still serving deep links on static hosts that support it.
-		adapter: adapter({
-			fallback: '200.html',
-		}),
+		// Node server: serves the client-rendered SPA plus the better-auth and
+		// app-data API routes / server hooks that back the login system.
+		adapter: adapter(),
 	},
 };
 
