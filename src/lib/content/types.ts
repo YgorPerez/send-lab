@@ -10,6 +10,8 @@ export interface Day {
 	k: string;
 	/** Localized weekday label. */
 	label: string;
+	/** Localized day category/type (e.g. "Limit / Power", "Rest"). */
+	type: string;
 	prime: string;
 	sec: string;
 	/** Localized load label (e.g. HIGH / ALTO). */

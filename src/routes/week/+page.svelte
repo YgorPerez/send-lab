@@ -177,11 +177,11 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 								onValueChange={(v) => v && setDayPlan(week, slot.k, v)}
 							>
 								<SelectTrigger class="mb-3 h-9 w-full border-line bg-panel-2 text-xs">
-									{resolved.label} · {resolved.load}
+									{resolved.type} · {resolved.load}
 								</SelectTrigger>
 								<SelectContent>
 									{#each content.days as opt (opt.k)}
-										<SelectItem value={opt.k}>{opt.label} · {opt.prime}</SelectItem>
+										<SelectItem value={opt.k}>{opt.type} · {opt.load}</SelectItem>
 									{/each}
 								</SelectContent>
 							</Select>
@@ -249,7 +249,10 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 					class="font-mono text-[10px] font-bold tracking-wider uppercase"
 					style:color={resolved.color}
 				>
-					{resolved.load}{#if customized}<span class="text-ink-faint"> · →{resolved.label}</span>{/if}
+					{resolved.type} · {resolved.load}{#if customized}<span
+							class="text-ink-faint"
+							title={m.wk_customize()}> ✎</span
+						>{/if}
 				</div>
 				<div class="text-sm leading-snug font-bold">{dayPrime(slot.k)}</div>
 				<div class="text-xs leading-snug text-ink-dim"><Prose value={resolved.sec} /></div>

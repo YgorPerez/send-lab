@@ -5,6 +5,7 @@ const content: Content = {
 		{
 			k: 'Mon',
 			label: 'Seg',
+			type: 'Limite / Potência',
 			prime: 'Recruitment pulls → Boulder no limite',
 			sec: 'Força de contato e RFD, depois os boulders mais duros',
 			load: 'ALTO',
@@ -14,6 +15,7 @@ const content: Content = {
 		{
 			k: 'Tue',
 			label: 'Ter',
+			type: 'Pinça / Punho',
 			prime: 'Pinch block + Punho / Sloper',
 			sec: 'Abrahangs de manhã · antagonistas',
 			load: 'MOD',
@@ -23,6 +25,7 @@ const content: Content = {
 		{
 			k: 'Wed',
 			label: 'Qua',
+			type: 'Resistência',
 			prime: 'Repeaters 7/3 → Escalada esportiva',
 			sec: 'Resistência de força, força crítica, pump',
 			load: 'ALTO',
@@ -32,6 +35,7 @@ const content: Content = {
 		{
 			k: 'Thu',
 			label: 'Qui',
+			type: 'Tração',
 			prime: 'Dia de tração pesada + Densidade em sloper',
 			sec: 'Barras com peso, OAP · Abrahangs de manhã',
 			load: 'MOD',
@@ -41,6 +45,7 @@ const content: Content = {
 		{
 			k: 'Fri',
 			label: 'Sex',
+			type: 'Máx / Tecido',
 			prime: 'Max hangs (manutenção) + Densidade',
 			sec: 'Investir no tecido, densidade da JMT',
 			load: 'MOD',
@@ -50,6 +55,7 @@ const content: Content = {
 		{
 			k: 'Sat',
 			label: 'Sáb',
+			type: 'Performance',
 			prime: 'Rocha / Performance',
 			sec: 'Hangboard = só aquecimento',
 			load: 'ALTO',
@@ -59,6 +65,7 @@ const content: Content = {
 		{
 			k: 'Sun',
 			label: 'Dom',
+			type: 'Descanso',
 			prime: 'Descanso total',
 			sec: 'Sem carga nos dedos · caminhada / mobilidade',
 			load: 'FOLGA',

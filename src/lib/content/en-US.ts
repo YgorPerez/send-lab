@@ -5,6 +5,7 @@ const content: Content = {
 		{
 			k: 'Mon',
 			label: 'Mon',
+			type: 'Limit / Power',
 			prime: 'Recruitment pulls → Limit bouldering',
 			sec: 'Contact strength / RFD, then hardest problems',
 			load: 'HIGH',
@@ -14,6 +15,7 @@ const content: Content = {
 		{
 			k: 'Tue',
 			label: 'Tue',
+			type: 'Pinch / Wrist',
 			prime: 'Pinch block + Wrist / Sloper',
 			sec: 'Abrahangs AM · antagonists',
 			load: 'MOD',
@@ -23,6 +25,7 @@ const content: Content = {
 		{
 			k: 'Wed',
 			label: 'Wed',
+			type: 'Endurance',
 			prime: '7/3 Repeaters → Sport climbing',
 			sec: 'Strength-endurance, critical force, pump',
 			load: 'HIGH',
@@ -32,6 +35,7 @@ const content: Content = {
 		{
 			k: 'Thu',
 			label: 'Thu',
+			type: 'Pull',
 			prime: 'Heavy pull day + Sloper density',
 			sec: 'Weighted pull-ups, OAP · Abrahangs AM',
 			load: 'MOD',
@@ -41,6 +45,7 @@ const content: Content = {
 		{
 			k: 'Fri',
 			label: 'Fri',
+			type: 'Max / Tissue',
 			prime: 'Max hangs (maintenance) + Density',
 			sec: 'Tissue investment, MTJ density',
 			load: 'MOD',
@@ -50,6 +55,7 @@ const content: Content = {
 		{
 			k: 'Sat',
 			label: 'Sat',
+			type: 'Performance',
 			prime: 'Outdoor / Performance',
 			sec: 'Hangboard = warm-up only',
 			load: 'HIGH',
@@ -59,6 +65,7 @@ const content: Content = {
 		{
 			k: 'Sun',
 			label: 'Sun',
+			type: 'Rest',
 			prime: 'Full rest',
 			sec: 'No finger loading · walk / mobility',
 			load: 'OFF',
