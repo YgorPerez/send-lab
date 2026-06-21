@@ -172,6 +172,7 @@
 	"train_target": "Target",
 	"train_add_set": "Add set",
 	"train_note": "Session note (optional)",
+	"train_autosave": "Saved automatically · per day",
 	"train_finish": "Finish & log workout",
 	"train_logged": "Workout logged",
 	"train_nothing": "Add at least one set to log a workout.",

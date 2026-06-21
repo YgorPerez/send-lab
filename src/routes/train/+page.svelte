@@ -2,15 +2,15 @@
 import PlusIcon from '@lucide/svelte/icons/plus';
 import TimerIcon from '@lucide/svelte/icons/timer';
 import XIcon from '@lucide/svelte/icons/x';
-import { toast } from 'svelte-sonner';
 import { page } from '$app/state';
-import { recordAssessedMetrics } from '$lib/assessment';
+import { recordAssessment } from '$lib/assessment';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
 import type { Range, Variant } from '$lib/content/types';
+import { addSetTo, clearExercise, getNote, removeSetFrom, setNote, setsFor } from '$lib/dayLog';
 import PrescriptionView from '$lib/PrescriptionView.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -20,16 +20,16 @@ import {
 	resolveExerciseIds,
 	resolveSwapIndex,
 	setDaySwap,
+	taskKey,
 	timerSeedFor,
 	variantOf,
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import SetRows from '$lib/SetRows.svelte';
-import { appState, today, type WorkoutSet } from '$lib/state.svelte';
+import { appState, type WorkoutSet } from '$lib/state.svelte';
 import Timer from '$lib/Timer.svelte';
 import { configureTimer, timer } from '$lib/timerStore.svelte';
 import { type Col, colsFor } from '$lib/trainColumns';
-import { loadTrainDraft, saveTrainDraft } from '$lib/trainDraft';
 import { cn } from '$lib/utils';
 import VariantPicker from '$lib/VariantPicker.svelte';
 
@@ -85,27 +85,19 @@ const avail = $derived(
 	Object.entries(content.exercises).filter(([id]) => id !== 'rest' && !dayExIds.includes(id)),
 );
 
-// In-progress sets, keyed by exercise id (committed on "finish"). Persisted to
-// localStorage so a page refresh doesn't lose what you've filled in.
-const draft = loadTrainDraft();
-let sets = $state<Record<string, WorkoutSet[]>>(draft.sets);
-let note = $state(draft.note);
-
-$effect(() => {
-	saveTrainDraft({ sets, note });
-});
 // Exercise the timer follows when set; otherwise it auto-picks the next task.
 let activeExId = $state<string | null>(null);
-// Exercises opened as a metric assessment (exId → metricId): on finish, their
-// logged sets auto-record that metric.
+// Exercises opened as a metric assessment (exId → metricId): when completed,
+// their logged sets auto-record that metric (once).
 let assess = $state<Record<string, string>>({});
+let recorded = $state<Record<string, boolean>>({});
 
 // The timer reflects: your explicit pick, else the first un-logged timed
 // exercise, else the first timed exercise of the day.
 const timerTarget = $derived.by(() => {
 	const picked = activeExId ? items.find((it) => it.exId === activeExId && it.timed) : undefined;
 	if (picked) return picked;
-	const next = items.find((it) => it.timed && (sets[it.exId]?.length ?? 0) === 0);
+	const next = items.find((it) => it.timed && setsFor(dayLabel, it.exId).length === 0);
 	if (next) return next;
 	return items.find((it) => it.timed) ?? null;
 });
@@ -116,6 +108,25 @@ $effect(() => {
 	if (!t) return;
 	const s = seedOf(t);
 	if (s && s.key !== timer.key) configureTimer(s);
+});
+
+// Reflect completion on the Today tab: an exercise with any done set marks its
+// task done; an assessed exercise also records its metric once.
+$effect(() => {
+	for (const it of items) {
+		const k = taskKey(week, weekday, it.exId);
+		const done = setsFor(dayLabel, it.exId).some((s) => s.done);
+		if (done) {
+			if (!appState.taskDone[k]) appState.taskDone[k] = true;
+			const metricId = assess[it.exId];
+			if (metricId && !recorded[it.exId]) {
+				recorded[it.exId] = true;
+				recordAssessment(metricId, setsFor(dayLabel, it.exId), content);
+			}
+		} else if (appState.taskDone[k]) {
+			delete appState.taskDone[k];
+		}
+	}
 });
 
 /** Load an exercise into the timer now (overrides a running session). */
@@ -177,49 +188,21 @@ function defaultSet(spec: Variant): WorkoutSet {
 	};
 }
 
-function addSet(exId: string) {
-	const existing = sets[exId] ?? [];
-	const spec = items.find((it) => it.exId === exId)?.spec;
+function addSet(it: Item) {
+	const existing = setsFor(dayLabel, it.exId);
 	// First set: prefill from the target. Later sets: carry over the previous one
 	// (so your edits become the default for what you add next).
 	const seed: WorkoutSet = existing.length
 		? { ...existing[existing.length - 1], done: false }
-		: spec
-			? defaultSet(spec)
-			: {
-					weight: null,
-					edge: null,
-					time: null,
-					reps: null,
-					rest: null,
-					rpe: null,
-					grip: null,
-					done: false,
-				};
-	sets[exId] = [...existing, seed];
+		: defaultSet(it.spec);
+	addSetTo(dayLabel, it.exId, logName(it), seed);
 }
 function removeSet(exId: string, i: number) {
-	sets[exId] = (sets[exId] ?? []).filter((_, idx) => idx !== i);
+	removeSetFrom(dayLabel, exId, i);
 }
 function removeItem(exId: string) {
 	removeDayExercise(content, week, weekday, exId);
-	delete sets[exId];
-}
-
-function finish() {
-	const exercises = items
-		.map((it) => ({ exId: it.exId, name: logName(it), sets: sets[it.exId] ?? [] }))
-		.filter((e) => e.sets.length > 0);
-	if (exercises.length === 0) {
-		toast.error(m.train_nothing());
-		return;
-	}
-	appState.workouts.unshift({ date: today(), day: dayLabel, exercises, note });
-	recordAssessedMetrics(assess, sets, content); // auto-record assessed metrics
-	sets = {};
-	note = '';
-	assess = {};
-	toast.success(m.train_logged());
+	clearExercise(dayLabel, exId);
 }
 </script>
 
@@ -279,7 +262,7 @@ function finish() {
 					</div>
 
 					<SetRows
-						rows={sets[it.exId] ?? []}
+						rows={setsFor(dayLabel, it.exId)}
 						cols={it.cols}
 						onRemove={(i) => removeSet(it.exId, i)}
 					/>
@@ -288,7 +271,7 @@ function finish() {
 						variant="outline"
 						size="sm"
 						class="mt-1 self-start border-line text-xs"
-						onclick={() => addSet(it.exId)}
+						onclick={() => addSet(it)}
 					>
 						<PlusIcon class="mr-1 size-3.5" />{m.train_add_set()}
 					</Button>
@@ -317,11 +300,16 @@ function finish() {
 	{/if}
 
 	{#if items.length > 0}
-		<div class="mt-4 flex flex-col gap-2.5">
-			<Input bind:value={note} placeholder={m.train_note()} class="bg-panel-2 text-sm" />
-			<Button class="self-start bg-flag text-white hover:bg-flag/90" onclick={finish}>
-				{m.train_finish()}
-			</Button>
+		<div class="mt-4 flex flex-col gap-1.5">
+			<Input
+				value={getNote(dayLabel)}
+				oninput={(e) => setNote(dayLabel, e.currentTarget.value)}
+				placeholder={m.train_note()}
+				class="bg-panel-2 text-sm"
+			/>
+			<p class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+				{m.train_autosave()}
+			</p>
 		</div>
 	{/if}
 </section>

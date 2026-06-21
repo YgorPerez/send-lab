@@ -1,4 +1,5 @@
 <script lang="ts">
+import CheckIcon from '@lucide/svelte/icons/check';
 import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 import { toast } from 'svelte-sonner';
 import { Badge } from '$lib/components/ui/badge';
@@ -7,7 +8,7 @@ import { Card, CardContent } from '$lib/components/ui/card';
 import { type Answers, computeVerdictId, getContent } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import { resolveDay, resolveExerciseIds, resolveSwapIndex } from '$lib/plan';
+import { resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -24,6 +25,7 @@ const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? we
 interface Task {
 	id: string;
 	label: string;
+	done: boolean;
 }
 
 const tasks = $derived<Task[]>(
@@ -33,7 +35,7 @@ const tasks = $derived<Task[]>(
 		if (!ex) return [];
 		const idx = resolveSwapIndex(week, weekday, exId);
 		if (exId === 'rest' && idx === 0) return [];
-		return [{ id: exId, label: ex.name }];
+		return [{ id: exId, label: ex.name, done: !!appState.taskDone[taskKey(week, weekday, exId)] }];
 	}),
 );
 const isRestDay = $derived(tasks.length === 0);
@@ -90,11 +92,19 @@ function logVerdict() {
 				{#each tasks as task (task.id)}
 					<a
 						href="/train?ex={task.id}"
-						class="flex items-center gap-2.5 rounded-lg border border-line bg-panel-2 px-3 py-2 text-sm text-ink-dim transition hover:border-flag hover:text-chalk"
+						class={cn(
+							'flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition',
+							task.done
+								? 'border-teal/40 bg-teal/5 text-ink-faint'
+								: 'border-line bg-panel-2 text-ink-dim hover:border-flag hover:text-chalk'
+						)}
 					>
-						<span class="flex-1">{task.label}</span>
+						{#if task.done}
+							<CheckIcon class="size-4 flex-none text-teal" />
+						{/if}
+						<span class={cn('flex-1', task.done && 'line-through')}>{task.label}</span>
 						<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-							{m.td_open_train()}
+							{task.done ? m.lbl_done() : m.td_open_train()}
 						</span>
 						<ChevronRightIcon class="size-4" />
 					</a>

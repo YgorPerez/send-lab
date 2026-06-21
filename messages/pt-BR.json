@@ -172,6 +172,7 @@
 	"train_target": "Alvo",
 	"train_add_set": "Adicionar série",
 	"train_note": "Nota da sessão (opcional)",
+	"train_autosave": "Salvo automaticamente · por dia",
 	"train_finish": "Concluir e registrar treino",
 	"train_logged": "Treino registrado",
 	"train_nothing": "Adicione ao menos uma série para registrar o treino.",

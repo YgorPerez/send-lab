@@ -22,24 +22,18 @@ function metricValueFromSets(metricId: string, sets: WorkoutSet[]): number | nul
 	return vals.length ? Math.max(...vals) : null;
 }
 
-/** For each assessed exercise (exId → metricId), record its metric from the sets. */
-export function recordAssessedMetrics(
-	assess: Record<string, string>,
-	sets: Record<string, WorkoutSet[]>,
-	content: Content,
-): void {
-	for (const [exId, metricId] of Object.entries(assess)) {
-		const v = metricValueFromSets(metricId, sets[exId] ?? []);
-		if (v == null) continue;
-		appState.metrics[metricId as MetricId].push({ date: today(), v });
-		const metric = content.metrics.find((mm) => mm.id === metricId);
-		appState.log.unshift({
-			date: today(),
-			type: 'test',
-			label: `${metric?.name ?? metricId}: ${round(v)} ${metric?.unit ?? ''}`,
-			color: `var(${metric?.cat ?? '--ink-faint'})`,
-			note: m.metric_test_note(),
-		});
-		if (metric) toast.success(m.toast_metric_saved({ name: metric.name }));
-	}
+/** Record a metric data point from an assessed exercise's sets (no-op if unmeasurable). */
+export function recordAssessment(metricId: string, sets: WorkoutSet[], content: Content): void {
+	const v = metricValueFromSets(metricId, sets);
+	if (v == null) return;
+	appState.metrics[metricId as MetricId].push({ date: today(), v });
+	const metric = content.metrics.find((mm) => mm.id === metricId);
+	appState.log.unshift({
+		date: today(),
+		type: 'test',
+		label: `${metric?.name ?? metricId}: ${round(v)} ${metric?.unit ?? ''}`,
+		color: `var(${metric?.cat ?? '--ink-faint'})`,
+		note: m.metric_test_note(),
+	});
+	if (metric) toast.success(m.toast_metric_saved({ name: metric.name }));
 }
