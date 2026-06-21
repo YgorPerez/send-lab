@@ -1,5 +1,6 @@
 <script lang="ts">
 import PlusIcon from '@lucide/svelte/icons/plus';
+import TimerIcon from '@lucide/svelte/icons/timer';
 import XIcon from '@lucide/svelte/icons/x';
 import { toast } from 'svelte-sonner';
 import { Button } from '$lib/components/ui/button';
@@ -25,6 +26,7 @@ import {
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today, type WorkoutSet } from '$lib/state.svelte';
 import Timer from '$lib/Timer.svelte';
+import { cn } from '$lib/utils';
 
 const content = getContent();
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -62,6 +64,8 @@ interface Item {
 	variantNames: string[];
 	spec: Variant;
 	cols: Col[];
+	/** Whether this exercise has interval timings the timer can run. */
+	timed: boolean;
 }
 const items = $derived<Item[]>(
 	dayExIds.flatMap((exId) => {
@@ -79,10 +83,14 @@ const items = $derived<Item[]>(
 				variantNames: ex.variants.map((v) => v.name),
 				spec,
 				cols: colsFor(spec),
+				timed: spec.workSec != null,
 			},
 		];
 	}),
 );
+
+// Key a seed by exercise + variant so changing the variant re-seeds the timer.
+const seedOf = (it: Item) => timerSeedFor(it.spec, `${it.exId}:${it.idx}`, it.exName);
 
 /** Name to record in the log: exercise, plus the variant when it differs. */
 function logName(it: Item): string {
@@ -97,14 +105,18 @@ const avail = $derived(
 // In-progress sets, keyed by exercise id (committed on "finish").
 let sets = $state<Record<string, WorkoutSet[]>>({});
 let note = $state('');
+// Exercise the timer follows when set; otherwise it auto-picks the next task.
+let activeExId = $state<string | null>(null);
 
-// The timer reflects your next task: the first timed exercise still un-logged,
-// falling back to the first timed exercise of the day.
+// The timer reflects: your explicit pick, else the first un-logged timed
+// exercise, else the first timed exercise of the day.
 const timerSeed = $derived.by(() => {
-	const seeds = items.map((it) => timerSeedFor(it.spec, it.exId, it.exName));
-	const next = items.findIndex((it, i) => seeds[i] && (sets[it.exId]?.length ?? 0) === 0);
-	if (next >= 0) return seeds[next];
-	return seeds.find((s) => s) ?? null;
+	const picked = activeExId ? items.find((it) => it.exId === activeExId) : undefined;
+	if (picked?.timed) return seedOf(picked);
+	const next = items.find((it) => it.timed && (sets[it.exId]?.length ?? 0) === 0);
+	if (next) return seedOf(next);
+	const any = items.find((it) => it.timed);
+	return any ? seedOf(any) : null;
 });
 
 const mid = (r?: Range): number | null => (r ? Math.round((r.min + r.max) / 2) : null);
@@ -172,17 +184,34 @@ function finish() {
 	{:else}
 		<div class="flex flex-col gap-3">
 			{#each items as it (it.exId)}
-				<Card class="gap-2.5 p-4">
+				{@const activeForTimer = timerSeed?.key === `${it.exId}:${it.idx}`}
+				<Card class={cn('gap-2.5 p-4', activeForTimer && 'ring-1 ring-flag/60')}>
 					<div class="flex items-start justify-between gap-2">
 						<div class="font-bold">{it.exName}</div>
-						<button
-							type="button"
-							class="text-ink-faint transition hover:text-flag"
-							aria-label={m.btn_delete()}
-							onclick={() => removeItem(it.exId)}
-						>
-							<XIcon class="size-4" />
-						</button>
+						<div class="flex items-center gap-2">
+							{#if it.timed}
+								<button
+									type="button"
+									class={cn(
+										'transition',
+										activeForTimer ? 'text-flag' : 'text-ink-faint hover:text-ink'
+									)}
+									aria-label={m.timer_use()}
+									title={m.timer_use()}
+									onclick={() => (activeExId = it.exId)}
+								>
+									<TimerIcon class="size-4" />
+								</button>
+							{/if}
+							<button
+								type="button"
+								class="text-ink-faint transition hover:text-flag"
+								aria-label={m.btn_delete()}
+								onclick={() => removeItem(it.exId)}
+							>
+								<XIcon class="size-4" />
+							</button>
+						</div>
 					</div>
 					{#if it.variantNames.length > 1}
 						<Select
