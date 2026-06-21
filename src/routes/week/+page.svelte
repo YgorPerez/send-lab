@@ -26,11 +26,29 @@ import { appState, today } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
 
 const content = getContent();
-const week = $derived(appState.currentWeek);
+
+// The week you're *viewing* is independent of the week you're actually *in*
+// (appState.currentWeek). It defaults to the current week and follows it until
+// you browse elsewhere with the selector — browsing never changes your progress.
+let week = $state(appState.currentWeek);
+let browsed = false;
+$effect(() => {
+	if (!browsed) week = appState.currentWeek;
+});
+const isCurrent = $derived(week === appState.currentWeek);
 const phase = $derived(content.phases[phaseId(week)]);
 
 const COMPOUND = ['Mon', 'Wed', 'Thu', 'Fri'];
 const todayKey = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+
+function viewWeek(i: number) {
+	browsed = true;
+	week = i;
+}
+function setCurrentWeek() {
+	appState.currentWeek = week;
+	toast.success(m.wk_now_in({ n: week }));
+}
 
 /** Primary prescription label for a slot, from its (possibly customized) list. */
 function dayPrime(slot: string): string {
@@ -76,18 +94,34 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 			{#each Array.from({ length: 8 }, (_, i) => i + 1) as i (i)}
 				<button
 					type="button"
-					onclick={() => (appState.currentWeek = i)}
+					onclick={() => viewWeek(i)}
+					aria-current={i === appState.currentWeek ? 'true' : undefined}
 					class={cn(
 						'h-[30px] min-w-[34px] flex-1 rounded-md border font-mono text-[11px] transition',
 						i === week
 							? 'border-flag bg-flag font-bold text-white'
 							: 'border-line bg-panel-2 text-ink-faint hover:text-ink',
-						i === 8 && i !== week && 'border-teal text-teal'
+						i === 8 && i !== week && 'border-teal text-teal',
+						i === appState.currentWeek && 'ring-1 ring-chalk'
 					)}
 				>
 					{i}
 				</button>
 			{/each}
+		</div>
+		<div class="flex items-center justify-between gap-2">
+			<span class="font-mono text-[11px] text-ink-faint">
+				{m.wk_current_week()} · {appState.currentWeek}/8
+			</span>
+			{#if !isCurrent}
+				<button
+					type="button"
+					onclick={setCurrentWeek}
+					class="rounded-md border border-line px-2.5 py-1 font-mono text-[10px] tracking-wider text-ink-dim uppercase transition hover:border-flag hover:text-flag"
+				>
+					{m.wk_set_current()}
+				</button>
+			{/if}
 		</div>
 		<div
 			class="rounded-lg border-l-[3px] bg-panel-2 px-3 py-2.5 font-mono text-xs text-ink-dim"
@@ -107,7 +141,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 			{@const customized = resolved.k !== slot.k}
 			{@const done = !!appState.completed[slotKey(week, slot.k)]}
 			{@const exIds = resolveExerciseIds(content, week, slot.k)}
-			{@const isToday = slot.k === todayKey}
+			{@const isToday = slot.k === todayKey && isCurrent}
 			<Card
 				class={cn(
 					'relative gap-2 overflow-hidden p-3.5',
