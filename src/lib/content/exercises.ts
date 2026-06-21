@@ -2,6 +2,10 @@
 // counts, seconds, kg, mm, %, RPE 0–10) and metadata (grip, qualities, region,
 // CNS cost, tracked metrics). Localized prose lives in the per-locale files and
 // is merged with this by `getContent()`, matched by exercise id + variant index.
+//
+// Timer semantics: `rounds` = work/rest cycles WITHIN one set (separated by
+// `restSec`); `sets` = number of sets (separated by `setRestSec`). Single-effort
+// work (hangs, lifts) leaves `rounds` unset (= 1 rep per set).
 import type { ExerciseParams, Range } from './types';
 
 /** Build a range; a single argument means a fixed value (min === max). */
@@ -106,7 +110,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(7, 10),
 				setRestSec: n(180),
-				rounds: n(5),
 				sets: n(5, 7),
 				intensityPct: n(90),
 				rpe: n(8, 9),
@@ -119,7 +122,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(5, 7),
 				setRestSec: n(180),
-				rounds: n(4),
 				sets: n(4, 5),
 				rpe: n(8, 9),
 				grip: 'pinch',
@@ -140,7 +142,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(7, 10),
 				setRestSec: n(120),
-				rounds: n(4),
 				sets: n(4, 5),
 				rpe: n(8, 9),
 				grip: 'pinch',
@@ -157,7 +158,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(20, 40),
 				setRestSec: n(120),
-				rounds: n(4),
 				sets: n(3, 5),
 				intensityPct: n(65, 75),
 				rpe: n(9, 10),
@@ -169,7 +169,7 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			},
 			{
 				workSec: n(30, 45),
-				rounds: n(3),
+				setRestSec: n(120),
 				sets: n(3, 4),
 				edgeMm: n(60),
 				rpe: n(7, 8),
@@ -336,7 +336,7 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 		variants: [
 			{
 				workSec: n(30, 45),
-				rounds: n(3),
+				setRestSec: n(120),
 				sets: n(3),
 				rpe: n(6, 8),
 				grip: 'sloper',
@@ -346,7 +346,7 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			},
 			{
 				workSec: n(30, 45),
-				rounds: n(3),
+				setRestSec: n(120),
 				sets: n(3),
 				edgeMm: n(35),
 				rpe: n(6, 8),
@@ -357,6 +357,7 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			},
 			{
 				sets: n(3),
+				intensityPct: n(50),
 				rpe: n(5, 7),
 				grip: 'open-hand',
 				qualities: ['tissue'],
@@ -365,7 +366,7 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			},
 			{
 				workSec: n(30, 45),
-				rounds: n(3),
+				setRestSec: n(120),
 				sets: n(3),
 				rpe: n(6, 8),
 				grip: 'open-hand',
@@ -381,7 +382,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(10),
 				setRestSec: n(180),
-				rounds: n(3),
 				sets: n(3),
 				edgeMm: n(10),
 				rpe: n(7, 8),
@@ -394,7 +394,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(10),
 				setRestSec: n(180),
-				rounds: n(3),
 				sets: n(3),
 				rpe: n(7, 8),
 				grip: 'half-crimp',
@@ -406,7 +405,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(10),
 				setRestSec: n(180),
-				rounds: n(3),
 				sets: n(3),
 				edgeMm: n(18, 20),
 				rpe: n(7, 8),
@@ -419,7 +417,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(10),
 				setRestSec: n(180),
-				rounds: n(3),
 				sets: n(3),
 				rpe: n(7, 8),
 				grip: 'half-crimp',
@@ -436,7 +433,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(20, 40),
 				setRestSec: n(180),
-				rounds: n(5),
 				sets: n(5, 6),
 				intensityPct: n(70, 75),
 				rpe: n(8, 9),
@@ -450,7 +446,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(20, 40),
 				setRestSec: n(180),
-				rounds: n(5),
 				sets: n(5, 6),
 				rpe: n(8, 9),
 				toFailure: true,
@@ -463,7 +458,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			{
 				workSec: n(20, 40),
 				setRestSec: n(180),
-				rounds: n(5),
 				sets: n(5, 6),
 				rpe: n(8, 9),
 				toFailure: true,

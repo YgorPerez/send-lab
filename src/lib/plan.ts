@@ -164,21 +164,30 @@ export function costLabel(c: Cost): string {
 
 const mid = (r: Range): number => Math.round((r.min + r.max) / 2);
 
-/** Timer intervals seeded from an exercise, ready to drive the interval timer. */
+/** Timer intervals seeded from an exercise, ready to drive the interval timer.
+ *  `rounds`/`rest` are the within-set cycle; `sets`/`setRest` the outer loop. */
 export interface TimerSeed {
 	key: string;
 	name: string;
 	work: number;
 	rest: number;
 	rounds: number;
+	sets: number;
+	setRest: number;
 }
 
 /** Interval-timer settings for an exercise, or null when it isn't a timed protocol. */
 export function timerSeedFor(spec: VariantParams, key: string, name: string): TimerSeed | null {
 	if (!spec.workSec) return null;
-	const rest = spec.restSec ? mid(spec.restSec) : spec.setRestSec ? mid(spec.setRestSec) : 0;
-	const rounds = spec.rounds ? spec.rounds.max : spec.sets ? spec.sets.min : 1;
-	return { key, name, work: mid(spec.workSec), rest, rounds };
+	return {
+		key,
+		name,
+		work: mid(spec.workSec),
+		rest: spec.restSec ? mid(spec.restSec) : 0,
+		rounds: spec.rounds ? mid(spec.rounds) : 1,
+		sets: spec.sets ? spec.sets.min : 1,
+		setRest: spec.setRestSec ? mid(spec.setRestSec) : 0,
+	};
 }
 
 /** Clear all per-day customizations for a slot, reverting it to the recommendation. */

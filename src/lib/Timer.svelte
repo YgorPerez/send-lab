@@ -8,7 +8,7 @@ import * as m from '$lib/paraglide/messages';
 import type { TimerSeed } from '$lib/plan';
 import { cn } from '$lib/utils';
 
-type Phase = 'idle' | 'work' | 'rest' | 'done';
+type Phase = 'idle' | 'work' | 'rest' | 'setRest' | 'done';
 
 interface Props {
 	/** When set, the timer loads this task's intervals (and shows its name). */
@@ -17,11 +17,16 @@ interface Props {
 
 let { seed = null }: Props = $props();
 
+// Within-set cycle.
 let work = $state(7);
 let rest = $state(3);
 let rounds = $state(6);
+// Outer loop.
+let sets = $state(1);
+let setRest = $state(0);
 
 let phase = $state<Phase>('idle');
+let set = $state(0);
 let round = $state(0);
 let remaining = $state(0);
 let running = $state(false);
@@ -58,12 +63,20 @@ function finish() {
 	beep(880);
 }
 
-function nextRound() {
-	if (round >= rounds) return finish();
-	round += 1;
-	phase = 'work';
-	remaining = work;
-	beep(660);
+/** Advance past the end of a set (into the inter-set rest, next set, or done). */
+function endOfSet() {
+	if (set >= sets) return finish();
+	if (setRest > 0) {
+		phase = 'setRest';
+		remaining = setRest;
+		beep(330);
+	} else {
+		set += 1;
+		round = 1;
+		phase = 'work';
+		remaining = Math.max(1, work);
+		beep(660);
+	}
 }
 
 function tick() {
@@ -71,17 +84,35 @@ function tick() {
 		remaining -= 1;
 		return;
 	}
-	if (phase === 'work' && rest > 0) {
-		phase = 'rest';
-		remaining = rest;
-		beep(440);
-	} else {
-		nextRound();
+	if (phase === 'work') {
+		if (round < rounds && rest > 0) {
+			phase = 'rest';
+			remaining = rest;
+			beep(440);
+		} else if (round < rounds) {
+			round += 1;
+			remaining = Math.max(1, work);
+			beep(660);
+		} else {
+			endOfSet();
+		}
+	} else if (phase === 'rest') {
+		round += 1;
+		phase = 'work';
+		remaining = Math.max(1, work);
+		beep(660);
+	} else if (phase === 'setRest') {
+		set += 1;
+		round = 1;
+		phase = 'work';
+		remaining = Math.max(1, work);
+		beep(660);
 	}
 }
 
 function start() {
 	if (phase === 'idle' || phase === 'done') {
+		set = 1;
 		round = 1;
 		phase = 'work';
 		remaining = Math.max(1, work);
@@ -101,6 +132,7 @@ function reset() {
 	stop();
 	running = false;
 	phase = 'idle';
+	set = 0;
 	round = 0;
 	remaining = 0;
 }
@@ -114,39 +146,55 @@ $effect(() => {
 		work = next.work;
 		rest = next.rest;
 		rounds = next.rounds;
+		sets = next.sets;
+		setRest = next.setRest;
 		reset();
 	}
 });
 
 $effect(() => () => stop());
 
-const phaseLabel = $derived(
-	phase === 'work'
-		? m.timer_work()
-		: phase === 'rest'
-			? m.timer_rest()
-			: phase === 'done'
-				? m.timer_done()
-				: m.timer_ready(),
-);
-const display = $derived(phase === 'idle' ? work : remaining);
-const accent = $derived(
-	phase === 'work' ? 'var(--flag)' : phase === 'rest' ? 'var(--teal)' : 'var(--ink-faint)',
-);
-
 function clock(s: number): string {
 	const sec = Math.max(0, Math.round(s));
 	return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
 
-// Whole-exercise duration and how much is left (the timer rests after every
-// round, including the last, so total = rounds × (work + rest)).
-const totalSec = $derived(rounds * (work + Math.max(0, rest)));
+const phaseLabel = $derived(
+	phase === 'work'
+		? m.timer_work()
+		: phase === 'rest'
+			? m.timer_rest()
+			: phase === 'setRest'
+				? m.timer_setrest()
+				: phase === 'done'
+					? m.timer_done()
+					: m.timer_ready(),
+);
+const display = $derived(phase === 'idle' ? work : remaining);
+const accent = $derived(
+	phase === 'work'
+		? 'var(--flag)'
+		: phase === 'rest'
+			? 'var(--teal)'
+			: phase === 'setRest'
+				? 'var(--violet)'
+				: 'var(--ink-faint)',
+);
+
+// Whole-exercise duration and how much is left.
+const perSet = $derived(rounds * work + Math.max(0, rounds - 1) * Math.max(0, rest));
+const totalSec = $derived(sets * perSet + Math.max(0, sets - 1) * Math.max(0, setRest));
 const leftSec = $derived.by(() => {
+	const r = Math.max(0, rest);
+	const sr = Math.max(0, setRest);
 	if (phase === 'idle') return totalSec;
 	if (phase === 'done') return 0;
-	const after = (rounds - round) * (work + Math.max(0, rest));
-	return phase === 'work' ? remaining + Math.max(0, rest) + after : remaining + after;
+	if (phase === 'setRest') return remaining + perSet + Math.max(0, sets - set - 1) * (sr + perSet);
+	const inSet =
+		phase === 'work'
+			? remaining + (rounds - round) * (work + r)
+			: remaining + (rounds - round) * work + Math.max(0, rounds - round - 1) * r;
+	return inSet + (sets - set) * (sr + perSet);
 });
 const doneFrac = $derived(totalSec > 0 ? (totalSec - leftSec) / totalSec : 0);
 </script>
@@ -158,7 +206,8 @@ const doneFrac = $derived(totalSec > 0 ? (totalSec - leftSec) / totalSec : 0);
 		</span>
 		{#if phase !== 'idle'}
 			<span class="font-mono text-[11px] tracking-wider uppercase" style:color={accent}>
-				{phaseLabel} · {m.timer_round({ n: round, total: rounds })}
+				{phaseLabel} · {set}/{sets}{#if phase === 'work' || phase === 'rest'}
+					· {round}/{rounds}{/if}
 			</span>
 		{/if}
 	</div>
@@ -205,6 +254,14 @@ const doneFrac = $derived(totalSec > 0 ? (totalSec - leftSec) / totalSec : 0);
 		<label class="flex flex-col gap-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 			{m.timer_rounds()}
 			<Input type="number" min="1" bind:value={rounds} class="h-8 bg-panel text-center text-sm" />
+		</label>
+		<label class="flex flex-col gap-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+			{m.timer_sets()}
+			<Input type="number" min="1" bind:value={sets} class="h-8 bg-panel text-center text-sm" />
+		</label>
+		<label class="flex flex-col gap-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+			{m.timer_setrest_s()}
+			<Input type="number" min="0" bind:value={setRest} class="h-8 bg-panel text-center text-sm" />
 		</label>
 	</div>
 </div>
