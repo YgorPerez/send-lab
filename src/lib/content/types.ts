@@ -23,19 +23,22 @@ export interface Day {
 }
 
 /** Structured prescription for a variant — only the fields that apply are set.
- *  Values are short display strings so they can carry ranges and units
- *  ("3–5s", "2–3", "~20mm", "~60% MVC"). */
+ *  Counts/loads stay short display strings so they can carry ranges
+ *  ("2–3", "~20mm", "~60% MVC"); all timings are numeric **seconds** (the
+ *  standard unit) so they render consistently, can be edited, and feed the timer. */
 export interface Prescription {
 	/** Working sets (e.g. "3", "2–3", "4–6 problems"). */
 	sets?: string;
 	/** Reps per set (e.g. "4/side", "10–15"). */
 	reps?: string;
-	/** Work / hold time per rep (e.g. "10s", "7s on / 3s off ×6"). */
-	work?: string;
-	/** Rest between reps within a set (e.g. "5s"). */
-	rest?: string;
-	/** Rest between sets (e.g. "3 min", "full"). */
-	setRest?: string;
+	/** Work / hold time per rep, in seconds. */
+	workSec?: number;
+	/** Rest between reps within a set, in seconds. */
+	restSec?: number;
+	/** Rest between sets, in seconds. */
+	setRestSec?: number;
+	/** Reps / on-off cycles per timed set (interval protocols). */
+	rounds?: number;
 	/** Added load when applicable (e.g. "+30–45kg", "bodyweight"). */
 	load?: string;
 	/** Edge depth when applicable (mm). */

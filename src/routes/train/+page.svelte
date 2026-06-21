@@ -17,6 +17,7 @@ import {
 	removeDayExercise,
 	resolveExerciseIds,
 	resolveSwapIndex,
+	timerSeedFor,
 	variantOf,
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
@@ -41,7 +42,7 @@ function colsFor(spec: Prescription): Col[] {
 	const c: Col[] = [];
 	if (spec.load) c.push({ key: 'weight', label: m.field_weight });
 	if (spec.edge) c.push({ key: 'edge', label: m.field_edge });
-	if (spec.work) c.push({ key: 'time', label: m.field_time });
+	if (spec.workSec != null) c.push({ key: 'time', label: m.field_time });
 	if (spec.reps) c.push({ key: 'reps', label: m.field_reps });
 	// Fall back to a generic reps column for sessions with no measured field.
 	if (c.length === 0) c.push({ key: 'reps', label: m.field_reps });
@@ -72,6 +73,15 @@ const avail = $derived(
 // In-progress sets, keyed by exercise id (committed on "finish").
 let sets = $state<Record<string, WorkoutSet[]>>({});
 let note = $state('');
+
+// The timer reflects your next task: the first timed exercise still un-logged,
+// falling back to the first timed exercise of the day.
+const timerSeed = $derived.by(() => {
+	const seeds = items.map((it) => timerSeedFor(it.spec, it.exId, it.name));
+	const next = items.findIndex((it, i) => seeds[i] && (sets[it.exId]?.length ?? 0) === 0);
+	if (next >= 0) return seeds[next];
+	return seeds.find((s) => s) ?? null;
+});
 
 function addSet(exId: string) {
 	sets[exId] = [
@@ -108,7 +118,7 @@ function finish() {
 		<Prose value={m.lede_train()} />
 	</p>
 
-	<div class="mb-[22px]"><Timer /></div>
+	<div class="mb-[22px]"><Timer seed={timerSeed} /></div>
 
 	{#if items.length === 0}
 		<div class="mb-3 rounded-xl border border-dashed border-line px-5 py-[34px] text-center text-sm text-ink-faint">

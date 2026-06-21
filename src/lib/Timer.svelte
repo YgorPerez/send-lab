@@ -5,9 +5,17 @@ import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 import { Button } from '$lib/components/ui/button';
 import { Input } from '$lib/components/ui/input';
 import * as m from '$lib/paraglide/messages';
+import type { TimerSeed } from '$lib/plan';
 import { cn } from '$lib/utils';
 
 type Phase = 'idle' | 'work' | 'rest' | 'done';
+
+interface Props {
+	/** When set, the timer loads this task's intervals (and shows its name). */
+	seed?: TimerSeed | null;
+}
+
+let { seed = null }: Props = $props();
 
 let work = $state(7);
 let rest = $state(3);
@@ -97,6 +105,19 @@ function reset() {
 	remaining = 0;
 }
 
+// Load the next task's intervals when it changes; manual edits persist until then.
+let seededKey: string | undefined;
+$effect(() => {
+	const next = seed;
+	if (next && next.key !== seededKey) {
+		seededKey = next.key;
+		work = next.work;
+		rest = next.rest;
+		rounds = next.rounds;
+		reset();
+	}
+});
+
 $effect(() => () => stop());
 
 const phaseLabel = $derived(
@@ -115,9 +136,9 @@ const accent = $derived(
 </script>
 
 <div class="rounded-xl border border-line bg-panel-2 p-4">
-	<div class="flex items-center justify-between">
-		<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-			{m.timer_title()}
+	<div class="flex items-center justify-between gap-2">
+		<span class="min-w-0 truncate font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+			{m.timer_title()}{#if seed}<span class="text-chalk"> · {seed.name}</span>{/if}
 		</span>
 		{#if phase !== 'idle'}
 			<span class="font-mono text-[11px] tracking-wider uppercase" style:color={accent}>

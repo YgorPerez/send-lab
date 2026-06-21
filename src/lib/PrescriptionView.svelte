@@ -2,6 +2,7 @@
 import type { Prescription } from '$lib/content/types';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
+import { formatSeconds } from '$lib/plan';
 
 interface Props {
 	spec: Prescription;
@@ -9,15 +10,17 @@ interface Props {
 
 let { spec }: Props = $props();
 
-// Fixed display order; only the fields that are set are rendered.
+// Fixed display order; only the fields that are set are rendered. Timings are
+// stored in seconds and formatted; counts/loads pass through as-is.
 const fields = $derived(
 	(
 		[
 			[m.presc_sets, spec.sets],
 			[m.presc_reps, spec.reps],
-			[m.presc_work, spec.work],
-			[m.presc_rest, spec.rest],
-			[m.presc_setrest, spec.setRest],
+			[m.presc_work, spec.workSec != null ? formatSeconds(spec.workSec) : undefined],
+			[m.presc_rest, spec.restSec != null ? formatSeconds(spec.restSec) : undefined],
+			[m.presc_rounds, spec.rounds != null ? `×${spec.rounds}` : undefined],
+			[m.presc_setrest, spec.setRestSec != null ? formatSeconds(spec.setRestSec) : undefined],
 			[m.presc_load, spec.load],
 			[m.presc_edge, spec.edge],
 			[m.presc_intensity, spec.intensity],

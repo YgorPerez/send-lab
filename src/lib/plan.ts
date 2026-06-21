@@ -111,6 +111,32 @@ export function isDayCustomized(week: number, weekday: string): boolean {
 	return Object.keys(appState.daySwaps).some((key) => key.startsWith(`${k}:`));
 }
 
+/** Format a duration given in seconds (the standard unit) for display. */
+export function formatSeconds(s: number): string {
+	if (s < 60) return `${s}s`;
+	const min = s / 60;
+	if (Number.isInteger(min)) return `${min} min`;
+	return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** Timer intervals seeded from an exercise, ready to drive the interval timer. */
+export interface TimerSeed {
+	key: string;
+	name: string;
+	work: number;
+	rest: number;
+	rounds: number;
+}
+
+/** Interval-timer settings for an exercise, or null when it isn't a timed protocol. */
+export function timerSeedFor(spec: Prescription, key: string, name: string): TimerSeed | null {
+	if (spec.workSec == null) return null;
+	const rest = spec.restSec ?? spec.setRestSec ?? 0;
+	const setsInt = spec.sets ? Number.parseInt(spec.sets.match(/\d+/)?.[0] ?? '', 10) : Number.NaN;
+	const rounds = spec.rounds ?? (Number.isNaN(setsInt) ? 1 : setsInt);
+	return { key, name, work: spec.workSec, rest, rounds };
+}
+
 /** Clear all per-day customizations for a slot, reverting it to the recommendation. */
 export function resetDay(week: number, weekday: string): void {
 	const k = slotKey(week, weekday);
