@@ -36,11 +36,13 @@ const tasks = $derived<Task[]>(
 	resolveExerciseIds(content, week, weekday).flatMap((exId) => {
 		const ex = content.exercises[exId];
 		// `rest` is not a task — a day with no tasks is a rest day.
-		if (!ex || exId === 'rest') return [];
+		if (!ex) return [];
+		const idx = resolveSwapIndex(week, weekday, exId);
+		if (exId === 'rest' && idx === 0) return [];
 		return [
 			{
 				id: exId,
-				label: exerciseLabel(ex, resolveSwapIndex(week, weekday, exId)),
+				label: exerciseLabel(ex, idx),
 				done: !!appState.taskDone[taskKey(week, weekday, exId)],
 			},
 		];

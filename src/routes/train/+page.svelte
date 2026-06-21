@@ -36,10 +36,10 @@ interface Item {
 const items = $derived<Item[]>(
 	dayExIds.flatMap((exId) => {
 		const ex = content.exercises[exId];
-		if (!ex || exId === 'rest') return [];
-		return [
-			{ exId, name: exerciseLabel(ex, resolveSwapIndex(week, weekday, exId)), spec: ex.spec },
-		];
+		if (!ex) return [];
+		const idx = resolveSwapIndex(week, weekday, exId);
+		if (exId === 'rest' && idx === 0) return [];
+		return [{ exId, name: exerciseLabel(ex, idx), spec: ex.spec }];
 	}),
 );
 const avail = $derived(
