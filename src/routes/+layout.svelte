@@ -13,7 +13,7 @@ import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { appReady, appState, clearLocal, hydrate, startPersistence } from '$lib/state.svelte';
 import TimerBar from '$lib/TimerBar.svelte';
-import { timer } from '$lib/timerStore.svelte';
+import { startTimerPersistence, timer } from '$lib/timerStore.svelte';
 import { cn } from '$lib/utils';
 
 let { children } = $props();
@@ -21,6 +21,7 @@ let { children } = $props();
 const session = authClient.useSession();
 
 startPersistence();
+startTimerPersistence();
 
 $effect(() => {
 	document.documentElement.lang = getLocale();

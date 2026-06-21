@@ -221,3 +221,31 @@ export function phaseColor(phase: TimerPhase): string {
 	if (phase === 'setRest') return 'var(--violet)';
 	return 'var(--ink-faint)';
 }
+
+// ---- persistence: survive page refresh via localStorage ----
+const STORAGE_KEY = 'sendlab:timer';
+
+/** Save the timer on every change (call once from a component init). */
+export function startTimerPersistence(): void {
+	$effect(() => {
+		const snapshot = JSON.stringify(timer);
+		if (browser) localStorage.setItem(STORAGE_KEY, snapshot);
+	});
+}
+
+// Restore on load, resuming the interval if it was running.
+if (browser) {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (raw) {
+			Object.assign(timer, JSON.parse(raw));
+			if (timer.running && timer.phase !== 'idle' && timer.phase !== 'done') {
+				handle = setInterval(tick, 1000);
+			} else {
+				timer.running = false;
+			}
+		}
+	} catch {
+		// ignore corrupt storage
+	}
+}

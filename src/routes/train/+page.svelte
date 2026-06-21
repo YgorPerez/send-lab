@@ -26,6 +26,7 @@ import SetRows from '$lib/SetRows.svelte';
 import { appState, today, type WorkoutSet } from '$lib/state.svelte';
 import Timer from '$lib/Timer.svelte';
 import { configureTimer, timer } from '$lib/timerStore.svelte';
+import { loadTrainDraft, saveTrainDraft } from '$lib/trainDraft';
 import { cn } from '$lib/utils';
 
 const content = getContent();
@@ -42,14 +43,16 @@ interface Col {
 	key: ColKey;
 	label: () => string;
 }
+// Weight (kg) and edge (mm) are always loggable — you can add load or change the
+// edge on any exercise even when its target doesn't specify them. The rest are
+// the universal per-set fields; grip shows when the exercise loads a grip.
 function colsFor(spec: Variant): Col[] {
-	const c: Col[] = [];
-	if (spec.loadKg) c.push({ key: 'weight', label: m.field_weight });
-	if (spec.edgeMm) c.push({ key: 'edge', label: m.field_edge });
-	if (spec.workSec) c.push({ key: 'time', label: m.field_time });
-	if (spec.reps) c.push({ key: 'reps', label: m.field_reps });
-	// Fall back to a generic reps column for sessions with no measured field.
-	if (c.length === 0) c.push({ key: 'reps', label: m.field_reps });
+	const c: Col[] = [
+		{ key: 'weight', label: m.field_weight },
+		{ key: 'edge', label: m.field_edge },
+		{ key: 'time', label: m.field_time },
+		{ key: 'reps', label: m.field_reps },
+	];
 	if (spec.grip) c.push({ key: 'grip', label: m.field_grip });
 	c.push({ key: 'rest', label: m.field_rest });
 	c.push({ key: 'rpe', label: m.field_rpe });
@@ -102,9 +105,15 @@ const avail = $derived(
 	Object.entries(content.exercises).filter(([id]) => id !== 'rest' && !dayExIds.includes(id)),
 );
 
-// In-progress sets, keyed by exercise id (committed on "finish").
-let sets = $state<Record<string, WorkoutSet[]>>({});
-let note = $state('');
+// In-progress sets, keyed by exercise id (committed on "finish"). Persisted to
+// localStorage so a page refresh doesn't lose what you've filled in.
+const draft = loadTrainDraft();
+let sets = $state<Record<string, WorkoutSet[]>>(draft.sets);
+let note = $state(draft.note);
+
+$effect(() => {
+	saveTrainDraft({ sets, note });
+});
 // Exercise the timer follows when set; otherwise it auto-picks the next task.
 let activeExId = $state<string | null>(null);
 
