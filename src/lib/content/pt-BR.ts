@@ -427,6 +427,18 @@ const content: LocaleContent = {
 					note: 'Largue a sessão e descanse se estiver com fadiga ou incômodo.',
 					why: ['Estes são complementares — corte primeiro quando cansado ou sensível.'],
 				},
+				{
+					name: 'Abrahangs — pino/block, uma mão por vez',
+					what: 'No-hang no pino/block · uma mão por vez',
+					note: 'Uma mão por vez num pino de carga · mantenha bem leve.',
+					why: ['Carga no-hang por mão — precisa e fácil de manter bem abaixo de 40%.'],
+				},
+				{
+					name: 'Abrahangs — hangboard na parede, duas mãos',
+					what: 'Hangboard na parede · as duas mãos',
+					note: 'As duas mãos numa hangboard fixa na parede · pés apoiados.',
+					why: ['Versão de hangboard com as duas mãos — prática pro trabalho diário de tecido.'],
+				},
 			],
 		},
 		antag: {

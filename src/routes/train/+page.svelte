@@ -7,7 +7,7 @@ import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
-import type { Variant } from '$lib/content/types';
+import type { Range, Variant } from '$lib/content/types';
 import PrescriptionView from '$lib/PrescriptionView.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -87,12 +87,32 @@ const timerSeed = $derived.by(() => {
 	return seeds.find((s) => s) ?? null;
 });
 
+const mid = (r?: Range): number | null => (r ? Math.round((r.min + r.max) / 2) : null);
+
+/** A set pre-filled from the exercise's target prescription. */
+function defaultSet(spec: Variant): WorkoutSet {
+	return {
+		weight: mid(spec.loadKg),
+		edge: mid(spec.edgeMm),
+		time: mid(spec.workSec),
+		reps: mid(spec.reps),
+		rest: mid(spec.restSec ?? spec.setRestSec),
+		rpe: mid(spec.rpe),
+		grip: spec.grip ?? null,
+	};
+}
+
 function addSet(exId: string) {
-	const grip = items.find((it) => it.exId === exId)?.spec.grip ?? null;
-	sets[exId] = [
-		...(sets[exId] ?? []),
-		{ weight: null, edge: null, time: null, reps: null, rest: null, rpe: null, grip },
-	];
+	const existing = sets[exId] ?? [];
+	const spec = items.find((it) => it.exId === exId)?.spec;
+	// First set: prefill from the target. Later sets: carry over the previous one
+	// (so your edits become the default for what you add next).
+	const seed: WorkoutSet = existing.length
+		? { ...existing[existing.length - 1] }
+		: spec
+			? defaultSet(spec)
+			: { weight: null, edge: null, time: null, reps: null, rest: null, rpe: null, grip: null };
+	sets[exId] = [...existing, seed];
 }
 function removeSet(exId: string, i: number) {
 	sets[exId] = (sets[exId] ?? []).filter((_, idx) => idx !== i);

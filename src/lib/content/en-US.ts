@@ -415,6 +415,18 @@ const content: LocaleContent = {
 					note: 'Drop the session and rest if you are carrying fatigue or a niggle.',
 					why: ['These are additive — cut them first when tired or tweaky.'],
 				},
+				{
+					name: 'Abrahangs — pin block, one hand',
+					what: 'No-hang pin/block · one hand at a time',
+					note: 'One arm at a time on a loading pin · keep it genuinely light.',
+					why: ['Per-hand no-hang loading — precise and easy to keep well under 40%.'],
+				},
+				{
+					name: 'Abrahangs — wall hangboard, two hands',
+					what: 'Wall hangboard · both hands',
+					note: 'Both hands on a wall-mounted hangboard · feet supported.',
+					why: ['Two-hand hangboard version — convenient and low-fuss for daily tissue work.'],
+				},
 			],
 		},
 		antag: {

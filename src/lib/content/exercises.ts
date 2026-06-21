@@ -489,6 +489,7 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 		variants: [
 			{
 				workSec: n(10),
+				restSec: n(20),
 				rounds: n(20),
 				edgeMm: n(18, 22),
 				intensityPct: n(40),
@@ -500,6 +501,7 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			},
 			{
 				workSec: n(10),
+				restSec: n(20),
 				rounds: n(20),
 				intensityPct: n(40),
 				rpe: n(3, 4),
@@ -515,6 +517,29 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 				cnsCost: 'low',
 			},
 			{
+				cnsCost: 'low',
+			},
+			{
+				workSec: n(10),
+				restSec: n(20),
+				rounds: n(20),
+				intensityPct: n(40),
+				rpe: n(3, 4),
+				grip: 'half-crimp',
+				qualities: ['tissue'],
+				region: ['fingers'],
+				cnsCost: 'low',
+			},
+			{
+				workSec: n(10),
+				restSec: n(20),
+				rounds: n(20),
+				edgeMm: n(18, 22),
+				intensityPct: n(40),
+				rpe: n(3, 4),
+				grip: 'half-crimp',
+				qualities: ['tissue'],
+				region: ['fingers'],
 				cnsCost: 'low',
 			},
 		],
