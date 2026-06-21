@@ -7,6 +7,7 @@ import {
 	AccordionTrigger,
 } from '$lib/components/ui/accordion';
 import { getContent } from '$lib/content';
+import PrescriptionView from '$lib/PrescriptionView.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import { variantOf } from '$lib/plan';
@@ -83,10 +84,8 @@ function setSwap(id: string, i: number, label: string) {
 					</span>
 				</AccordionTrigger>
 				<AccordionContent class="px-[18px] pb-[18px]">
-					<div
-						class="my-3.5 rounded-lg border border-line bg-panel-2 px-3.5 py-3 font-mono text-[13px] leading-relaxed text-chalk"
-					>
-						<Prose value={active.spec} />
+					<div class="my-3.5 rounded-lg border border-line bg-panel-2 px-3.5 py-3">
+						<PrescriptionView spec={active.spec} />
 					</div>
 					{#each active.why as w (w)}
 						<p class="mb-2 text-[13.5px] text-ink-dim"><Prose value={w} /></p>

@@ -7,6 +7,8 @@ import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
+import type { Prescription } from '$lib/content/types';
+import PrescriptionView from '$lib/PrescriptionView.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -29,10 +31,29 @@ const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? we
 
 const dayExIds = $derived(resolveExerciseIds(content, week, weekday));
 
+/** A loggable column, shown only when the exercise's prescription uses it. */
+type ColKey = 'weight' | 'edge' | 'time' | 'reps' | 'rest';
+interface Col {
+	key: ColKey;
+	label: () => string;
+}
+function colsFor(spec: Prescription): Col[] {
+	const c: Col[] = [];
+	if (spec.load) c.push({ key: 'weight', label: m.field_weight });
+	if (spec.edge) c.push({ key: 'edge', label: m.field_edge });
+	if (spec.work) c.push({ key: 'time', label: m.field_time });
+	if (spec.reps) c.push({ key: 'reps', label: m.field_reps });
+	// Fall back to a generic reps column for sessions with no measured field.
+	if (c.length === 0) c.push({ key: 'reps', label: m.field_reps });
+	c.push({ key: 'rest', label: m.field_rest });
+	return c;
+}
+
 interface Item {
 	exId: string;
 	name: string;
-	spec: string;
+	spec: Prescription;
+	cols: Col[];
 }
 const items = $derived<Item[]>(
 	dayExIds.flatMap((exId) => {
@@ -40,7 +61,8 @@ const items = $derived<Item[]>(
 		if (!ex) return [];
 		const idx = resolveSwapIndex(week, weekday, exId);
 		if (exId === 'rest' && idx === 0) return [];
-		return [{ exId, name: exerciseLabel(ex, idx), spec: variantOf(ex, idx).spec }];
+		const spec = variantOf(ex, idx).spec;
+		return [{ exId, name: exerciseLabel(ex, idx), spec, cols: colsFor(spec) }];
 	}),
 );
 const avail = $derived(
@@ -52,7 +74,10 @@ let sets = $state<Record<string, WorkoutSet[]>>({});
 let note = $state('');
 
 function addSet(exId: string) {
-	sets[exId] = [...(sets[exId] ?? []), { weight: null, time: null, reps: null, rest: null }];
+	sets[exId] = [
+		...(sets[exId] ?? []),
+		{ weight: null, edge: null, time: null, reps: null, rest: null },
+	];
 }
 function removeSet(exId: string, i: number) {
 	sets[exId] = (sets[exId] ?? []).filter((_, idx) => idx !== i);
@@ -104,23 +129,33 @@ function finish() {
 							<XIcon class="size-4" />
 						</button>
 					</div>
-					<div class="font-mono text-[12px] text-ink-dim"><Prose value={it.spec} /></div>
+					{@const cols = it.cols}
+					{@const grid = `grid-template-columns:repeat(${cols.length},minmax(0,1fr)) auto`}
+					<div
+						class="rounded-lg border border-line bg-panel-2 px-3 py-2.5"
+						aria-label={m.train_target()}
+					>
+						<PrescriptionView spec={it.spec} />
+					</div>
 
 					{#if (sets[it.exId] ?? []).length > 0}
-						<div class="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-1.5 text-[10px] text-ink-faint">
-							<span>{m.field_weight()}</span>
-							<span>{m.field_time()}</span>
-							<span>{m.field_reps()}</span>
-							<span>{m.field_rest()}</span>
+						<div class="grid gap-1.5 text-[10px] text-ink-faint" style={grid}>
+							{#each cols as col (col.key)}
+								<span>{col.label()}</span>
+							{/each}
 							<span></span>
 						</div>
 					{/if}
 					{#each sets[it.exId] ?? [] as set, i (i)}
-						<div class="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-center gap-1.5">
-							<Input type="number" step="any" bind:value={set.weight} class="h-8 bg-panel-2 text-sm" />
-							<Input type="number" step="any" bind:value={set.time} class="h-8 bg-panel-2 text-sm" />
-							<Input type="number" step="any" bind:value={set.reps} class="h-8 bg-panel-2 text-sm" />
-							<Input type="number" step="any" bind:value={set.rest} class="h-8 bg-panel-2 text-sm" />
+						<div class="grid items-center gap-1.5" style={grid}>
+							{#each cols as col (col.key)}
+								<Input
+									type="number"
+									step="any"
+									bind:value={set[col.key]}
+									class="h-8 bg-panel-2 text-sm"
+								/>
+							{/each}
 							<button
 								type="button"
 								class="text-ink-faint transition hover:text-flag"

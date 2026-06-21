@@ -81,7 +81,14 @@ const content: Content = {
 				{
 					name: 'Recruitment Pulls',
 					what: '1-arm · ~20mm or flat edge',
-					spec: '3–5s MAX pull, fast force build · 5s rest · 4 reps/side · 2–3 sets',
+					spec: {
+						work: '3–5s max pull',
+						rest: '5s',
+						reps: '4/side',
+						sets: '2–3',
+						edge: '~20mm',
+						note: 'Fast, explosive force build.',
+					},
 					why: [
 						"Highest-yield finger stimulus once you're already strong — trains <b>rate of force development</b> and contact strength with very little fatigue.",
 						'Tyler Nelson: at high levels, force <b>application</b> matters more than more max force.',
@@ -90,19 +97,35 @@ const content: Content = {
 				{
 					name: 'Campus-board controlled max touches',
 					what: 'Controlled max-reach touches',
-					spec: 'Precise max touches to a fixed rung · 4–6/side · full rest · 3–4 sets',
+					spec: {
+						reps: '4–6/side',
+						sets: '3–4',
+						setRest: 'full',
+						note: 'Precise max touches to a fixed rung — quality over sloppy campusing.',
+					},
 					why: ['Same recruitment intent with a controlled catch — quality over sloppy campusing.'],
 				},
 				{
 					name: 'Lattice-block one-arm max lifts',
 					what: 'One-arm block pull · ~20mm',
-					spec: '3–5s near-max one-arm lift on a block · 4 reps/side · 5s rest · 2–3 sets',
+					spec: {
+						work: '3–5s near-max',
+						reps: '4/side',
+						rest: '5s',
+						sets: '2–3',
+						edge: '~20mm',
+						note: 'One-arm lift on a block.',
+					},
 					why: ['Device-measured pulls load precisely and let you track contact force.'],
 				},
 				{
 					name: 'Heavy first-move limit attempts',
 					what: 'Hard first moves off the ground',
-					spec: 'Repeated max attempts at a hard first move · full rest · 6–10 quality goes',
+					spec: {
+						reps: '6–10 quality goes',
+						setRest: 'full',
+						note: 'Repeated max attempts at a hard first move.',
+					},
 					why: ['Recruitment expressed on real holds — maximal pulls into one hard move.'],
 				},
 			],
@@ -114,7 +137,11 @@ const content: Content = {
 				{
 					name: 'Limit Bouldering',
 					what: 'Hardest problems · long rests',
-					spec: '4–6 hard problems · 3–5 min rest · prioritise crimp / contact moves',
+					spec: {
+						sets: '4–6 problems',
+						setRest: '3–5 min',
+						note: 'Prioritise crimp / contact moves. Quality over quantity.',
+					},
 					why: [
 						'Where strength becomes climbing. Quality over quantity — rest fully between attempts.',
 					],
@@ -122,19 +149,31 @@ const content: Content = {
 				{
 					name: 'Moonboard / Kilter limit problems',
 					what: 'Board limit problems',
-					spec: '4–6 hard board problems · 3–5 min rest · crimp-heavy benchmarks',
+					spec: {
+						sets: '4–6 problems',
+						setRest: '3–5 min',
+						note: 'Crimp-heavy board benchmarks.',
+					},
 					why: ['Standardised holds make limit power repeatable and trackable.'],
 				},
 				{
 					name: 'Hard 4×4-style power problems',
 					what: 'Power circuits near limit',
-					spec: '4 problems ×4 rounds · short rest within, long between sets',
+					spec: {
+						sets: '4 problems ×4 rounds',
+						rest: 'short within',
+						setRest: 'long between',
+						note: 'Adds a power-endurance edge near limit.',
+					},
 					why: ['Adds a power-endurance edge while staying near limit strength.'],
 				},
 				{
 					name: 'Outdoor boulder project session',
 					what: 'Rock project',
-					spec: 'Full warm-up · work a true project · generous rest between goes',
+					spec: {
+						setRest: 'generous',
+						note: 'Full warm-up · work a true project.',
+					},
 					why: ["Real rock recruits power and skill the gym can't replicate."],
 				},
 			],
@@ -146,7 +185,14 @@ const content: Content = {
 				{
 					name: 'Pinch Block — Max',
 					what: 'One thumb-pad-depth block',
-					spec: '7–10s lifts · ~90% of 7s max · 5–7 sets · 3 min between sets · 30s between arms',
+					spec: {
+						work: '7–10s',
+						sets: '5–7',
+						setRest: '3 min',
+						rest: '30s between arms',
+						intensity: '~90% 7s max',
+						note: 'Shoulders retracted, arm by side, lift with legs.',
+					},
 					why: [
 						"Shoulders retracted, arm by side, lift with legs. <b>Never</b> front-facing pinch hangs — De Quervain's risk (López).",
 						'Rotate block width across the 8 weeks; go narrower / pads-only in Phase 2.',
@@ -155,19 +201,33 @@ const content: Content = {
 				{
 					name: 'Two-hand pinch deadlift on bar',
 					what: 'Two-hand pinch off the floor',
-					spec: '5–7s near-max two-hand pinch lift · 4–5 sets · 3 min rest',
+					spec: {
+						work: '5–7s near-max',
+						sets: '4–5',
+						setRest: '3 min',
+						note: 'Two-hand pinch lift off the floor.',
+					},
 					why: ['Heavier loading with two hands — great for raw pinch strength.'],
 				},
 				{
 					name: 'Wide-pinch hangs on a 40°+ board',
 					what: 'Wide pinches on a steep board',
-					spec: 'Hold / move on wide pinches · sub-max · 4–6 efforts · full rest',
+					spec: {
+						sets: '4–6 efforts',
+						setRest: 'full',
+						intensity: 'sub-max',
+						note: 'Hold / move on wide pinches.',
+					},
 					why: ['Trains thumb opposition in a climbing-specific position.'],
 				},
 				{
 					name: 'Rockstar / Tension pinch rail max',
 					what: 'Commercial pinch rail',
-					spec: '7–10s max lifts per width · 4–5 sets · rotate widths',
+					spec: {
+						work: '7–10s max',
+						sets: '4–5',
+						note: 'Max lifts per width; rotate widths.',
+					},
 					why: ['A repeatable pinch rail makes loading and tracking easy.'],
 				},
 			],
@@ -179,7 +239,13 @@ const content: Content = {
 				{
 					name: 'Wrist / Sloper Strength',
 					what: 'Wrist-wrench / radial lifts',
-					spec: 'Hypertrophy: 20–40s to failure @ 65–75% max · 3–5 sets · 2 min rest',
+					spec: {
+						work: '20–40s to failure',
+						sets: '3–5',
+						setRest: '2 min',
+						intensity: '65–75% max',
+						note: 'Hypertrophy dose for FCR + wrist stabilisers.',
+					},
 					why: [
 						'Builds FCR + wrist stabilisers for slopers and compression demand.',
 						'Ferrer-Uris 2023: 60mm sloper ≈ half-crimp FDP activation, with <b>better</b> FCR/FDS and lower injury risk.',
@@ -188,19 +254,33 @@ const content: Content = {
 				{
 					name: 'Big-sloper density hangs (60mm)',
 					what: '60mm sloper · open hand',
-					spec: '30–45s holds · 3–4 sets · 2 arms',
+					spec: {
+						work: '30–45s',
+						sets: '3–4',
+						edge: '60mm',
+						note: '2 arms · open-hand.',
+					},
 					why: ['Loads the wrist + FCR in a sloper position with low pulley cost.'],
 				},
 				{
 					name: 'Reverse + standard wrist curls (heavy)',
 					what: 'Loaded wrist curls',
-					spec: '3–4 sets ×10–15 each direction · 2 min rest',
+					spec: {
+						sets: '3–4',
+						reps: '10–15 each way',
+						setRest: '2 min',
+						note: 'Heavy, scalable wrist hypertrophy.',
+					},
 					why: ['Direct, scalable wrist hypertrophy for elbow and wrist resilience.'],
 				},
 				{
 					name: 'Compression board / pinch-sloper system',
 					what: 'Compression holds',
-					spec: 'Sub-max holds / moves on compression features · 4–6 efforts',
+					spec: {
+						sets: '4–6 efforts',
+						intensity: 'sub-max',
+						note: 'Holds / moves on compression features.',
+					},
 					why: ['Trains wrist stability under compression demand.'],
 				},
 			],
@@ -212,7 +292,14 @@ const content: Content = {
 				{
 					name: '7/3 Repeaters',
 					what: '20mm · half-crimp + open hand',
-					spec: '~60% MVC · 7s on / 3s off ×6 = 1 set · 3–4 sets/grip · 2 grips · 3 min rest',
+					spec: {
+						work: '7s on / 3s off ×6',
+						sets: '3–4/grip',
+						setRest: '3 min',
+						edge: '20mm',
+						intensity: '~60% MVC',
+						note: '2 grips: half-crimp + open hand.',
+					},
 					why: [
 						'Builds glycolytic capacity, pump resistance, <b>critical force</b> — your likely real gap given how strong your max is.',
 						'Phase 2: drop to 2–3 sets/grip @ ~65–70% to stay snappy for weekends.',
@@ -221,19 +308,33 @@ const content: Content = {
 				{
 					name: '6:10 repeaters (longer recovery)',
 					what: '6s on / 10s off',
-					spec: '~60% MVC · 6s on / 10s off ×6 · 3–4 sets/grip · 3 min rest',
+					spec: {
+						work: '6s on / 10s off ×6',
+						sets: '3–4/grip',
+						setRest: '3 min',
+						intensity: '~60% MVC',
+						note: 'Longer rests bias aerobic capacity over glycolytic stress.',
+					},
 					why: ['Longer rests bias aerobic capacity over glycolytic stress.'],
 				},
 				{
 					name: 'Critical-force protocol (4s/4s to failure)',
 					what: '4s on / 4s off to failure',
-					spec: '4s on / 4s off until force settles to steady state · 2–3 grips · full rest',
+					spec: {
+						work: '4s on / 4s off to failure',
+						sets: '2–3 grips',
+						setRest: 'full',
+						note: 'Until force settles to steady state.',
+					},
 					why: ['Directly probes and builds your <b>critical force</b> floor.'],
 				},
 				{
 					name: 'On-the-wall lap intervals / boulder 4×4',
 					what: 'Wall laps / 4×4',
-					spec: 'Sub-limit laps or 4 problems ×4 · build a pump, stop before failure',
+					spec: {
+						sets: 'laps or 4 problems ×4',
+						note: 'Sub-limit · build a pump, stop before failure.',
+					},
 					why: ['Transfers repeater capacity to real movement.'],
 				},
 			],
@@ -245,25 +346,37 @@ const content: Content = {
 				{
 					name: 'Sport Climbing / Board Laps',
 					what: 'Sub-maximal, controlled pump',
-					spec: 'Routes or board laps · build a pump but never to failure',
+					spec: {
+						note: 'Routes or board laps · build a pump but never to failure.',
+					},
 					why: ['Translates the repeater stimulus to real movement and aerobic capacity.'],
 				},
 				{
 					name: 'Sport routes / auto-belay laps',
 					what: 'Route mileage',
-					spec: 'Continuous easy–moderate routes · 4–8 laps · rest as needed',
+					spec: {
+						sets: '4–8 laps',
+						note: 'Continuous easy–moderate routes · rest as needed.',
+					},
 					why: ['Aerobic base on real routes — keep the effort moderate.'],
 				},
 				{
 					name: 'Board climbing volume (easy angle)',
 					what: 'Easy-angle volume',
-					spec: 'Many easy board problems · steady pump · 20–30 min',
+					spec: {
+						work: '20–30 min',
+						note: 'Many easy board problems · steady pump.',
+					},
 					why: ['High-volume movement quality and capillarity.'],
 				},
 				{
 					name: 'Circuit / ARC traversing 2×15–20 min',
 					what: 'ARC traverse',
-					spec: '2×15–20 min continuous easy traversing · light pump only',
+					spec: {
+						work: '2×15–20 min',
+						intensity: 'light pump only',
+						note: 'Continuous easy traversing (<b>ARC</b>).',
+					},
 					why: ['Classic <b>ARC</b> work for endurance base and recovery.'],
 				},
 			],
@@ -275,7 +388,12 @@ const content: Content = {
 				{
 					name: 'Heavy Pull Day',
 					what: 'Weighted pull-ups + OAP work',
-					spec: 'Weighted: 4–6 sets ×3–5 reps, hard but clean (~+30–45kg) · OAP: negatives / assisted, 3–4 sets/side',
+					spec: {
+						sets: '4–6',
+						reps: '3–5',
+						load: '~+30–45kg',
+						note: 'Hard but clean · OAP negatives / assisted 3–4 sets/side.',
+					},
 					why: [
 						'On a low-finger-cost day on purpose — pulling power without grinding skin or pulleys.',
 						'Phase 2: shift toward lower reps / higher load or more OAP skill work.',
@@ -284,19 +402,29 @@ const content: Content = {
 				{
 					name: 'One-arm pull-up skill ladder',
 					what: 'OAP progressions',
-					spec: 'Assisted → negatives → singles · 4–5 sets/side · full rest',
+					spec: {
+						sets: '4–5/side',
+						setRest: 'full',
+						note: 'Assisted → negatives → singles.',
+					},
 					why: ['Builds toward the one-arm pull with high neural demand and low finger cost.'],
 				},
 				{
 					name: 'Frenchies / tempo weighted pulls',
 					what: 'Tempo + isometric holds',
-					spec: 'Frenchies (pause at 90° / full lock) · 3–4 sets · or tempo weighted pulls',
+					spec: {
+						sets: '3–4',
+						note: 'Frenchies (pause 90° / full lock) or tempo weighted pulls.',
+					},
 					why: ['Adds time-under-tension and lock-off strength.'],
 				},
 				{
 					name: 'Front-lever + weighted pull combo',
 					what: 'Front-lever + pull',
-					spec: 'Front-lever progressions + weighted pulls · 3–4 sets',
+					spec: {
+						sets: '3–4',
+						note: 'Front-lever progressions + weighted pulls.',
+					},
 					why: ['Core-driven pulling power for steep terrain.'],
 				},
 			],
@@ -308,25 +436,42 @@ const content: Content = {
 				{
 					name: 'Sloper Density Hangs',
 					what: 'Bottom edge of a sloper',
-					spec: '30–45s · 3 sets · 2 arms · open-hand position',
+					spec: {
+						work: '30–45s',
+						sets: '3',
+						note: '2 arms · open-hand position.',
+					},
 					why: ["Open-hand tissue work that doesn't tax pulleys — pairs well after the pull day."],
 				},
 				{
 					name: 'Open-hand 35mm density hangs',
 					what: '35mm · open hand',
-					spec: '30–45s near-sub-max holds · 3 sets · 2 arms',
+					spec: {
+						work: '30–45s near-sub-max',
+						sets: '3',
+						edge: '35mm',
+						note: '2 arms · open hand.',
+					},
 					why: ['Open-hand tissue load on a defined edge.'],
 				},
 				{
 					name: 'Big-rung repeaters (open hand)',
 					what: 'Big rung · open hand',
-					spec: 'Long repeaters on a big rung · low % · 3 sets',
+					spec: {
+						sets: '3',
+						intensity: 'low %',
+						note: 'Long repeaters on a big rung.',
+					},
 					why: ['Tissue volume with minimal pulley stress.'],
 				},
 				{
 					name: 'No-hang open-hand long holds',
 					what: 'No-hang block · open hand',
-					spec: '30–45s no-hang holds · 3 sets · 2 arms',
+					spec: {
+						work: '30–45s',
+						sets: '3',
+						note: '2 arms · no-hang block.',
+					},
 					why: ['Easy to load and pulley-friendly — great for tweaky days.'],
 				},
 			],
@@ -338,7 +483,13 @@ const content: Content = {
 				{
 					name: 'Max Hangs — Maintenance',
 					what: 'Short dose · ~10mm edge',
-					spec: '3 sets ×10s · leave a 2–3s margin · 3 min rest (López MAW/MED, minimal)',
+					spec: {
+						work: '10s',
+						sets: '3',
+						setRest: '3 min',
+						edge: '~10mm',
+						note: 'Leave a 2–3s margin (López <b>MAW</b>/<b>MED</b>, minimal).',
+					},
 					why: [
 						"You're <b>maintaining</b>, not chasing PRs — your max is near ceiling and extra volume here is mostly injury cost.",
 					],
@@ -346,19 +497,37 @@ const content: Content = {
 				{
 					name: 'MED — bodyweight on smaller edge',
 					what: 'Minimum edge depth · bodyweight',
-					spec: '3 sets ×10s at bodyweight on the smallest manageable edge · 3 min rest',
+					spec: {
+						work: '10s',
+						sets: '3',
+						setRest: '3 min',
+						load: 'bodyweight',
+						note: 'Smallest manageable edge (López <b>MED</b>).',
+					},
 					why: ['López <b>MED</b>: shrink the edge instead of adding weight.'],
 				},
 				{
 					name: 'MAW — 18–20mm + added weight',
 					what: 'Max added weight · 18–20mm',
-					spec: '3 sets ×10s on 18–20mm + weight · 2–3s margin · 3 min rest',
+					spec: {
+						work: '10s',
+						sets: '3',
+						setRest: '3 min',
+						edge: '18–20mm',
+						load: '+ weight',
+						note: '2–3s margin (López <b>MAW</b>).',
+					},
 					why: ['López <b>MAW</b>: add weight on a friendlier edge.'],
 				},
 				{
 					name: 'No-hang max block lifts (10s)',
 					what: 'No-hang block max',
-					spec: '3 sets ×10s near-max block lifts · 3 min rest',
+					spec: {
+						work: '10s',
+						sets: '3',
+						setRest: '3 min',
+						note: 'Near-max block lifts.',
+					},
 					why: ['Pulley-friendly max strength you can load precisely.'],
 				},
 			],
@@ -370,7 +539,13 @@ const content: Content = {
 				{
 					name: 'Density Hangs',
 					what: 'Near-failure long holds',
-					spec: '20–40s near failure @ ~70–75% MVC · 5–6 sets · 3 min rest',
+					spec: {
+						work: '20–40s near failure',
+						sets: '5–6',
+						setRest: '3 min',
+						intensity: '~70–75% MVC',
+						note: 'Half-crimp.',
+					},
 					why: [
 						'Your main connective-tissue investment. Raises muscle + MTJ stiffness while <b>reducing</b> pathological tendon stiffness — a net more injury-resistant system (Nelson).',
 					],
@@ -378,19 +553,34 @@ const content: Content = {
 				{
 					name: 'Density hangs (open hand)',
 					what: 'Open hand · long holds',
-					spec: '20–40s near failure, open hand · 5–6 sets · 3 min rest',
+					spec: {
+						work: '20–40s near failure',
+						sets: '5–6',
+						setRest: '3 min',
+						note: 'Open-hand position.',
+					},
 					why: ['Same tissue stimulus shifted to the open-hand position.'],
 				},
 				{
 					name: 'No-hang density block lifts',
 					what: 'No-hang block',
-					spec: '20–40s near-failure block holds · 5–6 sets · 3 min rest',
+					spec: {
+						work: '20–40s near failure',
+						sets: '5–6',
+						setRest: '3 min',
+						note: 'No-hang block holds.',
+					},
 					why: ['Pulley-friendly density loading.'],
 				},
 				{
 					name: 'Long-duration repeaters @ low %',
 					what: 'Low-% long repeaters',
-					spec: 'Long on/off repeaters @ ~50–60% · several sets',
+					spec: {
+						work: 'long on/off',
+						sets: 'several',
+						intensity: '~50–60%',
+						note: 'Accumulates tissue time-under-load with low peak force.',
+					},
 					why: ['Accumulates tissue time-under-load with low peak force.'],
 				},
 			],
@@ -402,7 +592,12 @@ const content: Content = {
 				{
 					name: 'Abrahangs (low-load)',
 					what: 'AM · 18–22mm · feet on floor',
-					spec: '~40% max ("light strain only") · ~10 min total · ~20×10s across grips · ≥6h from hard work',
+					spec: {
+						work: '~20 ×10s across grips',
+						edge: '18–22mm',
+						intensity: '~40% max',
+						note: '"Light strain only" · ~10 min total · ≥6h from hard work.',
+					},
 					why: [
 						'Additive to max work for tissue health (Gilmore/Baar 2024). At your strength, keep these genuinely <b>light</b> — err under 40%.',
 						'These are training, not rest — drop them <b>first</b> at any tweak.',
@@ -411,19 +606,30 @@ const content: Content = {
 				{
 					name: 'Light no-hang block holds',
 					what: 'No-hang · light',
-					spec: '~40% · 10s holds · ~20 reps across grips · feet supported',
+					spec: {
+						work: '10s',
+						reps: '~20 across grips',
+						intensity: '~40%',
+						note: 'Feet supported.',
+					},
 					why: ['A no-hang version — easy to keep genuinely light.'],
 				},
 				{
 					name: 'Low-% long repeaters',
 					what: 'Low-% repeaters',
-					spec: 'Long, very light repeaters · ~10 min · well under hard intensity',
+					spec: {
+						work: '~10 min',
+						intensity: 'well under hard',
+						note: 'Long, very light repeaters.',
+					},
 					why: ['Blood-flow / collagen stimulus without meaningful fatigue.'],
 				},
 				{
 					name: 'Skip — extra rest if fatigued',
 					what: 'Skip / rest',
-					spec: 'Drop the session and rest if you are carrying fatigue or a niggle',
+					spec: {
+						note: 'Drop the session and rest if you are carrying fatigue or a niggle.',
+					},
 					why: ['These are additive — cut them first when tired or tweaky.'],
 				},
 			],
@@ -435,25 +641,39 @@ const content: Content = {
 				{
 					name: 'Antagonists',
 					what: '~10 min · elbow + pulley insurance',
-					spec: 'Reverse wrist curls 3×15 · band finger extensions 3×20–30 · pronation/supination 3×12 · push-ups/dips',
+					spec: {
+						work: '~10 min',
+						note: 'Reverse wrist curls 3×15 · band finger extensions 3×20–30 · pronation/supination 3×12 · push-ups/dips.',
+					},
 					why: ['Essential given your flexor dominance — protects elbows and pulleys.'],
 				},
 				{
 					name: 'Rice-bucket + extensor bands',
 					what: 'Rice bucket + bands',
-					spec: '5–8 min rice-bucket + band finger extensions 3×20–30',
+					spec: {
+						work: '5–8 min',
+						reps: '3×20–30 extensions',
+						note: 'Rice-bucket + band finger extensions.',
+					},
 					why: ['Low-effort extensor and forearm endurance work.'],
 				},
 				{
 					name: 'Theraband finger extensions only',
 					what: 'Band extensions',
-					spec: 'Finger extensions 3–4×20–30 · daily-friendly',
+					spec: {
+						reps: '3–4×20–30',
+						note: 'Daily-friendly extensor balance.',
+					},
 					why: ['Minimal-dose extensor balance when short on time.'],
 				},
 				{
 					name: 'Push/pronation circuit',
 					what: 'Push + pronation',
-					spec: 'Push-ups / dips + pronation/supination 3×12 · 8–10 min',
+					spec: {
+						reps: '3×12',
+						work: '8–10 min',
+						note: 'Push-ups / dips + pronation/supination.',
+					},
 					why: ['Pushing + rotation balance for shoulders and elbows.'],
 				},
 			],
@@ -465,25 +685,33 @@ const content: Content = {
 				{
 					name: 'Outdoor / Performance',
 					what: 'Hangboard = warm-up only',
-					spec: 'Your hardest real climbing of the week · full warm-up · send mindset',
+					spec: {
+						note: 'Your hardest real climbing of the week · full warm-up · send mindset.',
+					},
 					why: ['During send windows the hangboard drops to a warm-up tool (Hörst).'],
 				},
 				{
 					name: 'Hard gym performance day',
 					what: 'Gym performance',
-					spec: 'Hardest gym climbing · full warm-up · real send attempts',
+					spec: {
+						note: 'Hardest gym climbing · full warm-up · real send attempts.',
+					},
 					why: ["A performance stimulus when rock isn't an option."],
 				},
 				{
 					name: 'Comp-style flash session',
 					what: 'Flash session',
-					spec: 'Onsight / flash a spread of problems · short prep per problem',
+					spec: {
+						note: 'Onsight / flash a spread of problems · short prep per problem.',
+					},
 					why: ['Trains reading and first-go execution.'],
 				},
 				{
 					name: 'Long multi-boulder outdoor day',
 					what: 'Volume on rock',
-					spec: 'Many boulders across the day · manage skin and energy',
+					spec: {
+						note: 'Many boulders across the day · manage skin and energy.',
+					},
 					why: ['High-quality outdoor mileage and skill.'],
 				},
 			],
@@ -495,25 +723,37 @@ const content: Content = {
 				{
 					name: 'Full Rest',
 					what: 'No finger loading',
-					spec: 'Walk · mobility · sleep · eat. Adaptation happens now, not on the wall.',
+					spec: {
+						note: 'Walk · mobility · sleep · eat. Adaptation happens now, not on the wall.',
+					},
 					why: ['Even at your level the cap is ~3 high-CNS days/week. This is non-negotiable.'],
 				},
 				{
 					name: 'Light walk + mobility only',
 					what: 'Walk + mobility',
-					spec: 'Easy walk + 10–15 min mobility · no grip load',
+					spec: {
+						work: '10–15 min mobility',
+						note: 'Easy walk · no grip load.',
+					},
 					why: ["Active recovery that doesn't tax the fingers."],
 				},
 				{
 					name: 'Easy aerobic (no grip)',
 					what: 'Easy aerobic',
-					spec: '20–40 min easy cardio · no grip · conversational pace',
+					spec: {
+						work: '20–40 min',
+						intensity: 'conversational',
+						note: 'Easy cardio · no grip.',
+					},
 					why: ['Promotes recovery and aerobic base without finger load.'],
 				},
 				{
 					name: 'Gentle Abrahangs only if itching to move',
 					what: 'Gentle Abrahangs',
-					spec: 'Very light Abrahangs only if you must — well under 40%',
+					spec: {
+						intensity: 'well under 40%',
+						note: 'Very light Abrahangs only if you must.',
+					},
 					why: ['The most you should do on a rest day, and only if fresh.'],
 				},
 			],

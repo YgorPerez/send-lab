@@ -55,13 +55,15 @@ const fmt = (v: number | null) => (v == null ? '—' : String(v));
 						{#each w.exercises as ex (ex.exId)}
 							<div class="mb-2.5">
 								<div class="mb-1 text-[13px] font-semibold text-chalk">{ex.name}</div>
-								<div class="grid grid-cols-4 gap-1 font-mono text-[11px] text-ink-faint">
+								<div class="grid grid-cols-5 gap-1 font-mono text-[11px] text-ink-faint">
 									<span>{m.field_weight()}</span>
+									<span>{m.field_edge()}</span>
 									<span>{m.field_time()}</span>
 									<span>{m.field_reps()}</span>
 									<span>{m.field_rest()}</span>
 									{#each ex.sets as s, i (i)}
 										<span class="text-ink-dim">{fmt(s.weight)}</span>
+										<span class="text-ink-dim">{fmt(s.edge)}</span>
 										<span class="text-ink-dim">{fmt(s.time)}</span>
 										<span class="text-ink-dim">{fmt(s.reps)}</span>
 										<span class="text-ink-dim">{fmt(s.rest)}</span>

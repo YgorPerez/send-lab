@@ -21,6 +21,7 @@ interface LogEntry {
 /** One logged set within a workout (all fields optional — log what applies). */
 export interface WorkoutSet {
 	weight: number | null;
+	edge: number | null;
 	time: number | null;
 	reps: number | null;
 	rest: number | null;
@@ -69,7 +70,7 @@ interface AppState {
 	taskDone: Record<string, boolean>;
 	metrics: Record<MetricId, MetricEntry[]>;
 	log: LogEntry[];
-	/** Logged workouts (full sets: weight / time / reps / rest), newest first. */
+	/** Logged workouts (full sets: weight / edge / time / reps / rest), newest first. */
 	workouts: WorkoutEntry[];
 	/** Baseline assessment, or null until onboarding is completed. */
 	assessment: Assessment | null;

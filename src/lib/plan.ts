@@ -1,7 +1,7 @@
 // Resolution helpers for the per-week training plan: which protocol a calendar
 // slot runs, and which swap applies to each exercise on that specific day.
 // Read inside a reactive context (e.g. $derived) so they track appState.
-import type { Content, Day } from './content/types';
+import type { Content, Day, Prescription } from './content/types';
 import { appState } from './state.svelte';
 
 export function slotKey(week: number, weekday: string): string {
@@ -75,7 +75,7 @@ export function resolveSwapIndex(week: number, weekday: string, exId: string): n
 interface VariantLike {
 	name: string;
 	what: string;
-	spec: string;
+	spec: Prescription;
 	why: string[];
 }
 

@@ -22,11 +22,35 @@ export interface Day {
 	ex: string[];
 }
 
+/** Structured prescription for a variant — only the fields that apply are set.
+ *  Values are short display strings so they can carry ranges and units
+ *  ("3–5s", "2–3", "~20mm", "~60% MVC"). */
+export interface Prescription {
+	/** Working sets (e.g. "3", "2–3", "4–6 problems"). */
+	sets?: string;
+	/** Reps per set (e.g. "4/side", "10–15"). */
+	reps?: string;
+	/** Work / hold time per rep (e.g. "10s", "7s on / 3s off ×6"). */
+	work?: string;
+	/** Rest between reps within a set (e.g. "5s"). */
+	rest?: string;
+	/** Rest between sets (e.g. "3 min", "full"). */
+	setRest?: string;
+	/** Added load when applicable (e.g. "+30–45kg", "bodyweight"). */
+	load?: string;
+	/** Edge depth when applicable (mm). */
+	edge?: string;
+	/** Relative intensity when applicable (e.g. "~60% MVC", "~90% 7s max"). */
+	intensity?: string;
+	/** Free-text cue that doesn't fit a numeric field. */
+	note?: string;
+}
+
 /** A full exercise variant — each swap is one of these. */
 interface Variant {
 	name: string;
 	what: string;
-	spec: string;
+	spec: Prescription;
 	/** Rationale paragraphs (may contain inline <b> emphasis). */
 	why: string[];
 }
