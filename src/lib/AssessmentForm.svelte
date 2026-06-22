@@ -19,7 +19,7 @@ import {
 	saveAssessment,
 	today,
 } from '$lib/state.svelte';
-import { metricUnit, showKg, toKg, toMetricCanonical } from '$lib/units';
+import { metricUnit, showKg, showMetric, toKg, toMetricCanonical } from '$lib/units';
 import { cn } from '$lib/utils';
 
 let { onComplete }: { onComplete: () => void } = $props();
@@ -43,8 +43,15 @@ let goal = $state<Goal>((d?.goal as Goal) ?? a?.goal ?? 'boulder');
 let focus = $state<Focus>((d?.focus as Focus) ?? a?.focus ?? 'fingers');
 let level = $state<Level>((d?.level as Level) ?? a?.level ?? 'advanced');
 let days = $state<number>((d?.days as number) ?? a?.daysPerWeek ?? 4);
+// Sensible starting weights for a brand-new assessment (skipped on a redo, where
+// real markers already exist). Stored canonically; shown in the chosen unit.
+const FRESH_LOAD: Record<Level, { maxhang: number; pull: number; pinch: number }> = {
+	intermediate: { maxhang: 15, pull: 15, pinch: 10 },
+	advanced: { maxhang: 30, pull: 30, pinch: 18 },
+	elite: { maxhang: 45, pull: 45, pinch: 28 },
+};
 let bodyweight = $state<number | null>(
-	(d?.bodyweight as number | null) ?? (a?.bodyweight != null ? showKg(a.bodyweight) : null),
+	(d?.bodyweight as number | null) ?? showKg(a?.bodyweight ?? (a ? null : 70)),
 );
 let equipment = $state<Equipment[]>(
 	(d?.equipment as Equipment[]) ?? a?.equipment ?? ['hangboard', 'board', 'rings', 'weights'],
@@ -58,8 +65,17 @@ let sessionMinutes = $state<number | null>(
 );
 const BASELINES = ['pull', 'pinch', 'maxhang', 'contact', 'cf', 'rfd', 'density'];
 // Baseline test values keyed by marker id (display units; converted on submit).
+function freshBaseline(): Record<string, number | null> {
+	if (a) return {}; // redo: leave blank — real markers already live in Metrics
+	const L = FRESH_LOAD[level];
+	return {
+		maxhang: showMetric('maxhang', L.maxhang),
+		pull: showMetric('pull', L.pull),
+		pinch: showMetric('pinch', L.pinch),
+	};
+}
 let baseline = $state<Record<string, number | null>>(
-	(d?.baseline as Record<string, number | null>) ?? {},
+	(d?.baseline as Record<string, number | null>) ?? freshBaseline(),
 );
 
 let step = $state<1 | 2 | 3>((d?.step as 1 | 2 | 3) ?? 1);
