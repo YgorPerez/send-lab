@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/component
 import { getContent } from '$lib/content';
 import Periodization from '$lib/Periodization.svelte';
 import ProgramExerciseRow from '$lib/ProgramExerciseRow.svelte';
+import ProgramSummary from '$lib/ProgramSummary.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -44,6 +45,7 @@ const content = getContent();
 			/>
 		</Card>
 		<Periodization />
+		<ProgramSummary />
 	</div>
 
 	<div class="grid gap-3 md:grid-cols-2">
