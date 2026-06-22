@@ -1,5 +1,5 @@
 <script lang="ts">
-import { Tooltip, TooltipContent, TooltipTrigger } from '$lib/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
 import { getContent } from '$lib/content';
 import { cn } from '$lib/utils';
 
@@ -59,23 +59,22 @@ const tokens = $derived.by<Token[]>(() => {
 
 {#each tokens as tok, i (i)}
 	{#if tok.term}
-		<Tooltip>
-			<TooltipTrigger>
+		<Popover>
+			<PopoverTrigger>
 				{#snippet child({ props })}
-					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-					<!-- Tooltip trigger: bits-ui wires aria-describedby + handlers via {...props};
-					     tabindex makes the inline term keyboard-focusable to reveal its definition. -->
-					<span
+					<!-- Popover (not tooltip) so the definition opens on tap, not just hover —
+					     bits-ui wires the click/aria via {...props}. -->
+					<button
 						{...props}
-						tabindex="0"
+						type="button"
 						class={cn(
-							'cursor-help text-teal underline decoration-teal/50 decoration-dotted underline-offset-2 transition-colors hover:text-teal/80 hover:decoration-teal focus-visible:outline-none focus-visible:text-teal/80',
+							'cursor-help text-teal underline decoration-teal/50 decoration-dotted underline-offset-2 transition-colors hover:text-teal/80 hover:decoration-teal focus-visible:text-teal/80 focus-visible:outline-none',
 							tok.bold && 'font-semibold'
-						)}>{tok.text}</span
+						)}>{tok.text}</button
 					>
 				{/snippet}
-			</TooltipTrigger>
-			<TooltipContent class="max-w-xs text-pretty">{glossary[tok.text]}</TooltipContent>
-		</Tooltip>
+			</PopoverTrigger>
+			<PopoverContent class="max-w-xs text-sm text-pretty">{glossary[tok.text]}</PopoverContent>
+		</Popover>
 	{:else if tok.bold}<b>{tok.text}</b>{:else}{tok.text}{/if}
 {/each}

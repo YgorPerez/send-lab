@@ -4,10 +4,10 @@ import Settings2Icon from '@lucide/svelte/icons/settings-2';
 import XIcon from '@lucide/svelte/icons/x';
 import { toast } from 'svelte-sonner';
 import { Card } from '$lib/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '$lib/components/ui/popover';
 import { Progress } from '$lib/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { type Day, getContent, phaseId } from '$lib/content';
+import Modal from '$lib/Modal.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -30,6 +30,8 @@ import { cn } from '$lib/utils';
 import VariantPicker from '$lib/VariantPicker.svelte';
 
 const content = getContent();
+// Which day's customize dialog is open (slot key), or null.
+let editing = $state<string | null>(null);
 
 // The week you're *viewing* is independent of the week you're actually *in*
 // (appState.currentWeek). It defaults to the current week and follows it until
@@ -165,14 +167,20 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 					>
 						{slot.label}{#if isToday} · {m.td_today_label()}{/if}
 					</span>
-					<Popover>
-						<PopoverTrigger
-							class="text-ink-faint transition hover:text-ink"
-							aria-label={m.wk_customize()}
+					<button
+						type="button"
+						class="text-ink-faint transition hover:text-ink"
+						aria-label={m.wk_customize()}
+						onclick={() => (editing = slot.k)}
+					>
+						<Settings2Icon class="size-3.5" />
+					</button>
+					{#if editing === slot.k}
+						<Modal
+							open
+							title={`${slot.label} · ${m.wk_customize()}`}
+							onClose={() => (editing = null)}
 						>
-							<Settings2Icon class="size-3.5" />
-						</PopoverTrigger>
-						<PopoverContent class="w-72 border-line bg-panel">
 							<div class="mb-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 								{m.wk_protocol()}
 							</div>
@@ -246,8 +254,8 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 		{m.wk_reset_day()}
 	</button>
 {/if}
-</PopoverContent>
-					</Popover>
+</Modal>
+					{/if}
 				</div>
 
 				<div

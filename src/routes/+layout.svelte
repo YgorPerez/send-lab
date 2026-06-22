@@ -9,7 +9,6 @@ import { page } from '$app/state';
 import { authClient } from '$lib/auth-client';
 import { Button } from '$lib/components/ui/button';
 import { Toaster } from '$lib/components/ui/sonner';
-import { TooltipProvider } from '$lib/components/ui/tooltip';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
@@ -133,7 +132,7 @@ const views = $derived([
 {:else if page.url.pathname === '/welcome'}
 	{@render children()}
 {:else}
-	<TooltipProvider delayDuration={150}>
+	<div style="display: contents">
 		<header
 			class="sticky top-0 z-50 border-b border-line bg-bg/80 px-5 pt-[22px] pb-[18px] backdrop-blur-lg"
 		>
@@ -201,7 +200,7 @@ const views = $derived([
 		{#if showTimerBar}
 			<TimerBar />
 		{/if}
-	</TooltipProvider>
+	</div>
 {/if}
 
 <Toaster theme="dark" />
