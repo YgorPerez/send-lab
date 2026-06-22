@@ -570,7 +570,7 @@ const content: LocaleContent = {
 			abbr: 'PINÇA',
 			cat: '--gold',
 			unit: 'kg / 7s',
-			desc: 'Melhor levantada de 7 segundos num pinch block de ~20mm, com peso. Teste cada braço.',
+			desc: 'Melhor levantada de 7 segundos num pinch block de ~80mm, com peso. Teste cada braço.',
 		},
 		{
 			id: 'pull',
