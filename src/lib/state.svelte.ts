@@ -53,6 +53,7 @@ export interface WorkoutEntry {
 export type Goal = 'boulder' | 'sport' | 'all';
 export type Focus = 'fingers' | 'power' | 'endurance' | 'tissue';
 export type Level = 'intermediate' | 'advanced' | 'elite';
+export type Equipment = 'hangboard' | 'board' | 'rings' | 'weights';
 
 /** Baseline assessment captured at onboarding (goals + context). */
 export interface Assessment {
@@ -61,6 +62,16 @@ export interface Assessment {
 	level: Level;
 	daysPerWeek: number;
 	bodyweight: number | null;
+	/** Gear on hand — filters which exercises the generated program can use. */
+	equipment: Equipment[];
+	/** Hardest grades, free text (e.g. "V8", "7c"); informational + calibration. */
+	boulderGrade: string | null;
+	routeGrade: string | null;
+	/** A current finger/tendon niggle → the program caps finger intensity. */
+	niggle: boolean;
+	age: number | null;
+	/** Typical session length (min) → caps exercises per day. */
+	sessionMinutes: number | null;
 	completedAt: string;
 }
 

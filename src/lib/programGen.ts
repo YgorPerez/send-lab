@@ -6,6 +6,7 @@ import type { Content, MetricId } from './content/types';
 import * as m from './paraglide/messages';
 import type {
 	Assessment,
+	Equipment,
 	Focus,
 	Goal,
 	Level,
@@ -33,6 +34,29 @@ const FOCUS_DAY: Record<Focus, string> = {
 
 // Experience scales phase intensity (volume held; deload always halves).
 const LEVEL_SCALE: Record<Level, number> = { intermediate: 0.9, advanced: 1, elite: 1.1 };
+
+// Gear an exercise needs; if it's not available, the exercise is dropped.
+const REQUIRES: Record<string, Equipment> = {
+	maxhang: 'hangboard',
+	density: 'hangboard',
+	repeaters: 'hangboard',
+	slopdens: 'hangboard',
+	abra: 'hangboard',
+	recruit: 'board',
+	limitboulder: 'board',
+	perform: 'board',
+	sport: 'board',
+	pull: 'weights',
+	pinch: 'weights',
+};
+
+/** Max exercises per day implied by a typical session length. */
+function sessionCap(min: number | null): number {
+	if (min == null) return Number.POSITIVE_INFINITY;
+	if (min <= 45) return 2;
+	if (min <= 75) return 3;
+	return Number.POSITIVE_INFINITY;
+}
 
 // Baseline test (kg) → working load as a fraction of the tested max, per exercise.
 const LOAD_FROM_BASELINE: Record<string, { metric: MetricId; factor: number }> = {
@@ -80,6 +104,8 @@ export function generateProgram(
 ): Program {
 	const restKey = content.days.find((d) => d.load === 'OFF')?.k ?? 'Sun';
 	const keep = new Set(trainingDays(content, a));
+	const have = new Set(a.equipment);
+	const cap = sessionCap(a.sessionMinutes);
 
 	const template: Record<string, ProgramDayCfg> = {};
 	const targets: Record<string, ProgramTarget> = {};
@@ -90,8 +116,15 @@ export function generateProgram(
 			template[d.k] = { dayKey: restKey }; // rest out the days beyond days/week
 			continue;
 		}
-		// Seed working loads from baselines for this day's exercises.
-		for (const exId of d.ex) {
+		// Keep only the exercises this gear supports, trimmed to the session length.
+		const ex = d.ex.filter((id) => !REQUIRES[id] || have.has(REQUIRES[id])).slice(0, cap);
+		if (ex.length === 0) {
+			template[d.k] = { dayKey: restKey }; // nothing trainable here → rest it
+			continue;
+		}
+		if (ex.length !== d.ex.length) template[d.k] = { dayKey: d.k, ex };
+		// Seed working loads from baselines for the kept exercises.
+		for (const exId of ex) {
 			const map = LOAD_FROM_BASELINE[exId];
 			const v = map ? baselines[map.metric] : null;
 			if (map && v != null) targets[`${d.k}:${exId}`] = { loadKg: Math.round(v * map.factor) };

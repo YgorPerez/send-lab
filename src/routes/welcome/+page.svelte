@@ -11,12 +11,14 @@ import { generateProgram, trainingDays } from '$lib/programGen';
 import {
 	type Assessment,
 	appState,
+	type Equipment,
 	type Focus,
 	type Goal,
 	type Level,
 	saveAssessment,
 	today,
 } from '$lib/state.svelte';
+import { cn } from '$lib/utils';
 
 const content = getContent();
 const a = appState.assessment;
@@ -26,9 +28,30 @@ let focus = $state<Focus>(a?.focus ?? 'fingers');
 let level = $state<Level>(a?.level ?? 'advanced');
 let days = $state(a?.daysPerWeek ?? 4);
 let bodyweight = $state<number | null>(a?.bodyweight ?? null);
+let equipment = $state<Equipment[]>(a?.equipment ?? ['hangboard', 'board', 'rings', 'weights']);
+let boulderGrade = $state(a?.boulderGrade ?? '');
+let routeGrade = $state(a?.routeGrade ?? '');
+let niggle = $state(a?.niggle ?? false);
+let age = $state<number | null>(a?.age ?? null);
+let sessionMinutes = $state<number | null>(a?.sessionMinutes ?? null);
 let pull = $state<number | null>(null);
 let pinch = $state<number | null>(null);
 let maxhang = $state<number | null>(null);
+let contact = $state<number | null>(null);
+let cf = $state<number | null>(null);
+let rfd = $state<number | null>(null);
+let density = $state<number | null>(null);
+
+const EQUIPMENT: Equipment[] = ['hangboard', 'board', 'rings', 'weights'];
+const equipLabel: Record<Equipment, () => string> = {
+	hangboard: m.equip_hangboard,
+	board: m.equip_board,
+	rings: m.equip_rings,
+	weights: m.equip_weights,
+};
+function toggleEquip(e: Equipment) {
+	equipment = equipment.includes(e) ? equipment.filter((x) => x !== e) : [...equipment, e];
+}
 
 let step = $state<'form' | 'proposal'>('form');
 
@@ -76,11 +99,18 @@ function generate() {
 		level,
 		daysPerWeek: days,
 		bodyweight,
+		equipment,
+		boulderGrade: boulderGrade.trim() || null,
+		routeGrade: routeGrade.trim() || null,
+		niggle,
+		age,
+		sessionMinutes,
 		completedAt: today(),
 	};
-	saveAssessment(assessment, { pull, pinch, maxhang });
+	const baselines = { pull, pinch, maxhang, contact, cf, rfd, density };
+	saveAssessment(assessment, baselines);
 	// Tailor the actual program to the answers (not just the proposal text).
-	appState.program = generateProgram(content, assessment, { pull, pinch, maxhang });
+	appState.program = generateProgram(content, assessment, baselines);
 	step = 'proposal';
 }
 </script>
@@ -143,6 +173,55 @@ function generate() {
 					</label>
 				</div>
 
+				<div>
+					<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+						{m.field_equipment()}
+					</div>
+					<div class="flex flex-wrap gap-1.5">
+						{#each EQUIPMENT as eq (eq)}
+							<button
+								type="button"
+								onclick={() => toggleEquip(eq)}
+								aria-pressed={equipment.includes(eq)}
+								class={cn(
+									'rounded-md border px-2.5 py-1 text-xs transition',
+									equipment.includes(eq)
+										? 'border-flag bg-flag/15 text-flag'
+										: 'border-line text-ink-faint hover:text-ink'
+								)}
+							>
+								{equipLabel[eq]()}
+							</button>
+						{/each}
+					</div>
+				</div>
+
+				<div class="mt-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+					{m.welcome_context_label()}
+				</div>
+				<div class="grid grid-cols-2 gap-3">
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{m.field_boulder_grade()}
+						<Input bind:value={boulderGrade} placeholder="V8" class="bg-panel-2" />
+					</label>
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{m.field_route_grade()}
+						<Input bind:value={routeGrade} placeholder="7c" class="bg-panel-2" />
+					</label>
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{m.field_age()}
+						<Input type="number" min="0" bind:value={age} class="bg-panel-2" />
+					</label>
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{m.field_session()}
+						<Input type="number" min="0" bind:value={sessionMinutes} class="bg-panel-2" />
+					</label>
+				</div>
+				<label class="flex items-center gap-2 text-xs text-ink-dim">
+					<input type="checkbox" bind:checked={niggle} class="size-4 accent-flag" />
+					{m.field_niggle()}
+				</label>
+
 				<div class="mt-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 					{m.welcome_metrics_label()}
 				</div>
@@ -162,6 +241,22 @@ function generate() {
 					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
 						{metric('maxhang')?.name} ({metric('maxhang')?.unit})
 						<Input type="number" step="any" bind:value={maxhang} class="bg-panel-2" />
+					</label>
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{metric('contact')?.name} ({metric('contact')?.unit})
+						<Input type="number" step="any" bind:value={contact} class="bg-panel-2" />
+					</label>
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{metric('cf')?.name} ({metric('cf')?.unit})
+						<Input type="number" step="any" bind:value={cf} class="bg-panel-2" />
+					</label>
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{metric('rfd')?.name} ({metric('rfd')?.unit})
+						<Input type="number" step="any" bind:value={rfd} class="bg-panel-2" />
+					</label>
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{metric('density')?.name} ({metric('density')?.unit})
+						<Input type="number" step="any" bind:value={density} class="bg-panel-2" />
 					</label>
 				</div>
 
