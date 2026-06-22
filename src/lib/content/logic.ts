@@ -2,9 +2,10 @@ import type { PhaseId, VerdictId } from './types';
 
 export type Answers = Record<string, number>;
 
-/** Day-recommender scoring — locale-independent; returns the verdict id. */
-export function computeVerdictId(answers: Answers): VerdictId {
-	const score = Object.values(answers).reduce((a, b) => a + b, 0);
+/** Day-recommender scoring — locale-independent; returns the verdict id.
+ *  `fatigue` is an objective adjustment from recent logged effort (≤ 0 = tired). */
+export function computeVerdictId(answers: Answers, fatigue = 0): VerdictId {
+	const score = Object.values(answers).reduce((a, b) => a + b, 0) + fatigue;
 	const sharp = answers.fingers <= -5;
 	const tender = answers.fingers === -2;
 

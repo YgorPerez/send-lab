@@ -10,7 +10,7 @@ function todayEntry(day: string) {
 function ensureEntry(day: string) {
 	let e = todayEntry(day);
 	if (!e) {
-		e = { date: today(), day, exercises: [], note: '' };
+		e = { date: today(), at: new Date().toISOString().slice(0, 10), day, exercises: [], note: '' };
 		appState.workouts.unshift(e);
 	}
 	return e;

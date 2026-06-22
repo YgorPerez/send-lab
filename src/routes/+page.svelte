@@ -10,7 +10,8 @@ import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import { resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
-import { appState, today } from '$lib/state.svelte';
+import { appState, round, today } from '$lib/state.svelte';
+import { recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
 import { cn } from '$lib/utils';
 
 const content = getContent();
@@ -42,7 +43,14 @@ const isRestDay = $derived(tasks.length === 0);
 
 let answers = $state<Answers>({});
 const complete = $derived(Object.keys(answers).length === content.quiz.length);
-const verdict = $derived(complete ? content.verdicts[computeVerdictId(answers)] : null);
+// Objective fatigue from recent logged effort nudges the recommendation.
+const recent = $derived(recentRpe(appState.workouts));
+const fatigue = $derived(recent == null ? 0 : recent >= 8.5 ? -2 : recent >= 7.5 ? -1 : 0);
+const verdict = $derived(complete ? content.verdicts[computeVerdictId(answers, fatigue)] : null);
+
+const streak = $derived(trainStreak(appState.workouts));
+const last7 = $derived(sessionsLast7(appState.workouts));
+const totalSessions = $derived(appState.workouts.length);
 
 function pick(qid: string, value: number) {
 	answers = { ...answers, [qid]: value };
@@ -112,6 +120,35 @@ function logVerdict() {
 			</div>
 		{/if}
 	</Card>
+
+	<div class="mb-[22px] grid grid-cols-3 gap-3">
+		<Card class="items-center gap-0 p-3.5 text-center">
+			<span class="font-mono text-[26px] leading-none font-bold text-flag">{streak}</span>
+			<span class="mt-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+				{m.stat_streak()}
+			</span>
+		</Card>
+		<Card class="items-center gap-0 p-3.5 text-center">
+			<span class="font-mono text-[26px] leading-none font-bold text-chalk">{last7}<span
+					class="text-sm text-ink-faint">/7</span
+				></span>
+			<span class="mt-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+				{m.stat_week_sessions()}
+			</span>
+		</Card>
+		<Card class="items-center gap-0 p-3.5 text-center">
+			<span class="font-mono text-[26px] leading-none font-bold text-chalk">{totalSessions}</span>
+			<span class="mt-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+				{m.stat_total()}
+			</span>
+		</Card>
+	</div>
+
+	{#if recent != null}
+		<p class="mb-[22px] font-mono text-[11px] text-ink-faint">
+			{m.td_fatigue({ rpe: round(recent) })}
+		</p>
+	{/if}
 
 	<Card class="mb-[22px] gap-0 p-6">
 		<CardContent class="space-y-[22px] p-0">

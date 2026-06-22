@@ -108,6 +108,44 @@ export function sessionStats(workouts: WorkoutEntry[]): SessionStat[] {
 	});
 }
 
+/** Average RPE across the most recent sessions (null if none logged). */
+export function recentRpe(workouts: WorkoutEntry[], sessions = 2): number | null {
+	const rpes: number[] = [];
+	for (const w of workouts.slice(0, sessions))
+		for (const ex of w.exercises) for (const s of ex.sets) if (s.rpe != null) rpes.push(s.rpe);
+	return rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
+}
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const loggedDays = (workouts: WorkoutEntry[]) =>
+	new Set(workouts.map((w) => w.at).filter((a): a is string => !!a));
+
+/** Consecutive calendar days with a logged workout, ending today (or yesterday). */
+export function trainStreak(workouts: WorkoutEntry[]): number {
+	const days = loggedDays(workouts);
+	if (days.size === 0) return 0;
+	const cur = new Date();
+	if (!days.has(isoDay(cur))) cur.setDate(cur.getDate() - 1); // grace: today not done yet
+	let streak = 0;
+	while (days.has(isoDay(cur))) {
+		streak += 1;
+		cur.setDate(cur.getDate() - 1);
+	}
+	return streak;
+}
+
+/** Distinct days trained in the last 7 calendar days. */
+export function sessionsLast7(workouts: WorkoutEntry[]): number {
+	const days = loggedDays(workouts);
+	const cur = new Date();
+	let n = 0;
+	for (let i = 0; i < 7; i++) {
+		if (days.has(isoDay(cur))) n += 1;
+		cur.setDate(cur.getDate() - 1);
+	}
+	return n;
+}
+
 /** Counts of logged RPE values, bucketed 1–10. */
 export function rpeHistogram(workouts: WorkoutEntry[]): Point[] {
 	const counts = new Array(11).fill(0) as number[];
