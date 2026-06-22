@@ -558,7 +558,7 @@ const content: LocaleContent = {
 			abbr: 'PINCH',
 			cat: '--gold',
 			unit: 'kg / 7s',
-			desc: 'Best 7-second pinch-block lift. Test each arm.',
+			desc: 'Best 7-second lift on a ~20mm pinch block, added weight. Test each arm.',
 		},
 		{
 			id: 'pull',

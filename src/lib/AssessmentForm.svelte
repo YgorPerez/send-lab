@@ -116,6 +116,11 @@ const levelLabel: Record<Level, () => string> = {
 	advanced: m.level_advanced,
 	elite: m.level_elite,
 };
+const levelDesc: Record<Level, () => string> = {
+	intermediate: m.level_desc_intermediate,
+	advanced: m.level_desc_advanced,
+	elite: m.level_desc_elite,
+};
 const goalOpts = $derived(
 	(['boulder', 'sport', 'all'] as Goal[]).map((g) => ({ value: g, label: goalLabel[g]() })),
 );
@@ -129,6 +134,7 @@ const levelOpts = $derived(
 	(['intermediate', 'advanced', 'elite'] as Level[]).map((l) => ({
 		value: l,
 		label: levelLabel[l](),
+		description: levelDesc[l](),
 	})),
 );
 
@@ -213,6 +219,7 @@ function back() {
 <Card>
 	<CardContent class="flex flex-col gap-4">
 		{#if step === 1}
+			<p class="text-xs text-ink-faint">{m.welcome_goals_help()}</p>
 			<div class="flex flex-col gap-1.5">
 				<span class="text-xs text-ink-dim">{m.field_goal()}</span>
 				<OptionCards value={goal} options={goalOpts} onSelect={(v) => (goal = v)} />
@@ -230,6 +237,7 @@ function back() {
 				<Input type="number" min="1" max="7" bind:value={days} class="bg-panel-2" />
 			</label>
 		{:else if step === 2}
+			<p class="text-xs text-ink-faint">{m.welcome_context_help()}</p>
 			<div class="flex flex-col gap-1.5">
 				<span class="text-xs text-ink-dim">{m.field_equipment()}</span>
 				<div class="flex flex-wrap gap-1.5">
@@ -283,18 +291,17 @@ function back() {
 				{m.field_niggle()}
 			</label>
 		{:else}
-			<div class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-				{m.welcome_metrics_label()}
-			</div>
+			<p class="text-xs text-ink-faint">{m.welcome_baseline_help()}</p>
 			<div class="grid grid-cols-2 gap-3">
-				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+				<label class="flex flex-col gap-1 text-xs text-ink-dim">
 					{m.field_bodyweight()} ({appState.prefs.weight})
 					<Input type="number" step="any" bind:value={bodyweight} class="bg-panel-2" />
 				</label>
 				{#each BASELINES as id (id)}
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+					<label class="flex flex-col gap-1 text-xs text-ink-dim">
 						{metricLabel(id)}
 						<Input type="number" step="any" bind:value={baseline[id]} class="bg-panel-2" />
+						<span class="text-[10px] leading-snug text-ink-faint">{metric(id)?.desc}</span>
 					</label>
 				{/each}
 			</div>
