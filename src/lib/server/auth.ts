@@ -6,9 +6,12 @@ import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
 
+// Tolerate a trailing slash in the configured URL — better-auth wants the bare origin.
+const baseURL = env.BETTER_AUTH_URL?.replace(/\/+$/, '');
+
 export const auth = betterAuth({
 	secret: env.BETTER_AUTH_SECRET,
-	baseURL: env.BETTER_AUTH_URL,
+	baseURL,
 	database: drizzleAdapter(db, { provider: 'sqlite', schema }),
 	emailAndPassword: { enabled: true },
 	// Account deletion is self-service: the client re-confirms with the password,
