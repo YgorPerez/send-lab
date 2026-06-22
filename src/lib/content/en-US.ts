@@ -573,8 +573,8 @@ const content: LocaleContent = {
 			name: 'Max Hang',
 			abbr: 'MAXHANG',
 			cat: '--violet',
-			unit: 'kg @ 10mm',
-			desc: 'Maintenance benchmark — added weight, 10s, 10mm.',
+			unit: 'kg @ 20mm',
+			desc: 'Standard benchmark — max added weight, 10s, 20mm edge.',
 		},
 		{
 			id: 'density',
@@ -618,12 +618,22 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'skin',
-			q: 'Skin & CNS / drive?',
+			q: 'How is your skin?',
 			a: [
-				{ t: 'Skin good, feeling sharp', v: 2 },
-				{ t: 'Okay', v: 1 },
-				{ t: 'Thin skin / low drive', v: -1 },
-				{ t: 'Both shot', v: -2 },
+				{ t: 'Solid — no splits', v: 1 },
+				{ t: 'Okay', v: 0 },
+				{ t: 'Thin / worn', v: -1 },
+				{ t: 'Split or raw', v: -2 },
+			],
+		},
+		{
+			id: 'cns',
+			q: 'Energy & drive?',
+			a: [
+				{ t: 'Sharp & motivated', v: 1 },
+				{ t: 'Normal', v: 0 },
+				{ t: 'Flat', v: -1 },
+				{ t: 'Drained', v: -2 },
 			],
 		},
 	],

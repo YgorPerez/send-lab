@@ -1,0 +1,317 @@
+<script lang="ts">
+import { browser } from '$app/environment';
+import { Button } from '$lib/components/ui/button';
+import { Card, CardContent } from '$lib/components/ui/card';
+import { Input } from '$lib/components/ui/input';
+import { getContent } from '$lib/content';
+import OptionCards from '$lib/OptionCards.svelte';
+import * as m from '$lib/paraglide/messages';
+import { generateProgram } from '$lib/programGen';
+import {
+	type Assessment,
+	appState,
+	type Equipment,
+	type Focus,
+	type Goal,
+	type Level,
+	saveAssessment,
+	today,
+} from '$lib/state.svelte';
+import { metricUnit, showKg, toKg, toMetricCanonical } from '$lib/units';
+import { cn } from '$lib/utils';
+
+let { onComplete }: { onComplete: () => void } = $props();
+
+const content = getContent();
+const a = appState.assessment;
+
+// Persist the in-progress wizard so a refresh mid-assessment doesn't lose it.
+const DRAFT_KEY = 'sendlab:assessmentDraft';
+function loadDraft(): Record<string, unknown> | null {
+	if (!browser) return null;
+	try {
+		return JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null');
+	} catch {
+		return null;
+	}
+}
+const d = loadDraft();
+
+let goal = $state<Goal>((d?.goal as Goal) ?? a?.goal ?? 'boulder');
+let focus = $state<Focus>((d?.focus as Focus) ?? a?.focus ?? 'fingers');
+let level = $state<Level>((d?.level as Level) ?? a?.level ?? 'advanced');
+let days = $state<number>((d?.days as number) ?? a?.daysPerWeek ?? 4);
+let bodyweight = $state<number | null>(
+	(d?.bodyweight as number | null) ?? (a?.bodyweight != null ? showKg(a.bodyweight) : null),
+);
+let equipment = $state<Equipment[]>(
+	(d?.equipment as Equipment[]) ?? a?.equipment ?? ['hangboard', 'board', 'rings', 'weights'],
+);
+let boulderGrade = $state<string>((d?.boulderGrade as string) ?? a?.boulderGrade ?? '');
+let routeGrade = $state<string>((d?.routeGrade as string) ?? a?.routeGrade ?? '');
+let niggle = $state<boolean>((d?.niggle as boolean) ?? a?.niggle ?? false);
+let age = $state<number | null>((d?.age as number | null) ?? a?.age ?? null);
+let sessionMinutes = $state<number | null>(
+	(d?.sessionMinutes as number | null) ?? a?.sessionMinutes ?? null,
+);
+let pull = $state<number | null>((d?.pull as number | null) ?? null);
+let pinch = $state<number | null>((d?.pinch as number | null) ?? null);
+let maxhang = $state<number | null>((d?.maxhang as number | null) ?? null);
+let contact = $state<number | null>((d?.contact as number | null) ?? null);
+let cf = $state<number | null>((d?.cf as number | null) ?? null);
+let rfd = $state<number | null>((d?.rfd as number | null) ?? null);
+let density = $state<number | null>((d?.density as number | null) ?? null);
+
+let step = $state<1 | 2 | 3>((d?.step as 1 | 2 | 3) ?? 1);
+
+$effect(() => {
+	if (!browser) return;
+	const snapshot = {
+		goal,
+		focus,
+		level,
+		days,
+		bodyweight,
+		equipment,
+		boulderGrade,
+		routeGrade,
+		niggle,
+		age,
+		sessionMinutes,
+		pull,
+		pinch,
+		maxhang,
+		contact,
+		cf,
+		rfd,
+		density,
+		step,
+	};
+	localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshot));
+});
+
+const goalLabel: Record<Goal, () => string> = {
+	boulder: m.goal_boulder,
+	sport: m.goal_sport,
+	all: m.goal_all,
+};
+const focusLabel: Record<Focus, () => string> = {
+	fingers: m.focus_fingers,
+	power: m.focus_power,
+	endurance: m.focus_endurance,
+	tissue: m.focus_tissue,
+};
+const levelLabel: Record<Level, () => string> = {
+	intermediate: m.level_intermediate,
+	advanced: m.level_advanced,
+	elite: m.level_elite,
+};
+const goalOpts = $derived(
+	(['boulder', 'sport', 'all'] as Goal[]).map((g) => ({ value: g, label: goalLabel[g]() })),
+);
+const focusOpts = $derived(
+	(['fingers', 'power', 'endurance', 'tissue'] as Focus[]).map((f) => ({
+		value: f,
+		label: focusLabel[f](),
+	})),
+);
+const levelOpts = $derived(
+	(['intermediate', 'advanced', 'elite'] as Level[]).map((l) => ({
+		value: l,
+		label: levelLabel[l](),
+	})),
+);
+
+const EQUIPMENT: Equipment[] = ['hangboard', 'board', 'rings', 'weights'];
+const equipLabel: Record<Equipment, () => string> = {
+	hangboard: m.equip_hangboard,
+	board: m.equip_board,
+	rings: m.equip_rings,
+	weights: m.equip_weights,
+};
+function toggleEquip(e: Equipment) {
+	equipment = equipment.includes(e) ? equipment.filter((x) => x !== e) : [...equipment, e];
+}
+
+const metric = (id: string) => content.metrics.find((mm) => mm.id === id);
+const metricLabel = (id: string) =>
+	`${metric(id)?.name ?? id} (${metricUnit(id, metric(id)?.unit ?? '')})`;
+const BASELINES = ['pull', 'pinch', 'maxhang', 'contact', 'cf', 'rfd', 'density'];
+const metricBind: Record<string, () => number | null> = {
+	pull: () => pull,
+	pinch: () => pinch,
+	maxhang: () => maxhang,
+	contact: () => contact,
+	cf: () => cf,
+	rfd: () => rfd,
+	density: () => density,
+};
+function setMetric(id: string, v: number | null) {
+	if (id === 'pull') pull = v;
+	else if (id === 'pinch') pinch = v;
+	else if (id === 'maxhang') maxhang = v;
+	else if (id === 'contact') contact = v;
+	else if (id === 'cf') cf = v;
+	else if (id === 'rfd') rfd = v;
+	else if (id === 'density') density = v;
+}
+
+const STEPS = [m.welcome_step_goals, m.welcome_step_context, m.welcome_step_baseline];
+
+function generate() {
+	const canon = (id: string, v: number | null) => (v == null ? null : toMetricCanonical(id, v));
+	const baselines = {
+		pull: canon('pull', pull),
+		pinch: canon('pinch', pinch),
+		maxhang: canon('maxhang', maxhang),
+		contact: canon('contact', contact),
+		cf: canon('cf', cf),
+		rfd: canon('rfd', rfd),
+		density: canon('density', density),
+	};
+	const assessment: Assessment = {
+		goal,
+		focus,
+		level,
+		daysPerWeek: days,
+		bodyweight: bodyweight == null ? null : toKg(bodyweight),
+		equipment,
+		boulderGrade: boulderGrade.trim() || null,
+		routeGrade: routeGrade.trim() || null,
+		niggle,
+		age,
+		sessionMinutes,
+		completedAt: today(),
+	};
+	saveAssessment(assessment, baselines);
+	appState.program = generateProgram(content, assessment, baselines);
+	if (browser) localStorage.removeItem(DRAFT_KEY);
+	onComplete();
+}
+
+function next() {
+	if (step === 3) generate();
+	else step = (step + 1) as 1 | 2 | 3;
+}
+function back() {
+	if (step > 1) step = (step - 1) as 1 | 2 | 3;
+}
+</script>
+
+<div>
+	<h2 class="text-xl font-extrabold tracking-tight">{m.welcome_title()}</h2>
+	<p class="mt-1 text-sm text-ink-dim">{m.welcome_sub()}</p>
+</div>
+
+<div class="flex items-center gap-2">
+	{#each STEPS as label, i (label)}
+		<div class="flex-1">
+			<div class={cn('h-1.5 rounded', step >= i + 1 ? 'bg-flag' : 'bg-line')}></div>
+			<div
+				class={cn(
+					'mt-1 font-mono text-[10px] tracking-wider uppercase',
+					step >= i + 1 ? 'text-ink-dim' : 'text-ink-faint'
+				)}
+			>
+				{label()}
+			</div>
+		</div>
+	{/each}
+</div>
+
+<Card>
+	<CardContent class="flex flex-col gap-4">
+		{#if step === 1}
+			<div class="flex flex-col gap-1.5">
+				<span class="text-xs text-ink-dim">{m.field_goal()}</span>
+				<OptionCards value={goal} options={goalOpts} onSelect={(v) => (goal = v)} />
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<span class="text-xs text-ink-dim">{m.field_focus()}</span>
+				<OptionCards value={focus} options={focusOpts} onSelect={(v) => (focus = v)} />
+			</div>
+			<div class="flex flex-col gap-1.5">
+				<span class="text-xs text-ink-dim">{m.field_level()}</span>
+				<OptionCards value={level} options={levelOpts} onSelect={(v) => (level = v)} />
+			</div>
+			<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+				{m.field_days()}
+				<Input type="number" min="1" max="7" bind:value={days} class="bg-panel-2" />
+			</label>
+		{:else if step === 2}
+			<div class="flex flex-col gap-1.5">
+				<span class="text-xs text-ink-dim">{m.field_equipment()}</span>
+				<div class="flex flex-wrap gap-1.5">
+					{#each EQUIPMENT as eq (eq)}
+						<button
+							type="button"
+							onclick={() => toggleEquip(eq)}
+							aria-pressed={equipment.includes(eq)}
+							class={cn(
+								'rounded-md border px-2.5 py-1 text-xs transition',
+								equipment.includes(eq)
+									? 'border-flag bg-flag/15 text-flag'
+									: 'border-line text-ink-faint hover:text-ink'
+							)}
+						>
+							{equipLabel[eq]()}
+						</button>
+					{/each}
+				</div>
+			</div>
+			<div class="grid grid-cols-2 gap-3">
+				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+					{m.field_boulder_grade()}
+					<Input bind:value={boulderGrade} placeholder="V8" class="bg-panel-2" />
+				</label>
+				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+					{m.field_route_grade()}
+					<Input bind:value={routeGrade} placeholder="7c" class="bg-panel-2" />
+				</label>
+				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+					{m.field_age()}
+					<Input type="number" min="0" bind:value={age} class="bg-panel-2" />
+				</label>
+				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+					{m.field_session()}
+					<Input type="number" min="0" bind:value={sessionMinutes} class="bg-panel-2" />
+				</label>
+			</div>
+			<label class="flex items-center gap-2 text-xs text-ink-dim">
+				<input type="checkbox" bind:checked={niggle} class="size-4 accent-flag" />
+				{m.field_niggle()}
+			</label>
+		{:else}
+			<div class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+				{m.welcome_metrics_label()}
+			</div>
+			<div class="grid grid-cols-2 gap-3">
+				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+					{m.field_bodyweight()} ({appState.prefs.weight})
+					<Input type="number" step="any" bind:value={bodyweight} class="bg-panel-2" />
+				</label>
+				{#each BASELINES as id (id)}
+					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+						{metricLabel(id)}
+						<Input
+							type="number"
+							step="any"
+							value={metricBind[id]()}
+							oninput={(e) => setMetric(id, e.currentTarget.value === '' ? null : Number(e.currentTarget.value))}
+							class="bg-panel-2"
+						/>
+					</label>
+				{/each}
+			</div>
+		{/if}
+
+		<div class="mt-1 flex gap-2.5">
+			{#if step > 1}
+				<Button variant="outline" onclick={back}>{m.btn_back()}</Button>
+			{/if}
+			<Button class="flex-1 bg-flag text-white hover:bg-flag/90" onclick={next}>
+				{step === 3 ? m.btn_generate() : m.btn_next()}
+			</Button>
+		</div>
+	</CardContent>
+</Card>
