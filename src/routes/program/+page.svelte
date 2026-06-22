@@ -8,6 +8,7 @@ import Periodization from '$lib/Periodization.svelte';
 import ProgramDayCard from '$lib/ProgramDayCard.svelte';
 import ProgramSummary from '$lib/ProgramSummary.svelte';
 import Prose from '$lib/Prose.svelte';
+import ProtocolPresets from '$lib/ProtocolPresets.svelte';
 import * as m from '$lib/paraglide/messages';
 import { programWeeks, resetProgram, setProgramWeeks } from '$lib/plan';
 import SavedPrograms from '$lib/SavedPrograms.svelte';
@@ -52,7 +53,10 @@ const content = getContent();
 		{/each}
 	</div>
 
-	<div class="mt-3"><SavedPrograms /></div>
+	<div class="mt-3 flex flex-col gap-3">
+		<ProtocolPresets />
+		<SavedPrograms />
+	</div>
 
 	<Button
 		variant="outline"
