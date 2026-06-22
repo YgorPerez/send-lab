@@ -85,13 +85,15 @@ $effect(() => {
 	}
 });
 
-// First run (account or guest) with no baseline assessment starts onboarding.
+// First run (account or guest) with no baseline assessment starts onboarding —
+// but never trap a guest who's heading to /login to make a real account.
 $effect(() => {
 	if (
 		appReady.hydrated &&
 		($session.data?.user || appMode.guest) &&
 		!appState.assessment &&
-		page.url.pathname !== '/welcome'
+		page.url.pathname !== '/welcome' &&
+		page.url.pathname !== '/login'
 	) {
 		void goto('/welcome');
 	}

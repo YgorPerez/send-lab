@@ -4,8 +4,9 @@ import AssessmentForm from '$lib/AssessmentForm.svelte';
 import AssessmentProposal from '$lib/AssessmentProposal.svelte';
 import { getContent } from '$lib/content';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
+import * as m from '$lib/paraglide/messages';
 import { trainingDays } from '$lib/programGen';
-import { appState } from '$lib/state.svelte';
+import { appMode, appState } from '$lib/state.svelte';
 
 const content = getContent();
 
@@ -39,5 +40,15 @@ const planDays = $derived(
 		/>
 	{:else}
 		<AssessmentForm onComplete={() => (done = true)} />
+	{/if}
+
+	{#if appMode.guest}
+		<button
+			type="button"
+			class="self-center text-xs text-ink-dim underline decoration-dotted underline-offset-2 hover:text-ink"
+			onclick={() => goto('/login')}
+		>
+			{m.auth_to_login()}
+		</button>
 	{/if}
 </div>
