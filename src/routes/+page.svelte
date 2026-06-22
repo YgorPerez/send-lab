@@ -8,7 +8,7 @@ import { Card, CardContent } from '$lib/components/ui/card';
 import { type Answers, computeVerdictId, getContent } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import { resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey } from '$lib/plan';
+import { programWeeks, resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, round, today } from '$lib/state.svelte';
 import { recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
@@ -40,6 +40,12 @@ const tasks = $derived<Task[]>(
 	}),
 );
 const isRestDay = $derived(tasks.length === 0);
+
+// Final week of the block → prompt a retest to calibrate the next one.
+let reassessDismissed = $state(false);
+const needsReassess = $derived(
+	!reassessDismissed && appState.assessment != null && week >= programWeeks(),
+);
 
 let answers = $state<Answers>({});
 const complete = $derived(Object.keys(answers).length === content.quiz.length);
@@ -78,6 +84,23 @@ function logVerdict() {
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim">
 		<Prose value={m.lede_today()} />
 	</p>
+
+	{#if needsReassess}
+		<div class="mb-[22px] flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3">
+			<span class="flex-1 text-[13px] text-ink-dim">{m.reassess_note()}</span>
+			<a href="/metrics" class="font-mono text-[11px] tracking-wider text-gold uppercase hover:underline">
+				{m.reassess_cta()}
+			</a>
+			<button
+				type="button"
+				aria-label={m.btn_close()}
+				class="text-ink-faint transition hover:text-ink"
+				onclick={() => (reassessDismissed = true)}
+			>
+				✕
+			</button>
+		</div>
+	{/if}
 
 	<!-- Today's plan + per-task checklist -->
 	<Card class="mb-[22px] gap-3 border-l-[3px] p-5" style="border-left-color: {day.color}">

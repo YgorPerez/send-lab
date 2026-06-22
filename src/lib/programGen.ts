@@ -2,6 +2,7 @@
 // (vs rest), periodization scaled to experience, and working loads seeded from
 // the baseline tests. Built by trimming/recolouring the built-in week rather
 // than inventing days from scratch.
+import { exerciseParams } from './content/exercises';
 import type { Content, MetricId } from './content/types';
 import * as m from './paraglide/messages';
 import type {
@@ -65,6 +66,26 @@ const LOAD_FROM_BASELINE: Record<string, { metric: MetricId; factor: number }> =
 	pinch: { metric: 'pinch', factor: 0.9 },
 };
 
+// A current finger niggle caps finger-exercise effort at this RPE.
+const NIGGLE_RPE_CAP = 8;
+
+/** Infer experience from the hardest boulder grade (e.g. "V8"), if given. */
+function gradeLevel(grade: string | null): Level | null {
+	if (!grade) return null;
+	const v = /v\s*(\d+)/i.exec(grade);
+	if (!v) return null;
+	const n = Number(v[1]);
+	return n >= 10 ? 'elite' : n >= 7 ? 'advanced' : 'intermediate';
+}
+
+/** Calibrated level: the boulder grade wins over the self-selected bucket. */
+function calibratedLevel(a: Assessment): Level {
+	return gradeLevel(a.boulderGrade) ?? a.level;
+}
+
+const isFingerExercise = (exId: string): boolean =>
+	exerciseParams[exId]?.variants[0]?.region?.includes('fingers') ?? false;
+
 function levelPhases(level: Level): ProgramPhase[] {
 	const s = LEVEL_SCALE[level];
 	return [
@@ -123,13 +144,21 @@ export function generateProgram(
 			continue;
 		}
 		if (ex.length !== d.ex.length) template[d.k] = { dayKey: d.k, ex };
-		// Seed working loads from baselines for the kept exercises.
+		// Per-exercise overrides: seed working load from the baseline test, and
+		// cap finger effort when there's a niggle.
 		for (const exId of ex) {
+			const t: ProgramTarget = {};
 			const map = LOAD_FROM_BASELINE[exId];
 			const v = map ? baselines[map.metric] : null;
-			if (map && v != null) targets[`${d.k}:${exId}`] = { loadKg: Math.round(v * map.factor) };
+			if (map && v != null) t.loadKg = Math.round(v * map.factor);
+			if (a.niggle && isFingerExercise(exId)) t.rpe = NIGGLE_RPE_CAP;
+			if (Object.keys(t).length) targets[`${d.k}:${exId}`] = t;
 		}
 	}
 
-	return { weeks: 8, template, targets, phases: levelPhases(a.level) };
+	// Periodization scaled to the calibrated level; a niggle softens intensity.
+	let phases = levelPhases(calibratedLevel(a));
+	if (a.niggle) phases = phases.map((p) => ({ ...p, intensity: Math.round(p.intensity * 0.9) }));
+
+	return { weeks: 8, template, targets, phases };
 }

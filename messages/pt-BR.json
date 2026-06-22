@@ -122,6 +122,8 @@
 	"td_applies": "Esta leitura vale para a próxima tarefa:",
 	"td_all_done": "Tarefas de hoje concluídas — hora de recuperar.",
 	"td_rest_day": "Dia de descanso — sem treino. Recupere.",
+	"reassess_note": "Última semana do bloco — refaça os testes pra calibrar o próximo.",
+	"reassess_cta": "Refazer testes",
 	"wk_customize": "Personalizar o dia",
 	"wk_protocol": "Categoria do dia",
 	"wk_default": "padrão",

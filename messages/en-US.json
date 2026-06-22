@@ -122,6 +122,8 @@
 	"td_applies": "This read is for your next task:",
 	"td_all_done": "All tasks done for today — recover.",
 	"td_rest_day": "Rest day — no training tasks. Recover.",
+	"reassess_note": "Final week of your block — retest your markers to calibrate the next one.",
+	"reassess_cta": "Retest markers",
 	"wk_customize": "Customize day",
 	"wk_protocol": "Day category",
 	"wk_default": "default",
