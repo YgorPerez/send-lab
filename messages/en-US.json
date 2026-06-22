@@ -64,6 +64,8 @@
 	"prog_intensity": "Intensity",
 	"prog_volume": "Volume",
 	"prog_deload": "Deload",
+	"prog_autoprogress": "Auto-progression",
+	"prog_autoprogress_desc": "Working loads rise each week at study-backed rates, scaled to your level — finger work pairs with max hangs for a bigger effect. Deload weeks still cut back.",
 	"prog_timeline": "Block timeline",
 	"prog_no_phases": "No phases — prescriptions run at 100% every week. Add a phase to periodize.",
 	"prog_summary": "Week at a glance",

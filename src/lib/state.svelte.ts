@@ -145,6 +145,8 @@ export interface Program {
 	targets: Record<string, ProgramTarget>;
 	/** Ordered phases; their weeks need not sum to `weeks` (the tail repeats). */
 	phases: ProgramPhase[];
+	/** Auto-progress working loads each week at study-backed, level-scaled rates. */
+	autoProgress: boolean;
 }
 
 interface SavedProgram {
@@ -164,7 +166,7 @@ function defaultPhases(): ProgramPhase[] {
 
 /** The starting program: built-in week template with the default 3 phases. */
 export function defaultProgram(): Program {
-	return { weeks: 8, template: {}, targets: {}, phases: defaultPhases() };
+	return { weeks: 8, template: {}, targets: {}, phases: defaultPhases(), autoProgress: true };
 }
 
 function defaultState(): AppState {
@@ -199,6 +201,7 @@ export function normalizeProgram(raw: unknown): Program {
 		template: isObj(p.template) ? p.template : base.template,
 		targets: isObj(p.targets) ? p.targets : base.targets,
 		phases: Array.isArray(p.phases) ? p.phases : base.phases,
+		autoProgress: typeof p.autoProgress === 'boolean' ? p.autoProgress : base.autoProgress,
 	};
 }
 

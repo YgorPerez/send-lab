@@ -35,6 +35,33 @@ const numCell = 'flex flex-col gap-1 font-mono text-[10px] tracking-wider text-i
 		<p class="mt-0.5 max-w-[64ch] text-xs text-ink-dim">{m.prog_periodization_desc()}</p>
 	</div>
 
+	<div class="flex items-start justify-between gap-3 rounded-lg border border-line bg-panel-2 p-2.5">
+		<div class="flex-1">
+			<span class="text-sm text-ink">{m.prog_autoprogress()}</span>
+			<p class="mt-0.5 max-w-[56ch] text-xs text-ink-dim">{m.prog_autoprogress_desc()}</p>
+			<a href="/studies" class="font-mono text-[10px] tracking-wider text-flag uppercase hover:underline">
+				{m.nav_studies()} →
+			</a>
+		</div>
+		<button
+			type="button"
+			role="switch"
+			aria-checked={appState.program.autoProgress}
+			onclick={() => (appState.program.autoProgress = !appState.program.autoProgress)}
+			class={cn(
+				'relative h-6 w-10 flex-none rounded-full transition',
+				appState.program.autoProgress ? 'bg-flag' : 'bg-line'
+			)}
+		>
+			<span
+				class={cn(
+					'absolute top-0.5 size-5 rounded-full bg-white transition-all',
+					appState.program.autoProgress ? 'left-[18px]' : 'left-0.5'
+				)}
+			></span>
+		</button>
+	</div>
+
 	{#if weeks.length}
 		<div>
 			<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">

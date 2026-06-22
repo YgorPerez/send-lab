@@ -64,6 +64,8 @@
 	"prog_intensity": "Intensidade",
 	"prog_volume": "Volume",
 	"prog_deload": "Deload",
+	"prog_autoprogress": "Autoprogressão",
+	"prog_autoprogress_desc": "As cargas de trabalho sobem a cada semana em taxas baseadas em estudos, ajustadas ao seu nível — o trabalho de dedo combina com max hangs para um efeito maior. As semanas de deload ainda reduzem.",
 	"prog_timeline": "Linha do bloco",
 	"prog_no_phases": "Sem fases — as prescrições rodam a 100% toda semana. Adicione uma fase para periodizar.",
 	"prog_summary": "Visão da semana",

@@ -160,5 +160,5 @@ export function generateProgram(
 	let phases = levelPhases(calibratedLevel(a));
 	if (a.niggle) phases = phases.map((p) => ({ ...p, intensity: Math.round(p.intensity * 0.9) }));
 
-	return { weeks: 8, template, targets, phases };
+	return { weeks: 8, template, targets, phases, autoProgress: true };
 }

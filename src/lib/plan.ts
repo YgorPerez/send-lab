@@ -13,9 +13,11 @@ import type {
 	Variant,
 	VariantParams,
 } from './content/types';
+import { progressionFactor, SYNERGY, weeklyRate } from './progression';
 import {
 	appState,
 	defaultProgram,
+	type Level,
 	normalizeProgram,
 	type ProgramPhase,
 	type ProgramTarget,
@@ -404,10 +406,35 @@ export function moveProgramExercise(
 	};
 }
 
+/** Build weeks elapsed through `week` (non-deload weeks), for compounding loads. */
+function buildWeeksThrough(week: number): number {
+	let n = 0;
+	for (let w = 1; w <= week; w++) if (!phaseForWeek(w)?.deload) n += 1;
+	return n;
+}
+
+/** Whether an exercise is programmed anywhere in the training week (for synergy). */
+function programIncludesExercise(content: Content, week: number, exId: string): boolean {
+	return content.days.some((d) => resolveExerciseIds(content, week, d.k).includes(exId));
+}
+
+/** Load multiplier (percent) for a week: auto-progression when enabled (deload
+ *  weeks still cut to the phase's intensity), otherwise the phase's intensity. */
+function loadPct(content: Content, week: number, exId: string, phase: ProgramPhase | null): number {
+	if (appState.program.autoProgress) {
+		if (phase?.deload) return phase.intensity;
+		const level: Level = appState.assessment?.level ?? 'advanced';
+		const synergy = SYNERGY[exId] ? programIncludesExercise(content, week, SYNERGY[exId]) : false;
+		return progressionFactor(weeklyRate(exId, level, synergy), buildWeeksThrough(week)) * 100;
+	}
+	return phase ? phase.intensity : 100;
+}
+
 /** The variant a slot actually runs: built-in spec with the program's target
- *  overrides applied, then scaled by the week's periodization phase (intensity →
- *  load, volume → sets/rounds). Use for Train's prescription + timer seed. */
+ *  overrides applied, then load progressed/scaled for the week and volume scaled
+ *  by the phase. Use for Train's prescription + timer seed. */
 export function effectiveVariant(
+	content: Content,
 	base: Variant,
 	week: number,
 	weekday: string,
@@ -415,7 +442,7 @@ export function effectiveVariant(
 ): Variant {
 	const t = programTarget(weekday, exId);
 	const phase = phaseForWeek(week);
-	if (!t && !phase) return base;
+	if (!t && !phase && !appState.program.autoProgress) return base;
 	const v: Variant = { ...base };
 	if (t) {
 		if (t.sets != null) v.sets = fixedRange(t.sets);
@@ -426,8 +453,8 @@ export function effectiveVariant(
 		if (t.restSec != null) v.restSec = fixedRange(t.restSec);
 		if (t.rpe != null) v.rpe = fixedRange(t.rpe);
 	}
+	if (v.loadKg) v.loadKg = scaleRange(v.loadKg, loadPct(content, week, exId, phase));
 	if (phase) {
-		if (v.loadKg) v.loadKg = scaleRange(v.loadKg, phase.intensity);
 		if (v.sets) v.sets = scaleRange(v.sets, phase.volume, 1);
 		if (v.rounds) v.rounds = scaleRange(v.rounds, phase.volume, 1);
 	}

@@ -69,7 +69,7 @@ const items = $derived<Item[]>(
 		if (!ex) return [];
 		const idx = resolveSwapIndex(week, weekday, exId);
 		if (exId === 'rest' && idx === 0) return [];
-		const spec = effectiveVariant(variantOf(ex, idx), week, weekday, exId);
+		const spec = effectiveVariant(content, variantOf(ex, idx), week, weekday, exId);
 		return [
 			{
 				exId,
