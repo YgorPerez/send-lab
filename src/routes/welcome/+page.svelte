@@ -7,7 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/component
 import { getContent } from '$lib/content';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import * as m from '$lib/paraglide/messages';
+import { generateProgram, trainingDays } from '$lib/programGen';
 import {
+	type Assessment,
 	appState,
 	type Focus,
 	type Goal,
@@ -60,11 +62,25 @@ const focusNote: Record<Focus, () => string> = {
 
 const metric = (id: string) => content.metrics.find((mm) => mm.id === id);
 
+// The weekdays the generated program will train (shown on the proposal step).
+const planDays = $derived(
+	trainingDays(content, { goal, focus, level, daysPerWeek: days } as Assessment).map(
+		(k) => content.days.find((d) => d.k === k)?.label ?? k,
+	),
+);
+
 function generate() {
-	saveAssessment(
-		{ goal, focus, level, daysPerWeek: days, bodyweight, completedAt: today() },
-		{ pull, pinch, maxhang },
-	);
+	const assessment: Assessment = {
+		goal,
+		focus,
+		level,
+		daysPerWeek: days,
+		bodyweight,
+		completedAt: today(),
+	};
+	saveAssessment(assessment, { pull, pinch, maxhang });
+	// Tailor the actual program to the answers (not just the proposal text).
+	appState.program = generateProgram(content, assessment, { pull, pinch, maxhang });
 	step = 'proposal';
 }
 </script>
@@ -167,6 +183,23 @@ function generate() {
 		<Card>
 			<CardContent class="flex flex-col gap-3 text-sm text-ink-dim">
 				<p class="border-l-2 border-flag pl-3"><b class="text-chalk">{m.prop_week()}</b></p>
+				<div>
+					<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+						{m.prop_training_days({ n: planDays.length })}
+					</div>
+					<div class="flex flex-wrap gap-1.5">
+						{#each content.days as d (d.k)}
+							{@const on = planDays.includes(d.label)}
+							<span
+								class={on
+									? 'rounded-md bg-flag/15 px-2 py-1 font-mono text-[11px] text-flag'
+									: 'rounded-md border border-line px-2 py-1 font-mono text-[11px] text-ink-faint'}
+							>
+								{d.label}
+							</span>
+						{/each}
+					</div>
+				</div>
 				<p>{goalNote[goal]()}</p>
 				<p>{focusNote[focus]()}</p>
 			</CardContent>

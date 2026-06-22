@@ -265,6 +265,7 @@
 	"prop_title": "Your starting protocol",
 	"prop_intro": "Based on your assessment —",
 	"prop_week": "Begin at Week 1 · Phase 1 — Capacity & Tissue Base.",
+	"prop_training_days": "Your training week ({n} days)",
 	"prop_start": "Start training",
 	"prop_goal_boulder": "Boulder-focused: weight the hard days toward power and limit problems.",
 	"prop_goal_sport": "Sport-focused: protect the repeater and route days, and your weekend mileage.",

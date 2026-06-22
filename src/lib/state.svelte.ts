@@ -55,7 +55,7 @@ export type Focus = 'fingers' | 'power' | 'endurance' | 'tissue';
 export type Level = 'intermediate' | 'advanced' | 'elite';
 
 /** Baseline assessment captured at onboarding (goals + context). */
-interface Assessment {
+export interface Assessment {
 	goal: Goal;
 	focus: Focus;
 	level: Level;
@@ -93,7 +93,7 @@ interface AppState {
 }
 
 /** A per-weekday slot in the program template. */
-interface ProgramDayCfg {
+export interface ProgramDayCfg {
 	/** Which built-in day-type (category / load / color / default exercises) it uses. */
 	dayKey: string;
 	/** Ordered exercise ids (primary first); absent = the day-type's defaults. */
@@ -127,7 +127,7 @@ export interface ProgramPhase {
 	deload: boolean;
 }
 
-interface Program {
+export interface Program {
 	weeks: number;
 	template: Record<string, ProgramDayCfg>;
 	/** Prescription overrides keyed `${weekday}:${exId}`. */
