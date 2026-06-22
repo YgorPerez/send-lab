@@ -1,13 +1,10 @@
 <script lang="ts">
 import PlusIcon from '@lucide/svelte/icons/plus';
 import RepeatIcon from '@lucide/svelte/icons/repeat';
-import TimerIcon from '@lucide/svelte/icons/timer';
-import XIcon from '@lucide/svelte/icons/x';
 import { toast } from 'svelte-sonner';
 import { page } from '$app/state';
 import { recordAssessment } from '$lib/assessment';
 import { Button } from '$lib/components/ui/button';
-import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
@@ -22,12 +19,12 @@ import {
 	setNote,
 	setsFor,
 } from '$lib/dayLog';
-import PrescriptionView from '$lib/PrescriptionView.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
 	addDayExercise,
 	effectiveVariant,
+	prefillLoadKg,
 	removeDayExercise,
 	resolveExerciseIds,
 	resolveSwapIndex,
@@ -37,12 +34,11 @@ import {
 	variantOf,
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
-import SetRows from '$lib/SetRows.svelte';
 import { appState, type WorkoutSet } from '$lib/state.svelte';
 import Timer from '$lib/Timer.svelte';
+import TrainExerciseCard from '$lib/TrainExerciseCard.svelte';
 import { configureTimer, startRest, timer } from '$lib/timerStore.svelte';
 import { type Col, colsFor } from '$lib/trainColumns';
-import { cn } from '$lib/utils';
 import VariantPicker from '$lib/VariantPicker.svelte';
 
 const content = getContent();
@@ -104,14 +100,17 @@ let activeExId = $state<string | null>(null);
 let assess = $state<Record<string, string>>({});
 let recorded = $state<Record<string, boolean>>({});
 
-// The timer reflects: your explicit pick, else the first un-logged timed
-// exercise, else the first timed exercise of the day.
+// The timer reflects: your explicit pick, else the first timed exercise that
+// isn't finished (no sets yet, or some set still undone), else the first timed one.
 const timerTarget = $derived.by(() => {
 	const picked = activeExId ? items.find((it) => it.exId === activeExId && it.timed) : undefined;
 	if (picked) return picked;
-	const next = items.find((it) => it.timed && setsFor(dayLabel, it.exId).length === 0);
-	if (next) return next;
-	return items.find((it) => it.timed) ?? null;
+	const next = items.find((it) => {
+		if (!it.timed) return false;
+		const sets = setsFor(dayLabel, it.exId);
+		return sets.length === 0 || sets.some((s) => !s.done);
+	});
+	return next ?? items.find((it) => it.timed) ?? null;
 });
 
 // Keep the (global) timer loaded with the current target while it's idle.
@@ -195,6 +194,24 @@ function restAfter(it: Item) {
 // Whether anything is logged today (gates the "repeat last session" shortcut).
 const loggedAny = $derived(items.some((it) => setsFor(dayLabel, it.exId).length > 0));
 
+/** A first set for an exercise: prescription midpoints, with a sensible load
+ *  pulled from the athlete's markers when the prescription has no fixed weight. */
+function freshSet(it: Item): WorkoutSet {
+	const s = defaultSet(it.spec);
+	if (s.weight == null) s.weight = prefillLoadKg(it.exId, it.spec);
+	return s;
+}
+
+// First time today's session is opened (nothing logged yet), stage one prefilled
+// set per exercise so every card is ready with a sensible weight to confirm.
+let staged = $state(false);
+$effect(() => {
+	if (staged || items.length === 0) return;
+	staged = true;
+	if (items.some((it) => setsFor(dayLabel, it.exId).length > 0)) return;
+	for (const it of items) addSetTo(dayLabel, it.exId, logName(it), freshSet(it));
+});
+
 /** Pre-fill today from the most recent prior session of the same weekday. */
 function repeatLast() {
 	const ids = repeatLastInto(dayLabel);
@@ -212,7 +229,7 @@ function addSet(it: Item) {
 	// (so your edits become the default for what you add next).
 	const seed: WorkoutSet = existing.length
 		? { ...existing[existing.length - 1], done: false }
-		: defaultSet(it.spec);
+		: freshSet(it);
 	addSetTo(dayLabel, it.exId, logName(it), seed);
 }
 function removeSet(exId: string, i: number) {
@@ -239,62 +256,18 @@ function removeItem(exId: string) {
 	{:else}
 		<div class="flex flex-col gap-3">
 			{#each items as it (it.exId)}
-				{@const isActive = timer.key === `${it.exId}:${it.idx}` || it.exId === activeExId}
-				<Card class={cn('gap-2.5 p-4', isActive && 'ring-1 ring-flag/60')}>
-					<div class="flex items-start justify-between gap-2">
-						<div class="font-bold">{it.exName}</div>
-						<div class="flex items-center gap-2">
-							{#if it.timed}
-								<button
-									type="button"
-									class={cn(
-										'transition',
-										isActive ? 'text-flag' : 'text-ink-faint hover:text-ink'
-									)}
-									aria-label={m.timer_use()}
-									title={m.timer_use()}
-									onclick={() => useInTimer(it)}
-								>
-									<TimerIcon class="size-4" />
-								</button>
-							{/if}
-							<button
-								type="button"
-								class="text-ink-faint transition hover:text-flag"
-								aria-label={m.btn_delete()}
-								onclick={() => removeItem(it.exId)}
-							>
-								<XIcon class="size-4" />
-							</button>
-						</div>
-					</div>
-					{@const ex = content.exercises[it.exId]}
-					{#if ex}
-						<VariantPicker exercise={ex} idx={it.idx} onSelect={(i) => selectVariant(it, i)} />
-					{/if}
-					<div
-						class="rounded-lg border border-line bg-panel-2 px-3 py-2.5"
-						aria-label={m.train_target()}
-					>
-						<PrescriptionView spec={it.spec} />
-					</div>
-
-					<SetRows
-						rows={setsFor(dayLabel, it.exId)}
-						cols={it.cols}
-						onRemove={(i) => removeSet(it.exId, i)}
-						onDone={() => restAfter(it)}
-					/>
-
-					<Button
-						variant="outline"
-						size="sm"
-						class="mt-1 self-start border-line text-xs"
-						onclick={() => addSet(it)}
-					>
-						<PlusIcon class="mr-1 size-3.5" />{m.train_add_set()}
-					</Button>
-				</Card>
+				<TrainExerciseCard
+					{it}
+					ex={content.exercises[it.exId]}
+					sets={setsFor(dayLabel, it.exId)}
+					isActive={timer.key === `${it.exId}:${it.idx}` || it.exId === activeExId}
+					onUseTimer={() => useInTimer(it)}
+					onSelectVariant={(i) => selectVariant(it, i)}
+					onRemoveItem={() => removeItem(it.exId)}
+					onRemoveSet={(i) => removeSet(it.exId, i)}
+					onDone={() => restAfter(it)}
+					onAddSet={() => addSet(it)}
+				/>
 			{/each}
 		</div>
 	{/if}

@@ -7,6 +7,7 @@ import type {
 	Cost,
 	Day,
 	Grip,
+	MetricId,
 	Quality,
 	Range,
 	Region,
@@ -360,6 +361,29 @@ function scaleRange(r: Range, pct: number, floor = 0): Range {
 }
 
 const fixedRange = (v: number): Range => ({ min: v, max: v });
+
+// Added-weight exercises without a fixed load take a sensible starting weight
+// from the athlete's most relevant logged marker (a fraction of their tested max).
+const PREFILL_FROM_METRIC: Record<string, { metric: MetricId; factor: number }> = {
+	maxhang: { metric: 'maxhang', factor: 0.9 },
+	recruit: { metric: 'maxhang', factor: 0.6 },
+	density: { metric: 'maxhang', factor: 0.6 },
+	abra: { metric: 'maxhang', factor: 0.5 },
+	slopdens: { metric: 'maxhang', factor: 0.4 },
+	pinch: { metric: 'pinch', factor: 0.9 },
+	pull: { metric: 'pull', factor: 0.9 },
+};
+
+/** A sensible prefilled load (kg) for a set: the prescription's midpoint if it
+ *  has one, else derived from the athlete's latest relevant marker, else null. */
+export function prefillLoadKg(exId: string, spec: VariantParams): number | null {
+	if (spec.loadKg) return Math.round((spec.loadKg.min + spec.loadKg.max) / 2);
+	const map = PREFILL_FROM_METRIC[exId];
+	if (!map) return null;
+	const hist = appState.metrics[map.metric];
+	const v = hist?.length ? hist[hist.length - 1].v : null;
+	return v == null ? null : Math.round(v * map.factor);
+}
 
 /** The program prescription override for a weekday's exercise, if any. */
 export function programTarget(weekday: string, exId: string): ProgramTarget | undefined {

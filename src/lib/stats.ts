@@ -136,7 +136,18 @@ export function recentRpe(workouts: WorkoutEntry[], sessions = 2): number | null
 	return rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
 }
 
-const loggedDays = (workouts: WorkoutEntry[]) => new Set(workouts.map((w) => w.at));
+/** A session counts as trained once at least one set is marked done (prefilled
+ *  but-untouched sets don't count). */
+const hasDoneSet = (w: WorkoutEntry): boolean =>
+	w.exercises.some((ex) => ex.sets.some((s) => s.done));
+
+/** Number of sessions actually trained (≥1 completed set). */
+export function completedSessions(workouts: WorkoutEntry[]): number {
+	return workouts.filter(hasDoneSet).length;
+}
+
+const loggedDays = (workouts: WorkoutEntry[]) =>
+	new Set(workouts.filter(hasDoneSet).map((w) => w.at));
 
 /** Consecutive calendar days with a logged workout, ending today (or yesterday). */
 export function trainStreak(workouts: WorkoutEntry[]): number {

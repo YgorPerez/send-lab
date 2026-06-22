@@ -11,7 +11,7 @@ import * as m from '$lib/paraglide/messages';
 import { programWeeks, resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, round, today } from '$lib/state.svelte';
-import { recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
+import { completedSessions, recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
 import { cn } from '$lib/utils';
 
 const content = getContent();
@@ -56,7 +56,7 @@ const verdict = $derived(complete ? content.verdicts[computeVerdictId(answers, f
 
 const streak = $derived(trainStreak(appState.workouts));
 const last7 = $derived(sessionsLast7(appState.workouts));
-const totalSessions = $derived(appState.workouts.length);
+const totalSessions = $derived(completedSessions(appState.workouts));
 
 function pick(qid: string, value: number) {
 	answers = { ...answers, [qid]: value };
