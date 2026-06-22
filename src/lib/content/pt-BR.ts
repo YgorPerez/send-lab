@@ -597,6 +597,14 @@ const content: LocaleContent = {
 			desc: 'Maior sustentação de densidade com qualidade na carga de trabalho — proxy da capacidade do tecido.',
 		},
 		{
+			id: 'bodyweight',
+			name: 'Peso Corporal',
+			abbr: 'PESO',
+			cat: '--ink-faint',
+			unit: 'kg',
+			desc: 'Registre com frequência (idealmente todo dia) — ancora as estimativas de força em % do peso.',
+		},
+		{
 			id: 'boulder',
 			name: 'Grau de Boulder',
 			abbr: 'BOULDER',

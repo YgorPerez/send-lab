@@ -5,6 +5,7 @@ import { toast } from 'svelte-sonner';
 import { Badge } from '$lib/components/ui/badge';
 import { Button } from '$lib/components/ui/button';
 import { Card, CardContent } from '$lib/components/ui/card';
+import { Input } from '$lib/components/ui/input';
 import { type Answers, computeVerdictId, getContent } from '$lib/content';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -12,7 +13,18 @@ import { programWeeks, resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, round, today } from '$lib/state.svelte';
 import { completedSessions, recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
+import { toMetricCanonical } from '$lib/units';
 import { cn } from '$lib/utils';
+
+// Daily bodyweight nudge — it anchors the % bodyweight strength estimates.
+let bwInput = $state('');
+const bwLoggedToday = $derived(appState.metrics.bodyweight.some((e) => e.date === today()));
+function logBodyweight() {
+	const n = Number.parseFloat(bwInput);
+	if (Number.isNaN(n)) return;
+	appState.metrics.bodyweight.push({ date: today(), v: toMetricCanonical('bodyweight', n) });
+	bwInput = '';
+}
 
 const content = getContent();
 
@@ -84,6 +96,23 @@ function logVerdict() {
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim">
 		<Prose value={m.lede_today()} />
 	</p>
+
+	{#if !bwLoggedToday}
+		<div class="mb-[22px] flex items-center gap-2 rounded-xl border border-line bg-panel px-4 py-2.5">
+			<span class="flex-1 text-[13px] text-ink-dim">
+				{m.bw_prompt()} ({appState.prefs.weight})
+			</span>
+			<Input
+				type="number"
+				step="any"
+				bind:value={bwInput}
+				class="h-8 w-24 bg-panel-2 text-center text-sm"
+			/>
+			<Button size="sm" class="bg-chalk text-bg hover:bg-chalk/90" onclick={logBodyweight}>
+				{m.btn_save()}
+			</Button>
+		</div>
+	{/if}
 
 	{#if needsReassess}
 		<div class="mb-[22px] flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3">

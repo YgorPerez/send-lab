@@ -4,7 +4,8 @@
 import { toast } from 'svelte-sonner';
 import type { Content, MetricId } from './content/types';
 import * as m from './paraglide/messages';
-import { appState, round, today, type WorkoutSet } from './state.svelte';
+import { appState, type MetricEntry, round, today, type WorkoutSet } from './state.svelte';
+import { defaultMm, SIZED_METRICS } from './strength';
 import { metricUnit, showMetric } from './units';
 
 const FIELD: Partial<Record<MetricId, 'weight' | 'time'>> = {
@@ -27,7 +28,15 @@ function metricValueFromSets(metricId: string, sets: WorkoutSet[]): number | nul
 export function recordAssessment(metricId: string, sets: WorkoutSet[], content: Content): void {
 	const v = metricValueFromSets(metricId, sets);
 	if (v == null) return;
-	appState.metrics[metricId as MetricId].push({ date: today(), v });
+	const entry: MetricEntry = { date: today(), v };
+	if (SIZED_METRICS.has(metricId)) {
+		entry.mm = sets.find((s) => s.weight === v)?.edge ?? defaultMm(metricId);
+		if (metricId === 'maxhang') {
+			const bw = appState.metrics.bodyweight;
+			entry.bw = bw.length ? bw[bw.length - 1].v : (appState.assessment?.bodyweight ?? undefined);
+		}
+	}
+	appState.metrics[metricId as MetricId].push(entry);
 	const metric = content.metrics.find((mm) => mm.id === metricId);
 	appState.log.unshift({
 		date: today(),

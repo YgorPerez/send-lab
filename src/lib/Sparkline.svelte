@@ -1,8 +1,6 @@
 <script lang="ts">
-import type { MetricEntry } from './state.svelte';
-
 interface Props {
-	data: MetricEntry[];
+	data: { v: number }[];
 	catVar: string;
 }
 

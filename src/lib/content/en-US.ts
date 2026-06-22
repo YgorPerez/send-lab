@@ -585,6 +585,14 @@ const content: LocaleContent = {
 			desc: 'Longest quality density hold at working load — tissue capacity proxy.',
 		},
 		{
+			id: 'bodyweight',
+			name: 'Bodyweight',
+			abbr: 'BW',
+			cat: '--ink-faint',
+			unit: 'kg',
+			desc: 'Log this often (ideally daily) — it anchors the % bodyweight strength estimates.',
+		},
+		{
 			id: 'boulder',
 			name: 'Boulder Grade',
 			abbr: 'BOULDER',

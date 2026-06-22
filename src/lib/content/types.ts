@@ -13,7 +13,8 @@ export type MetricId =
 	| 'maxhang'
 	| 'density'
 	| 'boulder'
-	| 'route';
+	| 'route'
+	| 'bodyweight';
 
 /** Inclusive numeric range. A fixed value has `min === max`. */
 export interface Range {

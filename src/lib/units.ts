@@ -43,7 +43,7 @@ function fmtRange(min: number | null, max: number | null): string {
 }
 
 // Metrics whose value is a weight (kg) — converted for display in lb mode.
-const WEIGHT_METRICS = new Set(['contact', 'pinch', 'pull', 'maxhang']);
+const WEIGHT_METRICS = new Set(['contact', 'pinch', 'pull', 'maxhang', 'bodyweight']);
 
 /** A metric value converted to the display weight unit (others pass through). */
 export function showMetric(id: string, v: number): number {

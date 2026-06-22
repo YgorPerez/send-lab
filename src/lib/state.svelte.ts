@@ -5,10 +5,15 @@ import { browser } from '$app/environment';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { MetricId } from './content/types';
+import { defaultMm, SIZED_METRICS } from './strength';
 
 export interface MetricEntry {
 	date: string;
 	v: number;
+	/** Edge depth / block width (mm) for size-dependent markers (maxhang, pinch). */
+	mm?: number;
+	/** Bodyweight (kg) at test time, so the %BW strength index stays accurate. */
+	bw?: number;
 }
 
 interface LogEntry {
@@ -188,6 +193,7 @@ function defaultState(): AppState {
 			density: [],
 			boulder: [],
 			route: [],
+			bodyweight: [],
 		},
 		log: [],
 		workouts: [],
@@ -375,10 +381,20 @@ export function saveAssessment(
 	baselines: Partial<Record<MetricId, number | null>>,
 ): void {
 	appState.assessment = assessment;
+	const seed = (key: MetricId, v: number | null | undefined, extra: Partial<MetricEntry> = {}) => {
+		if (v == null || Number.isNaN(v)) return;
+		if (appState.metrics[key].length === 0)
+			appState.metrics[key].push({ date: today(), v, ...extra });
+	};
+	seed('bodyweight', assessment.bodyweight);
 	for (const key of Object.keys(baselines) as MetricId[]) {
-		const v = baselines[key];
-		if (v == null || Number.isNaN(v)) continue;
-		if (appState.metrics[key].length === 0) appState.metrics[key].push({ date: today(), v });
+		const extra: Partial<MetricEntry> = SIZED_METRICS.has(key)
+			? {
+					mm: defaultMm(key),
+					...(key === 'maxhang' ? { bw: assessment.bodyweight ?? undefined } : {}),
+				}
+			: {};
+		seed(key, baselines[key], extra);
 	}
 }
 
