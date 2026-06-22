@@ -5,6 +5,7 @@ import { browser } from '$app/environment';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { MetricId } from './content/types';
+import type { RehabArea, RehabStage } from './rehab';
 import { defaultMm, SIZED_METRICS } from './strength';
 
 export interface MetricEntry {
@@ -106,6 +107,8 @@ interface AppState {
 	program: Program;
 	/** Named programs the user has saved, switchable from the editor. */
 	savedPrograms: SavedProgram[];
+	/** Active injury rehab (null when training normally). */
+	rehab: RehabState | null;
 }
 
 /** A per-weekday slot in the program template. */
@@ -159,6 +162,15 @@ interface SavedProgram {
 	program: Program;
 }
 
+/** Active injury rehab. Stashes the program that was active before rehab so it
+ *  can be restored when rehab ends. */
+interface RehabState {
+	area: RehabArea;
+	stage: RehabStage;
+	startedAt: string;
+	previous: Program;
+}
+
 /** The default periodization: an 8-week block of base → peaking → deload,
  *  mirroring the built-in program's phases. */
 function defaultPhases(): ProgramPhase[] {
@@ -201,6 +213,7 @@ function defaultState(): AppState {
 		prefs: { weight: 'kg', length: 'mm', notify: false },
 		program: defaultProgram(),
 		savedPrograms: [],
+		rehab: null,
 	};
 }
 
@@ -265,6 +278,7 @@ function applyData(data: Partial<AppState>): void {
 	appState.prefs = { ...base.prefs, ...data.prefs };
 	appState.program = normalizeProgram(data.program);
 	appState.savedPrograms = data.savedPrograms ?? base.savedPrograms;
+	appState.rehab = data.rehab ?? base.rehab;
 }
 
 // Offline mirror: the per-user state is cached in localStorage so the app works
@@ -297,6 +311,7 @@ function sanitize(raw: unknown): Partial<AppState> {
 	if (isObj(raw.prefs)) out.prefs = raw.prefs as AppState['prefs'];
 	if (isObj(raw.program)) out.program = normalizeProgram(raw.program as Partial<Program>);
 	if (Array.isArray(raw.savedPrograms)) out.savedPrograms = raw.savedPrograms as SavedProgram[];
+	if (raw.rehab === null || isObj(raw.rehab)) out.rehab = raw.rehab as RehabState | null;
 	return out;
 }
 

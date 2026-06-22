@@ -9,6 +9,7 @@ import { exportBackup, exportWorkoutsCsv, importBackup } from '$lib/backup';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import * as m from '$lib/paraglide/messages';
+import Rehab from '$lib/Rehab.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appMode, appState, resetAll } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
@@ -149,6 +150,8 @@ const seg =
 			{m.set_redo_assessment()}
 		</Button>
 	</Card>
+
+	<Rehab />
 
 	<!-- Data -->
 	<Card class="gap-3 p-[18px]">

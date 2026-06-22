@@ -15,6 +15,7 @@ import type {
 	VariantParams,
 } from './content/types';
 import { progressionFactor, SYNERGY, weeklyRate } from './progression';
+import { generateRehabProgram, type RehabArea, type RehabStage } from './rehab';
 import {
 	appState,
 	defaultProgram,
@@ -22,6 +23,7 @@ import {
 	normalizeProgram,
 	type ProgramPhase,
 	type ProgramTarget,
+	today,
 } from './state.svelte';
 
 export function slotKey(week: number, weekday: string): string {
@@ -566,3 +568,21 @@ export function deleteSavedProgram(i: number): void {
 export function setProgram(raw: unknown): void {
 	appState.program = normalizeProgram(raw);
 }
+
+// ---------------- REHAB ----------------
+
+/** Switch to a rehab protocol, stashing the current program to restore later. */
+export function startRehab(content: Content, area: RehabArea, stage: RehabStage): void {
+	const previous = cloneProgram();
+	appState.program = generateRehabProgram(content, area, stage);
+	appState.rehab = { area, stage, startedAt: today(), previous };
+}
+
+/** End rehab and restore the program that was active before it. */
+export function endRehab(): void {
+	if (appState.rehab)
+		appState.program = normalizeProgram(cloneProgramValue(appState.rehab.previous));
+	appState.rehab = null;
+}
+
+const cloneProgramValue = (p: unknown) => JSON.parse(JSON.stringify(p));

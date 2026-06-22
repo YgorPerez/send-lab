@@ -97,6 +97,18 @@ function logVerdict() {
 		<Prose value={m.lede_today()} />
 	</p>
 
+	{#if appState.rehab}
+		<div class="mb-[22px] flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3">
+			<span class="flex-1 text-[13px] text-gold">{m.rehab_active()} — {m.rehab_label()}</span>
+			<a
+				href="/settings"
+				class="font-mono text-[11px] tracking-wider text-gold uppercase hover:underline"
+			>
+				{m.nav_settings()}
+			</a>
+		</div>
+	{/if}
+
 	{#if !bwLoggedToday}
 		<div class="mb-[22px] flex items-center gap-2 rounded-xl border border-line bg-panel px-4 py-2.5">
 			<span class="flex-1 text-[13px] text-ink-dim">
