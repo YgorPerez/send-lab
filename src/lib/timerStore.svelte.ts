@@ -65,6 +65,31 @@ function beep(freq: number): void {
 	}
 }
 
+/** Haptic feedback on phase changes (no-op where unsupported). */
+function vibrate(pattern: number | number[]): void {
+	if (browser && 'vibrate' in navigator) navigator.vibrate(pattern);
+}
+
+// Keep the screen awake while the timer runs (released when it stops). The OS
+// drops the lock when the tab is hidden, so we re-acquire on visibility.
+let wakeLock: { release: () => Promise<void> } | null = null;
+async function acquireWake(): Promise<void> {
+	if (!browser) return;
+	const nav = navigator as Navigator & {
+		wakeLock?: { request(type: 'screen'): Promise<{ release: () => Promise<void> }> };
+	};
+	if (!nav.wakeLock) return;
+	try {
+		wakeLock = await nav.wakeLock.request('screen');
+	} catch {
+		wakeLock = null;
+	}
+}
+function releaseWake(): void {
+	void wakeLock?.release();
+	wakeLock = null;
+}
+
 function clearTick(): void {
 	if (handle) clearInterval(handle);
 	handle = undefined;
@@ -72,10 +97,12 @@ function clearTick(): void {
 
 function finish(): void {
 	clearTick();
+	releaseWake();
 	timer.running = false;
 	timer.phase = 'done';
 	timer.remaining = 0;
 	beep(880);
+	vibrate([140, 70, 140]);
 }
 
 /** Advance past the end of a set (into the inter-set rest, next set, or done). */
@@ -100,8 +127,10 @@ function endOfSet(): void {
 function tick(): void {
 	if (timer.remaining > 1) {
 		timer.remaining -= 1;
+		if (timer.remaining <= 3) beep(1000); // 3-2-1 countdown
 		return;
 	}
+	vibrate(80); // a phase is changing
 	if (timer.phase === 'prepare') {
 		timer.phase = 'work';
 		timer.remaining = Math.max(1, timer.work);
@@ -152,6 +181,8 @@ export function startTimer(): void {
 	timer.running = true;
 	timer.loaded = true;
 	beep(660);
+	vibrate(80);
+	void acquireWake();
 	clearTick();
 	if (browser) handle = setInterval(tick, 1000);
 }
@@ -175,16 +206,20 @@ export function startRest(seconds: number, name: string): void {
 	timer.loaded = true;
 	timer.key = 'rest';
 	beep(440);
+	vibrate(80);
+	void acquireWake();
 	if (browser) handle = setInterval(tick, 1000);
 }
 
 export function pauseTimer(): void {
 	timer.running = false;
 	clearTick();
+	releaseWake();
 }
 
 export function resetTimer(): void {
 	clearTick();
+	releaseWake();
 	timer.running = false;
 	timer.phase = 'idle';
 	timer.set = 0;
@@ -293,6 +328,7 @@ if (browser) {
 			Object.assign(timer, JSON.parse(raw));
 			if (timer.running && timer.phase !== 'idle' && timer.phase !== 'done') {
 				handle = setInterval(tick, 1000);
+				void acquireWake();
 			} else {
 				timer.running = false;
 			}
@@ -300,4 +336,8 @@ if (browser) {
 	} catch {
 		// ignore corrupt storage
 	}
+	// The OS releases the wake lock when the tab is hidden — re-acquire on return.
+	document.addEventListener('visibilitychange', () => {
+		if (document.visibilityState === 'visible' && timer.running && !wakeLock) void acquireWake();
+	});
 }
