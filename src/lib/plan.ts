@@ -309,7 +309,16 @@ export function resetProgramDay(weekday: string): void {
 	}
 }
 
-/** Set the block length (weeks), clamped to a sane range. */
+/** The single source of truth for block length: the sum of the phase weeks when
+ *  the program is periodized, otherwise the manually-set length. */
+export function programWeeks(): number {
+	const phases = appState.program.phases;
+	if (phases.length) return phases.reduce((n, p) => n + Math.max(1, p.weeks), 0);
+	return appState.program.weeks;
+}
+
+/** Set the manual block length, clamped. Only used when there are no phases
+ *  (with phases the length is inferred from them — see programWeeks). */
 export function setProgramWeeks(n: number): void {
 	if (Number.isFinite(n)) appState.program.weeks = Math.min(24, Math.max(1, Math.round(n)));
 }

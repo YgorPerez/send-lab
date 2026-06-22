@@ -28,6 +28,7 @@
 	"lede_stats": "What your logged sets add up to — progression and PRs per exercise, where your volume goes, training load over time, and how hard you're actually working.",
 	"lede_program": "Reshape your weekly template — set each day's focus and its default exercises, and the block length. This applies to every week; per-week tweaks still live in the Week tab.",
 	"prog_weeks": "Block length (weeks)",
+	"prog_weeks_from_phases": "Set by your phases",
 	"prog_reset": "Reset to default program",
 	"prog_reset_done": "Program reset to default",
 	"prog_periodization": "Periodization",

@@ -28,6 +28,7 @@
 	"lede_stats": "No que suas séries registradas resultam — progressão e recordes por exercício, pra onde vai seu volume, carga ao longo do tempo e o quão duro você realmente treina.",
 	"lede_program": "Remodele seu template semanal — defina o foco de cada dia e seus exercícios padrão, e a duração do bloco. Vale pra todas as semanas; ajustes por semana ficam na aba Semana.",
 	"prog_weeks": "Duração do bloco (semanas)",
+	"prog_weeks_from_phases": "Definido pelas suas fases",
 	"prog_reset": "Restaurar programa padrão",
 	"prog_reset_done": "Programa restaurado ao padrão",
 	"prog_periodization": "Periodização",

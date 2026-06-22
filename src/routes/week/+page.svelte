@@ -14,6 +14,7 @@ import {
 	addDayExercise,
 	exerciseLabel,
 	isDayCustomized,
+	programWeeks,
 	removeDayExercise,
 	resetDay,
 	resolveDay,
@@ -39,7 +40,7 @@ $effect(() => {
 	if (!browsed) week = appState.currentWeek;
 });
 const isCurrent = $derived(week === appState.currentWeek);
-const weeks = $derived(appState.program.weeks);
+const weeks = $derived(programWeeks());
 const phase = $derived(content.phases[phaseId(week, weeks)]);
 
 const COMPOUND = ['Mon', 'Wed', 'Thu', 'Fri'];

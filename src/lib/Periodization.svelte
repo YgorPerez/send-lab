@@ -5,7 +5,7 @@ import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import * as m from '$lib/paraglide/messages';
-import { addPhase, phaseForWeek, removePhase, updatePhase } from '$lib/plan';
+import { addPhase, phaseForWeek, programWeeks, removePhase, updatePhase } from '$lib/plan';
 import { appState } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
 
@@ -14,7 +14,7 @@ const phases = $derived(appState.program.phases);
 
 // One chip per week of the block, coloured by its phase (faint when deload).
 const weeks = $derived(
-	Array.from({ length: appState.program.weeks }, (_, i) => {
+	Array.from({ length: programWeeks() }, (_, i) => {
 		const wk = i + 1;
 		const ph = phaseForWeek(wk);
 		const idx = ph ? phases.indexOf(ph) : -1;

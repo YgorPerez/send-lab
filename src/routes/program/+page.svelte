@@ -9,7 +9,7 @@ import ProgramDayCard from '$lib/ProgramDayCard.svelte';
 import ProgramSummary from '$lib/ProgramSummary.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import { resetProgram, setProgramWeeks } from '$lib/plan';
+import { programWeeks, resetProgram, setProgramWeeks } from '$lib/plan';
 import SavedPrograms from '$lib/SavedPrograms.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState } from '$lib/state.svelte';
@@ -24,14 +24,23 @@ const content = getContent();
 	<div class="mb-[22px] flex flex-col gap-3">
 		<Card class="flex-row items-center justify-between gap-3 p-[18px]">
 			<span class="font-bold">{m.prog_weeks()}</span>
-			<Input
-				type="number"
-				min="1"
-				max="24"
-				value={appState.program.weeks}
-				oninput={(e) => setProgramWeeks(Number(e.currentTarget.value))}
-				class="h-9 w-24 bg-panel-2 text-center text-sm"
-			/>
+			{#if appState.program.phases.length}
+				<div class="flex items-center gap-2">
+					<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+						{m.prog_weeks_from_phases()}
+					</span>
+					<span class="font-mono text-lg font-bold text-chalk">{programWeeks()}</span>
+				</div>
+			{:else}
+				<Input
+					type="number"
+					min="1"
+					max="24"
+					value={appState.program.weeks}
+					oninput={(e) => setProgramWeeks(Number(e.currentTarget.value))}
+					class="h-9 w-24 bg-panel-2 text-center text-sm"
+				/>
+			{/if}
 		</Card>
 		<Periodization />
 		<ProgramSummary />
