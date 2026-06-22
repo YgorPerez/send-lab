@@ -4,7 +4,16 @@
 
 export type VerdictId = 'rest' | 'tissue' | 'moderate' | 'short' | 'green';
 export type PhaseId = 'phase1' | 'phase2' | 'deload';
-export type MetricId = 'rfd' | 'contact' | 'cf' | 'pinch' | 'pull' | 'maxhang' | 'density';
+export type MetricId =
+	| 'rfd'
+	| 'contact'
+	| 'cf'
+	| 'pinch'
+	| 'pull'
+	| 'maxhang'
+	| 'density'
+	| 'boulder'
+	| 'route';
 
 /** Inclusive numeric range. A fixed value has `min === max`. */
 export interface Range {

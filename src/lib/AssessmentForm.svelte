@@ -3,7 +3,9 @@ import { browser } from '$app/environment';
 import { Button } from '$lib/components/ui/button';
 import { Card, CardContent } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
+import { BOULDER_SCALE, gradeIndex, ROUTE_SCALE } from '$lib/grades';
 import OptionCards from '$lib/OptionCards.svelte';
 import * as m from '$lib/paraglide/messages';
 import { generateProgram } from '$lib/programGen';
@@ -54,13 +56,11 @@ let age = $state<number | null>((d?.age as number | null) ?? a?.age ?? null);
 let sessionMinutes = $state<number | null>(
 	(d?.sessionMinutes as number | null) ?? a?.sessionMinutes ?? null,
 );
-let pull = $state<number | null>((d?.pull as number | null) ?? null);
-let pinch = $state<number | null>((d?.pinch as number | null) ?? null);
-let maxhang = $state<number | null>((d?.maxhang as number | null) ?? null);
-let contact = $state<number | null>((d?.contact as number | null) ?? null);
-let cf = $state<number | null>((d?.cf as number | null) ?? null);
-let rfd = $state<number | null>((d?.rfd as number | null) ?? null);
-let density = $state<number | null>((d?.density as number | null) ?? null);
+const BASELINES = ['pull', 'pinch', 'maxhang', 'contact', 'cf', 'rfd', 'density'];
+// Baseline test values keyed by marker id (display units; converted on submit).
+let baseline = $state<Record<string, number | null>>(
+	(d?.baseline as Record<string, number | null>) ?? {},
+);
 
 let step = $state<1 | 2 | 3>((d?.step as 1 | 2 | 3) ?? 1);
 
@@ -78,13 +78,7 @@ $effect(() => {
 		niggle,
 		age,
 		sessionMinutes,
-		pull,
-		pinch,
-		maxhang,
-		contact,
-		cf,
-		rfd,
-		density,
+		baseline,
 		step,
 	};
 	localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshot));
@@ -136,39 +130,20 @@ function toggleEquip(e: Equipment) {
 const metric = (id: string) => content.metrics.find((mm) => mm.id === id);
 const metricLabel = (id: string) =>
 	`${metric(id)?.name ?? id} (${metricUnit(id, metric(id)?.unit ?? '')})`;
-const BASELINES = ['pull', 'pinch', 'maxhang', 'contact', 'cf', 'rfd', 'density'];
-const metricBind: Record<string, () => number | null> = {
-	pull: () => pull,
-	pinch: () => pinch,
-	maxhang: () => maxhang,
-	contact: () => contact,
-	cf: () => cf,
-	rfd: () => rfd,
-	density: () => density,
-};
-function setMetric(id: string, v: number | null) {
-	if (id === 'pull') pull = v;
-	else if (id === 'pinch') pinch = v;
-	else if (id === 'maxhang') maxhang = v;
-	else if (id === 'contact') contact = v;
-	else if (id === 'cf') cf = v;
-	else if (id === 'rfd') rfd = v;
-	else if (id === 'density') density = v;
-}
 
 const STEPS = [m.welcome_step_goals, m.welcome_step_context, m.welcome_step_baseline];
 
 function generate() {
 	const canon = (id: string, v: number | null) => (v == null ? null : toMetricCanonical(id, v));
-	const baselines = {
-		pull: canon('pull', pull),
-		pinch: canon('pinch', pinch),
-		maxhang: canon('maxhang', maxhang),
-		contact: canon('contact', contact),
-		cf: canon('cf', cf),
-		rfd: canon('rfd', rfd),
-		density: canon('density', density),
+	const grade = (id: string, label: string) => {
+		const i = gradeIndex(id, label);
+		return i >= 0 ? i : null;
 	};
+	const baselines: Record<string, number | null> = {
+		boulder: grade('boulder', boulderGrade),
+		route: grade('route', routeGrade),
+	};
+	for (const id of BASELINES) baselines[id] = canon(id, baseline[id] ?? null);
 	const assessment: Assessment = {
 		goal,
 		focus,
@@ -262,11 +237,21 @@ function back() {
 			<div class="grid grid-cols-2 gap-3">
 				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
 					{m.field_boulder_grade()}
-					<Input bind:value={boulderGrade} placeholder="V8" class="bg-panel-2" />
+					<Select type="single" value={boulderGrade} onValueChange={(v) => (boulderGrade = v ?? '')}>
+						<SelectTrigger class="bg-panel-2">{boulderGrade || '—'}</SelectTrigger>
+						<SelectContent>
+							{#each BOULDER_SCALE as g (g)}<SelectItem value={g}>{g}</SelectItem>{/each}
+						</SelectContent>
+					</Select>
 				</label>
 				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
 					{m.field_route_grade()}
-					<Input bind:value={routeGrade} placeholder="7c" class="bg-panel-2" />
+					<Select type="single" value={routeGrade} onValueChange={(v) => (routeGrade = v ?? '')}>
+						<SelectTrigger class="bg-panel-2">{routeGrade || '—'}</SelectTrigger>
+						<SelectContent>
+							{#each ROUTE_SCALE as g (g)}<SelectItem value={g}>{g}</SelectItem>{/each}
+						</SelectContent>
+					</Select>
 				</label>
 				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
 					{m.field_age()}
@@ -293,13 +278,7 @@ function back() {
 				{#each BASELINES as id (id)}
 					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
 						{metricLabel(id)}
-						<Input
-							type="number"
-							step="any"
-							value={metricBind[id]()}
-							oninput={(e) => setMetric(id, e.currentTarget.value === '' ? null : Number(e.currentTarget.value))}
-							class="bg-panel-2"
-						/>
+						<Input type="number" step="any" bind:value={baseline[id]} class="bg-panel-2" />
 					</label>
 				{/each}
 			</div>

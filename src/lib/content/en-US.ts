@@ -584,6 +584,22 @@ const content: LocaleContent = {
 			unit: 'sec @ load',
 			desc: 'Longest quality density hold at working load — tissue capacity proxy.',
 		},
+		{
+			id: 'boulder',
+			name: 'Boulder Grade',
+			abbr: 'BOULDER',
+			cat: '--flag',
+			unit: 'V-scale',
+			desc: 'Your hardest clean boulder (V-scale) — the on-the-wall expression of strength.',
+		},
+		{
+			id: 'route',
+			name: 'Route Grade',
+			abbr: 'ROUTE',
+			cat: '--violet',
+			unit: 'French',
+			desc: 'Your hardest redpoint route (French) — endurance and skill on the wall.',
+		},
 	],
 	quiz: [
 		{

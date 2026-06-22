@@ -6,7 +6,9 @@ import { goto } from '$app/navigation';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent, type MetricId } from '$lib/content';
+import { gradeIndex, gradeLabel, gradeScale, isGradeMetric } from '$lib/grades';
 import Modal from '$lib/Modal.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -72,6 +74,21 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 	inputs[id] = '';
 	toast.success(m.toast_metric_saved({ name }));
 }
+
+/** Log a climbing grade (stored as the scale's ordinal index). */
+function saveGrade(id: MetricId, name: string, cat: string, label: string) {
+	const v = gradeIndex(id, label);
+	if (v < 0) return;
+	appState.metrics[id].push({ date: today(), v });
+	appState.log.unshift({
+		date: today(),
+		type: 'test',
+		label: `${name}: ${label}`,
+		color: `var(${cat})`,
+		note: m.metric_test_note(),
+	});
+	toast.success(m.toast_metric_saved({ name }));
+}
 </script>
 
 <section class="animate-in fade-in duration-300">
@@ -109,28 +126,51 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 				<div class="mb-3.5 text-xs leading-snug text-ink-faint"><Prose value={metric.desc} /></div>
 				<div>
 					<span class="font-mono text-[30px] leading-none font-bold text-chalk">
-						{last != null ? round(showMetric(metric.id, last)) : '—'}
+						{#if isGradeMetric(metric.id)}
+							{last != null ? gradeLabel(metric.id, last) : '—'}
+						{:else}
+							{last != null ? round(showMetric(metric.id, last)) : '—'}
+						{/if}
 					</span>
-					<span class="text-[13px] text-ink-faint">{metricUnit(metric.id, metric.unit)}</span>
+					{#if !isGradeMetric(metric.id)}
+						<span class="text-[13px] text-ink-faint">{metricUnit(metric.id, metric.unit)}</span>
+					{/if}
 				</div>
 				<div class={cn('mt-1.5 font-mono text-xs', delta.cls)}>{delta.text}</div>
 				<Sparkline {data} catVar={metric.cat} />
 				<div class="mt-3.5 flex gap-2">
-					<Input
-						type="number"
-						step="any"
-						placeholder={m.metric_input_ph({ abbr: metric.abbr.toLowerCase() })}
-						bind:value={inputs[metric.id]}
-						class="border-line bg-panel-2 font-mono text-[13px]"
-					/>
-					<Button
-						variant="secondary"
-						size="sm"
-						class="bg-chalk text-bg hover:bg-chalk/90"
-						onclick={() => saveMetric(metric.id, metric.name, metric.unit, metric.cat)}
-					>
-						{m.btn_save()}
-					</Button>
+					{#if isGradeMetric(metric.id)}
+						<Select
+							type="single"
+							value={last != null ? gradeLabel(metric.id, last) : ''}
+							onValueChange={(v) => v && saveGrade(metric.id, metric.name, metric.cat, v)}
+						>
+							<SelectTrigger class="w-full border-line bg-panel-2 font-mono text-[13px]">
+								{last != null ? gradeLabel(metric.id, last) : m.metric_pick_grade()}
+							</SelectTrigger>
+							<SelectContent>
+								{#each gradeScale(metric.id) as g (g)}
+									<SelectItem value={g}>{g}</SelectItem>
+								{/each}
+							</SelectContent>
+						</Select>
+					{:else}
+						<Input
+							type="number"
+							step="any"
+							placeholder={m.metric_input_ph({ abbr: metric.abbr.toLowerCase() })}
+							bind:value={inputs[metric.id]}
+							class="border-line bg-panel-2 font-mono text-[13px]"
+						/>
+						<Button
+							variant="secondary"
+							size="sm"
+							class="bg-chalk text-bg hover:bg-chalk/90"
+							onclick={() => saveMetric(metric.id, metric.name, metric.unit, metric.cat)}
+						>
+							{m.btn_save()}
+						</Button>
+					{/if}
 				</div>
 			</Card>
 		{/each}
@@ -171,8 +211,12 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 					<div class="flex justify-between border-b border-line/60 py-1 font-mono text-xs">
 						<span class="text-ink-faint">{e.date}</span>
 						<span class="text-chalk">
-							{round(showMetric(openMetric.id, e.v))}
-							{metricUnit(openMetric.id, openMetric.unit)}
+							{#if isGradeMetric(openMetric.id)}
+								{gradeLabel(openMetric.id, e.v)}
+							{:else}
+								{round(showMetric(openMetric.id, e.v))}
+								{metricUnit(openMetric.id, openMetric.unit)}
+							{/if}
 						</span>
 					</div>
 				{/each}

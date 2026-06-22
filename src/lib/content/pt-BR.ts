@@ -596,6 +596,22 @@ const content: LocaleContent = {
 			unit: 'seg @ carga',
 			desc: 'Maior sustentação de densidade com qualidade na carga de trabalho — proxy da capacidade do tecido.',
 		},
+		{
+			id: 'boulder',
+			name: 'Grau de Boulder',
+			abbr: 'BOULDER',
+			cat: '--flag',
+			unit: 'escala V',
+			desc: 'Seu boulder mais duro limpo (escala V) — a expressão da força na parede.',
+		},
+		{
+			id: 'route',
+			name: 'Grau de Via',
+			abbr: 'VIA',
+			cat: '--violet',
+			unit: 'francês',
+			desc: 'Sua via mais dura no redpoint (francês) — resistência e técnica na parede.',
+		},
 	],
 	quiz: [
 		{
