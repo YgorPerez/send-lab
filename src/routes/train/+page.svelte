@@ -27,6 +27,7 @@ import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
 	addDayExercise,
+	effectiveVariant,
 	removeDayExercise,
 	resolveExerciseIds,
 	resolveSwapIndex,
@@ -68,7 +69,7 @@ const items = $derived<Item[]>(
 		if (!ex) return [];
 		const idx = resolveSwapIndex(week, weekday, exId);
 		if (exId === 'rest' && idx === 0) return [];
-		const spec = variantOf(ex, idx);
+		const spec = effectiveVariant(variantOf(ex, idx), week, weekday, exId);
 		return [
 			{
 				exId,

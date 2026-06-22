@@ -13,7 +13,7 @@ import type {
 	Variant,
 	VariantParams,
 } from './content/types';
-import { appState } from './state.svelte';
+import { appState, type ProgramPhase, type ProgramTarget } from './state.svelte';
 
 export function slotKey(week: number, weekday: string): string {
 	return `w${week}-${weekday}`;
@@ -277,12 +277,21 @@ export function setProgramDay(weekday: string, dayKey: string): void {
 export function addProgramExercise(content: Content, weekday: string, exId: string): void {
 	const ex = programExercises(content, weekday);
 	if (ex.includes(exId)) return;
-	appState.program.template[weekday] = { dayKey: programDayKey(weekday), ex: [...ex, exId] };
+	appState.program.template[weekday] = {
+		...appState.program.template[weekday],
+		dayKey: programDayKey(weekday),
+		ex: [...ex, exId],
+	};
 }
 
 export function removeProgramExercise(content: Content, weekday: string, exId: string): void {
 	const ex = programExercises(content, weekday).filter((id) => id !== exId);
-	appState.program.template[weekday] = { dayKey: programDayKey(weekday), ex };
+	appState.program.template[weekday] = {
+		...appState.program.template[weekday],
+		dayKey: programDayKey(weekday),
+		ex,
+	};
+	delete appState.program.targets[`${weekday}:${exId}`];
 }
 
 /** Revert a weekday to the built-in default. */
@@ -297,5 +306,79 @@ export function setProgramWeeks(n: number): void {
 
 /** Reset the whole program to the built-in 8-week default. */
 export function resetProgram(): void {
-	appState.program = { weeks: 8, template: {} };
+	appState.program = { weeks: 8, template: {}, targets: {}, phases: [] };
+}
+
+// ---------------- PERIODIZATION ----------------
+
+/** The phase covering a 1-based week, or null when no phases are defined. Weeks
+ *  past the defined span hold the last phase. */
+export function phaseForWeek(week: number): ProgramPhase | null {
+	const phases = appState.program.phases;
+	if (!phases.length) return null;
+	let acc = 0;
+	for (const p of phases) {
+		acc += Math.max(1, p.weeks);
+		if (week <= acc) return p;
+	}
+	return phases[phases.length - 1];
+}
+
+function scaleRange(r: Range, pct: number, floor = 0): Range {
+	const f = pct / 100;
+	return {
+		min: Math.max(floor, Math.round(r.min * f)),
+		max: Math.max(floor, Math.round(r.max * f)),
+	};
+}
+
+const fixedRange = (v: number): Range => ({ min: v, max: v });
+
+/** The program prescription override for a slot's exercise, if any. */
+function programTarget(weekday: string, exId: string): ProgramTarget | undefined {
+	return appState.program.targets[`${weekday}:${exId}`];
+}
+
+/** The variant a slot actually runs: built-in spec with the program's target
+ *  overrides applied, then scaled by the week's periodization phase (intensity →
+ *  load, volume → sets/rounds). Use for Train's prescription + timer seed. */
+export function effectiveVariant(
+	base: Variant,
+	week: number,
+	weekday: string,
+	exId: string,
+): Variant {
+	const t = programTarget(weekday, exId);
+	const phase = phaseForWeek(week);
+	if (!t && !phase) return base;
+	const v: Variant = { ...base };
+	if (t) {
+		if (t.sets != null) v.sets = fixedRange(t.sets);
+		if (t.reps != null) v.reps = fixedRange(t.reps);
+		if (t.loadKg != null) v.loadKg = fixedRange(t.loadKg);
+		if (t.edgeMm != null) v.edgeMm = fixedRange(t.edgeMm);
+		if (t.workSec != null) v.workSec = fixedRange(t.workSec);
+		if (t.restSec != null) v.restSec = fixedRange(t.restSec);
+		if (t.rpe != null) v.rpe = fixedRange(t.rpe);
+	}
+	if (phase) {
+		if (v.loadKg) v.loadKg = scaleRange(v.loadKg, phase.intensity);
+		if (v.sets) v.sets = scaleRange(v.sets, phase.volume, 1);
+		if (v.rounds) v.rounds = scaleRange(v.rounds, phase.volume, 1);
+	}
+	return v;
+}
+
+/** Add a phase to the end of the program's periodization. */
+export function addPhase(name: string): void {
+	appState.program.phases.push({ name, weeks: 4, intensity: 100, volume: 100, deload: false });
+}
+
+export function updatePhase(i: number, patch: Partial<ProgramPhase>): void {
+	const p = appState.program.phases[i];
+	if (p) appState.program.phases[i] = { ...p, ...patch };
+}
+
+export function removePhase(i: number): void {
+	appState.program.phases.splice(i, 1);
 }

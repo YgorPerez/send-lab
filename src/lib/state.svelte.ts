@@ -85,9 +85,59 @@ interface AppState {
 	assessment: Assessment | null;
 	/** Display-unit preferences (values are stored canonically as kg / mm) + notifications. */
 	prefs: { weight: 'kg' | 'lb'; length: 'mm' | 'in'; notify: boolean };
-	/** Custom program: block length + weekly template (per weekday → day-type key
-	 *  and an optional default exercise list). Empty template = use the built-in week. */
-	program: { weeks: number; template: Record<string, { dayKey: string; ex?: string[] }> };
+	/** The active custom program. Empty template/phases = the built-in 8-week week. */
+	program: Program;
+	/** Named programs the user has saved, switchable from the editor. */
+	savedPrograms: SavedProgram[];
+}
+
+/** A per-weekday slot in the program template. */
+interface ProgramDayCfg {
+	/** Which built-in day-type (category / load / color / default exercises) it uses. */
+	dayKey: string;
+	/** Ordered exercise ids (primary first); absent = the day-type's defaults. */
+	ex?: string[];
+	/** Custom focus name shown instead of the day-type label. */
+	name?: string;
+}
+
+/** Per-exercise prescription override in the program (canonical kg / mm / seconds).
+ *  Any field left undefined falls back to the variant's built-in target. */
+export interface ProgramTarget {
+	/** Chosen variant index for this exercise in the program. */
+	variant?: number;
+	sets?: number;
+	reps?: number;
+	loadKg?: number;
+	edgeMm?: number;
+	workSec?: number;
+	restSec?: number;
+	rpe?: number;
+}
+
+/** A periodization phase spanning a run of weeks. */
+export interface ProgramPhase {
+	name: string;
+	weeks: number;
+	/** Load multiplier, percent of baseline (100 = unchanged). */
+	intensity: number;
+	/** Volume multiplier (sets / rounds), percent of baseline. */
+	volume: number;
+	deload: boolean;
+}
+
+interface Program {
+	weeks: number;
+	template: Record<string, ProgramDayCfg>;
+	/** Prescription overrides keyed `${weekday}:${exId}`. */
+	targets: Record<string, ProgramTarget>;
+	/** Ordered phases; their weeks need not sum to `weeks` (the tail repeats). */
+	phases: ProgramPhase[];
+}
+
+interface SavedProgram {
+	name: string;
+	program: Program;
 }
 
 function defaultState(): AppState {
@@ -104,7 +154,20 @@ function defaultState(): AppState {
 		workouts: [],
 		assessment: null,
 		prefs: { weight: 'kg', length: 'mm', notify: false },
-		program: { weeks: 8, template: {} },
+		program: { weeks: 8, template: {}, targets: {}, phases: [] },
+		savedPrograms: [],
+	};
+}
+
+/** Coerce a possibly-old or partial program into the current shape (back-fills
+ *  targets / phases that older saved states won't have). */
+function normalizeProgram(p: Partial<Program> | undefined): Program {
+	const base = defaultState().program;
+	return {
+		weeks: typeof p?.weeks === 'number' ? p.weeks : base.weeks,
+		template: p?.template ?? base.template,
+		targets: p?.targets ?? base.targets,
+		phases: Array.isArray(p?.phases) ? p.phases : base.phases,
 	};
 }
 
@@ -139,7 +202,8 @@ function applyData(data: Partial<AppState>): void {
 	appState.workouts = data.workouts ?? base.workouts;
 	appState.assessment = data.assessment ?? base.assessment;
 	appState.prefs = { ...base.prefs, ...data.prefs };
-	appState.program = data.program ?? base.program;
+	appState.program = normalizeProgram(data.program);
+	appState.savedPrograms = data.savedPrograms ?? base.savedPrograms;
 }
 
 // Offline mirror: the per-user state is cached in localStorage so the app works
@@ -173,7 +237,8 @@ function sanitize(raw: unknown): Partial<AppState> {
 	if (raw.assessment === null || isObj(raw.assessment))
 		out.assessment = raw.assessment as AppState['assessment'];
 	if (isObj(raw.prefs)) out.prefs = raw.prefs as AppState['prefs'];
-	if (isObj(raw.program)) out.program = raw.program as AppState['program'];
+	if (isObj(raw.program)) out.program = normalizeProgram(raw.program as Partial<Program>);
+	if (Array.isArray(raw.savedPrograms)) out.savedPrograms = raw.savedPrograms as SavedProgram[];
 	return out;
 }
 

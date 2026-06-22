@@ -7,6 +7,7 @@ import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
+import Periodization from '$lib/Periodization.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -31,17 +32,20 @@ const content = getContent();
 	<SectionHeading title={m.sec_program()} />
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim"><Prose value={m.lede_program()} /></p>
 
-	<Card class="mb-[22px] flex-row items-center justify-between gap-3 p-[18px]">
-		<span class="font-bold">{m.prog_weeks()}</span>
-		<Input
-			type="number"
-			min="1"
-			max="24"
-			value={appState.program.weeks}
-			oninput={(e) => setProgramWeeks(Number(e.currentTarget.value))}
-			class="h-9 w-24 bg-panel-2 text-center text-sm"
-		/>
-	</Card>
+	<div class="mb-[22px] flex flex-col gap-3">
+		<Card class="flex-row items-center justify-between gap-3 p-[18px]">
+			<span class="font-bold">{m.prog_weeks()}</span>
+			<Input
+				type="number"
+				min="1"
+				max="24"
+				value={appState.program.weeks}
+				oninput={(e) => setProgramWeeks(Number(e.currentTarget.value))}
+				class="h-9 w-24 bg-panel-2 text-center text-sm"
+			/>
+		</Card>
+		<Periodization />
+	</div>
 
 	<div class="grid gap-3 md:grid-cols-2">
 		{#each content.days as slot (slot.k)}
