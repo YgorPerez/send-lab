@@ -23,20 +23,32 @@ export function taskKey(week: number, weekday: string, exId: string): string {
 	return `w${week}-${weekday}:${exId}`;
 }
 
-/** Template weekday key planned for a slot (defaults to the slot's own weekday). */
+/** Template weekday key for a slot: per-week override → program template → built-in. */
 function resolveDayKey(week: number, weekday: string): string {
-	return appState.dayPlan[slotKey(week, weekday)] ?? weekday;
+	return (
+		appState.dayPlan[slotKey(week, weekday)] ??
+		appState.program.template[weekday]?.dayKey ??
+		weekday
+	);
 }
 
-/** The Day template a slot will actually run, after any per-day protocol override. */
+/** Look up a built-in Day template by its weekday key. */
+export function dayTemplate(content: Content, dayKey: string): Day {
+	return content.days.find((d) => d.k === dayKey) ?? content.days[0];
+}
+
+/** The Day template a slot will actually run, after overrides. */
 export function resolveDay(content: Content, week: number, weekday: string): Day {
-	const tk = resolveDayKey(week, weekday);
-	return content.days.find((d) => d.k === tk) ?? content.days[0];
+	return dayTemplate(content, resolveDayKey(week, weekday));
 }
 
-/** The exercise ids for a slot: a per-day custom list if set, else the protocol's. */
+/** The exercise ids for a slot: per-week override → program template → day default. */
 export function resolveExerciseIds(content: Content, week: number, weekday: string): string[] {
-	return appState.dayExercises[slotKey(week, weekday)] ?? resolveDay(content, week, weekday).ex;
+	return (
+		appState.dayExercises[slotKey(week, weekday)] ??
+		appState.program.template[weekday]?.ex ??
+		resolveDay(content, week, weekday).ex
+	);
 }
 
 /** Replace a slot's exercise list (materializes the per-day override). */
@@ -238,4 +250,52 @@ export function resetDay(week: number, weekday: string): void {
 	for (const key of Object.keys(appState.daySwaps)) {
 		if (key.startsWith(`${k}:`)) delete appState.daySwaps[key];
 	}
+}
+
+// ---------------- PROGRAM TEMPLATE (applies to every week) ----------------
+
+/** The day-type key set for a weekday in the program template (else the weekday). */
+export function programDayKey(weekday: string): string {
+	return appState.program.template[weekday]?.dayKey ?? weekday;
+}
+
+/** The default exercise ids for a weekday in the program template. */
+export function programExercises(content: Content, weekday: string): string[] {
+	return appState.program.template[weekday]?.ex ?? dayTemplate(content, programDayKey(weekday)).ex;
+}
+
+/** Whether a weekday has been customized in the program template. */
+export function isProgramDayCustom(weekday: string): boolean {
+	return appState.program.template[weekday] != null;
+}
+
+/** Set the day-type for a weekday across the whole program. */
+export function setProgramDay(weekday: string, dayKey: string): void {
+	appState.program.template[weekday] = { ...appState.program.template[weekday], dayKey };
+}
+
+export function addProgramExercise(content: Content, weekday: string, exId: string): void {
+	const ex = programExercises(content, weekday);
+	if (ex.includes(exId)) return;
+	appState.program.template[weekday] = { dayKey: programDayKey(weekday), ex: [...ex, exId] };
+}
+
+export function removeProgramExercise(content: Content, weekday: string, exId: string): void {
+	const ex = programExercises(content, weekday).filter((id) => id !== exId);
+	appState.program.template[weekday] = { dayKey: programDayKey(weekday), ex };
+}
+
+/** Revert a weekday to the built-in default. */
+export function resetProgramDay(weekday: string): void {
+	delete appState.program.template[weekday];
+}
+
+/** Set the block length (weeks), clamped to a sane range. */
+export function setProgramWeeks(n: number): void {
+	if (Number.isFinite(n)) appState.program.weeks = Math.min(24, Math.max(1, Math.round(n)));
+}
+
+/** Reset the whole program to the built-in 8-week default. */
+export function resetProgram(): void {
+	appState.program = { weeks: 8, template: {} };
 }

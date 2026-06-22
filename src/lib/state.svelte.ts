@@ -85,6 +85,9 @@ interface AppState {
 	assessment: Assessment | null;
 	/** Display-unit preferences (values are stored canonically as kg / mm). */
 	prefs: { weight: 'kg' | 'lb'; length: 'mm' | 'in' };
+	/** Custom program: block length + weekly template (per weekday → day-type key
+	 *  and an optional default exercise list). Empty template = use the built-in week. */
+	program: { weeks: number; template: Record<string, { dayKey: string; ex?: string[] }> };
 }
 
 function defaultState(): AppState {
@@ -101,6 +104,7 @@ function defaultState(): AppState {
 		workouts: [],
 		assessment: null,
 		prefs: { weight: 'kg', length: 'mm' },
+		program: { weeks: 8, template: {} },
 	};
 }
 
@@ -128,6 +132,7 @@ function applyData(data: Partial<AppState>): void {
 	appState.workouts = data.workouts ?? base.workouts;
 	appState.assessment = data.assessment ?? base.assessment;
 	appState.prefs = data.prefs ?? base.prefs;
+	appState.program = data.program ?? base.program;
 }
 
 /** Load the signed-in user's state from the server. Call once per login. */

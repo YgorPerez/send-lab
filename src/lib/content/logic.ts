@@ -16,9 +16,9 @@ export function computeVerdictId(answers: Answers, fatigue = 0): VerdictId {
 	return 'green';
 }
 
-/** Training phase for a given week (1–8). */
-export function phaseId(w: number): PhaseId {
-	if (w >= 8) return 'deload';
-	if (w >= 5) return 'phase2';
+/** Training phase for a given week, scaled to the block length (last week = deload). */
+export function phaseId(w: number, weeks = 8): PhaseId {
+	if (w >= weeks) return 'deload';
+	if (w > Math.floor(weeks / 2)) return 'phase2';
 	return 'phase1';
 }

@@ -39,7 +39,8 @@ $effect(() => {
 	if (!browsed) week = appState.currentWeek;
 });
 const isCurrent = $derived(week === appState.currentWeek);
-const phase = $derived(content.phases[phaseId(week)]);
+const weeks = $derived(appState.program.weeks);
+const phase = $derived(content.phases[phaseId(week, weeks)]);
 
 const COMPOUND = ['Mon', 'Wed', 'Thu', 'Fri'];
 const todayKey = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -92,9 +93,9 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 			<span class="font-bold">{phase.name}</span>
 			<span class="font-mono text-xs text-flag">{m.week_label({ n: week })}</span>
 		</div>
-		<Progress value={(week / 8) * 100} class="h-2.5 bg-panel-2" />
+		<Progress value={(week / weeks) * 100} class="h-2.5 bg-panel-2" />
 		<div class="flex flex-wrap gap-1.5">
-			{#each Array.from({ length: 8 }, (_, i) => i + 1) as i (i)}
+			{#each Array.from({ length: weeks }, (_, i) => i + 1) as i (i)}
 				<button
 					type="button"
 					onclick={() => viewWeek(i)}
@@ -104,7 +105,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 						i === week
 							? 'border-flag bg-flag font-bold text-white'
 							: 'border-line bg-panel-2 text-ink-faint hover:text-ink',
-						i === 8 && i !== week && 'border-teal text-teal',
+						i === weeks && i !== week && 'border-teal text-teal',
 						i === appState.currentWeek && 'ring-1 ring-chalk'
 					)}
 				>
@@ -114,7 +115,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 		</div>
 		<div class="flex items-center justify-between gap-2">
 			<span class="font-mono text-[11px] text-ink-faint">
-				{m.wk_current_week()} · {appState.currentWeek}/8
+				{m.wk_current_week()} · {appState.currentWeek}/{weeks}
 			</span>
 			{#if !isCurrent}
 				<button
