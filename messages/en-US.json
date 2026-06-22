@@ -34,6 +34,8 @@
 	"prog_periodization": "Periodization",
 	"prog_periodization_desc": "Shape load across the block. Each phase scales its weeks' prescriptions — intensity changes load, volume changes sets and rounds.",
 	"prog_phase": "Phase",
+	"prog_phase_base": "Base",
+	"prog_phase_peak": "Peaking",
 	"prog_add_phase": "Add phase",
 	"prog_phase_weeks": "Weeks",
 	"prog_intensity": "Intensity",

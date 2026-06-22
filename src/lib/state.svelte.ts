@@ -2,6 +2,7 @@
 // Reactive app state (Svelte 5 runes), persisted per signed-in user via the
 // authenticated /api/state endpoint (SQLite). Replaces the old localStorage doc.
 import { browser } from '$app/environment';
+import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { MetricId } from './content/types';
 
@@ -140,6 +141,21 @@ interface SavedProgram {
 	program: Program;
 }
 
+/** The default periodization: an 8-week block of base → peaking → deload,
+ *  mirroring the built-in program's phases. */
+function defaultPhases(): ProgramPhase[] {
+	return [
+		{ name: m.prog_phase_base(), weeks: 4, intensity: 95, volume: 110, deload: false },
+		{ name: m.prog_phase_peak(), weeks: 3, intensity: 110, volume: 85, deload: false },
+		{ name: m.prog_deload(), weeks: 1, intensity: 50, volume: 50, deload: true },
+	];
+}
+
+/** The starting program: built-in week template with the default 3 phases. */
+export function defaultProgram(): Program {
+	return { weeks: 8, template: {}, targets: {}, phases: defaultPhases() };
+}
+
 function defaultState(): AppState {
 	return {
 		currentWeek: 1,
@@ -154,7 +170,7 @@ function defaultState(): AppState {
 		workouts: [],
 		assessment: null,
 		prefs: { weight: 'kg', length: 'mm', notify: false },
-		program: { weeks: 8, template: {}, targets: {}, phases: [] },
+		program: defaultProgram(),
 		savedPrograms: [],
 	};
 }

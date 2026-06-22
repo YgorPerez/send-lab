@@ -34,6 +34,8 @@
 	"prog_periodization": "Periodização",
 	"prog_periodization_desc": "Modele a carga ao longo do bloco. Cada fase escala as prescrições das suas semanas — intensidade muda a carga, volume muda séries e ciclos.",
 	"prog_phase": "Fase",
+	"prog_phase_base": "Base",
+	"prog_phase_peak": "Pico",
 	"prog_add_phase": "Adicionar fase",
 	"prog_phase_weeks": "Semanas",
 	"prog_intensity": "Intensidade",

@@ -13,7 +13,13 @@ import type {
 	Variant,
 	VariantParams,
 } from './content/types';
-import { appState, normalizeProgram, type ProgramPhase, type ProgramTarget } from './state.svelte';
+import {
+	appState,
+	defaultProgram,
+	normalizeProgram,
+	type ProgramPhase,
+	type ProgramTarget,
+} from './state.svelte';
 
 export function slotKey(week: number, weekday: string): string {
 	return `w${week}-${weekday}`;
@@ -323,9 +329,9 @@ export function setProgramWeeks(n: number): void {
 	if (Number.isFinite(n)) appState.program.weeks = Math.min(24, Math.max(1, Math.round(n)));
 }
 
-/** Reset the whole program to the built-in 8-week default. */
+/** Reset the whole program to the built-in 8-week default (3 phases). */
 export function resetProgram(): void {
-	appState.program = { weeks: 8, template: {}, targets: {}, phases: [] };
+	appState.program = defaultProgram();
 }
 
 // ---------------- PERIODIZATION ----------------
