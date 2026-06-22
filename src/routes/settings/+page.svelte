@@ -134,6 +134,22 @@ const seg =
 		</Button>
 	</Card>
 
+	<!-- Assessment -->
+	<Card class="flex-row items-center justify-between gap-4 p-[18px]">
+		<div>
+			<span class="font-bold">{m.welcome_title()}</span>
+			<p class="mt-0.5 max-w-[52ch] text-xs text-ink-dim">{m.set_assessment_desc()}</p>
+		</div>
+		<Button
+			variant="outline"
+			size="sm"
+			class="flex-none border-line text-xs"
+			onclick={() => goto('/welcome')}
+		>
+			{m.set_redo_assessment()}
+		</Button>
+	</Card>
+
 	<!-- Data -->
 	<Card class="gap-3 p-[18px]">
 		<span class="font-bold">{m.data_section()}</span>

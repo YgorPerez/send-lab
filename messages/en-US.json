@@ -303,6 +303,8 @@
 	"set_notify_desc": "Get a heads-up when a rest timer finishes, even with the app in the background.",
 	"set_program_desc": "Edit your weekly template and block length.",
 	"set_open_program": "Open program editor",
+	"set_assessment_desc": "Re-run onboarding to regenerate your program from fresh answers and tests. This replaces the current program.",
+	"set_redo_assessment": "Redo assessment",
 	"set_account": "Account",
 	"set_change_pw": "Change password",
 	"field_current_pw": "Current password",

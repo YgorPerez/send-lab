@@ -303,6 +303,8 @@
 	"set_notify_desc": "Receba um aviso quando o descanso terminar, mesmo com o app em segundo plano.",
 	"set_program_desc": "Edite seu template semanal e a duração do bloco.",
 	"set_open_program": "Abrir editor de programa",
+	"set_assessment_desc": "Refaça o onboarding para regenerar seu programa a partir de respostas e testes novos. Isto substitui o programa atual.",
+	"set_redo_assessment": "Refazer avaliação",
 	"set_account": "Conta",
 	"set_change_pw": "Alterar senha",
 	"field_current_pw": "Senha atual",
