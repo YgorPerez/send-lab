@@ -1,11 +1,12 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
+import AssessmentProposal from '$lib/AssessmentProposal.svelte';
 import { Button } from '$lib/components/ui/button';
 import { Card, CardContent } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
+import OptionCards from '$lib/OptionCards.svelte';
 import * as m from '$lib/paraglide/messages';
 import { generateProgram, trainingDays } from '$lib/programGen';
 import {
@@ -18,6 +19,7 @@ import {
 	saveAssessment,
 	today,
 } from '$lib/state.svelte';
+import { metricUnit, showKg, toKg, toMetricCanonical } from '$lib/units';
 import { cn } from '$lib/utils';
 
 const content = getContent();
@@ -27,7 +29,7 @@ let goal = $state<Goal>(a?.goal ?? 'boulder');
 let focus = $state<Focus>(a?.focus ?? 'fingers');
 let level = $state<Level>(a?.level ?? 'advanced');
 let days = $state(a?.daysPerWeek ?? 4);
-let bodyweight = $state<number | null>(a?.bodyweight ?? null);
+let bodyweight = $state<number | null>(a?.bodyweight != null ? showKg(a.bodyweight) : null);
 let equipment = $state<Equipment[]>(a?.equipment ?? ['hangboard', 'board', 'rings', 'weights']);
 let boulderGrade = $state(a?.boulderGrade ?? '');
 let routeGrade = $state(a?.routeGrade ?? '');
@@ -42,18 +44,7 @@ let cf = $state<number | null>(null);
 let rfd = $state<number | null>(null);
 let density = $state<number | null>(null);
 
-const EQUIPMENT: Equipment[] = ['hangboard', 'board', 'rings', 'weights'];
-const equipLabel: Record<Equipment, () => string> = {
-	hangboard: m.equip_hangboard,
-	board: m.equip_board,
-	rings: m.equip_rings,
-	weights: m.equip_weights,
-};
-function toggleEquip(e: Equipment) {
-	equipment = equipment.includes(e) ? equipment.filter((x) => x !== e) : [...equipment, e];
-}
-
-let step = $state<'form' | 'proposal'>('form');
+let step = $state<1 | 2 | 3 | 'proposal'>(1);
 
 const goalLabel: Record<Goal, () => string> = {
 	boulder: m.goal_boulder,
@@ -71,21 +62,40 @@ const levelLabel: Record<Level, () => string> = {
 	advanced: m.level_advanced,
 	elite: m.level_elite,
 };
-const goalNote: Record<Goal, () => string> = {
-	boulder: m.prop_goal_boulder,
-	sport: m.prop_goal_sport,
-	all: m.prop_goal_all,
+
+const goalOpts = $derived(
+	(['boulder', 'sport', 'all'] as Goal[]).map((g) => ({ value: g, label: goalLabel[g]() })),
+);
+const focusOpts = $derived(
+	(['fingers', 'power', 'endurance', 'tissue'] as Focus[]).map((f) => ({
+		value: f,
+		label: focusLabel[f](),
+	})),
+);
+const levelOpts = $derived(
+	(['intermediate', 'advanced', 'elite'] as Level[]).map((l) => ({
+		value: l,
+		label: levelLabel[l](),
+	})),
+);
+
+const EQUIPMENT: Equipment[] = ['hangboard', 'board', 'rings', 'weights'];
+const equipLabel: Record<Equipment, () => string> = {
+	hangboard: m.equip_hangboard,
+	board: m.equip_board,
+	rings: m.equip_rings,
+	weights: m.equip_weights,
 };
-const focusNote: Record<Focus, () => string> = {
-	fingers: m.prop_focus_fingers,
-	power: m.prop_focus_power,
-	endurance: m.prop_focus_endurance,
-	tissue: m.prop_focus_tissue,
-};
+function toggleEquip(e: Equipment) {
+	equipment = equipment.includes(e) ? equipment.filter((x) => x !== e) : [...equipment, e];
+}
 
 const metric = (id: string) => content.metrics.find((mm) => mm.id === id);
+const metricLabel = (id: string) =>
+	`${metric(id)?.name ?? id} (${metricUnit(id, metric(id)?.unit ?? '')})`;
 
-// The weekdays the generated program will train (shown on the proposal step).
+const STEPS = [m.welcome_step_goals, m.welcome_step_context, m.welcome_step_baseline];
+
 const planDays = $derived(
 	trainingDays(content, { goal, focus, level, daysPerWeek: days } as Assessment).map(
 		(k) => content.days.find((d) => d.k === k)?.label ?? k,
@@ -93,12 +103,22 @@ const planDays = $derived(
 );
 
 function generate() {
+	const canon = (id: string, v: number | null) => (v == null ? null : toMetricCanonical(id, v));
+	const baselines = {
+		pull: canon('pull', pull),
+		pinch: canon('pinch', pinch),
+		maxhang: canon('maxhang', maxhang),
+		contact: canon('contact', contact),
+		cf: canon('cf', cf),
+		rfd: canon('rfd', rfd),
+		density: canon('density', density),
+	};
 	const assessment: Assessment = {
 		goal,
 		focus,
 		level,
 		daysPerWeek: days,
-		bodyweight,
+		bodyweight: bodyweight == null ? null : toKg(bodyweight),
 		equipment,
 		boulderGrade: boulderGrade.trim() || null,
 		routeGrade: routeGrade.trim() || null,
@@ -107,11 +127,17 @@ function generate() {
 		sessionMinutes,
 		completedAt: today(),
 	};
-	const baselines = { pull, pinch, maxhang, contact, cf, rfd, density };
 	saveAssessment(assessment, baselines);
-	// Tailor the actual program to the answers (not just the proposal text).
 	appState.program = generateProgram(content, assessment, baselines);
 	step = 'proposal';
+}
+
+function next() {
+	if (step === 3) generate();
+	else if (typeof step === 'number') step = (step + 1) as 1 | 2 | 3;
+}
+function back() {
+	if (typeof step === 'number' && step > 1) step = (step - 1) as 1 | 2 | 3;
 }
 </script>
 
@@ -123,188 +149,149 @@ function generate() {
 		SEND&nbsp;LAB
 	</h1>
 
-	{#if step === 'form'}
+	{#if step !== 'proposal'}
 		<div>
 			<h2 class="text-xl font-extrabold tracking-tight">{m.welcome_title()}</h2>
 			<p class="mt-1 text-sm text-ink-dim">{m.welcome_sub()}</p>
 		</div>
 
+		<div class="flex items-center gap-2">
+			{#each STEPS as label, i (label)}
+				<div class="flex-1">
+					<div class={cn('h-1.5 rounded', step >= i + 1 ? 'bg-flag' : 'bg-line')}></div>
+					<div
+						class={cn(
+							'mt-1 font-mono text-[10px] tracking-wider uppercase',
+							step >= i + 1 ? 'text-ink-dim' : 'text-ink-faint'
+						)}
+					>
+						{label()}
+					</div>
+				</div>
+			{/each}
+		</div>
+
 		<Card>
 			<CardContent class="flex flex-col gap-4">
-				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-					{m.field_goal()}
-					<Select type="single" value={goal} onValueChange={(v) => v && (goal = v as Goal)}>
-						<SelectTrigger class="bg-panel-2">{goalLabel[goal]()}</SelectTrigger>
-						<SelectContent>
-							{#each Object.keys(goalLabel) as g (g)}
-								<SelectItem value={g}>{goalLabel[g as Goal]()}</SelectItem>
-							{/each}
-						</SelectContent>
-					</Select>
-				</label>
-
-				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-					{m.field_focus()}
-					<Select type="single" value={focus} onValueChange={(v) => v && (focus = v as Focus)}>
-						<SelectTrigger class="bg-panel-2">{focusLabel[focus]()}</SelectTrigger>
-						<SelectContent>
-							{#each Object.keys(focusLabel) as f (f)}
-								<SelectItem value={f}>{focusLabel[f as Focus]()}</SelectItem>
-							{/each}
-						</SelectContent>
-					</Select>
-				</label>
-
-				<div class="grid grid-cols-2 gap-3">
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{m.field_level()}
-						<Select type="single" value={level} onValueChange={(v) => v && (level = v as Level)}>
-							<SelectTrigger class="bg-panel-2">{levelLabel[level]()}</SelectTrigger>
-							<SelectContent>
-								{#each Object.keys(levelLabel) as l (l)}
-									<SelectItem value={l}>{levelLabel[l as Level]()}</SelectItem>
-								{/each}
-							</SelectContent>
-						</Select>
-					</label>
+				{#if step === 1}
+					<div class="flex flex-col gap-1.5">
+						<span class="text-xs text-ink-dim">{m.field_goal()}</span>
+						<OptionCards value={goal} options={goalOpts} onSelect={(v) => (goal = v)} />
+					</div>
+					<div class="flex flex-col gap-1.5">
+						<span class="text-xs text-ink-dim">{m.field_focus()}</span>
+						<OptionCards value={focus} options={focusOpts} onSelect={(v) => (focus = v)} />
+					</div>
+					<div class="flex flex-col gap-1.5">
+						<span class="text-xs text-ink-dim">{m.field_level()}</span>
+						<OptionCards value={level} options={levelOpts} onSelect={(v) => (level = v)} />
+					</div>
 					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
 						{m.field_days()}
 						<Input type="number" min="1" max="7" bind:value={days} class="bg-panel-2" />
 					</label>
-				</div>
-
-				<div>
-					<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-						{m.field_equipment()}
+				{:else if step === 2}
+					<div class="flex flex-col gap-1.5">
+						<span class="text-xs text-ink-dim">{m.field_equipment()}</span>
+						<div class="flex flex-wrap gap-1.5">
+							{#each EQUIPMENT as eq (eq)}
+								<button
+									type="button"
+									onclick={() => toggleEquip(eq)}
+									aria-pressed={equipment.includes(eq)}
+									class={cn(
+										'rounded-md border px-2.5 py-1 text-xs transition',
+										equipment.includes(eq)
+											? 'border-flag bg-flag/15 text-flag'
+											: 'border-line text-ink-faint hover:text-ink'
+									)}
+								>
+									{equipLabel[eq]()}
+								</button>
+							{/each}
+						</div>
 					</div>
-					<div class="flex flex-wrap gap-1.5">
-						{#each EQUIPMENT as eq (eq)}
-							<button
-								type="button"
-								onclick={() => toggleEquip(eq)}
-								aria-pressed={equipment.includes(eq)}
-								class={cn(
-									'rounded-md border px-2.5 py-1 text-xs transition',
-									equipment.includes(eq)
-										? 'border-flag bg-flag/15 text-flag'
-										: 'border-line text-ink-faint hover:text-ink'
-								)}
-							>
-								{equipLabel[eq]()}
-							</button>
-						{/each}
+					<div class="grid grid-cols-2 gap-3">
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{m.field_boulder_grade()}
+							<Input bind:value={boulderGrade} placeholder="V8" class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{m.field_route_grade()}
+							<Input bind:value={routeGrade} placeholder="7c" class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{m.field_age()}
+							<Input type="number" min="0" bind:value={age} class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{m.field_session()}
+							<Input type="number" min="0" bind:value={sessionMinutes} class="bg-panel-2" />
+						</label>
 					</div>
-				</div>
+					<label class="flex items-center gap-2 text-xs text-ink-dim">
+						<input type="checkbox" bind:checked={niggle} class="size-4 accent-flag" />
+						{m.field_niggle()}
+					</label>
+				{:else}
+					<div class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+						{m.welcome_metrics_label()}
+					</div>
+					<div class="grid grid-cols-2 gap-3">
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{m.field_bodyweight()} ({appState.prefs.weight})
+							<Input type="number" step="any" bind:value={bodyweight} class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{metricLabel('pull')}
+							<Input type="number" step="any" bind:value={pull} class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{metricLabel('pinch')}
+							<Input type="number" step="any" bind:value={pinch} class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{metricLabel('maxhang')}
+							<Input type="number" step="any" bind:value={maxhang} class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{metricLabel('contact')}
+							<Input type="number" step="any" bind:value={contact} class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{metricLabel('cf')}
+							<Input type="number" step="any" bind:value={cf} class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{metricLabel('rfd')}
+							<Input type="number" step="any" bind:value={rfd} class="bg-panel-2" />
+						</label>
+						<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
+							{metricLabel('density')}
+							<Input type="number" step="any" bind:value={density} class="bg-panel-2" />
+						</label>
+					</div>
+				{/if}
 
-				<div class="mt-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-					{m.welcome_context_label()}
+				<div class="mt-1 flex gap-2.5">
+					{#if step > 1}
+						<Button variant="outline" onclick={back}>{m.btn_back()}</Button>
+					{/if}
+					<Button class="flex-1 bg-flag text-white hover:bg-flag/90" onclick={next}>
+						{step === 3 ? m.btn_generate() : m.btn_next()}
+					</Button>
 				</div>
-				<div class="grid grid-cols-2 gap-3">
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{m.field_boulder_grade()}
-						<Input bind:value={boulderGrade} placeholder="V8" class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{m.field_route_grade()}
-						<Input bind:value={routeGrade} placeholder="7c" class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{m.field_age()}
-						<Input type="number" min="0" bind:value={age} class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{m.field_session()}
-						<Input type="number" min="0" bind:value={sessionMinutes} class="bg-panel-2" />
-					</label>
-				</div>
-				<label class="flex items-center gap-2 text-xs text-ink-dim">
-					<input type="checkbox" bind:checked={niggle} class="size-4 accent-flag" />
-					{m.field_niggle()}
-				</label>
-
-				<div class="mt-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-					{m.welcome_metrics_label()}
-				</div>
-				<div class="grid grid-cols-2 gap-3">
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{m.field_bodyweight()}
-						<Input type="number" step="any" bind:value={bodyweight} class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{metric('pull')?.name} ({metric('pull')?.unit})
-						<Input type="number" step="any" bind:value={pull} class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{metric('pinch')?.name} ({metric('pinch')?.unit})
-						<Input type="number" step="any" bind:value={pinch} class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{metric('maxhang')?.name} ({metric('maxhang')?.unit})
-						<Input type="number" step="any" bind:value={maxhang} class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{metric('contact')?.name} ({metric('contact')?.unit})
-						<Input type="number" step="any" bind:value={contact} class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{metric('cf')?.name} ({metric('cf')?.unit})
-						<Input type="number" step="any" bind:value={cf} class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{metric('rfd')?.name} ({metric('rfd')?.unit})
-						<Input type="number" step="any" bind:value={rfd} class="bg-panel-2" />
-					</label>
-					<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-						{metric('density')?.name} ({metric('density')?.unit})
-						<Input type="number" step="any" bind:value={density} class="bg-panel-2" />
-					</label>
-				</div>
-
-				<Button class="mt-2 bg-flag text-white hover:bg-flag/90" onclick={generate}>
-					{m.btn_generate()}
-				</Button>
 			</CardContent>
 		</Card>
 	{:else}
-		<div>
-			<h2 class="text-xl font-extrabold tracking-tight">{m.prop_title()}</h2>
-			<p class="mt-1 text-sm text-ink-dim">
-				{m.prop_intro()}
-				<b class="text-chalk">{goalLabel[goal]()}</b> ·
-				<b class="text-chalk">{focusLabel[focus]()}</b> · {levelLabel[level]()}
-			</p>
-		</div>
-
-		<Card>
-			<CardContent class="flex flex-col gap-3 text-sm text-ink-dim">
-				<p class="border-l-2 border-flag pl-3"><b class="text-chalk">{m.prop_week()}</b></p>
-				<div>
-					<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-						{m.prop_training_days({ n: planDays.length })}
-					</div>
-					<div class="flex flex-wrap gap-1.5">
-						{#each content.days as d (d.k)}
-							{@const on = planDays.includes(d.label)}
-							<span
-								class={on
-									? 'rounded-md bg-flag/15 px-2 py-1 font-mono text-[11px] text-flag'
-									: 'rounded-md border border-line px-2 py-1 font-mono text-[11px] text-ink-faint'}
-							>
-								{d.label}
-							</span>
-						{/each}
-					</div>
-				</div>
-				<p>{goalNote[goal]()}</p>
-				<p>{focusNote[focus]()}</p>
-			</CardContent>
-		</Card>
-
-		<div class="flex gap-2.5">
-			<Button class="bg-flag text-white hover:bg-flag/90" onclick={() => goto('/')}>
-				{m.prop_start()}
-			</Button>
-			<Button variant="outline" onclick={() => (step = 'form')}>{m.welcome_edit()}</Button>
-		</div>
+		<AssessmentProposal
+			{goal}
+			{focus}
+			{level}
+			{planDays}
+			days={content.days}
+			onStart={() => goto('/')}
+			onEdit={() => (step = 1)}
+		/>
 	{/if}
 </div>
