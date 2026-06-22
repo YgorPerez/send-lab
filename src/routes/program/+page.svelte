@@ -1,6 +1,5 @@
 <script lang="ts">
 import PlusIcon from '@lucide/svelte/icons/plus';
-import XIcon from '@lucide/svelte/icons/x';
 import { toast } from 'svelte-sonner';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
@@ -8,6 +7,7 @@ import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
 import Periodization from '$lib/Periodization.svelte';
+import ProgramExerciseRow from '$lib/ProgramExerciseRow.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -16,7 +16,6 @@ import {
 	isProgramDayCustom,
 	programDayKey,
 	programExercises,
-	removeProgramExercise,
 	resetProgram,
 	resetProgramDay,
 	setProgramDay,
@@ -84,24 +83,15 @@ const content = getContent();
 					</SelectContent>
 				</Select>
 
-				<div class="flex flex-wrap gap-1.5">
-					{#each exIds as exId (exId)}
-						{@const ex = content.exercises[exId]}
-						{#if ex}
-							<span
-								class="inline-flex items-center gap-1 rounded-md border border-line bg-panel-2 py-1 pr-1 pl-2 text-[11px] text-ink-dim"
-							>
-								{ex.name}
-								<button
-									type="button"
-									class="text-ink-faint transition hover:text-flag"
-									aria-label={m.btn_delete()}
-									onclick={() => removeProgramExercise(content, slot.k, exId)}
-								>
-									<XIcon class="size-3" />
-								</button>
-							</span>
-						{/if}
+				<div class="flex flex-col gap-1.5">
+					{#each exIds as exId, i (exId)}
+						<ProgramExerciseRow
+							{content}
+							weekday={slot.k}
+							{exId}
+							first={i === 0}
+							last={i === exIds.length - 1}
+						/>
 					{/each}
 				</div>
 

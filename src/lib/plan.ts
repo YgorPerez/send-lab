@@ -88,10 +88,13 @@ export function removeDayExercise(
 	);
 }
 
-/** Swap index for an exercise on a given day: per-day override → global → default. */
+/** Variant index for an exercise on a given day:
+ *  per-day swap → program default variant → global swap → 0. */
 export function resolveSwapIndex(week: number, weekday: string, exId: string): number {
 	const perDay = appState.daySwaps[taskKey(week, weekday, exId)];
 	if (perDay != null) return perDay;
+	const prog = appState.program.targets[`${weekday}:${exId}`]?.variant;
+	if (prog != null) return prog;
 	return appState.swaps[exId] ?? 0;
 }
 
@@ -264,9 +267,10 @@ export function programExercises(content: Content, weekday: string): string[] {
 	return appState.program.template[weekday]?.ex ?? dayTemplate(content, programDayKey(weekday)).ex;
 }
 
-/** Whether a weekday has been customized in the program template. */
+/** Whether a weekday has been customized (day-type, exercises, or prescriptions). */
 export function isProgramDayCustom(weekday: string): boolean {
-	return appState.program.template[weekday] != null;
+	if (appState.program.template[weekday] != null) return true;
+	return Object.keys(appState.program.targets).some((k) => k.startsWith(`${weekday}:`));
 }
 
 /** Set the day-type for a weekday across the whole program. */
@@ -294,9 +298,12 @@ export function removeProgramExercise(content: Content, weekday: string, exId: s
 	delete appState.program.targets[`${weekday}:${exId}`];
 }
 
-/** Revert a weekday to the built-in default. */
+/** Revert a weekday to the built-in default (day-type, exercises, prescriptions). */
 export function resetProgramDay(weekday: string): void {
 	delete appState.program.template[weekday];
+	for (const k of Object.keys(appState.program.targets)) {
+		if (k.startsWith(`${weekday}:`)) delete appState.program.targets[k];
+	}
 }
 
 /** Set the block length (weeks), clamped to a sane range. */
@@ -334,9 +341,49 @@ function scaleRange(r: Range, pct: number, floor = 0): Range {
 
 const fixedRange = (v: number): Range => ({ min: v, max: v });
 
-/** The program prescription override for a slot's exercise, if any. */
-function programTarget(weekday: string, exId: string): ProgramTarget | undefined {
+/** The program prescription override for a weekday's exercise, if any. */
+export function programTarget(weekday: string, exId: string): ProgramTarget | undefined {
 	return appState.program.targets[`${weekday}:${exId}`];
+}
+
+/** The variant index chosen for an exercise in the program (target → global → 0). */
+export function programVariantIndex(weekday: string, exId: string): number {
+	return programTarget(weekday, exId)?.variant ?? appState.swaps[exId] ?? 0;
+}
+
+/** Merge a prescription override for a weekday's exercise; clears the key when
+ *  every field is empty so it reverts to the built-in target. */
+export function setProgramTarget(
+	weekday: string,
+	exId: string,
+	patch: Partial<ProgramTarget>,
+): void {
+	const key = `${weekday}:${exId}`;
+	const next: ProgramTarget = { ...appState.program.targets[key], ...patch };
+	for (const k of Object.keys(next) as (keyof ProgramTarget)[]) {
+		if (next[k] == null) delete next[k];
+	}
+	if (Object.keys(next).length === 0) delete appState.program.targets[key];
+	else appState.program.targets[key] = next;
+}
+
+/** Move an exercise up (-1) or down (+1) within a weekday's ordered list. */
+export function moveProgramExercise(
+	content: Content,
+	weekday: string,
+	exId: string,
+	dir: -1 | 1,
+): void {
+	const ex = [...programExercises(content, weekday)];
+	const i = ex.indexOf(exId);
+	const j = i + dir;
+	if (i < 0 || j < 0 || j >= ex.length) return;
+	[ex[i], ex[j]] = [ex[j], ex[i]];
+	appState.program.template[weekday] = {
+		...appState.program.template[weekday],
+		dayKey: programDayKey(weekday),
+		ex,
+	};
 }
 
 /** The variant a slot actually runs: built-in spec with the program's target
