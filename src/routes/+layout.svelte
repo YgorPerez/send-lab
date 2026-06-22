@@ -13,6 +13,7 @@ import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
+import SyncStatus from '$lib/SyncStatus.svelte';
 import {
 	appReady,
 	appState,
@@ -23,7 +24,6 @@ import {
 } from '$lib/state.svelte';
 import TimerBar from '$lib/TimerBar.svelte';
 import { startTimerPersistence, timer } from '$lib/timerStore.svelte';
-import UnitsSwitcher from '$lib/UnitsSwitcher.svelte';
 import { cn } from '$lib/utils';
 
 let { children } = $props();
@@ -101,6 +101,7 @@ const views = $derived([
 	{ href: '/metrics', label: m.nav_metrics() },
 	{ href: '/stats', label: m.nav_stats() },
 	{ href: '/log', label: m.nav_log() },
+	{ href: '/settings', label: m.nav_settings() },
 ]);
 </script>
 
@@ -128,10 +129,10 @@ const views = $derived([
 					{m.brand_sub()}
 				</span>
 				<div class="ml-auto flex items-center gap-3">
+					<SyncStatus />
 					<span class="hidden font-mono text-[11px] text-ink-faint sm:inline">
 						{$session.data?.user?.email ?? ''}
 					</span>
-					<UnitsSwitcher />
 					<LanguageSwitcher />
 					<Button
 						variant="ghost"

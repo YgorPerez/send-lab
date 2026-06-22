@@ -16,7 +16,7 @@ import {
 	qualityVolume,
 	regionVolume,
 	rpeHistogram,
-	sessionStats,
+	weeklyStats,
 } from '$lib/stats';
 import TrendChart from '$lib/TrendChart.svelte';
 
@@ -58,17 +58,15 @@ const qualityBars = $derived(
 	qualityVolume(workouts).map((b) => ({ label: qualityLabel(b.key), value: b.value })),
 );
 
-const sessions = $derived(sessionStats(workouts));
-const volPoints = $derived(sessions.map((s) => ({ label: s.label, value: s.sets })));
+const weeks = $derived(weeklyStats(workouts));
+const volPoints = $derived(weeks.map((s) => ({ label: s.label, value: s.sets })));
 const tonPoints = $derived(
-	sessions
-		.filter((s) => s.tonnage > 0)
-		.map((s) => ({ label: s.label, value: Math.round(s.tonnage) })),
+	weeks.filter((s) => s.tonnage > 0).map((s) => ({ label: s.label, value: Math.round(s.tonnage) })),
 );
 const tutPoints = $derived(
-	sessions.filter((s) => s.tut > 0).map((s) => ({ label: s.label, value: s.tut })),
+	weeks.filter((s) => s.tut > 0).map((s) => ({ label: s.label, value: s.tut })),
 );
-const cnsPoints = $derived(sessions.map((s) => ({ label: s.label, value: s.cns })));
+const cnsPoints = $derived(weeks.map((s) => ({ label: s.label, value: s.cns })));
 const rpeBars = $derived(rpeHistogram(workouts));
 
 const loadCharts = $derived([

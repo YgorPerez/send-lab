@@ -2,6 +2,7 @@
 // results. Region/quality/CNS come from an exercise's default-variant params
 // (these are stable across an exercise's variants); progression/volume come
 // from the logged sets. Workouts are stored newest-first.
+import { getLocale } from '$lib/paraglide/runtime';
 import { exerciseParams } from './content/exercises';
 import type { WorkoutEntry } from './state.svelte';
 
@@ -14,6 +15,7 @@ export interface Point {
 
 const params = (exId: string) => exerciseParams[exId]?.variants[0];
 const CNS_WEIGHT: Record<string, number> = { low: 1, mod: 2, high: 3 };
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Chronological (oldest→newest) workouts. */
 function chronological(workouts: WorkoutEntry[]): WorkoutEntry[] {
@@ -80,7 +82,7 @@ function volumeBy(workouts: WorkoutEntry[], tag: 'region' | 'qualities'): Volume
 export const regionVolume = (w: WorkoutEntry[]): VolumeBar[] => volumeBy(w, 'region');
 export const qualityVolume = (w: WorkoutEntry[]): VolumeBar[] => volumeBy(w, 'qualities');
 
-export interface SessionStat {
+export interface LoadStat {
 	label: string;
 	sets: number;
 	tonnage: number;
@@ -88,24 +90,43 @@ export interface SessionStat {
 	cns: number;
 }
 
-/** Per-session totals (oldest→newest): set count, tonnage, time-under-tension, CNS load. */
-export function sessionStats(workouts: WorkoutEntry[]): SessionStat[] {
-	return chronological(workouts).map((w) => {
-		let sets = 0;
-		let tonnage = 0;
-		let tut = 0;
-		let cns = 0;
+/** The Monday (local) that starts the ISO week containing an ISO date. */
+function mondayOf(iso: string): Date {
+	const d = new Date(`${iso}T00:00:00`);
+	d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+	return d;
+}
+
+/** Training load bucketed by calendar week (oldest→newest): set count, tonnage,
+ *  time-under-tension, CNS load. Only date-stamped workouts are bucketed. */
+export function weeklyStats(workouts: WorkoutEntry[]): LoadStat[] {
+	const buckets = new Map<string, LoadStat>();
+	for (const w of workouts) {
+		if (!w.at) continue;
+		const monday = mondayOf(w.at);
+		const key = isoDay(monday);
+		let b = buckets.get(key);
+		if (!b) {
+			b = {
+				label: monday.toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' }),
+				sets: 0,
+				tonnage: 0,
+				tut: 0,
+				cns: 0,
+			};
+			buckets.set(key, b);
+		}
 		for (const ex of w.exercises) {
-			sets += ex.sets.length;
-			cns += (CNS_WEIGHT[params(ex.exId)?.cnsCost ?? ''] ?? 0) * ex.sets.length;
+			b.sets += ex.sets.length;
+			b.cns += (CNS_WEIGHT[params(ex.exId)?.cnsCost ?? ''] ?? 0) * ex.sets.length;
 			for (const s of ex.sets) {
 				const reps = s.reps ?? 1;
-				if (s.weight != null) tonnage += s.weight * reps;
-				if (s.time != null) tut += s.time * reps;
+				if (s.weight != null) b.tonnage += s.weight * reps;
+				if (s.time != null) b.tut += s.time * reps;
 			}
 		}
-		return { label: w.date, sets, tonnage, tut, cns };
-	});
+	}
+	return [...buckets.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, v]) => v);
 }
 
 /** Average RPE across the most recent sessions (null if none logged). */
@@ -116,7 +137,6 @@ export function recentRpe(workouts: WorkoutEntry[], sessions = 2): number | null
 	return rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
 }
 
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const loggedDays = (workouts: WorkoutEntry[]) =>
 	new Set(workouts.map((w) => w.at).filter((a): a is string => !!a));
 

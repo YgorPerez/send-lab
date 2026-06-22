@@ -3,6 +3,21 @@
 import { browser } from '$app/environment';
 import { appState, importState } from './state.svelte';
 
+// Bump when the state shape changes incompatibly. Backups carry it so a future
+// importer can migrate (and so old/foreign files are recognisable).
+const SCHEMA_VERSION = 1;
+
+interface BackupFile {
+	app: 'sendlab';
+	version: number;
+	exportedAt: string;
+	data: unknown;
+}
+
+function isBackupFile(v: unknown): v is BackupFile {
+	return typeof v === 'object' && v !== null && (v as { app?: unknown }).app === 'sendlab';
+}
+
 function stamp(): string {
 	return new Date().toISOString().slice(0, 10);
 }
@@ -17,9 +32,15 @@ function download(filename: string, type: string, content: string): void {
 	URL.revokeObjectURL(url);
 }
 
-/** Download a full JSON backup of the user's data. */
+/** Download a full JSON backup of the user's data (versioned envelope). */
 export function exportBackup(): void {
-	download(`sendlab-backup-${stamp()}.json`, 'application/json', JSON.stringify(appState, null, 2));
+	const file: BackupFile = {
+		app: 'sendlab',
+		version: SCHEMA_VERSION,
+		exportedAt: new Date().toISOString(),
+		data: appState,
+	};
+	download(`sendlab-backup-${stamp()}.json`, 'application/json', JSON.stringify(file, null, 2));
 }
 
 function csvField(v: string | number | boolean | null): string {
@@ -67,8 +88,10 @@ export function exportWorkoutsCsv(): void {
 	download(`sendlab-workouts-${stamp()}.csv`, 'text/csv', csv);
 }
 
-/** Restore a JSON backup file (overwrites current data). */
+/** Restore a JSON backup file (overwrites current data). Accepts both the
+ *  versioned envelope and a legacy raw-state file; validation happens in
+ *  importState, which throws on anything that isn't a state object. */
 export async function importBackup(file: File): Promise<void> {
-	const data = JSON.parse(await file.text());
-	importState(data);
+	const parsed: unknown = JSON.parse(await file.text());
+	importState(isBackupFile(parsed) ? parsed.data : parsed);
 }

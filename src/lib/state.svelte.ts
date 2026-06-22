@@ -118,6 +118,13 @@ let hydrated = false;
 /** Reactive signal for "the signed-in user's state has loaded" (drives onboarding). */
 export const appReady = $state({ hydrated: false });
 
+/** Reactive sync indicator. `at` is the epoch ms of the last successful save —
+ *  a "last synced" cue so edits on two devices clobbering each other are visible. */
+export const syncStatus = $state<{
+	status: 'idle' | 'saving' | 'saved' | 'error';
+	at: number | null;
+}>({ status: 'idle', at: null });
+
 function applyData(data: Partial<AppState>): void {
 	const base = defaultState();
 	appState.currentWeek = data.currentWeek ?? base.currentWeek;
@@ -145,9 +152,34 @@ export function lastUserId(): string | null {
 	return browser ? localStorage.getItem(LAST_USER) : null;
 }
 
-/** Apply imported/restored data and let persistence sync it. */
-export function importState(data: Partial<AppState>): void {
-	applyData(data);
+const isObj = (v: unknown): v is Record<string, unknown> =>
+	typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Keep only top-level fields that are the right type, so a malformed or old
+ *  backup can't corrupt state — anything missing or wrong falls back to default. */
+function sanitize(raw: unknown): Partial<AppState> {
+	if (!isObj(raw)) throw new Error('Backup is not a valid object');
+	const out: Partial<AppState> = {};
+	if (typeof raw.currentWeek === 'number') out.currentWeek = raw.currentWeek;
+	if (isObj(raw.completed)) out.completed = raw.completed as AppState['completed'];
+	if (isObj(raw.swaps)) out.swaps = raw.swaps as AppState['swaps'];
+	if (isObj(raw.dayPlan)) out.dayPlan = raw.dayPlan as AppState['dayPlan'];
+	if (isObj(raw.daySwaps)) out.daySwaps = raw.daySwaps as AppState['daySwaps'];
+	if (isObj(raw.dayExercises)) out.dayExercises = raw.dayExercises as AppState['dayExercises'];
+	if (isObj(raw.taskDone)) out.taskDone = raw.taskDone as AppState['taskDone'];
+	if (isObj(raw.metrics)) out.metrics = raw.metrics as AppState['metrics'];
+	if (Array.isArray(raw.log)) out.log = raw.log as AppState['log'];
+	if (Array.isArray(raw.workouts)) out.workouts = raw.workouts as AppState['workouts'];
+	if (raw.assessment === null || isObj(raw.assessment))
+		out.assessment = raw.assessment as AppState['assessment'];
+	if (isObj(raw.prefs)) out.prefs = raw.prefs as AppState['prefs'];
+	if (isObj(raw.program)) out.program = raw.program as AppState['program'];
+	return out;
+}
+
+/** Apply imported/restored data (validated) and let persistence sync it. */
+export function importState(data: unknown): void {
+	applyData(sanitize(data));
 }
 
 /** Load the user's state: cached copy instantly, then refresh from the server. */
@@ -192,6 +224,8 @@ export function saveAssessment(
 export function clearLocal(): void {
 	hydrated = false;
 	appReady.hydrated = false;
+	syncStatus.status = 'idle';
+	syncStatus.at = null;
 	applyData({});
 }
 
@@ -205,11 +239,19 @@ export function startPersistence(): void {
 		if (cacheKey) localStorage.setItem(cacheKey, snapshot); // offline mirror (instant)
 		clearTimeout(timer);
 		timer = setTimeout(() => {
+			syncStatus.status = 'saving';
 			void fetch('/api/state', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: snapshot,
-			});
+			})
+				.then((res) => {
+					syncStatus.status = res.ok ? 'saved' : 'error';
+					if (res.ok) syncStatus.at = Date.now();
+				})
+				.catch(() => {
+					syncStatus.status = 'error';
+				});
 		}, 600);
 	});
 }
