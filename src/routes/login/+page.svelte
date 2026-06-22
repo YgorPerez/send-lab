@@ -31,7 +31,10 @@ async function submit(e: Event) {
 		} else {
 			if (carryGuestData) await uploadCurrentToServer();
 			leaveGuest();
-			await goto('/');
+			// Full navigation so the app reloads with the new session cookie already
+			// present — avoids a race where the redirect guard bounces back to /login
+			// before the client session store has refreshed.
+			window.location.href = '/';
 		}
 	} catch {
 		error = m.auth_error();
