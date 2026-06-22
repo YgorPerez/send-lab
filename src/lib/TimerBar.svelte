@@ -16,8 +16,9 @@ import {
 } from '$lib/timerStore.svelte';
 import { cn } from '$lib/utils';
 
+const idlePrepare = $derived(timer.phase === 'idle' && timer.prepare > 0);
 const phaseLabel = $derived(
-	timer.phase === 'prepare'
+	timer.phase === 'prepare' || idlePrepare
 		? m.timer_prepare()
 		: timer.phase === 'work'
 			? m.timer_work()
@@ -29,8 +30,10 @@ const phaseLabel = $derived(
 						? m.timer_done()
 						: m.timer_ready(),
 );
-const accent = $derived(phaseColor(timer.phase));
-const display = $derived(timer.phase === 'idle' ? timer.work : timer.remaining);
+const accent = $derived(phaseColor(idlePrepare ? 'prepare' : timer.phase));
+const display = $derived(
+	timer.phase !== 'idle' ? timer.remaining : idlePrepare ? timer.prepare : timer.work,
+);
 </script>
 
 <div
@@ -43,7 +46,7 @@ const display = $derived(timer.phase === 'idle' ? timer.work : timer.remaining);
 
 		<div class="min-w-0 flex-1">
 			<div class="truncate font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-				{phaseLabel}{#if !timer.restOnly} · {timer.set}/{timer.sets}{#if timer.phase === 'work' || timer.phase === 'rest'}
+				{phaseLabel}{#if !timer.restOnly && timer.phase !== 'idle'} · {timer.set}/{timer.sets}{#if timer.phase === 'work' || timer.phase === 'rest'}
 						· {timer.round}/{timer.rounds}{/if}{/if}
 			</div>
 			<div class="truncate text-[13px] font-semibold text-chalk">{timer.name || m.timer_title()}</div>

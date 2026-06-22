@@ -18,7 +18,7 @@ import {
 import { cn } from '$lib/utils';
 
 const phaseLabel = $derived(
-	timer.phase === 'prepare'
+	timer.phase === 'prepare' || (timer.phase === 'idle' && timer.prepare > 0)
 		? m.timer_prepare()
 		: timer.phase === 'work'
 			? m.timer_work()
@@ -30,8 +30,13 @@ const phaseLabel = $derived(
 						? m.timer_done()
 						: m.timer_ready(),
 );
-const display = $derived(timer.phase === 'idle' ? timer.work : timer.remaining);
-const accent = $derived(phaseColor(timer.phase));
+// Before the timer runs, preview the prepare countdown (the first phase you'll
+// see on Start) rather than the work value, so the screen matches what happens.
+const idlePrepare = $derived(timer.phase === 'idle' && timer.prepare > 0);
+const display = $derived(
+	timer.phase !== 'idle' ? timer.remaining : idlePrepare ? timer.prepare : timer.work,
+);
+const accent = $derived(phaseColor(idlePrepare ? 'prepare' : timer.phase));
 const total = $derived(timerTotal());
 const left = $derived(timerLeft());
 const doneFrac = $derived(total > 0 ? (total - left) / total : 0);
@@ -42,9 +47,9 @@ const doneFrac = $derived(total > 0 ? (total - left) / total : 0);
 		<span class="min-w-0 truncate font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 			{m.timer_title()}{#if timer.name}<span class="text-chalk"> · {timer.name}</span>{/if}
 		</span>
-		{#if timer.phase !== 'idle'}
+		{#if timer.phase !== 'idle' || idlePrepare}
 			<span class="font-mono text-[11px] tracking-wider uppercase" style:color={accent}>
-				{phaseLabel}{#if !timer.restOnly} · {timer.set}/{timer.sets}{#if timer.phase === 'work' || timer.phase === 'rest'}
+				{phaseLabel}{#if !timer.restOnly && timer.phase !== 'idle'} · {timer.set}/{timer.sets}{#if timer.phase === 'work' || timer.phase === 'rest'}
 						· {timer.round}/{timer.rounds}{/if}{/if}
 			</span>
 		{/if}

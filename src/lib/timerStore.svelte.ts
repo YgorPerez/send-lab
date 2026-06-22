@@ -67,6 +67,29 @@ function beep(freq: number): void {
 	}
 }
 
+/** A distinct multi-note cue (used for the prepare→work "go" so it stands apart
+ *  from the single work/rest beeps). Notes play in sequence within one context. */
+function chime(freqs: number[]): void {
+	if (!browser) return;
+	try {
+		const ctx = new AudioContext();
+		freqs.forEach((f, i) => {
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
+			osc.frequency.value = f;
+			osc.connect(gain);
+			gain.connect(ctx.destination);
+			const t = ctx.currentTime + i * 0.14;
+			gain.gain.setValueAtTime(0.16, t);
+			gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+			osc.start(t);
+			osc.stop(t + 0.18);
+		});
+	} catch {
+		// audio unavailable — silent timer is fine
+	}
+}
+
 /** Haptic feedback on phase changes (no-op where unsupported). */
 function vibrate(pattern: number | number[]): void {
 	if (browser && 'vibrate' in navigator) navigator.vibrate(pattern);
@@ -147,7 +170,7 @@ function tick(): void {
 	if (timer.phase === 'prepare') {
 		timer.phase = 'work';
 		timer.remaining = Math.max(1, timer.work);
-		beep(660);
+		chime([784, 1175]); // distinct rising "go" — prepare is over, start working
 		notifyTimer(m.timer_go(), timer.name);
 	} else if (timer.phase === 'work') {
 		if (timer.round < timer.rounds && timer.rest > 0) {
