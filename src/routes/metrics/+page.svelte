@@ -13,6 +13,7 @@ import * as m from '$lib/paraglide/messages';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import Sparkline from '$lib/Sparkline.svelte';
 import { appState, round, today } from '$lib/state.svelte';
+import { metricUnit, showMetric, toMetricCanonical } from '$lib/units';
 import { cn } from '$lib/utils';
 
 const content = getContent();
@@ -42,11 +43,11 @@ function openInTrain(metric: Metric) {
 	void goto(`/train?ex=${exId}&assess=${metric.id}`);
 }
 
-function deltaFor(data: { v: number }[]): { text: string; cls: string } {
+function deltaFor(id: MetricId, data: { v: number }[]): { text: string; cls: string } {
 	if (data.length > 1) {
-		const d = data[data.length - 1].v - data[data.length - 2].v;
-		if (d > 0) return { text: `▲ +${round(d)}`, cls: 'text-teal' };
-		if (d < 0) return { text: `▼ ${round(d)}`, cls: 'text-flag' };
+		const d = round(showMetric(id, data[data.length - 1].v - data[data.length - 2].v));
+		if (d > 0) return { text: `▲ +${d}`, cls: 'text-teal' };
+		if (d < 0) return { text: `▼ ${d}`, cls: 'text-flag' };
 		return { text: m.delta_nochange(), cls: 'text-ink-faint' };
 	}
 	if (data.length === 1) return { text: m.delta_first(), cls: 'text-ink-faint' };
@@ -54,16 +55,17 @@ function deltaFor(data: { v: number }[]): { text: string; cls: string } {
 }
 
 function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
-	const v = parseFloat(inputs[id] ?? '');
-	if (Number.isNaN(v)) {
+	const entered = parseFloat(inputs[id] ?? '');
+	if (Number.isNaN(entered)) {
 		toast.error(m.toast_enter_number());
 		return;
 	}
+	const v = toMetricCanonical(id, entered); // store canonically (kg)
 	appState.metrics[id].push({ date: today(), v });
 	appState.log.unshift({
 		date: today(),
 		type: 'test',
-		label: `${name}: ${round(v)} ${unit}`,
+		label: `${name}: ${round(showMetric(id, v))} ${metricUnit(id, unit)}`,
 		color: `var(${cat})`,
 		note: m.metric_test_note(),
 	});
@@ -82,7 +84,7 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 		{#each content.metrics as metric (metric.id)}
 			{@const data = appState.metrics[metric.id] ?? []}
 			{@const last = data.length ? data[data.length - 1].v : null}
-			{@const delta = deltaFor(data)}
+			{@const delta = deltaFor(metric.id, data)}
 			<Card class="gap-0 p-[18px]">
 				<div class="mb-1 flex items-center justify-between gap-2">
 					<span class="text-[14.5px] font-bold">{metric.name}</span>
@@ -107,9 +109,9 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 				<div class="mb-3.5 text-xs leading-snug text-ink-faint"><Prose value={metric.desc} /></div>
 				<div>
 					<span class="font-mono text-[30px] leading-none font-bold text-chalk">
-						{last != null ? round(last) : '—'}
+						{last != null ? round(showMetric(metric.id, last)) : '—'}
 					</span>
-					<span class="text-[13px] text-ink-faint">{metric.unit}</span>
+					<span class="text-[13px] text-ink-faint">{metricUnit(metric.id, metric.unit)}</span>
 				</div>
 				<div class={cn('mt-1.5 font-mono text-xs', delta.cls)}>{delta.text}</div>
 				<Sparkline {data} catVar={metric.cat} />
@@ -145,7 +147,8 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 		</div>
 		<p class="mb-3 text-sm leading-relaxed text-ink-dim"><Prose value={openMetric.desc} /></p>
 		<div class="mb-4 font-mono text-xs text-ink-faint">
-			{m.metric_unit_label()}: <span class="text-chalk">{openMetric.unit}</span>
+			{m.metric_unit_label()}:
+			<span class="text-chalk">{metricUnit(openMetric.id, openMetric.unit)}</span>
 		</div>
 		{#if ex}
 			<div class="mb-2 font-mono text-xs text-ink-faint">
@@ -167,7 +170,10 @@ function saveMetric(id: MetricId, name: string, unit: string, cat: string) {
 				{#each [...history].reverse().slice(0, 12) as e (e.date + e.v)}
 					<div class="flex justify-between border-b border-line/60 py-1 font-mono text-xs">
 						<span class="text-ink-faint">{e.date}</span>
-						<span class="text-chalk">{round(e.v)} {openMetric.unit}</span>
+						<span class="text-chalk">
+							{round(showMetric(openMetric.id, e.v))}
+							{metricUnit(openMetric.id, openMetric.unit)}
+						</span>
 					</div>
 				{/each}
 			</div>

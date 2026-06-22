@@ -3,6 +3,8 @@
 // full controls, a footer bar shows it everywhere else, and the Metrics tab can
 // load a test protocol into it.
 import { browser } from '$app/environment';
+import * as m from '$lib/paraglide/messages';
+import { appState } from './state.svelte';
 
 type TimerPhase = 'idle' | 'prepare' | 'work' | 'rest' | 'setRest' | 'done';
 
@@ -70,6 +72,16 @@ function vibrate(pattern: number | number[]): void {
 	if (browser && 'vibrate' in navigator) navigator.vibrate(pattern);
 }
 
+/** Show a notification on key transitions — only when enabled and the tab is hidden. */
+function notifyTimer(title: string, body: string): void {
+	if (!browser || !appState.prefs.notify) return;
+	if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+	if (document.visibilityState === 'visible') return;
+	void navigator.serviceWorker?.ready
+		.then((reg) => reg.showNotification(title, { body, tag: 'sendlab-timer', icon: '/icon.svg' }))
+		.catch(() => {});
+}
+
 // Keep the screen awake while the timer runs (released when it stops). The OS
 // drops the lock when the tab is hidden, so we re-acquire on visibility.
 let wakeLock: { release: () => Promise<void> } | null = null;
@@ -103,6 +115,7 @@ function finish(): void {
 	timer.remaining = 0;
 	beep(880);
 	vibrate([140, 70, 140]);
+	notifyTimer(m.timer_done(), timer.name);
 }
 
 /** Advance past the end of a set (into the inter-set rest, next set, or done). */
@@ -135,6 +148,7 @@ function tick(): void {
 		timer.phase = 'work';
 		timer.remaining = Math.max(1, timer.work);
 		beep(660);
+		notifyTimer(m.timer_go(), timer.name);
 	} else if (timer.phase === 'work') {
 		if (timer.round < timer.rounds && timer.rest > 0) {
 			timer.phase = 'rest';
@@ -162,6 +176,7 @@ function tick(): void {
 		timer.phase = 'work';
 		timer.remaining = Math.max(1, timer.work);
 		beep(660);
+		notifyTimer(m.timer_go(), timer.name);
 	}
 }
 

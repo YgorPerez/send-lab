@@ -1,7 +1,9 @@
 <script lang="ts">
 import PlusIcon from '@lucide/svelte/icons/plus';
+import RepeatIcon from '@lucide/svelte/icons/repeat';
 import TimerIcon from '@lucide/svelte/icons/timer';
 import XIcon from '@lucide/svelte/icons/x';
+import { toast } from 'svelte-sonner';
 import { page } from '$app/state';
 import { recordAssessment } from '$lib/assessment';
 import { Button } from '$lib/components/ui/button';
@@ -10,7 +12,16 @@ import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
 import type { Range, Variant } from '$lib/content/types';
-import { addSetTo, clearExercise, getNote, removeSetFrom, setNote, setsFor } from '$lib/dayLog';
+import {
+	addSetTo,
+	clearExercise,
+	defaultSet,
+	getNote,
+	removeSetFrom,
+	repeatLastInto,
+	setNote,
+	setsFor,
+} from '$lib/dayLog';
 import PrescriptionView from '$lib/PrescriptionView.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -180,18 +191,18 @@ function restAfter(it: Item) {
 	startRest(secs, `${m.timer_rest()} · ${it.exName}`);
 }
 
-/** A set pre-filled from the exercise's target prescription. */
-function defaultSet(spec: Variant): WorkoutSet {
-	return {
-		weight: mid(spec.loadKg),
-		edge: mid(spec.edgeMm),
-		time: mid(spec.workSec),
-		reps: mid(spec.reps),
-		rest: mid(spec.restSec ?? spec.setRestSec),
-		rpe: mid(spec.rpe),
-		grip: spec.grip ?? null,
-		done: false,
-	};
+// Whether anything is logged today (gates the "repeat last session" shortcut).
+const loggedAny = $derived(items.some((it) => setsFor(dayLabel, it.exId).length > 0));
+
+/** Pre-fill today from the most recent prior session of the same weekday. */
+function repeatLast() {
+	const ids = repeatLastInto(dayLabel);
+	if (!ids) {
+		toast.error(m.train_no_prev());
+		return;
+	}
+	for (const id of ids) if (!dayExIds.includes(id)) addDayExercise(content, week, weekday, id);
+	toast.success(m.train_repeated());
 }
 
 function addSet(it: Item) {
@@ -304,6 +315,17 @@ function removeItem(exId: string) {
 				</SelectContent>
 			</Select>
 		</div>
+	{/if}
+
+	{#if !loggedAny}
+		<Button
+			variant="outline"
+			size="sm"
+			class="mt-3 self-start border-line text-xs"
+			onclick={repeatLast}
+		>
+			<RepeatIcon class="mr-1.5 size-3.5" />{m.train_repeat()}
+		</Button>
 	{/if}
 
 	{#if items.length > 0}

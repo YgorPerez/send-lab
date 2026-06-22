@@ -5,6 +5,7 @@ import { toast } from 'svelte-sonner';
 import type { Content, MetricId } from './content/types';
 import * as m from './paraglide/messages';
 import { appState, round, today, type WorkoutSet } from './state.svelte';
+import { metricUnit, showMetric } from './units';
 
 const FIELD: Partial<Record<MetricId, 'weight' | 'time'>> = {
 	contact: 'weight',
@@ -31,7 +32,7 @@ export function recordAssessment(metricId: string, sets: WorkoutSet[], content: 
 	appState.log.unshift({
 		date: today(),
 		type: 'test',
-		label: `${metric?.name ?? metricId}: ${round(v)} ${metric?.unit ?? ''}`,
+		label: `${metric?.name ?? metricId}: ${round(showMetric(metricId, v))} ${metric ? metricUnit(metricId, metric.unit) : ''}`,
 		color: `var(${metric?.cat ?? '--ink-faint'})`,
 		note: m.metric_test_note(),
 	});

@@ -42,6 +42,22 @@ function fmtRange(min: number | null, max: number | null): string {
 	return min === max ? `${min}` : `${min}–${max}`;
 }
 
+// Metrics whose value is a weight (kg) — converted for display in lb mode.
+const WEIGHT_METRICS = new Set(['contact', 'pinch', 'pull', 'maxhang']);
+
+/** A metric value converted to the display weight unit (others pass through). */
+export function showMetric(id: string, v: number): number {
+	return WEIGHT_METRICS.has(id) && appState.prefs.weight === 'lb' ? round1(v * LB_PER_KG) : v;
+}
+/** An entered metric value converted back to canonical kg for storage. */
+export function toMetricCanonical(id: string, v: number): number {
+	return WEIGHT_METRICS.has(id) && appState.prefs.weight === 'lb' ? v / LB_PER_KG : v;
+}
+/** A metric's unit string with kg swapped for the display unit where it applies. */
+export function metricUnit(id: string, unit: string): string {
+	return WEIGHT_METRICS.has(id) && appState.prefs.weight === 'lb' ? unit.replace('kg', 'lb') : unit;
+}
+
 /** Format a kg range for display ("+30–45kg", "+66–99lb"). */
 export function formatLoad(r: Range): string {
 	const sign = r.min >= 0 ? '+' : '';
