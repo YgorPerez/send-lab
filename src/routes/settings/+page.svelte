@@ -9,6 +9,7 @@ import { exportBackup, exportWorkoutsCsv, importBackup } from '$lib/backup';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
+import McpTokens from '$lib/McpTokens.svelte';
 import * as m from '$lib/paraglide/messages';
 import Rehab from '$lib/Rehab.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
@@ -205,4 +206,9 @@ const seg =
 			<AccountSettings {email} />
 		{/if}
 	</Card>
+
+	<!-- AI access (MCP) — accounts only; tokens are server-issued and synced -->
+	{#if !appMode.guest}
+		<McpTokens />
+	{/if}
 </section>
