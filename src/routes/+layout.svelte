@@ -2,14 +2,12 @@
 import '@fontsource-variable/inter/index.css';
 import '@fontsource-variable/roboto-mono/index.css';
 import '../app.css';
-import LogInIcon from '@lucide/svelte/icons/log-in';
-import LogOutIcon from '@lucide/svelte/icons/log-out';
+import MenuIcon from '@lucide/svelte/icons/menu';
+import XIcon from '@lucide/svelte/icons/x';
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
 import { authClient } from '$lib/auth-client';
-import { Button } from '$lib/components/ui/button';
 import { Toaster } from '$lib/components/ui/sonner';
-import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import SyncStatus from '$lib/SyncStatus.svelte';
@@ -28,6 +26,7 @@ import { startTimerPersistence, timer } from '$lib/timerStore.svelte';
 import { cn } from '$lib/utils';
 
 let { children } = $props();
+let menuOpen = $state(false);
 
 const session = authClient.useSession();
 
@@ -98,11 +97,6 @@ $effect(() => {
 	}
 });
 
-async function signOut() {
-	await authClient.signOut();
-	await goto('/login');
-}
-
 // Footer timer bar: visible whenever a timer is loaded/running, except on the
 // Train tab (which shows the full timer inline).
 const showTimerBar = $derived(
@@ -136,50 +130,36 @@ const views = $derived([
 		<header
 			class="sticky top-0 z-50 border-b border-line bg-bg/80 px-5 pt-[22px] pb-[18px] backdrop-blur-lg"
 		>
-			<div class="flex flex-wrap items-baseline gap-3.5">
-				<h1 class="flex items-center gap-2.5 text-[clamp(22px,4vw,30px)] font-black tracking-tight">
+			<div class="flex items-center justify-between gap-3">
+				<h1 class="flex items-center gap-2.5 text-[clamp(20px,5vw,28px)] font-black tracking-tight">
 					<span
 						class="inline-block h-6 w-3 -skew-x-12 bg-flag shadow-[3px_0_0_var(--flag-deep)]"
 					></span>
 					SEND&nbsp;LAB
 				</h1>
-				<span class="font-mono text-[11px] tracking-[0.18em] text-ink-faint uppercase">
-					{m.brand_sub()}
-				</span>
-				<div class="ml-auto flex items-center gap-3">
+				<div class="flex items-center gap-3">
 					<SyncStatus />
-					<span class="hidden font-mono text-[11px] text-ink-faint sm:inline">
-						{$session.data?.user?.email ?? (appMode.guest ? m.guest_label() : '')}
-					</span>
-					<LanguageSwitcher />
-					{#if appMode.guest}
-						<Button
-							variant="ghost"
-							size="icon"
-							class="text-ink-faint hover:text-flag"
-							aria-label={m.guest_upgrade()}
-							title={m.guest_upgrade()}
-							onclick={() => goto('/login')}
-						>
-							<LogInIcon class="size-4" />
-						</Button>
-					{:else}
-						<Button
-							variant="ghost"
-							size="icon"
-							class="text-ink-faint hover:text-flag"
-							aria-label={m.btn_sign_out()}
-							onclick={signOut}
-						>
-							<LogOutIcon class="size-4" />
-						</Button>
-					{/if}
+					<button
+						type="button"
+						class="text-ink-dim transition hover:text-ink md:hidden"
+						aria-label={m.nav_menu()}
+						aria-expanded={menuOpen}
+						onclick={() => (menuOpen = !menuOpen)}
+					>
+						{#if menuOpen}<XIcon class="size-5" />{:else}<MenuIcon class="size-5" />{/if}
+					</button>
 				</div>
 			</div>
-			<nav class="mt-4 flex flex-wrap gap-1">
+			<nav
+				class={cn(
+					'mt-4 gap-1 md:flex md:flex-row md:flex-wrap',
+					menuOpen ? 'flex flex-col' : 'hidden'
+				)}
+			>
 				{#each views as { href, label } (href)}
 					<a
 						{href}
+						onclick={() => (menuOpen = false)}
 						class={cn(
 							'rounded-md px-3 py-2 font-mono text-[11.5px] tracking-wider uppercase transition',
 							page.url.pathname === href

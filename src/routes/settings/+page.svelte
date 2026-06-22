@@ -8,6 +8,7 @@ import { authClient } from '$lib/auth-client';
 import { exportBackup, exportWorkoutsCsv, importBackup } from '$lib/backup';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
+import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import * as m from '$lib/paraglide/messages';
 import Rehab from '$lib/Rehab.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
@@ -117,6 +118,12 @@ const seg =
 		>
 			{#if appState.prefs.notify}<BellIcon class="size-4" />{:else}<BellOffIcon class="size-4" />{/if}
 		</button>
+	</Card>
+
+	<!-- Language -->
+	<Card class="flex-row items-center justify-between gap-4 p-[18px]">
+		<span class="font-bold">{m.lang_label()}</span>
+		<LanguageSwitcher />
 	</Card>
 
 	<!-- Program -->

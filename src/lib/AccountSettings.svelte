@@ -8,6 +8,11 @@ import { clearLocal } from '$lib/state.svelte';
 
 let { email }: { email: string } = $props();
 
+async function signOut() {
+	await authClient.signOut();
+	await goto('/login');
+}
+
 let currentPw = $state('');
 let newPw = $state('');
 let pwMsg = $state('');
@@ -56,7 +61,12 @@ async function deleteAccount(e: Event) {
 </script>
 
 <div class="flex flex-col gap-5">
-	<p class="font-mono text-xs text-ink-faint">{email}</p>
+	<div class="flex items-center justify-between gap-3">
+		<p class="min-w-0 truncate font-mono text-xs text-ink-faint">{email}</p>
+		<Button variant="outline" size="sm" class="flex-none border-line text-xs" onclick={signOut}>
+			{m.btn_sign_out()}
+		</Button>
+	</div>
 
 	<form class="flex flex-col gap-2.5" onsubmit={changePassword}>
 		<span class="text-[13px] font-semibold text-chalk">{m.set_change_pw()}</span>
