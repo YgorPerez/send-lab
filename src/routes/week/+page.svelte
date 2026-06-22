@@ -149,9 +149,27 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 			{@const done = !!appState.completed[slotKey(week, slot.k)]}
 			{@const exIds = resolveExerciseIds(content, week, slot.k)}
 			{@const isToday = slot.k === todayKey && isCurrent}
+			{@const avail = Object.entries(content.exercises).filter(
+				([id]) => id !== 'rest' && !exIds.includes(id)
+			)}
 			<Card
+				role="button"
+				tabindex={0}
+				aria-label={`${slot.label} · ${m.wk_customize()}`}
+				onclick={(e) => {
+					// Ignore clicks on inner controls (done toggle, glossary terms).
+					if (editing === null && !(e.target as HTMLElement).closest('button, a, input, label')) {
+						editing = slot.k;
+					}
+				}}
+				onkeydown={(e) => {
+					if ((e.key === 'Enter' || e.key === ' ') && editing === null) {
+						e.preventDefault();
+						editing = slot.k;
+					}
+				}}
 				class={cn(
-					'relative gap-2 overflow-hidden p-3.5',
+					'relative cursor-pointer gap-2 overflow-hidden p-3.5 transition hover:ring-1 hover:ring-line',
 					done && 'opacity-55',
 					isToday && 'opacity-100 ring-1 ring-flag/70'
 				)}
@@ -167,95 +185,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 					>
 						{slot.label}{#if isToday} · {m.td_today_label()}{/if}
 					</span>
-					<button
-						type="button"
-						class="text-ink-faint transition hover:text-ink"
-						aria-label={m.wk_customize()}
-						onclick={() => (editing = slot.k)}
-					>
-						<Settings2Icon class="size-3.5" />
-					</button>
-					{#if editing === slot.k}
-						<Modal
-							open
-							title={`${slot.label} · ${m.wk_customize()}`}
-							onClose={() => (editing = null)}
-						>
-							<div class="mb-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-								{m.wk_protocol()}
-							</div>
-							<Select
-								type="single"
-								value={resolved.k}
-								onValueChange={(v) => v && setDayPlan(week, slot.k, v)}
-							>
-								<SelectTrigger class="mb-3 h-9 w-full border-line bg-panel-2 text-xs">
-									{resolved.type} · {resolved.load}
-								</SelectTrigger>
-								<SelectContent>
-									{#each content.days as opt (opt.k)}
-										<SelectItem value={opt.k}>{opt.type} · {opt.load}</SelectItem>
-									{/each}
-								</SelectContent>
-							</Select>
-
-							{#each exIds as exId (exId)}
-								{@const ex = content.exercises[exId]}
-								{#if ex}
-									{@const idx = resolveSwapIndex(week, slot.k, exId)}
-									<div class="mb-1 flex items-center justify-between gap-2">
-										<span class="text-[11px] font-semibold text-ink-dim">{ex.name}</span>
-										<button
-											type="button"
-											class="text-ink-faint transition hover:text-flag"
-											aria-label={m.btn_delete()}
-											onclick={() => removeDayExercise(content, week, slot.k, exId)}
-										>
-											<XIcon class="size-3.5" />
-										</button>
-									</div>
-									<div class="mb-2.5">
-										<VariantPicker
-											exercise={ex}
-											{idx}
-											onSelect={(i) => setDaySwap(week, slot.k, exId, i)}
-										/>
-									</div>
-								{/if}
-							{/each}
-
-							{@const avail = Object.entries(content.exercises).filter(
-								([id]) => id !== 'rest' && !exIds.includes(id)
-							)}
-							{#if avail.length}
-								<Select
-									type="single"
-									value=""
-									onValueChange={(v) => v && addDayExercise(content, week, slot.k, v)}
-								>
-									<SelectTrigger
-										class="h-9 w-full border-dashed border-line bg-panel-2 text-xs text-ink-dim"
-									>
-										<PlusIcon class="mr-1 size-3.5" />{m.wk_add_ex()}
-									</SelectTrigger>
-									<SelectContent>
-										{#each avail as [id, ex] (id)}
-											<SelectItem value={id}>{ex.name}</SelectItem>
-										{/each}
-									</SelectContent>
-								</Select>
-							{/if}
-						{#if customized}
-	<button
-		type="button"
-		onclick={() => resetDay(week, slot.k)}
-		class="mt-3 w-full rounded-md border border-line py-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase transition hover:border-flag hover:text-flag"
-	>
-		{m.wk_reset_day()}
-	</button>
-{/if}
-</Modal>
-					{/if}
+					<Settings2Icon class="size-3.5 text-ink-faint" />
 				</div>
 
 				<div
@@ -281,6 +211,75 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 					{done ? m.lbl_done() : m.btn_mark_done()}
 				</label>
 			</Card>
+
+			{#if editing === slot.k}
+				<Modal open title={`${slot.label} · ${m.wk_customize()}`} onClose={() => (editing = null)}>
+					<div class="mb-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+						{m.wk_protocol()}
+					</div>
+					<Select type="single" value={resolved.k} onValueChange={(v) => v && setDayPlan(week, slot.k, v)}>
+						<SelectTrigger class="mb-3 h-9 w-full border-line bg-panel-2 text-xs">
+							{resolved.type} · {resolved.load}
+						</SelectTrigger>
+						<SelectContent>
+							{#each content.days as opt (opt.k)}
+								<SelectItem value={opt.k}>{opt.type} · {opt.load}</SelectItem>
+							{/each}
+						</SelectContent>
+					</Select>
+
+					{#each exIds as exId (exId)}
+						{@const ex = content.exercises[exId]}
+						{#if ex}
+							<div class="mb-1 flex items-center justify-between gap-2">
+								<span class="text-[11px] font-semibold text-ink-dim">{ex.name}</span>
+								<button
+									type="button"
+									class="text-ink-faint transition hover:text-flag"
+									aria-label={m.btn_delete()}
+									onclick={() => removeDayExercise(content, week, slot.k, exId)}
+								>
+									<XIcon class="size-3.5" />
+								</button>
+							</div>
+							<div class="mb-2.5">
+								<VariantPicker
+									exercise={ex}
+									idx={resolveSwapIndex(week, slot.k, exId)}
+									onSelect={(i) => setDaySwap(week, slot.k, exId, i)}
+								/>
+							</div>
+						{/if}
+					{/each}
+
+					{#if avail.length}
+						<Select
+							type="single"
+							value=""
+							onValueChange={(v) => v && addDayExercise(content, week, slot.k, v)}
+						>
+							<SelectTrigger class="h-9 w-full border-dashed border-line bg-panel-2 text-xs text-ink-dim">
+								<PlusIcon class="mr-1 size-3.5" />{m.wk_add_ex()}
+							</SelectTrigger>
+							<SelectContent>
+								{#each avail as [id, ex] (id)}
+									<SelectItem value={id}>{ex.name}</SelectItem>
+								{/each}
+							</SelectContent>
+						</Select>
+					{/if}
+
+					{#if customized}
+						<button
+							type="button"
+							onclick={() => resetDay(week, slot.k)}
+							class="mt-3 w-full rounded-md border border-line py-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase transition hover:border-flag hover:text-flag"
+						>
+							{m.wk_reset_day()}
+						</button>
+					{/if}
+				</Modal>
+			{/if}
 		{/each}
 	</div>
 </section>

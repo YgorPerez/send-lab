@@ -46,6 +46,7 @@ const numCell = 'flex flex-col gap-1 font-mono text-[10px] tracking-wider text-i
 		<button
 			type="button"
 			role="switch"
+			aria-label={m.prog_autoprogress()}
 			aria-checked={appState.program.autoProgress}
 			onclick={() => (appState.program.autoProgress = !appState.program.autoProgress)}
 			class={cn(
