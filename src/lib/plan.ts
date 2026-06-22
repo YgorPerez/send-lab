@@ -37,9 +37,12 @@ export function dayTemplate(content: Content, dayKey: string): Day {
 	return content.days.find((d) => d.k === dayKey) ?? content.days[0];
 }
 
-/** The Day template a slot will actually run, after overrides. */
+/** The Day template a slot will actually run, after overrides (incl. the
+ *  program's custom focus name, which replaces the built-in category label). */
 export function resolveDay(content: Content, week: number, weekday: string): Day {
-	return dayTemplate(content, resolveDayKey(week, weekday));
+	const base = dayTemplate(content, resolveDayKey(week, weekday));
+	const name = appState.program.template[weekday]?.name;
+	return name ? { ...base, type: name } : base;
 }
 
 /** The exercise ids for a slot: per-week override → program template → day default. */
