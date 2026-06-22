@@ -11,7 +11,6 @@ import { Button } from '$lib/components/ui/button';
 import { Toaster } from '$lib/components/ui/sonner';
 import { TooltipProvider } from '$lib/components/ui/tooltip';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
-import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import SyncStatus from '$lib/SyncStatus.svelte';
@@ -118,6 +117,7 @@ const views = $derived([
 	{ href: '/metrics', label: m.nav_metrics() },
 	{ href: '/stats', label: m.nav_stats() },
 	{ href: '/log', label: m.nav_log() },
+	{ href: '/studies', label: m.nav_studies() },
 	{ href: '/settings', label: m.nav_settings() },
 ]);
 </script>
@@ -195,15 +195,6 @@ const views = $derived([
 		<main class={cn('mx-auto max-w-[1080px] px-5 py-6', showTimerBar && 'pb-28')}>
 			{@render children()}
 		</main>
-
-		<footer
-			class={cn(
-				'mx-auto mt-8 max-w-[1080px] border-t border-line px-5 py-5 text-xs leading-relaxed text-ink-faint',
-				showTimerBar && 'pb-28'
-			)}
-		>
-			<Prose value={m.footer_text()} />
-		</footer>
 
 		{#if showTimerBar}
 			<TimerBar />
