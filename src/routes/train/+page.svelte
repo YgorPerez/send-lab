@@ -2,6 +2,7 @@
 import PlusIcon from '@lucide/svelte/icons/plus';
 import RepeatIcon from '@lucide/svelte/icons/repeat';
 import { toast } from 'svelte-sonner';
+import { goto } from '$app/navigation';
 import { page } from '$app/state';
 import { recordAssessment } from '$lib/assessment';
 import { Button } from '$lib/components/ui/button';
@@ -48,6 +49,8 @@ const week = $derived(appState.currentWeek);
 const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? weekday);
 
 const dayExIds = $derived(resolveExerciseIds(content, week, weekday));
+// Arrived here from the onboarding assessment to run a test — offer a way back.
+const fromWelcome = $derived(page.url.searchParams.get('from') === 'welcome');
 
 interface Item {
 	exId: string;
@@ -242,6 +245,15 @@ function removeItem(exId: string) {
 </script>
 
 <section class="animate-in fade-in duration-300">
+	{#if fromWelcome}
+		<button
+			type="button"
+			class="mb-3 font-mono text-[11px] tracking-wider text-flag uppercase hover:underline"
+			onclick={() => goto('/welcome')}
+		>
+			{m.back_to_assessment()}
+		</button>
+	{/if}
 	<SectionHeading title={m.sec_train()} />
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim">
 		<Prose value={m.lede_train()} />

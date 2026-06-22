@@ -356,6 +356,8 @@
 	"welcome_goals_help": "Define sua semana de treino e o quanto cada fase puxa.",
 	"welcome_context_help": "Opcional — adapta os exercícios ao seu equipamento e sinaliza cuidado.",
 	"welcome_baseline_help": "Opcional — seus números de teste semeiam as cargas iniciais. Você também pode registrar e refazer cada um a qualquer momento na aba Métricas.",
+	"assess_test_in_train": "Testar no Treino ↗",
+	"back_to_assessment": "← Voltar à avaliação",
 	"prop_title": "Seu protocolo inicial",
 	"prop_intro": "Com base na sua avaliação —",
 	"prop_week": "Comece na Semana 1 · Fase 1 — Capacidade e Base de Tecido.",

@@ -16,6 +16,18 @@ const FIELD: Partial<Record<MetricId, 'weight' | 'time'>> = {
 	density: 'time',
 };
 
+/** The exercise that produces each marker — opened in Train (with `assess`) to
+ *  run the test and auto-record the result. Shared by Metrics and onboarding. */
+export const METRIC_EXERCISE: Partial<Record<MetricId, string>> = {
+	rfd: 'recruit',
+	contact: 'recruit',
+	cf: 'repeaters',
+	pinch: 'pinch',
+	pull: 'pull',
+	maxhang: 'maxhang',
+	density: 'density',
+};
+
 /** Best value for a metric across logged sets, or null if it can't be derived. */
 function metricValueFromSets(metricId: string, sets: WorkoutSet[]): number | null {
 	const field = FIELD[metricId as MetricId];

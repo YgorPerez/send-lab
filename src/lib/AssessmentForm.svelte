@@ -1,5 +1,6 @@
 <script lang="ts">
 import { browser } from '$app/environment';
+import BaselineStep from '$lib/BaselineStep.svelte';
 import { Button } from '$lib/components/ui/button';
 import { Card, CardContent } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
@@ -20,7 +21,7 @@ import {
 	saveAssessment,
 	today,
 } from '$lib/state.svelte';
-import { metricUnit, showKg, showMetric, toKg, toMetricCanonical } from '$lib/units';
+import { showKg, showMetric, toKg, toMetricCanonical } from '$lib/units';
 import { cn } from '$lib/utils';
 
 let { onComplete }: { onComplete: () => void } = $props();
@@ -151,10 +152,6 @@ const equipLabel: Record<Equipment, () => string> = {
 function toggleEquip(e: Equipment) {
 	equipment = equipment.includes(e) ? equipment.filter((x) => x !== e) : [...equipment, e];
 }
-
-const metric = (id: string) => content.metrics.find((mm) => mm.id === id);
-const metricLabel = (id: string) =>
-	`${metric(id)?.name ?? id} (${metricUnit(id, metric(id)?.unit ?? '')})`;
 
 const STEPS = [m.welcome_step_goals, m.welcome_step_context, m.welcome_step_baseline];
 
@@ -292,20 +289,7 @@ function back() {
 			</div>
 			<PainCheck bind:niggle bind:synovitis />
 		{:else}
-			<p class="text-xs text-ink-faint">{m.welcome_baseline_help()}</p>
-			<div class="grid grid-cols-2 gap-3">
-				<label class="flex flex-col gap-1 text-xs text-ink-dim">
-					{m.field_bodyweight()} ({appState.prefs.weight})
-					<Input type="number" step="any" bind:value={bodyweight} class="bg-panel-2" />
-				</label>
-				{#each BASELINES as id (id)}
-					<label class="flex flex-col gap-1 text-xs text-ink-dim">
-						{metricLabel(id)}
-						<Input type="number" step="any" bind:value={baseline[id]} class="bg-panel-2" />
-						<span class="text-[10px] leading-snug text-ink-faint">{metric(id)?.desc}</span>
-					</label>
-				{/each}
-			</div>
+			<BaselineStep bind:bodyweight bind:baseline />
 		{/if}
 
 		<div class="mt-1 flex gap-2.5">

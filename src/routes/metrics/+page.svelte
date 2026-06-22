@@ -1,6 +1,7 @@
 <script lang="ts">
 import TimerIcon from '@lucide/svelte/icons/timer';
 import { goto } from '$app/navigation';
+import { METRIC_EXERCISE } from '$lib/assessment';
 import { Button } from '$lib/components/ui/button';
 import { getContent, type MetricId } from '$lib/content';
 import { gradeLabel, isGradeMetric } from '$lib/grades';
@@ -16,18 +17,6 @@ const content = getContent();
 
 type Metric = (typeof content.metrics)[number];
 let openMetric = $state<Metric | null>(null);
-
-// The exercise that produces each metric — the assessment is run as that
-// exercise in the Train tab.
-const METRIC_EXERCISE: Partial<Record<MetricId, string>> = {
-	rfd: 'recruit',
-	contact: 'recruit',
-	cf: 'repeaters',
-	pinch: 'pinch',
-	pull: 'pull',
-	maxhang: 'maxhang',
-	density: 'density',
-};
 
 /** Open the Train tab, adding the metric's exercise to today and selecting it.
  *  The `assess` flag tells Train to auto-record this metric when the set is logged. */

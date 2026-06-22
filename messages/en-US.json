@@ -356,6 +356,8 @@
 	"welcome_goals_help": "Sets your training week and how hard each phase pushes.",
 	"welcome_context_help": "Optional — tailors exercises to your gear and flags caution.",
 	"welcome_baseline_help": "Optional — your test numbers seed starting weights. You can also log and retest each of these anytime in the Metrics tab.",
+	"assess_test_in_train": "Test it in Train ↗",
+	"back_to_assessment": "← Back to setup",
 	"prop_title": "Your starting protocol",
 	"prop_intro": "Based on your assessment —",
 	"prop_week": "Begin at Week 1 · Phase 1 — Capacity & Tissue Base.",

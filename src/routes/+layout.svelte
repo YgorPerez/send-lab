@@ -91,7 +91,8 @@ $effect(() => {
 		($session.data?.user || appMode.guest) &&
 		!appState.assessment &&
 		page.url.pathname !== '/welcome' &&
-		page.url.pathname !== '/login'
+		page.url.pathname !== '/login' &&
+		page.url.pathname !== '/train'
 	) {
 		void goto('/welcome');
 	}
