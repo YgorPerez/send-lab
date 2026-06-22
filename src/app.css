@@ -85,8 +85,8 @@
 	--color-gold: var(--gold);
 	--color-violet: var(--violet);
 
-	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	--font-mono: 'Roboto Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
+	--font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-mono: 'Roboto Mono Variable', 'Roboto Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
 }
 
 @layer base {

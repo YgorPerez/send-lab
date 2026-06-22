@@ -1,4 +1,6 @@
 <script lang="ts">
+import '@fontsource-variable/inter/index.css';
+import '@fontsource-variable/roboto-mono/index.css';
 import '../app.css';
 import LogOutIcon from '@lucide/svelte/icons/log-out';
 import { goto } from '$app/navigation';

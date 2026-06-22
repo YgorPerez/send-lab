@@ -8,10 +8,14 @@ const ASSETS = [...build, ...files];
 
 sw.addEventListener('install', (event) => {
 	event.waitUntil(
-		caches
-			.open(CACHE)
-			.then((cache) => cache.addAll(ASSETS))
-			.then(() => sw.skipWaiting()),
+		(async () => {
+			const cache = await caches.open(CACHE);
+			await cache.addAll(ASSETS);
+			// Precache the SPA shell so *any* route works offline after first load
+			// (ssr=false, so the document is route-agnostic).
+			await cache.add('/').catch(() => {});
+			await sw.skipWaiting();
+		})(),
 	);
 });
 
