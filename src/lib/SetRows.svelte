@@ -23,80 +23,83 @@ interface Props {
 }
 
 let { rows, cols, onRemove, onDone }: Props = $props();
-
-const grid = $derived(`grid-template-columns:repeat(${cols.length},minmax(54px,1fr)) auto`);
 </script>
 
 {#if rows.length > 0}
-	<div class="flex flex-col gap-1.5 overflow-x-auto">
-		<div class="grid gap-1.5 text-[10px] text-ink-faint" style={grid}>
-			{#each cols as col (col.key)}
-				<span class="truncate">{col.label()}</span>
-			{/each}
-			<span></span>
-		</div>
+	<div class="flex flex-col gap-2">
 		{#each rows as set, i (i)}
 			<div
-				class={cn('grid items-center gap-1.5 transition-opacity', set.done && 'opacity-45')}
-				style={grid}
+				class={cn(
+					'rounded-lg border border-line bg-panel-2/40 p-2 transition-opacity',
+					set.done && 'opacity-45'
+				)}
 			>
-				{#each cols as col (col.key)}
-					{#if col.key === 'grip'}
-						<Select type="single" value={set.grip ?? ''} onValueChange={(v) => (set.grip = v || null)}>
-							<SelectTrigger class="h-8 bg-panel-2 px-2 text-xs">
-								{set.grip ? gripLabel(set.grip) : '—'}
-							</SelectTrigger>
-							<SelectContent>
-								{#each GRIPS as g (g)}
-									<SelectItem value={g}>{gripLabel(g)}</SelectItem>
-								{/each}
-							</SelectContent>
-						</Select>
-					{:else if col.key === 'weight'}
-						<Input
-							type="number"
-							step="any"
-							value={showKg(set.weight)}
-							oninput={(e) => (set.weight = parseNum(e.currentTarget.value) == null ? null : toKg(parseNum(e.currentTarget.value)!))}
-							class="h-8 bg-panel-2 text-sm"
-						/>
-					{:else if col.key === 'edge'}
-						<Input
-							type="number"
-							step="any"
-							value={showMm(set.edge)}
-							oninput={(e) => (set.edge = parseNum(e.currentTarget.value) == null ? null : toMm(parseNum(e.currentTarget.value)!))}
-							class="h-8 bg-panel-2 text-sm"
-						/>
-					{:else}
-						<Input
-							type="number"
-							step="any"
-							bind:value={set[col.key]}
-							class="h-8 bg-panel-2 text-sm"
-						/>
-					{/if}
-				{/each}
-				<div class="flex items-center gap-1.5">
-					<input
-						type="checkbox"
-						checked={set.done}
-						onchange={(e) => {
-							set.done = e.currentTarget.checked;
-							if (set.done) onDone?.();
-						}}
-						class="size-4 cursor-pointer accent-teal"
-						aria-label={m.lbl_done()}
-						title={m.lbl_done()}
-					/>
-					<button
-						type="button"
-						class="text-ink-faint transition hover:text-flag"
-						aria-label={m.btn_delete()}
-						onclick={() => onRemove(i)}
-					>
-						<XIcon class="size-4" />
-					</button>
+				<div class="mb-1.5 flex items-center justify-between">
+					<span class="font-mono text-[10px] tracking-wider text-ink-faint">#{i + 1}</span>
+					<div class="flex items-center gap-3">
+						<label
+							class="flex items-center gap-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase"
+						>
+							<input
+								type="checkbox"
+								checked={set.done}
+								onchange={(e) => {
+									set.done = e.currentTarget.checked;
+									if (set.done) onDone?.();
+								}}
+								class="size-4 cursor-pointer accent-teal"
+							/>
+							{m.lbl_done()}
+						</label>
+						<button
+							type="button"
+							class="text-ink-faint transition hover:text-flag"
+							aria-label={m.btn_delete()}
+							onclick={() => onRemove(i)}
+						>
+							<XIcon class="size-4" />
+						</button>
+					</div>
+				</div>
+
+				<div class="grid grid-cols-3 gap-2 sm:grid-cols-6">
+					{#each cols as col (col.key)}
+						<label
+							class="flex min-w-0 flex-col gap-0.5 font-mono text-[9px] tracking-wider text-ink-faint uppercase"
+						>
+							<span class="truncate">{col.label()}</span>
+							{#if col.key === 'grip'}
+								<Select type="single" value={set.grip ?? ''} onValueChange={(v) => (set.grip = v || null)}>
+									<SelectTrigger class="h-8 w-full bg-panel-2 px-2 text-xs normal-case">
+										{set.grip ? gripLabel(set.grip) : '—'}
+									</SelectTrigger>
+									<SelectContent>
+										{#each GRIPS as g (g)}
+											<SelectItem value={g}>{gripLabel(g)}</SelectItem>
+										{/each}
+									</SelectContent>
+								</Select>
+							{:else if col.key === 'weight'}
+								<Input
+									type="number"
+									step="any"
+									value={showKg(set.weight)}
+									oninput={(e) => (set.weight = parseNum(e.currentTarget.value) == null ? null : toKg(parseNum(e.currentTarget.value)!))}
+									class="h-8 w-full bg-panel-2 text-sm"
+								/>
+							{:else if col.key === 'edge'}
+								<Input
+									type="number"
+									step="any"
+									value={showMm(set.edge)}
+									oninput={(e) => (set.edge = parseNum(e.currentTarget.value) == null ? null : toMm(parseNum(e.currentTarget.value)!))}
+									class="h-8 w-full bg-panel-2 text-sm"
+								/>
+							{:else}
+								<Input type="number" step="any" bind:value={set[col.key]} class="h-8 w-full bg-panel-2 text-sm" />
+							{/if}
+						</label>
+					{/each}
 				</div>
 			</div>
 		{/each}
