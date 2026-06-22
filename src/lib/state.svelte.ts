@@ -135,14 +135,40 @@ function applyData(data: Partial<AppState>): void {
 	appState.program = data.program ?? base.program;
 }
 
-/** Load the signed-in user's state from the server. Call once per login. */
-export async function hydrate(): Promise<void> {
+// Offline mirror: the per-user state is cached in localStorage so the app works
+// without a connection (the server stays canonical and syncs when back online).
+const LAST_USER = 'sendlab:lastUser';
+let cacheKey: string | null = null;
+
+/** The last signed-in user id (for offline cold-start). */
+export function lastUserId(): string | null {
+	return browser ? localStorage.getItem(LAST_USER) : null;
+}
+
+/** Apply imported/restored data and let persistence sync it. */
+export function importState(data: Partial<AppState>): void {
+	applyData(data);
+}
+
+/** Load the user's state: cached copy instantly, then refresh from the server. */
+export async function hydrate(uid?: string): Promise<void> {
 	if (!browser) return;
+	const id = uid ?? lastUserId();
+	cacheKey = id ? `sendlab:state:${id}` : null;
+	if (id) localStorage.setItem(LAST_USER, id);
+	if (cacheKey) {
+		try {
+			const cached = localStorage.getItem(cacheKey);
+			if (cached) applyData(JSON.parse(cached) as Partial<AppState>);
+		} catch {
+			// ignore corrupt cache
+		}
+	}
 	try {
 		const res = await fetch('/api/state');
 		if (res.ok) applyData((await res.json()) as Partial<AppState>);
 	} catch {
-		// network/parse failure — start from defaults
+		// offline — keep the cached copy
 	} finally {
 		hydrated = true;
 		appReady.hydrated = true;
@@ -176,6 +202,7 @@ export function startPersistence(): void {
 		// Touch the whole tree so the effect tracks deep mutations.
 		const snapshot = JSON.stringify(appState);
 		if (!hydrated || !browser) return;
+		if (cacheKey) localStorage.setItem(cacheKey, snapshot); // offline mirror (instant)
 		clearTimeout(timer);
 		timer = setTimeout(() => {
 			void fetch('/api/state', {

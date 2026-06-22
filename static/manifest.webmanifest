@@ -1,0 +1,14 @@
+{
+	"name": "Send Lab",
+	"short_name": "Send Lab",
+	"description": "Climbing training console — finger strength, power and tissue.",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "portrait",
+	"background_color": "#0c0d10",
+	"theme_color": "#0c0d10",
+	"icons": [
+		{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+	]
+}

@@ -1,5 +1,6 @@
 <script lang="ts">
 import { toast } from 'svelte-sonner';
+import { exportBackup, exportWorkoutsCsv, importBackup } from '$lib/backup';
 import {
 	Accordion,
 	AccordionContent,
@@ -12,6 +13,22 @@ import { gripLabel } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, resetAll } from '$lib/state.svelte';
 import { edgeLabel, showKg, showMm, weightLabel } from '$lib/units';
+
+let fileInput = $state<HTMLInputElement>();
+
+async function onImport(e: Event) {
+	const file = (e.currentTarget as HTMLInputElement).files?.[0];
+	if (!file) return;
+	if (confirm(m.import_confirm())) {
+		try {
+			await importBackup(file);
+			toast.success(m.toast_imported());
+		} catch {
+			toast.error(m.toast_import_failed());
+		}
+	}
+	if (fileInput) fileInput.value = '';
+}
 
 const typeLabel: Record<string, () => string> = {
 	rec: m.log_type_rec,
@@ -129,12 +146,38 @@ const fmt = (v: number | null) => (v == null ? '—' : String(v));
 		</div>
 	{/if}
 
-	<Button
-		variant="outline"
-		size="sm"
-		onclick={reset}
-		class="mt-6 border-line font-mono text-[11px] text-ink-faint hover:border-flag hover:text-flag"
-	>
-		{m.btn_reset_all()}
-	</Button>
+	<h3 class="mt-8 mb-2 font-mono text-[11px] tracking-wider text-ink-faint uppercase">
+		{m.data_section()}
+	</h3>
+	<div class="flex flex-wrap gap-2">
+		<Button variant="outline" size="sm" class="border-line text-xs" onclick={exportBackup}>
+			{m.data_export_json()}
+		</Button>
+		<Button variant="outline" size="sm" class="border-line text-xs" onclick={exportWorkoutsCsv}>
+			{m.data_export_csv()}
+		</Button>
+		<Button
+			variant="outline"
+			size="sm"
+			class="border-line text-xs"
+			onclick={() => fileInput?.click()}
+		>
+			{m.data_import()}
+		</Button>
+		<input
+			bind:this={fileInput}
+			type="file"
+			accept="application/json"
+			class="hidden"
+			onchange={onImport}
+		/>
+		<Button
+			variant="outline"
+			size="sm"
+			onclick={reset}
+			class="border-line font-mono text-[11px] text-ink-faint hover:border-flag hover:text-flag"
+		>
+			{m.btn_reset_all()}
+		</Button>
+	</div>
 </section>

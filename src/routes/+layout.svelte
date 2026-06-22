@@ -11,7 +11,14 @@ import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import { appReady, appState, clearLocal, hydrate, startPersistence } from '$lib/state.svelte';
+import {
+	appReady,
+	appState,
+	clearLocal,
+	hydrate,
+	lastUserId,
+	startPersistence,
+} from '$lib/state.svelte';
 import TimerBar from '$lib/TimerBar.svelte';
 import { startTimerPersistence, timer } from '$lib/timerStore.svelte';
 import UnitsSwitcher from '$lib/UnitsSwitcher.svelte';
@@ -28,9 +35,18 @@ $effect(() => {
 	document.documentElement.lang = getLocale();
 });
 
-// Redirect unauthenticated users to the login screen.
+// Offline cold-start: the session check failed (no network) but we have a
+// previously signed-in user — run on cached data instead of bouncing to login.
+const offline = $derived(
+	!$session.isPending &&
+		!$session.data?.user &&
+		Boolean(($session as { error?: unknown }).error) &&
+		lastUserId() != null,
+);
+
+// Redirect unauthenticated users to the login screen (unless we're offline).
 $effect(() => {
-	if (!$session.isPending && !$session.data?.user && page.url.pathname !== '/login') {
+	if (!$session.isPending && !$session.data?.user && !offline && page.url.pathname !== '/login') {
 		void goto('/login');
 	}
 });
@@ -41,8 +57,11 @@ $effect(() => {
 	const uid = $session.data?.user?.id ?? null;
 	if (uid && uid !== loadedFor) {
 		loadedFor = uid;
+		void hydrate(uid);
+	} else if (!uid && offline && loadedFor == null) {
+		loadedFor = lastUserId();
 		void hydrate();
-	} else if (!uid && loadedFor) {
+	} else if (!uid && !offline && loadedFor) {
 		loadedFor = null;
 		clearLocal();
 	}
@@ -85,7 +104,7 @@ const views = $derived([
 
 {#if $session.isPending}
 	<div class="grid min-h-screen place-items-center font-mono text-xs text-ink-faint">SEND LAB</div>
-{:else if !$session.data?.user}
+{:else if !$session.data?.user && !offline}
 	{#if page.url.pathname === '/login'}
 		{@render children()}
 	{/if}
@@ -108,7 +127,7 @@ const views = $derived([
 				</span>
 				<div class="ml-auto flex items-center gap-3">
 					<span class="hidden font-mono text-[11px] text-ink-faint sm:inline">
-						{$session.data.user.email}
+						{$session.data?.user?.email ?? ''}
 					</span>
 					<UnitsSwitcher />
 					<LanguageSwitcher />
