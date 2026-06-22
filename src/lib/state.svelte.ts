@@ -80,6 +80,8 @@ interface AppState {
 	workouts: WorkoutEntry[];
 	/** Baseline assessment, or null until onboarding is completed. */
 	assessment: Assessment | null;
+	/** Display-unit preferences (values are stored canonically as kg / mm). */
+	prefs: { weight: 'kg' | 'lb'; length: 'mm' | 'in' };
 }
 
 function defaultState(): AppState {
@@ -95,6 +97,7 @@ function defaultState(): AppState {
 		log: [],
 		workouts: [],
 		assessment: null,
+		prefs: { weight: 'kg', length: 'mm' },
 	};
 }
 
@@ -121,6 +124,7 @@ function applyData(data: Partial<AppState>): void {
 	appState.log = data.log ?? base.log;
 	appState.workouts = data.workouts ?? base.workouts;
 	appState.assessment = data.assessment ?? base.assessment;
+	appState.prefs = data.prefs ?? base.prefs;
 }
 
 /** Load the signed-in user's state from the server. Call once per login. */

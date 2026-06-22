@@ -14,6 +14,7 @@ import { getLocale } from '$lib/paraglide/runtime';
 import { appReady, appState, clearLocal, hydrate, startPersistence } from '$lib/state.svelte';
 import TimerBar from '$lib/TimerBar.svelte';
 import { startTimerPersistence, timer } from '$lib/timerStore.svelte';
+import UnitsSwitcher from '$lib/UnitsSwitcher.svelte';
 import { cn } from '$lib/utils';
 
 let { children } = $props();
@@ -108,6 +109,7 @@ const views = $derived([
 					<span class="hidden font-mono text-[11px] text-ink-faint sm:inline">
 						{$session.data.user.email}
 					</span>
+					<UnitsSwitcher />
 					<LanguageSwitcher />
 					<Button
 						variant="ghost"

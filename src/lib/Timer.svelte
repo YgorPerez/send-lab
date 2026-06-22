@@ -44,8 +44,8 @@ const doneFrac = $derived(total > 0 ? (total - left) / total : 0);
 		</span>
 		{#if timer.phase !== 'idle'}
 			<span class="font-mono text-[11px] tracking-wider uppercase" style:color={accent}>
-				{phaseLabel} · {timer.set}/{timer.sets}{#if timer.phase === 'work' || timer.phase === 'rest'}
-					· {timer.round}/{timer.rounds}{/if}
+				{phaseLabel}{#if !timer.restOnly} · {timer.set}/{timer.sets}{#if timer.phase === 'work' || timer.phase === 'rest'}
+						· {timer.round}/{timer.rounds}{/if}{/if}
 			</span>
 		{/if}
 	</div>

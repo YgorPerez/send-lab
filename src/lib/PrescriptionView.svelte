@@ -3,6 +3,7 @@ import type { VariantParams } from '$lib/content/types';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import { costLabel, formatRange, formatSecondsRange, gripLabel } from '$lib/plan';
+import { formatEdge, formatLoad } from '$lib/units';
 
 interface Props {
 	/** A merged variant (or any params object) to render targets for. */
@@ -22,11 +23,8 @@ const fields = $derived(
 			[m.presc_rest, spec.restSec && formatSecondsRange(spec.restSec)],
 			[m.presc_rounds, spec.rounds && `×${formatRange(spec.rounds)}`],
 			[m.presc_setrest, spec.setRestSec && formatSecondsRange(spec.setRestSec)],
-			[
-				m.presc_load,
-				spec.loadKg && `${spec.loadKg.min >= 0 ? '+' : ''}${formatRange(spec.loadKg)}kg`,
-			],
-			[m.presc_edge, spec.edgeMm && `${formatRange(spec.edgeMm)}mm`],
+			[m.presc_load, spec.loadKg && formatLoad(spec.loadKg)],
+			[m.presc_edge, spec.edgeMm && formatEdge(spec.edgeMm)],
 			[m.presc_intensity, spec.intensityPct && `${formatRange(spec.intensityPct)}%`],
 			[m.presc_rpe, spec.rpe && formatRange(spec.rpe)],
 		] as const

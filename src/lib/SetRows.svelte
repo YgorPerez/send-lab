@@ -6,15 +6,23 @@ import * as m from '$lib/paraglide/messages';
 import { GRIPS, gripLabel } from '$lib/plan';
 import type { WorkoutSet } from '$lib/state.svelte';
 import type { Col } from '$lib/trainColumns';
+import { showKg, showMm, toKg, toMm } from '$lib/units';
 import { cn } from '$lib/utils';
+
+function parseNum(v: string): number | null {
+	const n = Number.parseFloat(v);
+	return Number.isNaN(n) ? null : n;
+}
 
 interface Props {
 	rows: WorkoutSet[];
 	cols: Col[];
 	onRemove: (i: number) => void;
+	/** Called when a set is newly marked done (to start the rest timer). */
+	onDone?: () => void;
 }
 
-let { rows, cols, onRemove }: Props = $props();
+let { rows, cols, onRemove, onDone }: Props = $props();
 
 const grid = $derived(`grid-template-columns:repeat(${cols.length},minmax(54px,1fr)) auto`);
 </script>
@@ -44,6 +52,22 @@ const grid = $derived(`grid-template-columns:repeat(${cols.length},minmax(54px,1
 								{/each}
 							</SelectContent>
 						</Select>
+					{:else if col.key === 'weight'}
+						<Input
+							type="number"
+							step="any"
+							value={showKg(set.weight)}
+							oninput={(e) => (set.weight = parseNum(e.currentTarget.value) == null ? null : toKg(parseNum(e.currentTarget.value)!))}
+							class="h-8 bg-panel-2 text-sm"
+						/>
+					{:else if col.key === 'edge'}
+						<Input
+							type="number"
+							step="any"
+							value={showMm(set.edge)}
+							oninput={(e) => (set.edge = parseNum(e.currentTarget.value) == null ? null : toMm(parseNum(e.currentTarget.value)!))}
+							class="h-8 bg-panel-2 text-sm"
+						/>
 					{:else}
 						<Input
 							type="number"
@@ -56,7 +80,11 @@ const grid = $derived(`grid-template-columns:repeat(${cols.length},minmax(54px,1
 				<div class="flex items-center gap-1.5">
 					<input
 						type="checkbox"
-						bind:checked={set.done}
+						checked={set.done}
+						onchange={(e) => {
+							set.done = e.currentTarget.checked;
+							if (set.done) onDone?.();
+						}}
 						class="size-4 cursor-pointer accent-teal"
 						aria-label={m.lbl_done()}
 						title={m.lbl_done()}

@@ -11,6 +11,7 @@ import * as m from '$lib/paraglide/messages';
 import { gripLabel } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, resetAll } from '$lib/state.svelte';
+import { edgeLabel, showKg, showMm, weightLabel } from '$lib/units';
 
 const typeLabel: Record<string, () => string> = {
 	rec: m.log_type_rec,
@@ -61,16 +62,16 @@ const fmt = (v: number | null) => (v == null ? '—' : String(v));
 										class="grid min-w-max gap-x-3 gap-y-1 font-mono text-[11px] text-ink-faint"
 										style="grid-template-columns:repeat(7,minmax(40px,1fr))"
 									>
-										<span>{m.field_weight()}</span>
-										<span>{m.field_edge()}</span>
+										<span>{weightLabel()}</span>
+										<span>{edgeLabel()}</span>
 										<span>{m.field_time()}</span>
 										<span>{m.field_reps()}</span>
 										<span>{m.field_rest()}</span>
 										<span>{m.field_rpe()}</span>
 										<span>{m.field_grip()}</span>
 										{#each ex.sets as s, i (i)}
-											<span class="text-ink-dim">{fmt(s.weight)}</span>
-											<span class="text-ink-dim">{fmt(s.edge)}</span>
+											<span class="text-ink-dim">{fmt(showKg(s.weight))}</span>
+											<span class="text-ink-dim">{fmt(showMm(s.edge))}</span>
 											<span class="text-ink-dim">{fmt(s.time)}</span>
 											<span class="text-ink-dim">{fmt(s.reps)}</span>
 											<span class="text-ink-dim">{fmt(s.rest)}</span>

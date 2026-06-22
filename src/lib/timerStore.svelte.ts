@@ -21,6 +21,8 @@ interface TimerState {
 	running: boolean;
 	/** True once something is explicitly loaded or started (drives the footer bar). */
 	loaded: boolean;
+	/** A one-shot rest countdown (started when a set is marked done). */
+	restOnly: boolean;
 	/** Identifier of what's loaded, so callers can avoid redundant re-seeding. */
 	key: string | undefined;
 }
@@ -39,6 +41,7 @@ export const timer = $state<TimerState>({
 	remaining: 0,
 	running: false,
 	loaded: false,
+	restOnly: false,
 	key: undefined,
 });
 
@@ -116,6 +119,10 @@ function tick(): void {
 			endOfSet();
 		}
 	} else if (timer.phase === 'rest') {
+		if (timer.restOnly) {
+			finish();
+			return;
+		}
 		timer.round += 1;
 		timer.phase = 'work';
 		timer.remaining = Math.max(1, timer.work);
@@ -131,6 +138,7 @@ function tick(): void {
 
 export function startTimer(): void {
 	if (timer.phase === 'idle' || timer.phase === 'done') {
+		timer.restOnly = false;
 		timer.set = 1;
 		timer.round = 1;
 		if (timer.prepare > 0) {
@@ -145,6 +153,28 @@ export function startTimer(): void {
 	timer.loaded = true;
 	beep(660);
 	clearTick();
+	if (browser) handle = setInterval(tick, 1000);
+}
+
+/** Start a one-shot rest countdown (e.g. after marking a set done). */
+export function startRest(seconds: number, name: string): void {
+	clearTick();
+	timer.name = name;
+	timer.restOnly = true;
+	timer.prepare = 0;
+	timer.work = 0;
+	timer.rest = Math.max(1, Math.round(seconds));
+	timer.rounds = 1;
+	timer.sets = 1;
+	timer.setRest = 0;
+	timer.set = 1;
+	timer.round = 1;
+	timer.phase = 'rest';
+	timer.remaining = Math.max(1, Math.round(seconds));
+	timer.running = true;
+	timer.loaded = true;
+	timer.key = 'rest';
+	beep(440);
 	if (browser) handle = setInterval(tick, 1000);
 }
 
@@ -194,6 +224,7 @@ export function configureTimer(c: TimerConfig, force = false): void {
 	timer.sets = c.sets;
 	timer.setRest = c.setRest;
 	timer.key = c.key;
+	timer.restOnly = false;
 	if (force) timer.loaded = true;
 	resetTimer();
 }
@@ -208,10 +239,12 @@ function body(): number {
 }
 
 export function timerTotal(): number {
+	if (timer.restOnly) return Math.max(0, timer.rest);
 	return Math.max(0, timer.prepare) + body();
 }
 
 export function timerLeft(): number {
+	if (timer.restOnly) return timer.phase === 'done' ? 0 : timer.remaining;
 	const r = Math.max(0, timer.rest);
 	const sr = Math.max(0, timer.setRest);
 	if (timer.phase === 'idle') return timerTotal();

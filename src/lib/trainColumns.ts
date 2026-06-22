@@ -4,6 +4,7 @@
 // exercise loads a grip.
 import type { Variant } from './content/types';
 import * as m from './paraglide/messages';
+import { edgeLabel, weightLabel } from './units';
 
 type ColKey = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe' | 'grip';
 
@@ -14,8 +15,8 @@ export interface Col {
 
 export function colsFor(spec: Variant): Col[] {
 	const c: Col[] = [
-		{ key: 'weight', label: m.field_weight },
-		{ key: 'edge', label: m.field_edge },
+		{ key: 'weight', label: weightLabel },
+		{ key: 'edge', label: edgeLabel },
 		{ key: 'time', label: m.field_time },
 		{ key: 'reps', label: m.field_reps },
 	];

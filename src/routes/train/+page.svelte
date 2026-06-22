@@ -28,7 +28,7 @@ import SectionHeading from '$lib/SectionHeading.svelte';
 import SetRows from '$lib/SetRows.svelte';
 import { appState, type WorkoutSet } from '$lib/state.svelte';
 import Timer from '$lib/Timer.svelte';
-import { configureTimer, timer } from '$lib/timerStore.svelte';
+import { configureTimer, startRest, timer } from '$lib/timerStore.svelte';
 import { type Col, colsFor } from '$lib/trainColumns';
 import { cn } from '$lib/utils';
 import VariantPicker from '$lib/VariantPicker.svelte';
@@ -174,6 +174,12 @@ $effect(() => {
 
 const mid = (r?: Range): number | null => (r ? Math.round((r.min + r.max) / 2) : null);
 
+/** Start the rest countdown after marking a set done (inter-set rest, else rest). */
+function restAfter(it: Item) {
+	const secs = mid(it.spec.setRestSec) ?? mid(it.spec.restSec) ?? 60;
+	startRest(secs, `${m.timer_rest()} · ${it.exName}`);
+}
+
 /** A set pre-filled from the exercise's target prescription. */
 function defaultSet(spec: Variant): WorkoutSet {
 	return {
@@ -265,6 +271,7 @@ function removeItem(exId: string) {
 						rows={setsFor(dayLabel, it.exId)}
 						cols={it.cols}
 						onRemove={(i) => removeSet(it.exId, i)}
+						onDone={() => restAfter(it)}
 					/>
 
 					<Button
