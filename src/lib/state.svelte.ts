@@ -194,12 +194,23 @@ export function normalizeProgram(raw: unknown): Program {
 /** The single reactive state object. Mutate its fields directly; persistence is automatic. */
 export const appState = $state<AppState>(defaultState());
 
-/** Persistence is gated until the signed-in user's state has loaded, so we never
- *  clobber server data with defaults before hydration. */
+/** Persistence is gated until state has loaded, so we never clobber data with
+ *  defaults before hydration. */
 let hydrated = false;
+/** Whether changes sync to the server (true for a signed-in user, false in guest
+ *  mode, where state is local-only). */
+let serverSync = false;
 
-/** Reactive signal for "the signed-in user's state has loaded" (drives onboarding). */
+/** Reactive signal for "state has loaded" (drives onboarding). */
 export const appReady = $state({ hydrated: false });
+
+/** Reactive app mode. `guest` = using the app locally with no account. */
+export const appMode = $state({ guest: false });
+
+const GUEST_KEY = 'sendlab:guest';
+const GUEST_CACHE = 'sendlab:state:guest';
+
+if (browser && localStorage.getItem(GUEST_KEY) === '1') appMode.guest = true;
 
 /** Reactive sync indicator. `at` is the epoch ms of the last successful save —
  *  a "last synced" cue so edits on two devices clobbering each other are visible. */
@@ -264,9 +275,11 @@ export function importState(data: unknown): void {
 	applyData(sanitize(data));
 }
 
-/** Load the user's state: cached copy instantly, then refresh from the server. */
+/** Load a signed-in user's state: cached copy instantly, then refresh from the server. */
 export async function hydrate(uid?: string): Promise<void> {
 	if (!browser) return;
+	serverSync = true;
+	appMode.guest = false;
 	const id = uid ?? lastUserId();
 	cacheKey = id ? `sendlab:state:${id}` : null;
 	if (id) localStorage.setItem(LAST_USER, id);
@@ -289,6 +302,49 @@ export async function hydrate(uid?: string): Promise<void> {
 	}
 }
 
+/** Start (or resume) guest mode: state lives only in localStorage, no account. */
+export function hydrateGuest(): void {
+	if (!browser) return;
+	localStorage.setItem(GUEST_KEY, '1');
+	appMode.guest = true;
+	serverSync = false;
+	cacheKey = GUEST_CACHE;
+	try {
+		const cached = localStorage.getItem(GUEST_CACHE);
+		applyData(cached ? (JSON.parse(cached) as Partial<AppState>) : {});
+	} catch {
+		applyData({});
+	}
+	hydrated = true;
+	appReady.hydrated = true;
+}
+
+/** Flag the app for guest mode (the layout then hydrates it). */
+export function enterGuest(): void {
+	if (browser) localStorage.setItem(GUEST_KEY, '1');
+	appMode.guest = true;
+}
+
+/** Leave guest mode on sign-in/up, discarding the local-only guest cache. */
+export function leaveGuest(): void {
+	if (browser) {
+		localStorage.removeItem(GUEST_KEY);
+		localStorage.removeItem(GUEST_CACHE);
+	}
+	appMode.guest = false;
+}
+
+/** Push the current in-memory state to the server (used to seed a new account
+ *  with guest data when a guest signs up). */
+export async function uploadCurrentToServer(): Promise<void> {
+	if (!browser) return;
+	await fetch('/api/state', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(appState),
+	});
+}
+
 /** Save the baseline assessment and seed any baseline metrics (first-time only). */
 export function saveAssessment(
 	assessment: Assessment,
@@ -305,6 +361,7 @@ export function saveAssessment(
 /** Reset in-memory state to defaults and pause persistence (used on sign-out). */
 export function clearLocal(): void {
 	hydrated = false;
+	serverSync = false;
 	appReady.hydrated = false;
 	syncStatus.status = 'idle';
 	syncStatus.at = null;
@@ -318,7 +375,8 @@ export function startPersistence(): void {
 		// Touch the whole tree so the effect tracks deep mutations.
 		const snapshot = JSON.stringify(appState);
 		if (!hydrated || !browser) return;
-		if (cacheKey) localStorage.setItem(cacheKey, snapshot); // offline mirror (instant)
+		if (cacheKey) localStorage.setItem(cacheKey, snapshot); // local mirror (instant)
+		if (!serverSync) return; // guest mode: local-only, never hits the server
 		clearTimeout(timer);
 		timer = setTimeout(() => {
 			syncStatus.status = 'saving';

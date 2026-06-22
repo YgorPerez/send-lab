@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/car
 import { Input } from '$lib/components/ui/input';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import * as m from '$lib/paraglide/messages';
+import { appMode, enterGuest, leaveGuest, uploadCurrentToServer } from '$lib/state.svelte';
 
 let mode = $state<'login' | 'signup'>('login');
 let name = $state('');
@@ -18,18 +19,30 @@ async function submit(e: Event) {
 	e.preventDefault();
 	busy = true;
 	error = '';
+	// A guest signing up carries their local data into the new account.
+	const carryGuestData = mode === 'signup' && appMode.guest;
 	try {
 		const res =
 			mode === 'signup'
 				? await authClient.signUp.email({ name: name || email, email, password })
 				: await authClient.signIn.email({ email, password });
-		if (res.error) error = res.error.message ?? m.auth_error();
-		else await goto('/');
+		if (res.error) {
+			error = res.error.message ?? m.auth_error();
+		} else {
+			if (carryGuestData) await uploadCurrentToServer();
+			leaveGuest();
+			await goto('/');
+		}
 	} catch {
 		error = m.auth_error();
 	} finally {
 		busy = false;
 	}
+}
+
+function continueAsGuest() {
+	enterGuest();
+	void goto('/');
 }
 </script>
 
@@ -91,6 +104,12 @@ async function submit(e: Event) {
 			>
 				{mode === 'signup' ? m.auth_to_login() : m.auth_to_signup()}
 			</button>
+
+			<div class="mt-4 border-t border-line pt-4">
+				<Button variant="outline" class="w-full border-line text-sm" onclick={continueAsGuest}>
+					{m.guest_continue()}
+				</Button>
+			</div>
 		</CardContent>
 	</Card>
 </div>

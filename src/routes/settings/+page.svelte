@@ -10,7 +10,7 @@ import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import * as m from '$lib/paraglide/messages';
 import SectionHeading from '$lib/SectionHeading.svelte';
-import { appState, resetAll } from '$lib/state.svelte';
+import { appMode, appState, resetAll } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
 
 const session = authClient.useSession();
@@ -168,6 +168,15 @@ const seg =
 	<!-- Account -->
 	<Card class="gap-4 p-[18px]">
 		<span class="font-bold">{m.set_account()}</span>
-		<AccountSettings {email} />
+		{#if appMode.guest}
+			<div class="flex flex-col items-start gap-2.5">
+				<p class="max-w-[52ch] text-xs text-ink-dim">{m.guest_account_note()}</p>
+				<Button variant="outline" size="sm" class="border-line text-xs" onclick={() => goto('/login')}>
+					{m.guest_upgrade()}
+				</Button>
+			</div>
+		{:else}
+			<AccountSettings {email} />
+		{/if}
 	</Card>
 </section>

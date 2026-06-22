@@ -2,6 +2,7 @@
 import '@fontsource-variable/inter/index.css';
 import '@fontsource-variable/roboto-mono/index.css';
 import '../app.css';
+import LogInIcon from '@lucide/svelte/icons/log-in';
 import LogOutIcon from '@lucide/svelte/icons/log-out';
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
@@ -15,10 +16,12 @@ import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import SyncStatus from '$lib/SyncStatus.svelte';
 import {
+	appMode,
 	appReady,
 	appState,
 	clearLocal,
 	hydrate,
+	hydrateGuest,
 	lastUserId,
 	startPersistence,
 } from '$lib/state.svelte';
@@ -46,34 +49,48 @@ const offline = $derived(
 		lastUserId() != null,
 );
 
-// Redirect unauthenticated users to the login screen (unless we're offline).
+// Redirect to login only when there's no way to run: no account, not offline,
+// and the user hasn't chosen guest mode.
 $effect(() => {
-	if (!$session.isPending && !$session.data?.user && !offline && page.url.pathname !== '/login') {
+	if (
+		!$session.isPending &&
+		!$session.data?.user &&
+		!offline &&
+		!appMode.guest &&
+		page.url.pathname !== '/login'
+	) {
 		void goto('/login');
 	}
 });
 
-// Load / clear the per-user state as the session changes.
+// Load / clear state as the session (or guest mode) changes.
 let loadedFor = $state<string | null>(null);
 $effect(() => {
 	const uid = $session.data?.user?.id ?? null;
-	if (uid && uid !== loadedFor) {
-		loadedFor = uid;
-		void hydrate(uid);
-	} else if (!uid && offline && loadedFor == null) {
+	if (uid) {
+		if (uid !== loadedFor) {
+			loadedFor = uid;
+			void hydrate(uid);
+		}
+	} else if (appMode.guest) {
+		if (loadedFor !== 'guest') {
+			loadedFor = 'guest';
+			hydrateGuest();
+		}
+	} else if (offline && loadedFor == null) {
 		loadedFor = lastUserId();
 		void hydrate();
-	} else if (!uid && !offline && loadedFor) {
+	} else if (!offline && loadedFor) {
 		loadedFor = null;
 		clearLocal();
 	}
 });
 
-// New accounts (no baseline assessment) start with onboarding.
+// First run (account or guest) with no baseline assessment starts onboarding.
 $effect(() => {
 	if (
 		appReady.hydrated &&
-		$session.data?.user &&
+		($session.data?.user || appMode.guest) &&
 		!appState.assessment &&
 		page.url.pathname !== '/welcome'
 	) {
@@ -107,10 +124,10 @@ const views = $derived([
 
 {#if $session.isPending}
 	<div class="grid min-h-screen place-items-center font-mono text-xs text-ink-faint">SEND LAB</div>
-{:else if !$session.data?.user && !offline}
-	{#if page.url.pathname === '/login'}
-		{@render children()}
-	{/if}
+{:else if page.url.pathname === '/login' && !$session.data?.user}
+	{@render children()}
+{:else if !$session.data?.user && !offline && !appMode.guest}
+	<!-- no account / guest / offline session → the redirect effect sends to /login -->
 {:else if page.url.pathname === '/welcome'}
 	{@render children()}
 {:else}
@@ -131,18 +148,31 @@ const views = $derived([
 				<div class="ml-auto flex items-center gap-3">
 					<SyncStatus />
 					<span class="hidden font-mono text-[11px] text-ink-faint sm:inline">
-						{$session.data?.user?.email ?? ''}
+						{$session.data?.user?.email ?? (appMode.guest ? m.guest_label() : '')}
 					</span>
 					<LanguageSwitcher />
-					<Button
-						variant="ghost"
-						size="icon"
-						class="text-ink-faint hover:text-flag"
-						aria-label={m.btn_sign_out()}
-						onclick={signOut}
-					>
-						<LogOutIcon class="size-4" />
-					</Button>
+					{#if appMode.guest}
+						<Button
+							variant="ghost"
+							size="icon"
+							class="text-ink-faint hover:text-flag"
+							aria-label={m.guest_upgrade()}
+							title={m.guest_upgrade()}
+							onclick={() => goto('/login')}
+						>
+							<LogInIcon class="size-4" />
+						</Button>
+					{:else}
+						<Button
+							variant="ghost"
+							size="icon"
+							class="text-ink-faint hover:text-flag"
+							aria-label={m.btn_sign_out()}
+							onclick={signOut}
+						>
+							<LogOutIcon class="size-4" />
+						</Button>
+					{/if}
 				</div>
 			</div>
 			<nav class="mt-4 flex flex-wrap gap-1">
