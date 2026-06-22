@@ -159,15 +159,19 @@ function defaultState(): AppState {
 	};
 }
 
-/** Coerce a possibly-old or partial program into the current shape (back-fills
- *  targets / phases that older saved states won't have). */
-function normalizeProgram(p: Partial<Program> | undefined): Program {
+const isObj = (v: unknown): v is Record<string, unknown> =>
+	typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Coerce a possibly-old, partial, or untrusted program into the current shape
+ *  (back-fills targets / phases that older or imported programs won't have). */
+export function normalizeProgram(raw: unknown): Program {
 	const base = defaultState().program;
+	const p = (typeof raw === 'object' && raw ? raw : {}) as Partial<Program>;
 	return {
-		weeks: typeof p?.weeks === 'number' ? p.weeks : base.weeks,
-		template: p?.template ?? base.template,
-		targets: p?.targets ?? base.targets,
-		phases: Array.isArray(p?.phases) ? p.phases : base.phases,
+		weeks: typeof p.weeks === 'number' ? p.weeks : base.weeks,
+		template: isObj(p.template) ? p.template : base.template,
+		targets: isObj(p.targets) ? p.targets : base.targets,
+		phases: Array.isArray(p.phases) ? p.phases : base.phases,
 	};
 }
 
@@ -215,9 +219,6 @@ let cacheKey: string | null = null;
 export function lastUserId(): string | null {
 	return browser ? localStorage.getItem(LAST_USER) : null;
 }
-
-const isObj = (v: unknown): v is Record<string, unknown> =>
-	typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** Keep only top-level fields that are the right type, so a malformed or old
  *  backup can't corrupt state — anything missing or wrong falls back to default. */

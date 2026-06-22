@@ -13,7 +13,7 @@ import type {
 	Variant,
 	VariantParams,
 } from './content/types';
-import { appState, type ProgramPhase, type ProgramTarget } from './state.svelte';
+import { appState, normalizeProgram, type ProgramPhase, type ProgramTarget } from './state.svelte';
 
 export function slotKey(week: number, weekday: string): string {
 	return `w${week}-${weekday}`;
@@ -428,4 +428,72 @@ export function updatePhase(i: number, patch: Partial<ProgramPhase>): void {
 
 export function removePhase(i: number): void {
 	appState.program.phases.splice(i, 1);
+}
+
+// ---------------- DAY TOOLS ----------------
+
+/** Custom focus name for a weekday (empty when none). */
+export function programDayName(weekday: string): string {
+	return appState.program.template[weekday]?.name ?? '';
+}
+
+/** Set/clear a weekday's custom focus name (shown wherever the day-type is). */
+export function setProgramDayName(weekday: string, name: string): void {
+	const n = name.trim();
+	const e = { ...appState.program.template[weekday], dayKey: programDayKey(weekday) };
+	if (n) e.name = n;
+	else delete e.name;
+	if (!e.name && e.ex === undefined && e.dayKey === weekday)
+		delete appState.program.template[weekday];
+	else appState.program.template[weekday] = e;
+}
+
+/** The weekday key of the built-in rest day (the OFF-load day). */
+export function restDayKey(content: Content): string {
+	return content.days.find((d) => d.load === 'OFF')?.k ?? 'Sun';
+}
+
+/** Copy a weekday's whole config (day-type, exercises, name, prescriptions) onto another. */
+export function duplicateProgramDay(content: Content, from: string, to: string): void {
+	if (from === to) return;
+	const name = programDayName(from);
+	appState.program.template[to] = {
+		dayKey: programDayKey(from),
+		ex: [...programExercises(content, from)],
+		...(name ? { name } : {}),
+	};
+	for (const k of Object.keys(appState.program.targets)) {
+		if (k.startsWith(`${from}:`)) {
+			appState.program.targets[`${to}:${k.slice(from.length + 1)}`] = {
+				...appState.program.targets[k],
+			};
+		}
+	}
+}
+
+// ---------------- SAVED PROGRAMS ----------------
+
+const cloneProgram = () => JSON.parse(JSON.stringify(appState.program));
+
+/** Snapshot the active program under a name. */
+export function saveCurrentProgram(name: string): void {
+	appState.savedPrograms.push({
+		name: name.trim() || `${appState.savedPrograms.length + 1}`,
+		program: cloneProgram(),
+	});
+}
+
+/** Make a saved program the active one (replaces the whole program). */
+export function loadSavedProgram(i: number): void {
+	const s = appState.savedPrograms[i];
+	if (s) appState.program = normalizeProgram(JSON.parse(JSON.stringify(s.program)));
+}
+
+export function deleteSavedProgram(i: number): void {
+	appState.savedPrograms.splice(i, 1);
+}
+
+/** Replace the active program from imported (untrusted) data, validated. */
+export function setProgram(raw: unknown): void {
+	appState.program = normalizeProgram(raw);
 }
