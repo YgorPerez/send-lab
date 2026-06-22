@@ -98,11 +98,10 @@ function mondayOf(iso: string): Date {
 }
 
 /** Training load bucketed by calendar week (oldest→newest): set count, tonnage,
- *  time-under-tension, CNS load. Only date-stamped workouts are bucketed. */
+ *  time-under-tension, CNS load. */
 export function weeklyStats(workouts: WorkoutEntry[]): LoadStat[] {
 	const buckets = new Map<string, LoadStat>();
 	for (const w of workouts) {
-		if (!w.at) continue;
 		const monday = mondayOf(w.at);
 		const key = isoDay(monday);
 		let b = buckets.get(key);
@@ -137,8 +136,7 @@ export function recentRpe(workouts: WorkoutEntry[], sessions = 2): number | null
 	return rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
 }
 
-const loggedDays = (workouts: WorkoutEntry[]) =>
-	new Set(workouts.map((w) => w.at).filter((a): a is string => !!a));
+const loggedDays = (workouts: WorkoutEntry[]) => new Set(workouts.map((w) => w.at));
 
 /** Consecutive calendar days with a logged workout, ending today (or yesterday). */
 export function trainStreak(workouts: WorkoutEntry[]): number {

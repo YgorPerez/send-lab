@@ -88,10 +88,10 @@ export function exportWorkoutsCsv(): void {
 	download(`sendlab-workouts-${stamp()}.csv`, 'text/csv', csv);
 }
 
-/** Restore a JSON backup file (overwrites current data). Accepts both the
- *  versioned envelope and a legacy raw-state file; validation happens in
- *  importState, which throws on anything that isn't a state object. */
+/** Restore a JSON backup file (overwrites current data). Requires the versioned
+ *  envelope; importState then validates the payload and throws on bad shapes. */
 export async function importBackup(file: File): Promise<void> {
 	const parsed: unknown = JSON.parse(await file.text());
-	importState(isBackupFile(parsed) ? parsed.data : parsed);
+	if (!isBackupFile(parsed)) throw new Error('Not a Send Lab backup');
+	importState(parsed.data);
 }

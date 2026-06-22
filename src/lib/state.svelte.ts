@@ -43,8 +43,8 @@ interface WorkoutLogExercise {
 export interface WorkoutEntry {
 	/** Localized display date (e.g. "Jun 21"). */
 	date: string;
-	/** ISO calendar date (YYYY-MM-DD) for ordering/streaks; absent on old entries. */
-	at?: string;
+	/** ISO calendar date (YYYY-MM-DD) for ordering / streaks / weekly buckets. */
+	at: string;
 	day: string;
 	exercises: WorkoutLogExercise[];
 	note: string;
