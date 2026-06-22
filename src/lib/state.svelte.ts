@@ -75,6 +75,8 @@ export interface Assessment {
 	routeGrade: string | null;
 	/** A current finger/tendon niggle → the program caps finger intensity. */
 	niggle: boolean;
+	/** Finger-joint pain/swelling from the fist-hook synovitis self-check. */
+	synovitis: boolean;
 	age: number | null;
 	/** Typical session length (min) → caps exercises per day. */
 	sessionMinutes: number | null;

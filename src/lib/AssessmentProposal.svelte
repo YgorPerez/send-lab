@@ -11,10 +11,12 @@ interface Props {
 	level: Level;
 	planDays: string[];
 	days: Day[];
+	painFlagged: boolean;
 	onStart: () => void;
 	onEdit: () => void;
+	onRehab: () => void;
 }
-let { goal, focus, level, planDays, days, onStart, onEdit }: Props = $props();
+let { goal, focus, level, planDays, days, painFlagged, onStart, onEdit, onRehab }: Props = $props();
 
 const goalLabel: Record<Goal, () => string> = {
 	boulder: m.goal_boulder,
@@ -78,6 +80,15 @@ const focusNote: Record<Focus, () => string> = {
 		<p>{focusNote[focus]()}</p>
 	</CardContent>
 </Card>
+
+{#if painFlagged}
+	<div class="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3">
+		<p class="mb-2 text-[13px] text-ink-dim">{m.prop_pain_flagged()}</p>
+		<Button size="sm" class="bg-gold text-bg hover:bg-gold/90" onclick={onRehab}>
+			{m.rehab_start()}
+		</Button>
+	</div>
+{/if}
 
 <div class="flex gap-2.5">
 	<Button class="bg-flag text-white hover:bg-flag/90" onclick={onStart}>{m.prop_start()}</Button>

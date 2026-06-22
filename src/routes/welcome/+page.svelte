@@ -5,6 +5,7 @@ import AssessmentProposal from '$lib/AssessmentProposal.svelte';
 import { getContent } from '$lib/content';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import * as m from '$lib/paraglide/messages';
+import { startRehab } from '$lib/plan';
 import { trainingDays } from '$lib/programGen';
 import { appMode, appState } from '$lib/state.svelte';
 
@@ -18,6 +19,13 @@ const planDays = $derived(
 		? trainingDays(content, assessment).map((k) => content.days.find((d) => d.k === k)?.label ?? k)
 		: [],
 );
+const painFlagged = $derived(!!assessment && (assessment.niggle || assessment.synovitis));
+
+function startRehabPlan() {
+	// Synovitis is a joint issue → seed a fingers rehab; tunable in Settings.
+	startRehab(content, 'fingers', 'subacute');
+	void goto('/');
+}
 </script>
 
 <div class="mx-auto flex min-h-screen max-w-lg flex-col gap-6 px-5 py-10">
@@ -35,8 +43,10 @@ const planDays = $derived(
 			level={assessment.level}
 			{planDays}
 			days={content.days}
+			{painFlagged}
 			onStart={() => goto('/')}
 			onEdit={() => (done = false)}
+			onRehab={startRehabPlan}
 		/>
 	{:else}
 		<AssessmentForm onComplete={() => (done = true)} />

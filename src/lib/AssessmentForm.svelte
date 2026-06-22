@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/component
 import { getContent } from '$lib/content';
 import { BOULDER_SCALE, gradeIndex, ROUTE_SCALE } from '$lib/grades';
 import OptionCards from '$lib/OptionCards.svelte';
+import PainCheck from '$lib/PainCheck.svelte';
 import * as m from '$lib/paraglide/messages';
 import { generateProgram } from '$lib/programGen';
 import {
@@ -59,6 +60,7 @@ let equipment = $state<Equipment[]>(
 let boulderGrade = $state<string>((d?.boulderGrade as string) ?? a?.boulderGrade ?? '');
 let routeGrade = $state<string>((d?.routeGrade as string) ?? a?.routeGrade ?? '');
 let niggle = $state<boolean>((d?.niggle as boolean) ?? a?.niggle ?? false);
+let synovitis = $state<boolean>((d?.synovitis as boolean) ?? a?.synovitis ?? false);
 let age = $state<number | null>((d?.age as number | null) ?? a?.age ?? null);
 let sessionMinutes = $state<number | null>(
 	(d?.sessionMinutes as number | null) ?? a?.sessionMinutes ?? null,
@@ -92,6 +94,7 @@ $effect(() => {
 		boulderGrade,
 		routeGrade,
 		niggle,
+		synovitis,
 		age,
 		sessionMinutes,
 		baseline,
@@ -176,6 +179,7 @@ function generate() {
 		boulderGrade: boulderGrade.trim() || null,
 		routeGrade: routeGrade.trim() || null,
 		niggle,
+		synovitis,
 		age,
 		sessionMinutes,
 		completedAt: today(),
@@ -286,10 +290,7 @@ function back() {
 					<Input type="number" min="0" bind:value={sessionMinutes} class="bg-panel-2" />
 				</label>
 			</div>
-			<label class="flex items-center gap-2 text-xs text-ink-dim">
-				<input type="checkbox" bind:checked={niggle} class="size-4 accent-flag" />
-				{m.field_niggle()}
-			</label>
+			<PainCheck bind:niggle bind:synovitis />
 		{:else}
 			<p class="text-xs text-ink-faint">{m.welcome_baseline_help()}</p>
 			<div class="grid grid-cols-2 gap-3">

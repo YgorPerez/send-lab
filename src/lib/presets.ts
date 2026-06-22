@@ -32,6 +32,7 @@ function assessmentFor(p: Preset): Assessment {
 		boulderGrade: null,
 		routeGrade: null,
 		niggle: false,
+		synovitis: false,
 		age: null,
 		sessionMinutes: null,
 		completedAt: '',
