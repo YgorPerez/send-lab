@@ -111,9 +111,13 @@ export interface Exercise {
 	variants: Variant[];
 }
 
-/** A user-authored exercise. Same shape as a merged Exercise (its prose is written
+/** A user-authored exercise. Shaped like a merged Exercise (its prose is written
  *  inline, in one language) so it drops straight into Content.exercises by id. */
-export type CustomExercise = Exercise;
+export interface CustomExercise extends Exercise {
+	/** When set, the exercise is also a baseline metric (id = the exercise id),
+	 *  reading the named logged-set field. `weight` is kg; `time` is seconds. */
+	track?: { field: 'weight' | 'time' };
+}
 
 export interface Day {
 	/** Stable id (Mon..Sun) — used in storage keys and exercise refs. */

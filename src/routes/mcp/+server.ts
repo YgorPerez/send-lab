@@ -157,7 +157,7 @@ const TOOLS = [
 				exercise: {
 					type: 'object',
 					description:
-						'{ name, cat (category label), catVar (one of --flag/--gold/--teal/--violet/--ink-faint), variants: [{ name, what, why[], note?, grip?, qualities[]?, region[]?, cnsCost?, sets?, reps?, rounds?, workSec?, restSec?, setRestSec?, loadKg?, edgeMm?, rpe?, metricIds[]? }] }.',
+						'{ name, cat (category label), catVar (one of --flag/--gold/--teal/--violet/--ink-faint), track? ({field:"weight"|"time"} to also expose it as a baseline metric), variants: [{ name, what, why[], note?, grip?, qualities[]?, region[]?, cnsCost?, sets?, reps?, rounds?, workSec?, restSec?, setRestSec?, loadKg?, edgeMm?, rpe?, metricIds[]? }] }.',
 				},
 			},
 		},

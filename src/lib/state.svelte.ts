@@ -98,7 +98,8 @@ interface AppState {
 	dayExercises: Record<string, string[]>;
 	/** Per-task completion: "w1-Tue:pinch" → done. */
 	taskDone: Record<string, boolean>;
-	metrics: Record<MetricId, MetricEntry[]>;
+	/** Marker series keyed by metric id — built-in MetricIds plus custom exercise ids. */
+	metrics: Record<string, MetricEntry[]>;
 	log: LogEntry[];
 	/** Logged workouts (full sets: weight / edge / time / reps / rest), newest first. */
 	workouts: WorkoutEntry[];
@@ -401,16 +402,17 @@ export async function uploadCurrentToServer(): Promise<void> {
 /** Save the baseline assessment and seed any baseline metrics (first-time only). */
 export function saveAssessment(
 	assessment: Assessment,
-	baselines: Partial<Record<MetricId, number | null>>,
+	baselines: Record<string, number | null>,
 ): void {
 	appState.assessment = assessment;
-	const seed = (key: MetricId, v: number | null | undefined, extra: Partial<MetricEntry> = {}) => {
+	const seed = (key: string, v: number | null | undefined, extra: Partial<MetricEntry> = {}) => {
 		if (v == null || Number.isNaN(v)) return;
-		if (appState.metrics[key].length === 0)
-			appState.metrics[key].push({ date: today(), v, ...extra });
+		if (!appState.metrics[key]) appState.metrics[key] = [];
+		const series = appState.metrics[key];
+		if (series.length === 0) series.push({ date: today(), v, ...extra });
 	};
 	seed('bodyweight', assessment.bodyweight);
-	for (const key of Object.keys(baselines) as MetricId[]) {
+	for (const key of Object.keys(baselines)) {
 		const extra: Partial<MetricEntry> = SIZED_METRICS.has(key)
 			? {
 					mm: defaultMm(key),

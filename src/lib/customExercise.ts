@@ -104,7 +104,7 @@ export function sanitizeCustomExercise(raw: unknown): CustomExercise | null {
 		Array.isArray(raw.variants) && raw.variants.length
 			? raw.variants.map(sanitizeVariant)
 			: [sanitizeVariant(raw)];
-	return {
+	const ex: CustomExercise = {
 		name: typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Custom exercise',
 		cat: typeof raw.cat === 'string' && raw.cat.trim() ? raw.cat.trim() : 'Custom',
 		catVar:
@@ -113,6 +113,9 @@ export function sanitizeCustomExercise(raw: unknown): CustomExercise | null {
 				: '--ink-faint',
 		variants,
 	};
+	if (isObj(raw.track) && (raw.track.field === 'weight' || raw.track.field === 'time'))
+		ex.track = { field: raw.track.field };
+	return ex;
 }
 
 /** Coerce a map of custom exercises, dropping any that aren't objects. */

@@ -5,7 +5,6 @@ import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
-import type { MetricId } from '$lib/content';
 import { gradeIndex, gradeLabel, gradeScale, isGradeMetric } from '$lib/grades';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -22,7 +21,7 @@ import { metricUnit, showKg, showMetric, showMm, toMetricCanonical, toMm } from 
 import { cn } from '$lib/utils';
 
 interface Metric {
-	id: MetricId;
+	id: string;
 	name: string;
 	abbr: string;
 	cat: string;
@@ -86,6 +85,7 @@ function saveNumeric() {
 		entry.mm = Number.isNaN(mmRaw) ? defaultMm(id) : Math.round(toMm(mmRaw));
 		if (id === 'maxhang') entry.bw = latestBw() ?? undefined;
 	}
+	if (!appState.metrics[id]) appState.metrics[id] = [];
 	appState.metrics[id].push(entry);
 	const size = sized ? ` @ ${showMm(entry.mm ?? null)}${appState.prefs.length}` : '';
 	logEntry(
@@ -98,6 +98,7 @@ function saveNumeric() {
 function saveGrade(label: string) {
 	const v = gradeIndex(id, label);
 	if (v < 0) return;
+	if (!appState.metrics[id]) appState.metrics[id] = [];
 	appState.metrics[id].push({ date: today(), v });
 	logEntry(`${metric.name}: ${label}`);
 }

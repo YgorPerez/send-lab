@@ -28,9 +28,41 @@ export const METRIC_EXERCISE: Partial<Record<MetricId, string>> = {
 	density: 'density',
 };
 
+/** A baseline marker shown in Metrics / the assessment: a built-in metric or a
+ *  custom exercise flagged to track a logged-set field. */
+export interface Marker {
+	id: string;
+	name: string;
+	abbr: string;
+	cat: string;
+	unit: string;
+	desc: string;
+	custom?: boolean;
+}
+
+/** Markers derived from the user's custom exercises that opted into tracking. */
+export function customMarkers(): Marker[] {
+	return Object.entries(appState.customExercises)
+		.filter(([, ex]) => ex.track)
+		.map(([id, ex]) => ({
+			id,
+			name: ex.name,
+			abbr: ex.name.slice(0, 8),
+			cat: ex.catVar,
+			unit: ex.track?.field === 'time' ? 's' : 'kg',
+			desc: ex.variants[0]?.what ?? '',
+			custom: true,
+		}));
+}
+
+/** Which logged-set field a marker reads: built-in map, then custom track config. */
+function markerField(metricId: string): 'weight' | 'time' | undefined {
+	return FIELD[metricId as MetricId] ?? appState.customExercises[metricId]?.track?.field;
+}
+
 /** Best value for a metric across logged sets, or null if it can't be derived. */
 function metricValueFromSets(metricId: string, sets: WorkoutSet[]): number | null {
-	const field = FIELD[metricId as MetricId];
+	const field = markerField(metricId);
 	if (!field) return null;
 	const vals = sets.map((s) => s[field]).filter((v): v is number => v != null);
 	return vals.length ? Math.max(...vals) : null;
@@ -48,14 +80,22 @@ export function recordAssessment(metricId: string, sets: WorkoutSet[], content: 
 			entry.bw = bw.length ? bw[bw.length - 1].v : (appState.assessment?.bodyweight ?? undefined);
 		}
 	}
-	appState.metrics[metricId as MetricId].push(entry);
+	if (!appState.metrics[metricId]) appState.metrics[metricId] = [];
+	appState.metrics[metricId].push(entry);
 	const metric = content.metrics.find((mm) => mm.id === metricId);
+	const custom = appState.customExercises[metricId];
+	const name = metric?.name ?? custom?.name ?? metricId;
+	const unit = metric
+		? metricUnit(metricId, metric.unit)
+		: custom?.track?.field === 'time'
+			? 's'
+			: 'kg';
 	appState.log.unshift({
 		date: today(),
 		type: 'test',
-		label: `${metric?.name ?? metricId}: ${round(showMetric(metricId, v))} ${metric ? metricUnit(metricId, metric.unit) : ''}`,
-		color: `var(${metric?.cat ?? '--ink-faint'})`,
+		label: `${name}: ${round(showMetric(metricId, v))} ${unit}`,
+		color: `var(${metric?.cat ?? custom?.catVar ?? '--ink-faint'})`,
 		note: m.metric_test_note(),
 	});
-	if (metric) toast.success(m.toast_metric_saved({ name: metric.name }));
+	toast.success(m.toast_metric_saved({ name }));
 }

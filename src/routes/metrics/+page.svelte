@@ -1,7 +1,7 @@
 <script lang="ts">
 import TimerIcon from '@lucide/svelte/icons/timer';
 import { goto } from '$app/navigation';
-import { METRIC_EXERCISE } from '$lib/assessment';
+import { customMarkers, type Marker, METRIC_EXERCISE } from '$lib/assessment';
 import { Button } from '$lib/components/ui/button';
 import { getContent, type MetricId } from '$lib/content';
 import { gradeLabel, isGradeMetric } from '$lib/grades';
@@ -15,16 +15,22 @@ import { metricUnit, showMetric } from '$lib/units';
 
 const content = getContent();
 
-type Metric = (typeof content.metrics)[number];
-let openMetric = $state<Metric | null>(null);
+// Built-in markers + the user's custom tracked exercises.
+const markers = $derived<Marker[]>([...content.metrics, ...customMarkers()]);
+let openMetric = $state<Marker | null>(null);
+
+/** The exercise that produces a marker: built-in mapping, else the custom id itself. */
+function markerExercise(marker: Marker): string | undefined {
+	return METRIC_EXERCISE[marker.id as MetricId] ?? (marker.custom ? marker.id : undefined);
+}
 
 /** Open the Train tab, adding the metric's exercise to today and selecting it.
  *  The `assess` flag tells Train to auto-record this metric when the set is logged. */
-function openInTrain(metric: Metric) {
-	const exId = METRIC_EXERCISE[metric.id];
+function openInTrain(marker: Marker) {
+	const exId = markerExercise(marker);
 	if (!exId) return;
 	openMetric = null;
-	void goto(`/train?ex=${exId}&assess=${metric.id}`);
+	void goto(`/train?ex=${exId}&assess=${marker.id}`);
 }
 </script>
 
@@ -35,14 +41,14 @@ function openInTrain(metric: Metric) {
 	</p>
 
 	<div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-		{#each content.metrics as metric (metric.id)}
+		{#each markers as metric (metric.id)}
 			<MetricCard {metric} onInfo={(mm) => (openMetric = mm)} />
 		{/each}
 	</div>
 </section>
 
 {#if openMetric}
-	{@const exId = METRIC_EXERCISE[openMetric.id]}
+	{@const exId = markerExercise(openMetric)}
 	{@const ex = exId ? content.exercises[exId] : undefined}
 	{@const history = appState.metrics[openMetric.id] ?? []}
 	<Modal open={true} title={openMetric.name} onClose={() => (openMetric = null)}>

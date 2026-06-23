@@ -1,11 +1,16 @@
 <script lang="ts">
+import PencilIcon from '@lucide/svelte/icons/pencil';
+import PlusIcon from '@lucide/svelte/icons/plus';
+import TrashIcon from '@lucide/svelte/icons/trash-2';
 import { toast } from 'svelte-sonner';
+import CustomExerciseEditor from '$lib/CustomExerciseEditor.svelte';
 import {
 	Accordion,
 	AccordionContent,
 	AccordionItem,
 	AccordionTrigger,
 } from '$lib/components/ui/accordion';
+import { Button } from '$lib/components/ui/button';
 import { getContent } from '$lib/content';
 import PrescriptionView from '$lib/PrescriptionView.svelte';
 import Prose from '$lib/Prose.svelte';
@@ -15,21 +20,29 @@ import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState } from '$lib/state.svelte';
 import { cn } from '$lib/utils';
 
-const content = getContent();
-const entries = Object.entries(content.exercises);
+// Re-read on custom-exercise changes so new/edited/deleted ones appear live.
+const entries = $derived(Object.entries(getContent().exercises));
 
 const ALL = '__all__';
-const cats = [ALL, ...new Set(entries.map(([, e]) => e.cat))];
+const cats = $derived([ALL, ...new Set(entries.map(([, e]) => e.cat))]);
 
 let filter = $state(ALL);
 let open = $state<string[]>([]);
+let editor = $state<{ id: string | null } | null>(null);
 
 const visible = $derived(filter === ALL ? entries : entries.filter(([, e]) => e.cat === filter));
+const isCustom = (id: string) => id in appState.customExercises;
 
 function setSwap(id: string, i: number, label: string) {
 	if (i === 0) delete appState.swaps[id];
 	else appState.swaps[id] = i;
 	toast.success(i === 0 ? m.toast_reset_default() : m.toast_swapped({ name: label }));
+}
+
+function remove(id: string) {
+	if (!confirm(m.ce_delete_confirm())) return;
+	delete appState.customExercises[id];
+	toast.success(m.ce_deleted());
 }
 </script>
 
@@ -39,7 +52,7 @@ function setSwap(id: string, i: number, label: string) {
 		<Prose value={m.lede_exercises()} />
 	</p>
 
-	<div class="mb-[18px] flex flex-wrap gap-[7px]">
+	<div class="mb-[18px] flex flex-wrap items-center gap-[7px]">
 		{#each cats as c (c)}
 			<button
 				type="button"
@@ -54,6 +67,13 @@ function setSwap(id: string, i: number, label: string) {
 				{c === ALL ? m.filter_all() : c}
 			</button>
 		{/each}
+		<Button
+			size="sm"
+			class="ml-auto bg-flag text-xs text-white hover:bg-flag/90"
+			onclick={() => (editor = { id: null })}
+		>
+			<PlusIcon class="mr-1 size-3.5" />{m.ce_new()}
+		</Button>
 	</div>
 
 	<Accordion type="multiple" bind:value={open} class="flex flex-col gap-3">
@@ -76,6 +96,13 @@ function setSwap(id: string, i: number, label: string) {
 						</div>
 						<div class="font-mono text-[12.5px] text-ink-dim">{active.name}</div>
 					</div>
+					{#if isCustom(id)}
+						<span
+							class="rounded-full border border-line px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-ink-faint uppercase"
+						>
+							{m.ce_custom_tag()}
+						</span>
+					{/if}
 					<span
 						class="mr-1 font-mono text-[10px] font-bold tracking-wider whitespace-nowrap uppercase"
 						style:color={cat}
@@ -115,8 +142,32 @@ function setSwap(id: string, i: number, label: string) {
 							{/each}
 						</div>
 					</div>
+					{#if isCustom(id)}
+						<div class="mt-3.5 flex gap-2 border-t border-dashed border-line pt-3.5">
+							<Button
+								variant="outline"
+								size="sm"
+								class="border-line text-xs"
+								onclick={() => (editor = { id })}
+							>
+								<PencilIcon class="mr-1 size-3.5" />{m.ce_edit()}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								class="border-line text-xs text-ink-faint hover:border-flag hover:text-flag"
+								onclick={() => remove(id)}
+							>
+								<TrashIcon class="mr-1 size-3.5" />{m.ce_delete()}
+							</Button>
+						</div>
+					{/if}
 				</AccordionContent>
 			</AccordionItem>
 		{/each}
 	</Accordion>
 </section>
+
+{#if editor}
+	<CustomExerciseEditor editId={editor.id} onClose={() => (editor = null)} />
+{/if}

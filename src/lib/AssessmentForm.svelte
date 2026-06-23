@@ -1,5 +1,6 @@
 <script lang="ts">
 import { browser } from '$app/environment';
+import { customMarkers } from '$lib/assessment';
 import BaselineStep from '$lib/BaselineStep.svelte';
 import { Button } from '$lib/components/ui/button';
 import { Card, CardContent } from '$lib/components/ui/card';
@@ -166,6 +167,7 @@ function generate() {
 		route: grade('route', routeGrade),
 	};
 	for (const id of BASELINES) baselines[id] = canon(id, baseline[id] ?? null);
+	for (const mk of customMarkers()) baselines[mk.id] = canon(mk.id, baseline[mk.id] ?? null);
 	const assessment: Assessment = {
 		goal,
 		focus,
