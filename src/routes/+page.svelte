@@ -2,14 +2,30 @@
 import CheckIcon from '@lucide/svelte/icons/check';
 import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 import { toast } from 'svelte-sonner';
+import { goto } from '$app/navigation';
 import { Badge } from '$lib/components/ui/badge';
 import { Button } from '$lib/components/ui/button';
 import { Card, CardContent } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
-import { type Answers, computeVerdictId, getContent } from '$lib/content';
+import {
+	type Answers,
+	computeVerdictId,
+	type DailyFlag,
+	dailyFlags,
+	type FlagArea,
+	getContent,
+} from '$lib/content';
+import DailyFlags from '$lib/DailyFlags.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
-import { programWeeks, resolveDay, resolveExerciseIds, resolveSwapIndex, taskKey } from '$lib/plan';
+import {
+	programWeeks,
+	rehabToday,
+	resolveDay,
+	resolveExerciseIds,
+	resolveSwapIndex,
+	taskKey,
+} from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, round, today } from '$lib/state.svelte';
 import { completedSessions, recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
@@ -65,6 +81,12 @@ const complete = $derived(Object.keys(answers).length === content.quiz.length);
 const recent = $derived(recentRpe(appState.workouts));
 const fatigue = $derived(recent == null ? 0 : recent >= 8.5 ? -2 : recent >= 7.5 ? -1 : 0);
 const verdict = $derived(complete ? content.verdicts[computeVerdictId(answers, fatigue)] : null);
+const flags = $derived<DailyFlag[]>(complete ? dailyFlags(answers, fatigue) : []);
+
+function startRehabToday(area: FlagArea) {
+	rehabToday(content, week, weekday, area);
+	toast.success(m.toast_rehab_today());
+}
 
 const streak = $derived(trainStreak(appState.workouts));
 const last7 = $derived(sessionsLast7(appState.workouts));
@@ -283,4 +305,6 @@ function logVerdict() {
 			</div>
 		</Card>
 	{/if}
+
+	<DailyFlags {flags} {content} onRehab={startRehabToday} onPlan={() => goto('/settings')} />
 </section>

@@ -15,7 +15,7 @@ import type {
 	VariantParams,
 } from './content/types';
 import { progressionFactor, SYNERGY, weeklyRate } from './progression';
-import { generateRehabProgram, type RehabArea, type RehabStage } from './rehab';
+import { generateRehabProgram, type RehabArea, type RehabStage, rehabExercises } from './rehab';
 import {
 	appState,
 	defaultProgram,
@@ -576,6 +576,12 @@ export function startRehab(content: Content, area: RehabArea, stage: RehabStage)
 	const previous = cloneProgram();
 	appState.program = generateRehabProgram(content, area, stage);
 	appState.rehab = { area, stage, startedAt: today(), previous };
+}
+
+/** Make just today a low-load rehab session for an area — a per-day exercise
+ *  override that leaves the program intact (clear it from the Week day editor). */
+export function rehabToday(content: Content, week: number, weekday: string, area: RehabArea): void {
+	appState.dayExercises[slotKey(week, weekday)] = rehabExercises(content, area);
 }
 
 /** End rehab and restore the program that was active before it. */

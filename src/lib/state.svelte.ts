@@ -4,7 +4,7 @@
 import { browser } from '$app/environment';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import type { CustomExercise, MetricId } from './content/types';
+import type { CustomExercise } from './content/types';
 import { sanitizeCustomExercises } from './customExercise';
 import type { RehabArea, RehabStage } from './rehab';
 import { defaultMm, SIZED_METRICS } from './strength';

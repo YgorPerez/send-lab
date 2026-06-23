@@ -32,14 +32,19 @@ const STAGE: Record<
 // Low-CNS weekdays first — rehab leans on easy days with rest between.
 const PRIORITY = ['Tue', 'Thu', 'Mon', 'Fri', 'Wed', 'Sat'];
 
+/** The low-load rehab exercise pool for an area (≤3, present in the content). */
+export function rehabExercises(content: Content, area: RehabArea): string[] {
+	const allowed = POOL.filter((id) => !AVOID[area].includes(id) && content.exercises[id]);
+	return (allowed.length ? allowed : ['antag']).slice(0, 3);
+}
+
 export function generateRehabProgram(
 	content: Content,
 	area: RehabArea,
 	stage: RehabStage,
 ): Program {
 	const s = STAGE[stage];
-	const allowed = POOL.filter((id) => !AVOID[area].includes(id) && content.exercises[id]);
-	const dayEx = (allowed.length ? allowed : ['antag']).slice(0, 3);
+	const dayEx = rehabExercises(content, area);
 	const restKey = content.days.find((d) => d.load === 'OFF')?.k ?? 'Sun';
 	const keep = new Set(PRIORITY.slice(0, s.days));
 

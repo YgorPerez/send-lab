@@ -170,6 +170,14 @@ interface Phase {
 	cat: string;
 }
 
+/** A targeted recommendation for a specific readiness problem (finger pain,
+ *  elbow niggle, worn skin, …), surfaced alongside the overall verdict. */
+interface Flag {
+	title: string;
+	text: string;
+	focus: string[];
+}
+
 /** The localized half of the content (prose only; params come from exercises.ts). */
 export interface LocaleContent {
 	days: Day[];
@@ -177,6 +185,8 @@ export interface LocaleContent {
 	metrics: Metric[];
 	quiz: QuizQuestion[];
 	verdicts: Record<VerdictId, Verdict>;
+	/** Per-problem recommendations keyed by flag id (see logic.ts `dailyFlags`). */
+	flags: Record<string, Flag>;
 	phases: Record<PhaseId, Phase>;
 	/** Jargon/acronym → plain-language definition, surfaced as tooltips in prose. */
 	glossary: Record<string, string>;

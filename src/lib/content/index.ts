@@ -39,5 +39,12 @@ export function getContent(): Content {
 	return { ...base, exercises: { ...base.exercises, ...custom } };
 }
 
-export { type Answers, computeVerdictId, phaseId } from './logic';
+export {
+	type Answers,
+	computeVerdictId,
+	type DailyFlag,
+	dailyFlags,
+	type FlagArea,
+	phaseId,
+} from './logic';
 export type { Day, MetricId } from './types';

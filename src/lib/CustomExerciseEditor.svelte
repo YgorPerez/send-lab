@@ -1,4 +1,5 @@
 <script lang="ts">
+import { untrack } from 'svelte';
 import { toast } from 'svelte-sonner';
 import { Button } from '$lib/components/ui/button';
 import { Input } from '$lib/components/ui/input';
@@ -16,11 +17,12 @@ const COLORS = ['--flag', '--gold', '--teal', '--violet', '--ink-faint'];
 const GRIPS = ['', 'half-crimp', 'open-hand', 'full-crimp', 'pinch', 'sloper', 'wrist', 'jug'];
 const COSTS = ['', 'low', 'mod', 'high'];
 
-const existing = editId ? appState.customExercises[editId] : undefined;
+// editId is fixed for this editor instance (remounted per open); capture once.
+const existing = untrack(() => (editId ? appState.customExercises[editId] : undefined));
 const v0: Variant | undefined = existing?.variants[0];
 const num = (n: number | undefined): string => (n == null ? '' : String(n));
 
-let id = $state(editId ?? '');
+let id = $state(untrack(() => editId) ?? '');
 let name = $state(existing?.name ?? '');
 let cat = $state(existing?.cat ?? 'Custom');
 let catVar = $state(existing?.catVar ?? '--violet');

@@ -631,6 +631,24 @@ const content: LocaleContent = {
 			],
 		},
 		{
+			id: 'elbow',
+			q: 'How do your elbows feel?',
+			a: [
+				{ t: 'Good', v: 1 },
+				{ t: 'Slight niggle', v: -1 },
+				{ t: 'Painful', v: -3 },
+			],
+		},
+		{
+			id: 'shoulder',
+			q: 'How do your shoulders feel?',
+			a: [
+				{ t: 'Good', v: 1 },
+				{ t: 'Slight niggle', v: -1 },
+				{ t: 'Painful', v: -3 },
+			],
+		},
+		{
 			id: 'slot',
 			q: "What's the slot today?",
 			a: [
@@ -696,6 +714,58 @@ const content: LocaleContent = {
 			color: 'var(--flag)',
 			text: 'Fresh, fingers good, time and skin to spend. Run a <b>hard day</b>: recruitment pulls into <b>limit bouldering</b>, or a heavy pull day. Take full rests between maximal efforts. Fuel collagen ~60 min before: 15g collagen + 50mg vit C.',
 			focus: ['recruitment pulls', 'limit bouldering', 'heavy pull'],
+		},
+	},
+	flags: {
+		finger_pain: {
+			title: 'Sharp finger pain',
+			text: 'Stop loading the fingers today — sharp pain (often an <b>A2/A4 pulley</b>) needs rest, not training. Ice if swollen; if it is still sharp in 3–5 days, get it assessed. Start a structured finger rehab rather than pushing through.',
+			focus: ['no hangboard', 'assess', 'rehab'],
+		},
+		finger_tender: {
+			title: 'Tender finger',
+			text: 'A tender knuckle or pulley is an early warning. Skip max hangs and crimping; keep it to <b>low-load Abrahangs (under ~40%)</b> and open-hand. A few easy days now prevent weeks off later.',
+			focus: ['low load', 'open-hand', 'no crimp'],
+		},
+		elbow_pain: {
+			title: 'Elbow pain',
+			text: "Climber's / golfer's elbow flares with pulling and gripping. Cut pulling volume to near zero today; do pain-free <b>wrist eccentrics</b> and light isometrics. Consider an elbow rehab block.",
+			focus: ['no hard pulls', 'eccentrics', 'rehab'],
+		},
+		elbow_niggle: {
+			title: 'Elbow niggle',
+			text: "Early elbow tendinopathy. Keep pulling <b>submaximal</b> and add light wrist/forearm eccentrics. Don't chase PRs on pull-type work today.",
+			focus: ['submax pulls', 'eccentrics'],
+		},
+		shoulder_pain: {
+			title: 'Shoulder pain',
+			text: 'A painful shoulder plus overhead load is a bad mix. Avoid max pulls, dynos and deep lock-offs. Do <b>scapular and rotator-cuff prehab</b>; consider a shoulder rehab block.',
+			focus: ['no dynos', 'cuff prehab', 'rehab'],
+		},
+		shoulder_niggle: {
+			title: 'Shoulder niggle',
+			text: 'Add scapular control and rotator-cuff work; keep pressing/pulling controlled and pain-free. Warm the shoulder thoroughly before any hard move.',
+			focus: ['scap control', 'cuff', 'warm up'],
+		},
+		skin: {
+			title: 'Skin is worn',
+			text: 'Thin or split skin will not hold up to crimps and rough holds. File flappers, tape splits, and pick <b>juggy or non-finger</b> work today. Pushing on raw skin just costs more days.',
+			focus: ['tape', 'jugs', 'antagonists'],
+		},
+		fatigue: {
+			title: 'Under-recovered',
+			text: 'Recovery is low. Drop the intensity to <b>tissue work, easy aerobic capacity or mobility</b>, and prioritise sleep and food — adaptation happens on rest.',
+			focus: ['low load', 'sleep', 'mobility'],
+		},
+		cns: {
+			title: 'CNS drained',
+			text: 'Low drive means poor max output and higher injury risk. Skip maximal recruitment and limit bouldering; do <b>skill, technique or aerobic volume</b> instead.',
+			focus: ['skill', 'aerobic', 'no max'],
+		},
+		load: {
+			title: 'Recent sessions were hard',
+			text: 'Your recent logged effort is high. Bias toward <b>quality over volume</b> today and watch for accumulating fatigue.',
+			focus: ['quality', 'watch fatigue'],
 		},
 	},
 	phases: {

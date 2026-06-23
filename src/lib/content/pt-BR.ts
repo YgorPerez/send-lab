@@ -643,6 +643,24 @@ const content: LocaleContent = {
 			],
 		},
 		{
+			id: 'elbow',
+			q: 'Como estão os cotovelos?',
+			a: [
+				{ t: 'Bem', v: 1 },
+				{ t: 'Leve incômodo', v: -1 },
+				{ t: 'Com dor', v: -3 },
+			],
+		},
+		{
+			id: 'shoulder',
+			q: 'Como estão os ombros?',
+			a: [
+				{ t: 'Bem', v: 1 },
+				{ t: 'Leve incômodo', v: -1 },
+				{ t: 'Com dor', v: -3 },
+			],
+		},
+		{
 			id: 'slot',
 			q: 'Quanto tempo você tem hoje?',
 			a: [
@@ -708,6 +726,58 @@ const content: LocaleContent = {
 			color: 'var(--flag)',
 			text: 'Inteiro, dedos bons, tempo e pele de sobra. Manda um <b>dia duro</b>: recruitment pulls emendando em <b>boulder no limite</b>, ou um dia de tração pesada. Descanse de verdade entre os esforços máximos. Tome colágeno ~60 min antes: 15g de colágeno + 50mg de vit. C.',
 			focus: ['recruitment pulls', 'boulder no limite', 'tração pesada'],
+		},
+	},
+	flags: {
+		finger_pain: {
+			title: 'Dor aguda no dedo',
+			text: 'Pare de carregar os dedos hoje — dor aguda (muitas vezes <b>polia A2/A4</b>) pede descanso, não treino. Gelo se inchado; se continuar aguda em 3–5 dias, procure avaliação. Comece uma reabilitação estruturada em vez de forçar.',
+			focus: ['sem hangboard', 'avaliar', 'reabilitação'],
+		},
+		finger_tender: {
+			title: 'Dedo sensível',
+			text: 'Uma articulação ou polia sensível é um aviso. Pule max hangs e crimp; fique em <b>Abrahangs de carga baixa (abaixo de ~40%)</b> e open-hand. Alguns dias leves agora evitam semanas parado depois.',
+			focus: ['carga baixa', 'open-hand', 'sem crimp'],
+		},
+		elbow_pain: {
+			title: 'Dor no cotovelo',
+			text: 'Epicondilite (cotovelo de escalador) piora com tração e preensão. Zere o volume de tração hoje; faça <b>excêntricos de punho</b> sem dor e isometria leve. Considere um bloco de reabilitação de cotovelo.',
+			focus: ['sem trações duras', 'excêntricos', 'reabilitação'],
+		},
+		elbow_niggle: {
+			title: 'Incômodo no cotovelo',
+			text: 'Tendinopatia inicial de cotovelo. Mantenha a tração <b>submáxima</b> e adicione excêntricos leves de punho/antebraço. Não busque recordes em tração hoje.',
+			focus: ['tração submáx', 'excêntricos'],
+		},
+		shoulder_pain: {
+			title: 'Dor no ombro',
+			text: 'Ombro dolorido somado a carga acima da cabeça é má combinação. Evite trações máximas, dinâmicos e lock-offs profundos. Faça <b>prehab de escápula e manguito rotador</b>; considere um bloco de reabilitação de ombro.',
+			focus: ['sem dinâmicos', 'prehab manguito', 'reabilitação'],
+		},
+		shoulder_niggle: {
+			title: 'Incômodo no ombro',
+			text: 'Adicione controle escapular e trabalho de manguito rotador; mantenha empurrar/puxar controlado e sem dor. Aqueça bem o ombro antes de qualquer movimento difícil.',
+			focus: ['controle escapular', 'manguito', 'aquecer'],
+		},
+		skin: {
+			title: 'Pele desgastada',
+			text: 'Pele fina ou rasgada não aguenta crimps e agarras ásperas. Lixe flappers, faça tape nos rasgos e escolha trabalho <b>de jug ou sem dedos</b> hoje. Forçar na carne viva só custa mais dias.',
+			focus: ['tape', 'jugs', 'antagonistas'],
+		},
+		fatigue: {
+			title: 'Mal recuperado',
+			text: 'Recuperação baixa. Reduza a intensidade para <b>tecido, capacidade aeróbica leve ou mobilidade</b>, e priorize sono e comida — a adaptação acontece no descanso.',
+			focus: ['carga baixa', 'sono', 'mobilidade'],
+		},
+		cns: {
+			title: 'SNC esgotado',
+			text: 'Pouca disposição significa output máximo ruim e mais risco de lesão. Pule recruitment máximo e boulder no limite; faça <b>técnica, habilidade ou volume aeróbico</b>.',
+			focus: ['técnica', 'aeróbico', 'sem máximo'],
+		},
+		load: {
+			title: 'Sessões recentes foram duras',
+			text: 'Seu esforço registrado recente está alto. Priorize <b>qualidade sobre volume</b> hoje e fique de olho na fadiga acumulada.',
+			focus: ['qualidade', 'olho na fadiga'],
 		},
 	},
 	phases: {
