@@ -397,6 +397,7 @@
 	"mcp_title": "Acesso por IA (MCP)",
 	"mcp_desc": "Conecte sua própria IA via MCP. Com seu token, ela pode ler e alterar tudo na sua conta — plano e periodização, dias, métricas, registros e treinos, preferências, planos salvos e reabilitação.",
 	"mcp_endpoint": "Endpoint MCP",
+	"mcp_rest_endpoint": "Base da API REST",
 	"mcp_copy": "Copiar",
 	"mcp_copied": "Copiado",
 	"mcp_token_name_ph": "Nome do token (ex.: meu notebook)",

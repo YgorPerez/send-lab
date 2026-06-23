@@ -2,11 +2,8 @@
 // API token (Authorization: Bearer …) and edits *their* program via tools.
 // Minimal JSON-RPC 2.0 over HTTP (initialize / tools/list / tools/call).
 import { json } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
 import { exerciseParams } from '$lib/content/exercises';
 import { userIdFromBearer } from '$lib/server/apiToken';
-import { db } from '$lib/server/db';
-import { appStateTable } from '$lib/server/db/schema';
 import {
 	applyEditDay,
 	applySetAutoProgress,
@@ -15,7 +12,8 @@ import {
 	EXERCISE_IDS,
 	WEEKDAYS,
 } from '$lib/server/programOps';
-import { deepMerge, isPlainObject, sanitizeState } from '$lib/server/stateOps';
+import { loadUserState, saveUserState } from '$lib/server/restApi';
+import { deepMerge, isPlainObject } from '$lib/server/stateOps';
 import type { RequestHandler } from './$types';
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
@@ -145,21 +143,6 @@ const TOOLS = [
 	},
 ];
 
-async function loadState(userId: string): Promise<Record<string, unknown>> {
-	const row = await db.select().from(appStateTable).where(eq(appStateTable.userId, userId)).get();
-	return row ? JSON.parse(row.data) : {};
-}
-
-async function saveState(userId: string, state: unknown): Promise<void> {
-	const data = JSON.stringify(state);
-	const now = new Date();
-	await db
-		.insert(appStateTable)
-		.values({ userId, data, updatedAt: now })
-		.onConflictDoUpdate({ target: appStateTable.userId, set: { data, updatedAt: now } })
-		.run();
-}
-
 type Program = Parameters<typeof applySetPhases>[0];
 
 async function callTool(
@@ -167,7 +150,7 @@ async function callTool(
 	args: Record<string, unknown>,
 	userId: string,
 ): Promise<string> {
-	const state = sanitizeState(await loadState(userId));
+	const state = await loadUserState(userId);
 	const program = state.program as Program;
 
 	// ---- reads ----
@@ -190,8 +173,7 @@ async function callTool(
 
 	// ---- writes ----
 	if (name === 'replace_state') {
-		const next = sanitizeState(args.state);
-		await saveState(userId, next);
+		const next = await saveUserState(userId, args.state);
 		return `OK. Account replaced.\n${JSON.stringify(next, null, 2)}`;
 	}
 	if (name === 'update_state') {
@@ -203,8 +185,7 @@ async function callTool(
 	else if (name === 'set_target') applySetTarget(program, args.weekday, args.exercise, args);
 	else throw new Error(`unknown tool: ${name}`);
 
-	const next = sanitizeState(state);
-	await saveState(userId, next);
+	const next = await saveUserState(userId, state);
 	return `OK.\n${JSON.stringify(next, null, 2)}`;
 }
 

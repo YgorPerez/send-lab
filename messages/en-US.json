@@ -397,6 +397,7 @@
 	"mcp_title": "AI access (MCP)",
 	"mcp_desc": "Connect your own AI assistant over MCP. With your token it can read and change everything in your account — program and periodization, daily plans, metrics, logs and workouts, preferences, saved programs, and rehab.",
 	"mcp_endpoint": "MCP endpoint",
+	"mcp_rest_endpoint": "REST API base",
 	"mcp_copy": "Copy",
 	"mcp_copied": "Copied",
 	"mcp_token_name_ph": "Token name (e.g. my laptop)",

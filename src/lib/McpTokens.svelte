@@ -13,7 +13,9 @@ let tokens = $state<TokenRow[]>([]);
 let name = $state('');
 let creating = $state(false);
 let freshToken = $state<string | null>(null);
-const endpoint = $derived(browser ? `${location.origin}/mcp` : '/mcp');
+const origin = $derived(browser ? location.origin : '');
+const endpoint = $derived(`${origin}/mcp`);
+const restEndpoint = $derived(`${origin}/api/v1`);
 
 async function load() {
 	tokens = await listTokens();
@@ -65,6 +67,18 @@ async function revoke(id: string) {
 				{endpoint}
 			</code>
 			<Button variant="outline" size="sm" class="flex-none border-line text-xs" onclick={() => copy(endpoint)}>
+				<CopyIcon class="size-3.5" />
+			</Button>
+		</div>
+	</div>
+
+	<div class="flex flex-col gap-1.5">
+		<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">{m.mcp_rest_endpoint()}</span>
+		<div class="flex items-center gap-2">
+			<code class="min-w-0 flex-1 truncate rounded-md border border-line bg-panel-2 px-2.5 py-1.5 text-xs">
+				{restEndpoint}
+			</code>
+			<Button variant="outline" size="sm" class="flex-none border-line text-xs" onclick={() => copy(restEndpoint)}>
 				<CopyIcon class="size-3.5" />
 			</Button>
 		</div>

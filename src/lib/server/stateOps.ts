@@ -4,7 +4,7 @@
 // — to guarantee the persisted blob always has the right shape and can't crash the app.
 import { defaultProgram } from '$lib/server/programOps';
 
-const METRIC_IDS = [
+export const METRIC_IDS = [
 	'rfd',
 	'contact',
 	'cf',
