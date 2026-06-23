@@ -111,6 +111,10 @@ export interface Exercise {
 	variants: Variant[];
 }
 
+/** A user-authored exercise. Same shape as a merged Exercise (its prose is written
+ *  inline, in one language) so it drops straight into Content.exercises by id. */
+export type CustomExercise = Exercise;
+
 export interface Day {
 	/** Stable id (Mon..Sun) — used in storage keys and exercise refs. */
 	k: string;

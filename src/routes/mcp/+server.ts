@@ -3,6 +3,8 @@
 // Minimal JSON-RPC 2.0 over HTTP (initialize / tools/list / tools/call).
 import { json } from '@sveltejs/kit';
 import { exerciseParams } from '$lib/content/exercises';
+import type { CustomExercise } from '$lib/content/types';
+import { isValidExerciseId, sanitizeCustomExercise } from '$lib/customExercise';
 import { userIdFromBearer } from '$lib/server/apiToken';
 import {
 	applyEditDay,
@@ -28,9 +30,11 @@ keyed like "w1-Mon" / "w1-Tue:pinch" → bool); swaps/daySwaps (exercise → var
 ("w1-Tue" → weekday key); dayExercises ("w1-Tue" → exercise id[]); metrics (MetricId → [{date,v,mm?,bw?}], \
 newest last); log ([{date,type,label,color,note}]); workouts ([{date,at,day,exercises,note}], newest first); \
 assessment (object or null); prefs ({weight:'kg'|'lb',length:'mm'|'in',notify:bool}); program; \
-savedPrograms ([{name,program}]); rehab (object or null). Use list_exercises for valid exercise ids and \
-weekday keys. The structured program tools (set_periodization, edit_day, set_target, set_auto_progress) \
-validate their input — prefer them for program edits; use update_state/replace_state for everything else.`;
+savedPrograms ([{name,program}]); rehab (object or null); customExercises (id → user-authored exercise). \
+Use list_exercises for valid exercise ids and weekday keys. To add your own exercises/categories/variants, \
+use create_exercise (then reference the id from edit_day/set_target like any built-in). The structured tools \
+(set_periodization, edit_day, set_target, set_auto_progress, create/update/delete_exercise) validate their \
+input — prefer them; use update_state/replace_state for everything else.`;
 
 const TOOLS = [
 	{
@@ -141,6 +145,44 @@ const TOOLS = [
 			},
 		},
 	},
+	{
+		name: 'create_exercise',
+		description:
+			'Create or replace a custom exercise (a custom id overrides a built-in of the same id). It becomes usable in days/targets and shows in the library, Train, Program, and stats. Variant numeric fields accept a number or {min,max}; canonical units (sets/reps/rounds counts, workSec/restSec/setRestSec seconds, loadKg kg, edgeMm mm, rpe 0–10).',
+		inputSchema: {
+			type: 'object',
+			required: ['id', 'exercise'],
+			properties: {
+				id: { type: 'string', description: 'Slug id ([A-Za-z0-9_-], ≤40 chars).' },
+				exercise: {
+					type: 'object',
+					description:
+						'{ name, cat (category label), catVar (one of --flag/--gold/--teal/--violet/--ink-faint), variants: [{ name, what, why[], note?, grip?, qualities[]?, region[]?, cnsCost?, sets?, reps?, rounds?, workSec?, restSec?, setRestSec?, loadKg?, edgeMm?, rpe?, metricIds[]? }] }.',
+				},
+			},
+		},
+	},
+	{
+		name: 'update_exercise',
+		description: 'Alias of create_exercise — upsert a custom exercise by id.',
+		inputSchema: {
+			type: 'object',
+			required: ['id', 'exercise'],
+			properties: {
+				id: { type: 'string' },
+				exercise: { type: 'object' },
+			},
+		},
+	},
+	{
+		name: 'delete_exercise',
+		description: 'Delete a custom exercise by id (built-in exercises cannot be deleted).',
+		inputSchema: {
+			type: 'object',
+			required: ['id'],
+			properties: { id: { type: 'string' } },
+		},
+	},
 ];
 
 type Program = Parameters<typeof applySetPhases>[0];
@@ -156,16 +198,29 @@ async function callTool(
 	// ---- reads ----
 	if (name === 'get_state') return JSON.stringify(state, null, 2);
 	if (name === 'get_program') return JSON.stringify(program, null, 2);
+	const custom = (state.customExercises as Record<string, CustomExercise>) ?? {};
 	if (name === 'list_exercises')
 		return JSON.stringify(
 			{
 				weekdays: WEEKDAYS,
-				exercises: EXERCISE_IDS.map((id) => ({
-					id,
-					region: exerciseParams[id].variants[0].region,
-					qualities: exerciseParams[id].variants[0].qualities,
-					variants: exerciseParams[id].variants.length,
-				})),
+				exercises: [
+					...EXERCISE_IDS.map((id) => ({
+						id,
+						custom: false,
+						region: exerciseParams[id].variants[0].region,
+						qualities: exerciseParams[id].variants[0].qualities,
+						variants: exerciseParams[id].variants.length,
+					})),
+					...Object.entries(custom).map(([id, ex]) => ({
+						id,
+						custom: true,
+						name: ex.name,
+						cat: ex.cat,
+						region: ex.variants[0]?.region,
+						qualities: ex.variants[0]?.qualities,
+						variants: ex.variants.length,
+					})),
+				],
 			},
 			null,
 			2,
@@ -176,13 +231,28 @@ async function callTool(
 		const next = await saveUserState(userId, args.state);
 		return `OK. Account replaced.\n${JSON.stringify(next, null, 2)}`;
 	}
-	if (name === 'update_state') {
+	const customIds = Object.keys(custom);
+	if (name === 'create_exercise' || name === 'update_exercise') {
+		if (!isValidExerciseId(args.id))
+			throw new Error('id must match [A-Za-z0-9_-] and be ≤40 chars');
+		const ex = sanitizeCustomExercise(args.exercise);
+		if (!ex) throw new Error('`exercise` must be an object');
+		custom[args.id] = ex;
+		state.customExercises = custom;
+	} else if (name === 'delete_exercise') {
+		if (typeof args.id !== 'string' || !(args.id in custom))
+			throw new Error('no such custom exercise (built-in exercises cannot be deleted)');
+		delete custom[args.id];
+		state.customExercises = custom;
+	} else if (name === 'update_state') {
 		if (!isPlainObject(args.patch)) throw new Error('`patch` must be an object');
 		deepMerge(state, args.patch);
 	} else if (name === 'set_periodization') applySetPhases(program, args.phases);
 	else if (name === 'set_auto_progress') applySetAutoProgress(program, args.enabled);
-	else if (name === 'edit_day') applyEditDay(program, args.weekday, args.dayKey, args.exercises);
-	else if (name === 'set_target') applySetTarget(program, args.weekday, args.exercise, args);
+	else if (name === 'edit_day')
+		applyEditDay(program, args.weekday, args.dayKey, args.exercises, customIds);
+	else if (name === 'set_target')
+		applySetTarget(program, args.weekday, args.exercise, args, customIds);
 	else throw new Error(`unknown tool: ${name}`);
 
 	const next = await saveUserState(userId, state);

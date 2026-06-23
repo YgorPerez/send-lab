@@ -395,7 +395,7 @@
 	"set_delete_confirm": "Isto exclui permanentemente sua conta e todos os dados. Continuar?",
 	"set_delete_error": "Não consegui excluir a conta — confira sua senha.",
 	"mcp_title": "Acesso por IA (MCP)",
-	"mcp_desc": "Conecte sua própria IA via MCP. Com seu token, ela pode ler e alterar tudo na sua conta — plano e periodização, dias, métricas, registros e treinos, preferências, planos salvos e reabilitação.",
+	"mcp_desc": "Conecte sua própria IA via MCP. Com seu token, ela pode ler e alterar tudo na sua conta — plano e periodização, dias, exercícios personalizados, métricas, registros e treinos, preferências, planos salvos e reabilitação.",
 	"mcp_endpoint": "Endpoint MCP",
 	"mcp_rest_endpoint": "Base da API REST",
 	"mcp_copy": "Copiar",

@@ -2,6 +2,7 @@
 // lets a user's own AI read and rewrite any part of their account, so every write
 // is run through sanitizeState() — mirroring the client's sanitize()/normalizeProgram()
 // — to guarantee the persisted blob always has the right shape and can't crash the app.
+import { sanitizeCustomExercises } from '$lib/customExercise';
 import { defaultProgram } from '$lib/server/programOps';
 
 export const METRIC_IDS = [
@@ -42,6 +43,7 @@ function defaultState(): Record<string, unknown> {
 		program: defaultProgram(),
 		savedPrograms: [],
 		rehab: null,
+		customExercises: {},
 	};
 }
 
@@ -75,6 +77,7 @@ export function sanitizeState(raw: unknown): Record<string, unknown> {
 	out.program = normalizeProgram(raw.program);
 	if (Array.isArray(raw.savedPrograms)) out.savedPrograms = raw.savedPrograms;
 	if (raw.rehab === null || isPlainObject(raw.rehab)) out.rehab = raw.rehab;
+	out.customExercises = sanitizeCustomExercises(raw.customExercises);
 	return out;
 }
 

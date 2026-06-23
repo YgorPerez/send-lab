@@ -4,7 +4,8 @@
 import { browser } from '$app/environment';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import type { MetricId } from './content/types';
+import type { CustomExercise, MetricId } from './content/types';
+import { sanitizeCustomExercises } from './customExercise';
 import type { RehabArea, RehabStage } from './rehab';
 import { defaultMm, SIZED_METRICS } from './strength';
 
@@ -111,6 +112,8 @@ interface AppState {
 	savedPrograms: SavedProgram[];
 	/** Active injury rehab (null when training normally). */
 	rehab: RehabState | null;
+	/** User-authored exercises (id → exercise), merged into the library by getContent(). */
+	customExercises: Record<string, CustomExercise>;
 }
 
 /** A per-weekday slot in the program template. */
@@ -216,6 +219,7 @@ function defaultState(): AppState {
 		program: defaultProgram(),
 		savedPrograms: [],
 		rehab: null,
+		customExercises: {},
 	};
 }
 
@@ -281,6 +285,7 @@ function applyData(data: Partial<AppState>): void {
 	appState.program = normalizeProgram(data.program);
 	appState.savedPrograms = data.savedPrograms ?? base.savedPrograms;
 	appState.rehab = data.rehab ?? base.rehab;
+	appState.customExercises = sanitizeCustomExercises(data.customExercises);
 }
 
 // Offline mirror: the per-user state is cached in localStorage so the app works
@@ -314,6 +319,7 @@ function sanitize(raw: unknown): Partial<AppState> {
 	if (isObj(raw.program)) out.program = normalizeProgram(raw.program as Partial<Program>);
 	if (Array.isArray(raw.savedPrograms)) out.savedPrograms = raw.savedPrograms as SavedProgram[];
 	if (raw.rehab === null || isObj(raw.rehab)) out.rehab = raw.rehab as RehabState | null;
+	out.customExercises = sanitizeCustomExercises(raw.customExercises);
 	return out;
 }
 

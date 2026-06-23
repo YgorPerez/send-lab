@@ -1,7 +1,6 @@
 // Read-only analytics over the program template (the standard week, before
 // per-week phase scaling): weekly volume, CNS load, region/quality balance, and
 // safety warnings. Pure functions; the Program editor renders the result.
-import { exerciseParams } from './content/exercises';
 import type { Content } from './content/types';
 import * as m from './paraglide/messages';
 import {
@@ -41,11 +40,11 @@ export interface ProgramSummary {
 }
 
 /** Planned set count for a weekday's exercise: override → variant midpoint → 1. */
-function setsOf(weekday: string, exId: string): number {
+function setsOf(content: Content, weekday: string, exId: string): number {
 	const t = programTarget(weekday, exId);
 	if (t?.sets != null) return t.sets;
-	const params = exerciseParams[exId];
-	const v = params?.variants[programVariantIndex(weekday, exId)] ?? params?.variants[0];
+	const ex = content.exercises[exId];
+	const v = ex?.variants[programVariantIndex(weekday, exId)] ?? ex?.variants[0];
 	return v?.sets ? Math.round((v.sets.min + v.sets.max) / 2) : 1;
 }
 
@@ -63,10 +62,10 @@ export function programSummary(content: Content): ProgramSummary {
 		let sets = 0;
 		let cns = 0;
 		for (const exId of exIds) {
-			const params = exerciseParams[exId];
-			const v = params?.variants[programVariantIndex(slot.k, exId)] ?? params?.variants[0];
+			const ex = content.exercises[exId];
+			const v = ex?.variants[programVariantIndex(slot.k, exId)] ?? ex?.variants[0];
 			if (!v) continue;
-			const s = setsOf(slot.k, exId);
+			const s = setsOf(content, slot.k, exId);
 			sets += s;
 			cns += (CNS_WEIGHT[v.cnsCost ?? ''] ?? 0) * s;
 			for (const r of v.region ?? []) region.set(r, (region.get(r) ?? 0) + s);

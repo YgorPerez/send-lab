@@ -39,12 +39,17 @@ export function applySetAutoProgress(program: Program, enabled: unknown): void {
 	program.autoProgress = Boolean(enabled);
 }
 
-/** Set a weekday's day-type and/or its ordered exercise list. */
+const isKnown = (id: string, extraIds: string[]) =>
+	EXERCISE_IDS.includes(id) || extraIds.includes(id);
+
+/** Set a weekday's day-type and/or its ordered exercise list. `extraIds` are the
+ *  user's custom exercise ids, also accepted alongside the built-in library. */
 export function applyEditDay(
 	program: Program,
 	weekday: unknown,
 	dayKey?: unknown,
 	ex?: unknown,
+	extraIds: string[] = [],
 ): void {
 	if (typeof weekday !== 'string' || !WEEKDAYS.includes(weekday))
 		throw new Error(`weekday must be one of ${WEEKDAYS.join(', ')}`);
@@ -57,7 +62,7 @@ export function applyEditDay(
 		entry.dayKey ??= weekday;
 	}
 	if (ex !== undefined) {
-		if (!Array.isArray(ex) || ex.some((id) => !EXERCISE_IDS.includes(id)))
+		if (!Array.isArray(ex) || ex.some((id) => !isKnown(id, extraIds)))
 			throw new Error('exercises must be an array of known exercise ids (see list_exercises)');
 		entry.ex = ex as string[];
 	}
@@ -70,10 +75,11 @@ export function applySetTarget(
 	weekday: unknown,
 	exercise: unknown,
 	patch: unknown,
+	extraIds: string[] = [],
 ): void {
 	if (typeof weekday !== 'string' || !WEEKDAYS.includes(weekday))
 		throw new Error(`weekday must be one of ${WEEKDAYS.join(', ')}`);
-	if (typeof exercise !== 'string' || !EXERCISE_IDS.includes(exercise))
+	if (typeof exercise !== 'string' || !isKnown(exercise, extraIds))
 		throw new Error('exercise must be a known exercise id (see list_exercises)');
 	if (!isObj(patch)) throw new Error('target fields must be an object');
 	const key = `${weekday}:${exercise}`;
