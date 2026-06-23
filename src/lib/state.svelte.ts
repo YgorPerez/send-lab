@@ -57,6 +57,14 @@ export interface WorkoutEntry {
 	note: string;
 }
 
+/** A logged injury self-check result (deep assessment), newest last. */
+interface DeepEntry {
+	date: string;
+	area: string;
+	score: number;
+	band: string;
+}
+
 export type Goal = 'boulder' | 'sport' | 'all';
 export type Focus = 'fingers' | 'power' | 'endurance' | 'tissue';
 export type Level = 'intermediate' | 'advanced' | 'elite';
@@ -115,6 +123,8 @@ interface AppState {
 	rehab: RehabState | null;
 	/** User-authored exercises (id → exercise), merged into the library by getContent(). */
 	customExercises: Record<string, CustomExercise>;
+	/** Injury self-check (deep assessment) results over time. */
+	deepLog: DeepEntry[];
 }
 
 /** A per-weekday slot in the program template. */
@@ -221,6 +231,7 @@ function defaultState(): AppState {
 		savedPrograms: [],
 		rehab: null,
 		customExercises: {},
+		deepLog: [],
 	};
 }
 
@@ -287,6 +298,7 @@ function applyData(data: Partial<AppState>): void {
 	appState.savedPrograms = data.savedPrograms ?? base.savedPrograms;
 	appState.rehab = data.rehab ?? base.rehab;
 	appState.customExercises = sanitizeCustomExercises(data.customExercises);
+	appState.deepLog = data.deepLog ?? base.deepLog;
 }
 
 // Offline mirror: the per-user state is cached in localStorage so the app works
@@ -321,6 +333,7 @@ function sanitize(raw: unknown): Partial<AppState> {
 	if (Array.isArray(raw.savedPrograms)) out.savedPrograms = raw.savedPrograms as SavedProgram[];
 	if (raw.rehab === null || isObj(raw.rehab)) out.rehab = raw.rehab as RehabState | null;
 	out.customExercises = sanitizeCustomExercises(raw.customExercises);
+	if (Array.isArray(raw.deepLog)) out.deepLog = raw.deepLog as DeepEntry[];
 	return out;
 }
 

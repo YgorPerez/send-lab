@@ -43,8 +43,11 @@ export {
 	type Answers,
 	computeVerdictId,
 	type DailyFlag,
+	type DeepBand,
+	type DeepResult,
 	dailyFlags,
 	type FlagArea,
 	phaseId,
+	scoreDeep,
 } from './logic';
 export type { Day, MetricId } from './types';

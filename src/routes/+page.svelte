@@ -16,6 +16,7 @@ import {
 	getContent,
 } from '$lib/content';
 import DailyFlags from '$lib/DailyFlags.svelte';
+import DeepAssessment from '$lib/DeepAssessment.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -87,6 +88,8 @@ function startRehabToday(area: FlagArea) {
 	rehabToday(content, week, weekday, area);
 	toast.success(m.toast_rehab_today());
 }
+
+let deepArea = $state<FlagArea | null>(null);
 
 const streak = $derived(trainStreak(appState.workouts));
 const last7 = $derived(sessionsLast7(appState.workouts));
@@ -306,5 +309,15 @@ function logVerdict() {
 		</Card>
 	{/if}
 
-	<DailyFlags {flags} {content} onRehab={startRehabToday} onPlan={() => goto('/settings')} />
+	<DailyFlags
+		{flags}
+		{content}
+		onRehab={startRehabToday}
+		onPlan={() => goto('/settings')}
+		onDeep={(a) => (deepArea = a)}
+	/>
 </section>
+
+{#if deepArea}
+	<DeepAssessment area={deepArea} onClose={() => (deepArea = null)} />
+{/if}

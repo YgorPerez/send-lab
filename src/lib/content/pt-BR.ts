@@ -780,6 +780,215 @@ const content: LocaleContent = {
 			focus: ['qualidade', 'olho na fadiga'],
 		},
 	},
+	deep: {
+		fingers: {
+			title: 'Autoavaliação de dedo / polia',
+			intro:
+				'Um teste rápido de tolerância de carga de dedo, polia e tendão flexor. Responda pensando no dedo mais afetado na última semana.',
+			source: 'Baseado no VISA-C (dedo / mão / punho de escalada)',
+			url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12488532/',
+			questions: [
+				{
+					id: 'stiff',
+					q: 'Rigidez matinal no dedo?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Passa em alguns minutos', v: 7 },
+						{ t: '10–30 min', v: 4 },
+						{ t: 'Boa parte do dia', v: 0 },
+					],
+				},
+				{
+					id: 'crimp',
+					q: 'Dor ao carregar uma borda pequena / crimpar forte?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Leve, aquece', v: 6 },
+						{ t: 'Moderada, limita', v: 3 },
+						{ t: 'Aguda — não dá', v: 0 },
+					],
+				},
+				{
+					id: 'after',
+					q: 'Dor depois de uma sessão dura de dedo?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Some até a manhã seguinte', v: 6 },
+						{ t: 'Dura um dia', v: 3 },
+						{ t: 'Vários dias', v: 0 },
+					],
+				},
+				{
+					id: 'edges',
+					q: 'Consegue pendurar / carregar bordas pequenas?',
+					a: [
+						{ t: 'Totalmente', v: 10 },
+						{ t: 'Um pouco reduzido', v: 6 },
+						{ t: 'Muito limitado', v: 3 },
+						{ t: 'De jeito nenhum', v: 0 },
+					],
+				},
+				{
+					id: 'swell',
+					q: 'Inchaço ou espessamento na articulação / polia?',
+					a: [
+						{ t: 'Nenhum', v: 10 },
+						{ t: 'Leve', v: 6 },
+						{ t: 'Evidente', v: 3 },
+						{ t: 'Acentuado / bowstringing', v: 0 },
+					],
+				},
+				{
+					id: 'climb',
+					q: 'Escalando agora?',
+					a: [
+						{ t: 'Total, sem restrição', v: 10 },
+						{ t: 'Treinando com adaptação', v: 7 },
+						{ t: 'Só fácil', v: 3 },
+						{ t: 'Sem escalar', v: 0 },
+					],
+				},
+			],
+		},
+		elbow: {
+			title: 'Autoavaliação de cotovelo',
+			intro:
+				'Um teste rápido de tendinopatia de cotovelo (epicondilite). Responda pensando no pior cotovelo na última semana.',
+			source: 'Baseado no PRTEE (tendinopatia lateral de cotovelo)',
+			url: 'https://pubmed.ncbi.nlm.nih.gov/17254903/',
+			questions: [
+				{
+					id: 'rest',
+					q: 'Dor no cotovelo em repouso?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Leve', v: 6 },
+						{ t: 'Moderada', v: 3 },
+						{ t: 'Forte', v: 0 },
+					],
+				},
+				{
+					id: 'grip',
+					q: 'Dor ao puxar ou agarrar forte?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Leve', v: 6 },
+						{ t: 'Moderada', v: 3 },
+						{ t: 'Forte', v: 0 },
+					],
+				},
+				{
+					id: 'carry',
+					q: 'Dor ao levantar ou carregar algo pesado?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Leve', v: 6 },
+						{ t: 'Moderada', v: 3 },
+						{ t: 'Forte', v: 0 },
+					],
+				},
+				{
+					id: 'weak',
+					q: 'A pegada parece fraca ou instável?',
+					a: [
+						{ t: 'Não', v: 10 },
+						{ t: 'Um pouco', v: 6 },
+						{ t: 'Bastante', v: 3 },
+						{ t: 'Muito fraca', v: 0 },
+					],
+				},
+				{
+					id: 'pull',
+					q: 'Consegue treinar tração?',
+					a: [
+						{ t: 'Totalmente', v: 10 },
+						{ t: 'Reduzido', v: 6 },
+						{ t: 'Só leve', v: 3 },
+						{ t: 'Nada', v: 0 },
+					],
+				},
+				{
+					id: 'after',
+					q: 'Dor depois de escalar / treinar?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Some até o dia seguinte', v: 6 },
+						{ t: 'Dura um dia ou mais', v: 3 },
+						{ t: 'Dias', v: 0 },
+					],
+				},
+			],
+		},
+		shoulder: {
+			title: 'Autoavaliação de ombro',
+			intro:
+				'Um teste rápido de dor e função do ombro. Responda pensando no pior ombro na última semana.',
+			source: 'Baseado no SPADI (Índice de Dor e Incapacidade do Ombro)',
+			url: 'https://www.physio-pedia.com/Shoulder_Pain_and_Disability_Index_(SPADI)',
+			questions: [
+				{
+					id: 'worst',
+					q: 'Dor no ombro no pior momento?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Leve', v: 6 },
+						{ t: 'Moderada', v: 3 },
+						{ t: 'Forte', v: 0 },
+					],
+				},
+				{
+					id: 'lie',
+					q: 'Dor ao deitar sobre ele?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Leve', v: 6 },
+						{ t: 'Moderada', v: 3 },
+						{ t: 'Forte', v: 0 },
+					],
+				},
+				{
+					id: 'overhead',
+					q: 'Dor ao alcançar acima da cabeça?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Leve', v: 6 },
+						{ t: 'Moderada', v: 3 },
+						{ t: 'Forte', v: 0 },
+					],
+				},
+				{
+					id: 'reach',
+					q: 'Dificuldade para alcançar ou fazer lock-off acima da cabeça?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Um pouco', v: 6 },
+						{ t: 'Bastante', v: 3 },
+						{ t: 'Incapaz', v: 0 },
+					],
+				},
+				{
+					id: 'press',
+					q: 'Consegue empurrar / puxar acima da cabeça no treino?',
+					a: [
+						{ t: 'Totalmente', v: 10 },
+						{ t: 'Reduzido', v: 6 },
+						{ t: 'Só leve', v: 3 },
+						{ t: 'Nada', v: 0 },
+					],
+				},
+				{
+					id: 'climb',
+					q: 'Dor em movimentos dinâmicos / de força?',
+					a: [
+						{ t: 'Nenhuma', v: 10 },
+						{ t: 'Leve', v: 6 },
+						{ t: 'Moderada', v: 3 },
+						{ t: 'Não consigo fazer', v: 0 },
+					],
+				},
+			],
+		},
+	},
 	phases: {
 		phase1: {
 			name: 'Fase 1 · Capacidade & Base de Tecido (Sem 1–4)',

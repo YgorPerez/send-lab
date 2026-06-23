@@ -178,6 +178,24 @@ interface Flag {
 	focus: string[];
 }
 
+/** One deep-assessment question; each option scores 0–10, where 10 = healthy. */
+interface DeepQuestion {
+	id: string;
+	q: string;
+	a: { t: string; v: number }[];
+}
+
+/** A per-area injury self-check, modelled on a validated instrument (its domains
+ *  + 0–100 scoring) — attributed via `source`/`url`, not a diagnosis. */
+interface DeepAssessment {
+	title: string;
+	intro: string;
+	/** Instrument it's based on, e.g. "VISA-C (climbing finger/wrist)". */
+	source: string;
+	url: string;
+	questions: DeepQuestion[];
+}
+
 /** The localized half of the content (prose only; params come from exercises.ts). */
 export interface LocaleContent {
 	days: Day[];
@@ -187,6 +205,8 @@ export interface LocaleContent {
 	verdicts: Record<VerdictId, Verdict>;
 	/** Per-problem recommendations keyed by flag id (see logic.ts `dailyFlags`). */
 	flags: Record<string, Flag>;
+	/** Per-area injury self-checks, keyed by FlagArea (fingers/elbow/shoulder/wrist). */
+	deep: Record<string, DeepAssessment>;
 	phases: Record<PhaseId, Phase>;
 	/** Jargon/acronym → plain-language definition, surfaced as tooltips in prose. */
 	glossary: Record<string, string>;

@@ -768,6 +768,215 @@ const content: LocaleContent = {
 			focus: ['quality', 'watch fatigue'],
 		},
 	},
+	deep: {
+		fingers: {
+			title: 'Finger / pulley self-check',
+			intro:
+				'A short screen for finger, pulley and flexor-tendon load tolerance. Answer for the worst-affected finger over the past week.',
+			source: 'Modelled on VISA-C (climbing finger / hand / wrist)',
+			url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12488532/',
+			questions: [
+				{
+					id: 'stiff',
+					q: 'Morning stiffness in the finger?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Eases in a few minutes', v: 7 },
+						{ t: '10–30 min', v: 4 },
+						{ t: 'Most of the day', v: 0 },
+					],
+				},
+				{
+					id: 'crimp',
+					q: 'Pain when you load a small edge / crimp hard?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Mild, warms up', v: 6 },
+						{ t: 'Moderate, limits effort', v: 3 },
+						{ t: 'Sharp — cannot', v: 0 },
+					],
+				},
+				{
+					id: 'after',
+					q: 'Pain after a hard finger session?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Gone by next morning', v: 6 },
+						{ t: 'Lingers a day', v: 3 },
+						{ t: 'Several days', v: 0 },
+					],
+				},
+				{
+					id: 'edges',
+					q: 'Can you hang / load small edges?',
+					a: [
+						{ t: 'Fully', v: 10 },
+						{ t: 'Somewhat reduced', v: 6 },
+						{ t: 'Very limited', v: 3 },
+						{ t: 'Not at all', v: 0 },
+					],
+				},
+				{
+					id: 'swell',
+					q: 'Swelling or thickening at the joint / pulley?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Slight', v: 6 },
+						{ t: 'Clear', v: 3 },
+						{ t: 'Marked / bowstringing', v: 0 },
+					],
+				},
+				{
+					id: 'climb',
+					q: 'Climbing right now?',
+					a: [
+						{ t: 'Full, no restriction', v: 10 },
+						{ t: 'Training but modified', v: 7 },
+						{ t: 'Easy only', v: 3 },
+						{ t: 'Not climbing', v: 0 },
+					],
+				},
+			],
+		},
+		elbow: {
+			title: 'Elbow self-check',
+			intro:
+				"A short screen for elbow tendinopathy (climber's / golfer's or tennis elbow). Answer for the worst elbow over the past week.",
+			source: 'Modelled on the PRTEE (lateral elbow tendinopathy)',
+			url: 'https://pubmed.ncbi.nlm.nih.gov/17254903/',
+			questions: [
+				{
+					id: 'rest',
+					q: 'Elbow pain at rest?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Mild', v: 6 },
+						{ t: 'Moderate', v: 3 },
+						{ t: 'Severe', v: 0 },
+					],
+				},
+				{
+					id: 'grip',
+					q: 'Pain with hard pulling or gripping?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Mild', v: 6 },
+						{ t: 'Moderate', v: 3 },
+						{ t: 'Severe', v: 0 },
+					],
+				},
+				{
+					id: 'carry',
+					q: 'Pain lifting or carrying something heavy?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Mild', v: 6 },
+						{ t: 'Moderate', v: 3 },
+						{ t: 'Severe', v: 0 },
+					],
+				},
+				{
+					id: 'weak',
+					q: 'Grip feels weak or unreliable?',
+					a: [
+						{ t: 'No', v: 10 },
+						{ t: 'A little', v: 6 },
+						{ t: 'Noticeably', v: 3 },
+						{ t: 'Very weak', v: 0 },
+					],
+				},
+				{
+					id: 'pull',
+					q: 'Can you do pull-type training?',
+					a: [
+						{ t: 'Fully', v: 10 },
+						{ t: 'Reduced', v: 6 },
+						{ t: 'Light only', v: 3 },
+						{ t: 'None', v: 0 },
+					],
+				},
+				{
+					id: 'after',
+					q: 'Pain after climbing / training?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Settles by next day', v: 6 },
+						{ t: 'Lingers a day or more', v: 3 },
+						{ t: 'Days', v: 0 },
+					],
+				},
+			],
+		},
+		shoulder: {
+			title: 'Shoulder self-check',
+			intro:
+				'A short screen for shoulder pain and function. Answer for the worst shoulder over the past week.',
+			source: 'Modelled on the SPADI (Shoulder Pain & Disability Index)',
+			url: 'https://www.physio-pedia.com/Shoulder_Pain_and_Disability_Index_(SPADI)',
+			questions: [
+				{
+					id: 'worst',
+					q: 'Shoulder pain at its worst?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Mild', v: 6 },
+						{ t: 'Moderate', v: 3 },
+						{ t: 'Severe', v: 0 },
+					],
+				},
+				{
+					id: 'lie',
+					q: 'Pain lying on it?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Mild', v: 6 },
+						{ t: 'Moderate', v: 3 },
+						{ t: 'Severe', v: 0 },
+					],
+				},
+				{
+					id: 'overhead',
+					q: 'Pain reaching overhead?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Mild', v: 6 },
+						{ t: 'Moderate', v: 3 },
+						{ t: 'Severe', v: 0 },
+					],
+				},
+				{
+					id: 'reach',
+					q: 'Difficulty reaching or locking off overhead?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'A little', v: 6 },
+						{ t: 'A lot', v: 3 },
+						{ t: 'Unable', v: 0 },
+					],
+				},
+				{
+					id: 'press',
+					q: 'Can you press / pull overhead in training?',
+					a: [
+						{ t: 'Fully', v: 10 },
+						{ t: 'Reduced', v: 6 },
+						{ t: 'Light only', v: 3 },
+						{ t: 'None', v: 0 },
+					],
+				},
+				{
+					id: 'climb',
+					q: 'Pain on dynamic / powerful moves?',
+					a: [
+						{ t: 'None', v: 10 },
+						{ t: 'Mild', v: 6 },
+						{ t: 'Moderate', v: 3 },
+						{ t: 'Cannot do them', v: 0 },
+					],
+				},
+			],
+		},
+	},
 	phases: {
 		phase1: {
 			name: 'Phase 1 · Capacity & Tissue Base (Wk 1–4)',

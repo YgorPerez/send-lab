@@ -55,6 +55,28 @@ export function dailyFlags(answers: Answers, fatigue = 0): DailyFlag[] {
 	return out;
 }
 
+export type DeepBand = 'manageable' | 'moderate' | 'significant';
+/** Rehab stages, mirrored from rehab.ts (kept local so content has no app import). */
+type DeepStage = 'acute' | 'subacute' | 'returning';
+
+export interface DeepResult {
+	/** 0–100, where 100 = no symptoms (normalized like VISA-C). */
+	score: number;
+	band: DeepBand;
+	stage: DeepStage;
+}
+
+/** Score an injury self-check: normalize 0–10 answers to 0–100, then band it.
+ *  Thresholds track the VISA-C group means (no-pain ~83, pain ~72, limiting ~60). */
+export function scoreDeep(values: number[]): DeepResult {
+	const max = values.length * 10;
+	const score = max ? Math.round((values.reduce((a, b) => a + b, 0) / max) * 100) : 0;
+	const band: DeepBand = score >= 80 ? 'manageable' : score >= 60 ? 'moderate' : 'significant';
+	const stage: DeepStage =
+		band === 'manageable' ? 'returning' : band === 'moderate' ? 'subacute' : 'acute';
+	return { score, band, stage };
+}
+
 /** Training phase for a given week, scaled to the block length (last week = deload). */
 export function phaseId(w: number, weeks = 8): PhaseId {
 	if (w >= weeks) return 'deload';

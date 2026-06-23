@@ -12,11 +12,13 @@ let {
 	content,
 	onRehab,
 	onPlan,
+	onDeep,
 }: {
 	flags: DailyFlag[];
 	content: Content;
 	onRehab: (area: FlagArea) => void;
 	onPlan: () => void;
+	onDeep: (area: FlagArea) => void;
 } = $props();
 
 const STYLE: Record<DailyFlag['severity'], string> = {
@@ -49,6 +51,14 @@ const STYLE: Record<DailyFlag['severity'], string> = {
 					</div>
 					{#if flag.area}
 						<div class="mt-3 flex flex-wrap gap-2">
+							<Button
+								size="sm"
+								variant="outline"
+								class="border-line text-xs"
+								onclick={() => flag.area && onDeep(flag.area)}
+							>
+								{m.flag_deep()}
+							</Button>
 							<Button
 								size="sm"
 								variant="outline"
