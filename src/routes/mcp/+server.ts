@@ -15,6 +15,12 @@ import {
 	EXERCISE_IDS,
 	WEEKDAYS,
 } from '$lib/server/programOps';
+import {
+	generateRehabProgram,
+	REHAB_AREAS,
+	REHAB_STAGES,
+	rehabExercises,
+} from '$lib/server/rehabOps';
 import { loadUserState, saveUserState } from '$lib/server/restApi';
 import { deepMerge, isPlainObject } from '$lib/server/stateOps';
 import { defaultMm, SIZED_METRICS } from '$lib/strength';
@@ -34,6 +40,8 @@ const ASSESS_LEVELS = ['intermediate', 'advanced', 'elite'];
 const ASSESS_EQUIPMENT = ['hangboard', 'board', 'rings', 'weights'];
 const INJURY_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'];
 const READINESS_KEYS = ['recovery', 'fingers', 'elbow', 'shoulder', 'slot', 'skin', 'cns'];
+// Weekday key for a JS getDay() index — for defaulting rehab_today to today.
+const WEEKDAY_BY_DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const LATEST_PROTOCOL = '2025-11-25';
 // Wire revisions we're compatible with (tools + structured content are unchanged
@@ -57,7 +65,9 @@ use create_exercise (then reference the id from edit_day/set_target like any bui
 (set_periodization, edit_day, set_target, set_auto_progress, create/update/delete_exercise) validate their \
 input — prefer them; use update_state/replace_state for everything else. Assessments: assess_baseline sets goals/level/equipment \
 and seeds starting markers; daily_readiness returns today's session recommendation from quick scores (nothing stored); assess_injury \
-logs a body-area pain self-check (0–10 per item) and returns a 0–100 score, band, and recommended rehab stage.`;
+logs a body-area pain self-check (0–10 per item) and returns a 0–100 score, band, and recommended rehab stage. \
+Rehab: start_rehab replaces the program with a stage-capped rehab block (saving the previous program to rehab.previous); \
+rehab_today swaps just one day to low-load rehab work.`;
 
 const TOOLS: ToolDef[] = [
 	{
@@ -330,6 +340,33 @@ const TOOLS: ToolDef[] = [
 			},
 		},
 	},
+	{
+		name: 'start_rehab',
+		description:
+			"Switch the whole program to a conservative rehab block for an injured area at a stage (acute/subacute/returning): effort is capped, aggravating exercises dropped, training days reduced. Saves the current program as `rehab.previous` so it can be restored later (to end rehab, set rehab=null and restore that program via update_state). Stage usually comes from assess_injury's recommendation.",
+		inputSchema: {
+			type: 'object',
+			required: ['area', 'stage'],
+			properties: {
+				area: { type: 'string', enum: REHAB_AREAS },
+				stage: { type: 'string', enum: REHAB_STAGES },
+			},
+		},
+	},
+	{
+		name: 'rehab_today',
+		description:
+			"Apply a low-load rehab session to a single day (defaults to today) for an area, leaving the rest of the program unchanged — overrides that day's exercise list. Use for a one-off flare-up rather than a full rehab block.",
+		inputSchema: {
+			type: 'object',
+			required: ['area'],
+			properties: {
+				area: { type: 'string', enum: REHAB_AREAS },
+				weekday: { type: 'string', enum: WEEKDAYS },
+				week: { type: 'number', description: 'Defaults to the current week.' },
+			},
+		},
+	},
 ];
 
 // Write tools all return a confirmation plus the updated document — attach that
@@ -349,6 +386,8 @@ const WRITE_TOOL_NAMES = new Set([
 	'create_exercise',
 	'update_exercise',
 	'delete_exercise',
+	'start_rehab',
+	'rehab_today',
 ]);
 for (const t of TOOLS) if (WRITE_TOOL_NAMES.has(t.name)) t.outputSchema = WRITE_OUTPUT;
 
@@ -464,6 +503,42 @@ async function callTool(
 		state.deepLog = deepLog;
 		await saveUserState(userId, state);
 		return { ...result, area, logged: true };
+	}
+
+	if (name === 'start_rehab') {
+		const area = String(args.area);
+		const stage = String(args.stage);
+		if (!REHAB_AREAS.includes(area))
+			throw new Error(`area must be one of ${REHAB_AREAS.join(', ')}`);
+		if (!REHAB_STAGES.includes(stage))
+			throw new Error(`stage must be one of ${REHAB_STAGES.join(', ')}`);
+		// Stash the current program so the user can return to it after rehab.
+		const previous = structuredClone(state.program);
+		state.program = generateRehabProgram(area as never, stage as never);
+		state.rehab = { area, stage, startedAt: today(), previous };
+		const next = await saveUserState(userId, state);
+		return { ok: true, state: next };
+	}
+
+	if (name === 'rehab_today') {
+		const area = String(args.area);
+		if (!REHAB_AREAS.includes(area))
+			throw new Error(`area must be one of ${REHAB_AREAS.join(', ')}`);
+		const weekday =
+			typeof args.weekday === 'string' && WEEKDAYS.includes(args.weekday)
+				? args.weekday
+				: WEEKDAY_BY_DAY[new Date().getDay()];
+		const week =
+			typeof args.week === 'number'
+				? args.week
+				: typeof state.currentWeek === 'number'
+					? state.currentWeek
+					: 1;
+		const dayExercises = (state.dayExercises ?? {}) as Record<string, string[]>;
+		dayExercises[`w${week}-${weekday}`] = rehabExercises(area as never);
+		state.dayExercises = dayExercises;
+		const next = await saveUserState(userId, state);
+		return { ok: true, state: next };
 	}
 	const customIds = Object.keys(custom);
 	if (name === 'create_exercise' || name === 'update_exercise') {
