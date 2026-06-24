@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computeVerdictId, dailyFlags, phaseId, scoreDeep } from '../src/lib/content/logic';
+import {
+	computeVerdictId,
+	dailyFlags,
+	phaseId,
+	readinessScore,
+	scoreDeep,
+} from '../src/lib/content/logic';
+
+test('readinessScore sums the general-readiness answers + fatigue only', () => {
+	assert.equal(readinessScore({ recovery: 2, fingers: 2, slot: 2, skin: 1, cns: 1 }), 8);
+	assert.equal(readinessScore({ recovery: 2, fingers: 2, slot: 2, skin: 1, cns: 1 }, -3), 5);
+	// elbow/shoulder drive flags, not the score
+	assert.equal(readinessScore({ elbow: 5, shoulder: 5 }), 0);
+	assert.equal(readinessScore({}), 0);
+});
 
 test('scoreDeep normalizes 0–10 answers to 0–100 and bands them', () => {
 	assert.deepEqual(scoreDeep([10, 10, 10]), { score: 100, band: 'manageable', stage: 'returning' });
