@@ -7,6 +7,10 @@ overrides:
   # deprecated @esbuild-kit chain) up to a patched release — clears the
   # GHSA-67mh-4wv8-2f99 dev-server advisory.
   esbuild: 0.25.12
+  # SvelteKit pins cookie 0.6 (GHSA-pxg6-pf52-xh8x). 0.7.x is API-compatible
+  # (adds stricter character validation) and clears the advisory; staying on
+  # 0.7 rather than 1.x avoids breaking changes on the auth-cookie path.
+  cookie: ^0.7.2
 allowBuilds:
   esbuild: true
   better-sqlite3: true

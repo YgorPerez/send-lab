@@ -12,7 +12,7 @@ import { cn } from '$lib/utils';
 let { area, onClose }: { area: FlagArea; onClose: () => void } = $props();
 
 const content = getContent();
-const da = content.deep[area];
+const da = $derived(content.deep[area]);
 
 let answers = $state<Record<string, number>>({});
 const complete = $derived(da ? Object.keys(answers).length === da.questions.length : false);

@@ -35,6 +35,13 @@ const ASSESS_EQUIPMENT = ['hangboard', 'board', 'rings', 'weights'];
 const INJURY_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'];
 const READINESS_KEYS = ['recovery', 'fingers', 'elbow', 'shoulder', 'slot', 'skin', 'cns'];
 
+const LATEST_PROTOCOL = '2025-11-25';
+// Wire revisions we're compatible with (tools + structured content are unchanged
+// across these); on initialize we echo the client's version if it's one of them.
+const SUPPORTED_PROTOCOLS = ['2025-11-25', '2025-06-18', '2024-11-05'];
+
+type ToolDef = { name: string; description: string; inputSchema: object; outputSchema?: object };
+
 // Briefing handed to the connecting AI so it understands what it's editing.
 const INSTRUCTIONS = `Edit a single climber's Send Lab account. The whole account is one JSON document; \
 get_state returns it, update_state deep-merges a partial patch, replace_state overwrites it whole. \
@@ -52,7 +59,7 @@ input — prefer them; use update_state/replace_state for everything else. Asses
 and seeds starting markers; daily_readiness returns today's session recommendation from quick scores (nothing stored); assess_injury \
 logs a body-area pain self-check (0–10 per item) and returns a 0–100 score, band, and recommended rehab stage.`;
 
-const TOOLS = [
+const TOOLS: ToolDef[] = [
 	{
 		name: 'get_state',
 		description:
@@ -325,6 +332,26 @@ const TOOLS = [
 	},
 ];
 
+// Write tools all return a confirmation plus the updated document — attach that
+// output schema in one place so they stay structured and consistent.
+const WRITE_OUTPUT = {
+	type: 'object',
+	required: ['ok'],
+	properties: { ok: { type: 'boolean' }, state: { type: 'object' } },
+};
+const WRITE_TOOL_NAMES = new Set([
+	'update_state',
+	'replace_state',
+	'set_periodization',
+	'set_auto_progress',
+	'edit_day',
+	'set_target',
+	'create_exercise',
+	'update_exercise',
+	'delete_exercise',
+]);
+for (const t of TOOLS) if (WRITE_TOOL_NAMES.has(t.name)) t.outputSchema = WRITE_OUTPUT;
+
 type Program = Parameters<typeof applySetPhases>[0];
 
 async function callTool(
@@ -373,7 +400,7 @@ async function callTool(
 	// ---- writes ----
 	if (name === 'replace_state') {
 		const next = await saveUserState(userId, args.state);
-		return `OK. Account replaced.\n${JSON.stringify(next, null, 2)}`;
+		return { ok: true, state: next };
 	}
 
 	if (name === 'assess_baseline') {
@@ -462,7 +489,7 @@ async function callTool(
 	else throw new Error(`unknown tool: ${name}`);
 
 	const next = await saveUserState(userId, state);
-	return `OK.\n${JSON.stringify(next, null, 2)}`;
+	return { ok: true, state: next };
 }
 
 const rpcResult = (id: unknown, result: unknown) => ({ jsonrpc: '2.0', id, result });
@@ -487,15 +514,19 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!('id' in body)) return new Response(null, { status: 202 });
 
 	const method = body.method;
-	if (method === 'initialize')
+	if (method === 'initialize') {
+		// Echo the client's protocol version when we support it, else our latest.
+		const requested = isObj(body.params) ? String(body.params.protocolVersion ?? '') : '';
+		const protocolVersion = SUPPORTED_PROTOCOLS.includes(requested) ? requested : LATEST_PROTOCOL;
 		return json(
 			rpcResult(id, {
-				protocolVersion: '2025-06-18',
+				protocolVersion,
 				capabilities: { tools: {} },
 				serverInfo: { name: 'send-lab', version: '1' },
 				instructions: INSTRUCTIONS,
 			}),
 		);
+	}
 	if (method === 'tools/list') return json(rpcResult(id, { tools: TOOLS }));
 	if (method === 'tools/call') {
 		const params = isObj(body.params) ? body.params : {};
