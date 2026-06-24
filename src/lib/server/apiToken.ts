@@ -1,36 +1,36 @@
-// Personal API tokens for the MCP endpoint. The plaintext token is shown to the
-// user once; only its SHA-256 hash is stored, and requests authenticate with an
-// `Authorization: Bearer <token>` header that we hash and look up.
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+// One personal API token per user, used as `Authorization: Bearer <token>` on
+// the MCP endpoint and the /api/v1 REST API. Stored in plaintext (keyed by user)
+// so it can be re-revealed in Settings; regenerating swaps it for a fresh one.
+import { randomBytes } from 'node:crypto';
+import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { apiToken } from '$lib/server/db/schema';
 
-const hash = (token: string) => createHash('sha256').update(token).digest('hex');
+const mint = () => `sl_${randomBytes(24).toString('hex')}`;
 
-/** Create a token for a user; returns the plaintext (store it — shown once). */
-export async function createApiToken(userId: string, name: string): Promise<string> {
-	const token = `sl_${randomBytes(24).toString('hex')}`;
-	await db
-		.insert(apiToken)
-		.values({ id: randomUUID(), userId, name: name.trim() || 'token', tokenHash: hash(token) })
-		.run();
+/** The user's token, creating one on first call. Exactly one per user. */
+export async function getOrCreateToken(userId: string): Promise<string> {
+	const row = await db
+		.select({ token: apiToken.token })
+		.from(apiToken)
+		.where(eq(apiToken.userId, userId))
+		.get();
+	if (row) return row.token;
+	const token = mint();
+	await db.insert(apiToken).values({ userId, token }).run();
 	return token;
 }
 
-export function listApiTokens(userId: string) {
-	return db
-		.select({ id: apiToken.id, name: apiToken.name, createdAt: apiToken.createdAt })
-		.from(apiToken)
-		.where(eq(apiToken.userId, userId))
-		.all();
-}
-
-export async function revokeApiToken(userId: string, id: string): Promise<void> {
+/** Kill the current token and issue a fresh one (any connected client must
+ *  switch to the new token). Works whether or not a token already exists. */
+export async function regenerateToken(userId: string): Promise<string> {
+	const token = mint();
 	await db
-		.delete(apiToken)
-		.where(and(eq(apiToken.id, id), eq(apiToken.userId, userId)))
+		.insert(apiToken)
+		.values({ userId, token })
+		.onConflictDoUpdate({ target: apiToken.userId, set: { token, createdAt: new Date() } })
 		.run();
+	return token;
 }
 
 /** Resolve a Bearer token from a request to its user id, or null. */
@@ -41,7 +41,7 @@ export async function userIdFromBearer(request: Request): Promise<string | null>
 	const row = await db
 		.select({ userId: apiToken.userId })
 		.from(apiToken)
-		.where(eq(apiToken.tokenHash, hash(token)))
+		.where(eq(apiToken.token, token))
 		.get();
 	return row?.userId ?? null;
 }

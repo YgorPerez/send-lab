@@ -8,6 +8,7 @@ import { authClient } from '$lib/auth-client';
 import { exportBackup, exportWorkoutsCsv, importBackup } from '$lib/backup';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
+import InstallApp from '$lib/InstallApp.svelte';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
 import McpTokens from '$lib/McpTokens.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -65,6 +66,9 @@ const seg =
 		<SectionHeading title={m.sec_settings()} />
 		<p class="max-w-[62ch] text-[15px] text-ink-dim">{m.lede_settings()}</p>
 	</div>
+
+	<!-- Install as app (hidden once installed) -->
+	<InstallApp />
 
 	<!-- Units & display -->
 	<Card class="gap-4 p-[18px]">

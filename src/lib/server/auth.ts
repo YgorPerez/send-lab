@@ -4,6 +4,7 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { dev } from '$app/environment';
 import { getRequestEvent } from '$app/server';
 import { env } from '$env/dynamic/private';
+import { getOrCreateToken } from '$lib/server/apiToken';
 import { db } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
 
@@ -32,6 +33,11 @@ export const auth = betterAuth({
 	// Account deletion is self-service: the client re-confirms with the password,
 	// and the user's session/account/app_state rows cascade away (see schema).
 	user: { deleteUser: { enabled: true } },
+	// Give every new account its single API token up front, so AI/MCP access is
+	// ready the moment they open Settings (getOrCreateToken is a safety net too).
+	databaseHooks: {
+		user: { create: { after: async (created) => void (await getOrCreateToken(created.id)) } },
+	},
 	trustedOrigins: [
 		'http://localhost:5173',
 		'http://127.0.0.1:5173',

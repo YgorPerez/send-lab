@@ -1,6 +1,12 @@
 {
 	"ignore": {
-		"files": ["src/lib/components/ui/**", "src/lib/paraglide/**", ".svelte-kit/**", "build/**"],
+		"files": [
+			"src/lib/components/ui/**",
+			"src/lib/paraglide/**",
+			".svelte-kit/**",
+			"build/**",
+			"scripts/**"
+		],
 		"rules": [
 			"no-unnecessary-state",
 			"no-inline-event-handler",

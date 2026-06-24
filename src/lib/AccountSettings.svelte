@@ -2,7 +2,7 @@
 import { goto } from '$app/navigation';
 import { authClient } from '$lib/auth-client';
 import { Button } from '$lib/components/ui/button';
-import { Input } from '$lib/components/ui/input';
+import PasswordInput from '$lib/PasswordInput.svelte';
 import * as m from '$lib/paraglide/messages';
 import { clearLocal } from '$lib/state.svelte';
 
@@ -72,11 +72,11 @@ async function deleteAccount(e: Event) {
 		<span class="text-[13px] font-semibold text-chalk">{m.set_change_pw()}</span>
 		<label class="flex flex-col gap-1 text-xs text-ink-dim">
 			{m.field_current_pw()}
-			<Input type="password" bind:value={currentPw} autocomplete="current-password" required />
+			<PasswordInput bind:value={currentPw} autocomplete="current-password" required />
 		</label>
 		<label class="flex flex-col gap-1 text-xs text-ink-dim">
 			{m.field_new_pw()}
-			<Input type="password" bind:value={newPw} autocomplete="new-password" required />
+			<PasswordInput bind:value={newPw} autocomplete="new-password" required />
 		</label>
 		{#if pwMsg}
 			<p class={pwErr ? 'text-xs text-flag' : 'text-xs text-teal'}>{pwMsg}</p>
@@ -91,7 +91,7 @@ async function deleteAccount(e: Event) {
 		<p class="max-w-[52ch] text-xs text-ink-dim">{m.set_delete_desc()}</p>
 		<label class="flex flex-col gap-1 text-xs text-ink-dim">
 			{m.field_password()}
-			<Input type="password" bind:value={delPw} autocomplete="current-password" required />
+			<PasswordInput bind:value={delPw} autocomplete="current-password" required />
 		</label>
 		{#if delErr}<p class="text-xs text-flag">{delErr}</p>{/if}
 		<Button

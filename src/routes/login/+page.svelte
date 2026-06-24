@@ -5,6 +5,7 @@ import { Button } from '$lib/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import LanguageSwitcher from '$lib/LanguageSwitcher.svelte';
+import PasswordInput from '$lib/PasswordInput.svelte';
 import * as m from '$lib/paraglide/messages';
 import { appMode, enterGuest, leaveGuest, uploadCurrentToServer } from '$lib/state.svelte';
 
@@ -80,8 +81,7 @@ function continueAsGuest() {
 				</label>
 				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
 					{m.field_password()}
-					<Input
-						type="password"
+					<PasswordInput
 						bind:value={password}
 						autocomplete={mode === 'signup' ? 'new-password' : 'current-password'}
 						required

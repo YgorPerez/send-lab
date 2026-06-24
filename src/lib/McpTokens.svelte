@@ -1,56 +1,57 @@
 <script lang="ts">
 import CopyIcon from '@lucide/svelte/icons/copy';
-import TrashIcon from '@lucide/svelte/icons/trash-2';
+import EyeIcon from '@lucide/svelte/icons/eye';
+import EyeOffIcon from '@lucide/svelte/icons/eye-off';
+import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 import { toast } from 'svelte-sonner';
 import { browser } from '$app/environment';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
-import { Input } from '$lib/components/ui/input';
-import { createToken, listTokens, revokeToken, type TokenRow } from '$lib/mcpClient';
+import { getToken, regenerateToken } from '$lib/mcpClient';
 import * as m from '$lib/paraglide/messages';
 
-let tokens = $state<TokenRow[]>([]);
-let name = $state('');
-let creating = $state(false);
-let freshToken = $state<string | null>(null);
+let token = $state<string | null>(null);
+let revealed = $state(false);
+let busy = $state(false);
+
 const origin = $derived(browser ? location.origin : '');
 const endpoint = $derived(`${origin}/mcp`);
 const restEndpoint = $derived(`${origin}/api/v1`);
 
-async function load() {
-	tokens = await listTokens();
-}
+// The ready-to-run setup command. Masked until the user reveals the token; the
+// Copy button always copies the real one.
+const masked = `sl_${'•'.repeat(12)}`;
+const commandFor = (t: string) =>
+	`claude mcp add --transport http send-lab ${endpoint} --header "Authorization: Bearer ${t}"`;
+const command = $derived(token ? commandFor(token) : '');
+const shownCommand = $derived(commandFor(revealed && token ? token : masked));
+
 $effect(() => {
-	load();
+	getToken().then((t) => (token = t));
 });
 
-async function copy(text: string) {
+async function copy() {
+	if (!command) return;
 	try {
-		await navigator.clipboard.writeText(text);
+		await navigator.clipboard.writeText(command);
 		toast.success(m.mcp_copied());
 	} catch {
 		/* clipboard unavailable */
 	}
 }
 
-async function create() {
-	creating = true;
+async function regenerate() {
+	if (!confirm(m.mcp_regenerate_confirm())) return;
+	busy = true;
 	try {
-		const token = await createToken(name.trim());
-		if (token) {
-			freshToken = token;
-			name = '';
-			await load();
+		const t = await regenerateToken();
+		if (t) {
+			token = t;
+			revealed = true; // show the new one so they can reconnect
 		}
 	} finally {
-		creating = false;
+		busy = false;
 	}
-}
-
-async function revoke(id: string) {
-	if (!confirm(m.mcp_revoke_confirm())) return;
-	await revokeToken(id);
-	await load();
 }
 </script>
 
@@ -60,71 +61,46 @@ async function revoke(id: string) {
 		<p class="mt-0.5 max-w-[58ch] text-xs text-ink-dim">{m.mcp_desc()}</p>
 	</div>
 
-	<div class="flex flex-col gap-1.5">
-		<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">{m.mcp_endpoint()}</span>
-		<div class="flex items-center gap-2">
-			<code class="min-w-0 flex-1 truncate rounded-md border border-line bg-panel-2 px-2.5 py-1.5 text-xs">
-				{endpoint}
-			</code>
-			<Button variant="outline" size="sm" class="flex-none border-line text-xs" onclick={() => copy(endpoint)}>
-				<CopyIcon class="size-3.5" />
-			</Button>
-		</div>
-	</div>
+	<p class="text-xs text-ink-dim">{m.mcp_command_note()}</p>
 
-	<div class="flex flex-col gap-1.5">
-		<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">{m.mcp_rest_endpoint()}</span>
-		<div class="flex items-center gap-2">
-			<code class="min-w-0 flex-1 truncate rounded-md border border-line bg-panel-2 px-2.5 py-1.5 text-xs">
-				{restEndpoint}
-			</code>
-			<Button variant="outline" size="sm" class="flex-none border-line text-xs" onclick={() => copy(restEndpoint)}>
-				<CopyIcon class="size-3.5" />
-			</Button>
-		</div>
-	</div>
+	<code
+		class="block w-full rounded-md border border-line bg-panel-2 px-2.5 py-2 font-mono text-[11px] break-all"
+	>
+		{shownCommand}
+	</code>
 
-	{#if freshToken}
-		<div class="flex flex-col gap-1.5 rounded-md border border-flag/40 bg-flag/10 p-2.5">
-			<div class="flex items-center gap-2">
-				<code class="min-w-0 flex-1 truncate font-mono text-xs text-flag">{freshToken}</code>
-				<Button variant="outline" size="sm" class="flex-none border-line text-xs" onclick={() => copy(freshToken ?? '')}>
-					{m.mcp_copy()}
-				</Button>
-			</div>
-			<p class="text-[11px] text-ink-dim">{m.mcp_new_token_note()}</p>
-		</div>
-	{/if}
-
-	<div class="flex items-center gap-2">
-		<Input bind:value={name} placeholder={m.mcp_token_name_ph()} class="bg-panel-2 text-sm" />
+	<div class="flex flex-wrap gap-2">
 		<Button
 			size="sm"
 			class="flex-none bg-flag text-xs text-white hover:bg-flag/90"
-			disabled={creating}
-			onclick={create}
+			disabled={!token}
+			onclick={copy}
 		>
-			{m.mcp_create()}
+			<CopyIcon class="size-3.5" />
+			{m.mcp_copy_command()}
+		</Button>
+		<Button
+			variant="outline"
+			size="sm"
+			class="border-line text-xs"
+			disabled={!token}
+			onclick={() => (revealed = !revealed)}
+		>
+			{#if revealed}<EyeOffIcon class="size-3.5" /> {m.mcp_hide()}{:else}<EyeIcon
+					class="size-3.5"
+				/> {m.mcp_reveal()}{/if}
+		</Button>
+		<Button
+			variant="outline"
+			size="sm"
+			class="border-line font-mono text-[11px] text-ink-faint hover:border-flag hover:text-flag"
+			disabled={busy}
+			onclick={regenerate}
+		>
+			<RefreshCwIcon class="size-3.5" />
+			{m.mcp_regenerate()}
 		</Button>
 	</div>
 
-	{#if tokens.length === 0}
-		<p class="text-xs text-ink-faint">{m.mcp_no_tokens()}</p>
-	{:else}
-		<ul class="flex flex-col gap-1.5">
-			{#each tokens as t (t.id)}
-				<li class="flex items-center justify-between gap-2 rounded-md border border-line px-2.5 py-1.5">
-					<span class="min-w-0 flex-1 truncate text-sm">{t.name}</span>
-					<button
-						type="button"
-						aria-label={m.mcp_revoke()}
-						class="flex-none text-ink-faint transition hover:text-flag"
-						onclick={() => revoke(t.id)}
-					>
-						<TrashIcon class="size-3.5" />
-					</button>
-				</li>
-			{/each}
-		</ul>
-	{/if}
+	<p class="text-[11px] text-ink-faint">{m.mcp_rest_note({ url: restEndpoint })}</p>
 </Card>

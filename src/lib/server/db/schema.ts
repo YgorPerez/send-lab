@@ -71,15 +71,14 @@ export const appStateTable = sqliteTable('app_state', {
 		.notNull(),
 });
 
-/** Personal API tokens — let a user's own AI/MCP client edit their program via
- *  the /mcp endpoint. Only the SHA-256 hash is stored; the token is shown once. */
+/** One personal API token per user — authenticates their own AI/MCP client (and
+ *  the /api/v1 REST API) via `Authorization: Bearer <token>`. Stored in plaintext
+ *  so the user can re-reveal it on demand; "regenerate" swaps it for a new one. */
 export const apiToken = sqliteTable('api_token', {
-	id: text('id').primaryKey(),
 	userId: text('user_id')
-		.notNull()
+		.primaryKey()
 		.references(() => user.id, { onDelete: 'cascade' }),
-	name: text('name').notNull(),
-	tokenHash: text('token_hash').notNull().unique(),
+	token: text('token').notNull().unique(),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.$defaultFn(() => new Date())
 		.notNull(),
