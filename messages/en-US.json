@@ -404,8 +404,6 @@
 	"mcp_desc": "Connect your own AI assistant over MCP. With your token it can read and change everything in your account — program and periodization, daily plans, custom exercises, metrics, logs and workouts, preferences, saved programs, and rehab.",
 	"mcp_copied": "Copied",
 	"mcp_agnostic_note": "A standard MCP server — works with any client (Claude, Cursor, VS Code, …) over HTTP with a Bearer token.",
-	"mcp_endpoint": "Endpoint",
-	"mcp_token_label": "Token",
 	"mcp_copy": "Copy",
 	"mcp_config_note": "Config (for file-based clients)",
 	"mcp_reveal": "Reveal token",

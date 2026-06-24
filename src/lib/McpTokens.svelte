@@ -19,10 +19,11 @@ const endpoint = $derived(`${origin}/mcp`);
 const restEndpoint = $derived(`${origin}/api/v1`);
 
 const masked = `sl_${'•'.repeat(12)}`;
-const shownToken = $derived(revealed && token ? token : masked);
 
 // Standard MCP client config — the `mcpServers` + url/headers shape that Claude,
-// Cursor, VS Code, etc. all understand. Client-agnostic; no CLI assumed.
+// Cursor, VS Code, etc. all understand. One self-contained artifact (endpoint +
+// token), so a single Copy covers any client. Masked until revealed; Copy always
+// copies the real token.
 const configFor = (t: string) =>
 	JSON.stringify(
 		{
@@ -33,15 +34,16 @@ const configFor = (t: string) =>
 		null,
 		2,
 	);
-const shownConfig = $derived(configFor(shownToken));
+const shownConfig = $derived(configFor(revealed && token ? token : masked));
 
 $effect(() => {
 	getToken().then((t) => (token = t));
 });
 
-async function copy(text: string) {
+async function copyConfig() {
+	if (!token) return;
 	try {
-		await navigator.clipboard.writeText(text);
+		await navigator.clipboard.writeText(configFor(token));
 		toast.success(m.mcp_copied());
 	} catch {
 		/* clipboard unavailable */
@@ -71,74 +73,29 @@ async function regenerate() {
 
 	<p class="text-xs text-ink-dim">{m.mcp_agnostic_note()}</p>
 
-	<!-- Endpoint -->
-	<div class="flex flex-col gap-1.5">
-		<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">{m.mcp_endpoint()}</span>
-		<div class="flex items-center gap-2">
-			<code class="min-w-0 flex-1 truncate rounded-md border border-line bg-panel-2 px-2.5 py-1.5 text-xs"
-				>{endpoint}</code
-			>
-			<Button
-				variant="outline"
-				size="sm"
-				class="flex-none border-line text-xs"
-				aria-label={m.mcp_copy()}
-				onclick={() => copy(endpoint)}
-			>
-				<CopyIcon class="size-3.5" />
-			</Button>
-		</div>
-	</div>
+	<pre class="overflow-x-auto rounded-md border border-line bg-panel-2 px-2.5 py-2 font-mono text-[11px]">{shownConfig}</pre>
 
-	<!-- Token -->
-	<div class="flex flex-col gap-1.5">
-		<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">{m.mcp_token_label()}</span>
-		<div class="flex items-center gap-2">
-			<code class="min-w-0 flex-1 truncate rounded-md border border-line bg-panel-2 px-2.5 py-1.5 text-xs"
-				>{shownToken}</code
-			>
-			<Button
-				variant="outline"
-				size="sm"
-				class="flex-none border-line text-xs"
-				disabled={!token}
-				aria-label={revealed ? m.mcp_hide() : m.mcp_reveal()}
-				onclick={() => (revealed = !revealed)}
-			>
-				{#if revealed}<EyeOffIcon class="size-3.5" />{:else}<EyeIcon class="size-3.5" />{/if}
-			</Button>
-			<Button
-				variant="outline"
-				size="sm"
-				class="flex-none border-line text-xs"
-				disabled={!token}
-				aria-label={m.mcp_copy()}
-				onclick={() => token && copy(token)}
-			>
-				<CopyIcon class="size-3.5" />
-			</Button>
-		</div>
-	</div>
-
-	<!-- Generic JSON config -->
-	<div class="flex flex-col gap-1.5">
-		<div class="flex items-center justify-between gap-2">
-			<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">{m.mcp_config_note()}</span>
-			<Button
-				variant="outline"
-				size="sm"
-				class="flex-none border-line text-xs"
-				disabled={!token}
-				onclick={() => token && copy(configFor(token))}
-			>
-				<CopyIcon class="size-3.5" />
-				{m.mcp_copy()}
-			</Button>
-		</div>
-		<pre class="overflow-x-auto rounded-md border border-line bg-panel-2 px-2.5 py-2 font-mono text-[11px]">{shownConfig}</pre>
-	</div>
-
-	<div>
+	<div class="flex flex-wrap gap-2">
+		<Button
+			size="sm"
+			class="flex-none bg-flag text-xs text-white hover:bg-flag/90"
+			disabled={!token}
+			onclick={copyConfig}
+		>
+			<CopyIcon class="size-3.5" />
+			{m.mcp_copy()}
+		</Button>
+		<Button
+			variant="outline"
+			size="sm"
+			class="border-line text-xs"
+			disabled={!token}
+			onclick={() => (revealed = !revealed)}
+		>
+			{#if revealed}<EyeOffIcon class="size-3.5" /> {m.mcp_hide()}{:else}<EyeIcon
+					class="size-3.5"
+				/> {m.mcp_reveal()}{/if}
+		</Button>
 		<Button
 			variant="outline"
 			size="sm"
