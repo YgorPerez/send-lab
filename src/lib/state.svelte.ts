@@ -10,8 +10,11 @@ import type { RehabArea, RehabStage } from './rehab';
 import { defaultMm, SIZED_METRICS } from './strength';
 
 export interface MetricEntry {
+	/** Localized day label for display (e.g. "Jun 24"). */
 	date: string;
 	v: number;
+	/** Epoch ms when logged — the precise timestamp behind the day label. */
+	at?: number;
 	/** Edge depth / block width (mm) for size-dependent markers (maxhang, pinch). */
 	mm?: number;
 	/** Bodyweight (kg) at test time, so the %BW strength index stays accurate. */
@@ -422,7 +425,7 @@ export function saveAssessment(
 		if (v == null || Number.isNaN(v)) return;
 		if (!appState.metrics[key]) appState.metrics[key] = [];
 		const series = appState.metrics[key];
-		if (series.length === 0) series.push({ date: today(), v, ...extra });
+		if (series.length === 0) series.push({ date: today(), at: Date.now(), v, ...extra });
 	};
 	seed('bodyweight', assessment.bodyweight);
 	for (const key of Object.keys(baselines)) {

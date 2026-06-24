@@ -89,7 +89,7 @@ function saveNumeric() {
 		toast.error(m.toast_enter_number());
 		return;
 	}
-	const entry: MetricEntry = { date: today(), v: toMetricCanonical(id, entered) };
+	const entry: MetricEntry = { date: today(), at: Date.now(), v: toMetricCanonical(id, entered) };
 	if (sized) {
 		const mmRaw = Number.parseFloat(mmValue);
 		entry.mm = Number.isNaN(mmRaw) ? defaultMm(id) : Math.round(toMm(mmRaw));
@@ -109,7 +109,7 @@ function saveGrade(label: string) {
 	const v = gradeIndex(id, label);
 	if (v < 0) return;
 	if (!appState.metrics[id]) appState.metrics[id] = [];
-	appState.metrics[id].push({ date: today(), v });
+	appState.metrics[id].push({ date: today(), at: Date.now(), v });
 	logEntry(`${metric.name}: ${label}`);
 }
 </script>

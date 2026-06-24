@@ -26,7 +26,7 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
 /** Local YYYY-MM-DD for dating new entries (matches the client's `today()`). */
 const today = () => new Date().toISOString().slice(0, 10);
 
-type MetricEntry = { date: string; v: number; mm?: number; bw?: number };
+type MetricEntry = { date: string; at?: number; v: number; mm?: number; bw?: number };
 
 const ASSESS_GOALS = ['boulder', 'sport', 'all'];
 const ASSESS_FOCI = ['fingers', 'power', 'endurance', 'tissue'];
@@ -435,7 +435,8 @@ async function callTool(
 		const seed = (key: string, v: number | null, extra: Partial<MetricEntry> = {}) => {
 			if (v == null) return;
 			if (!metrics[key]) metrics[key] = [];
-			if (metrics[key].length === 0) metrics[key].push({ date: today(), v, ...extra });
+			if (metrics[key].length === 0)
+				metrics[key].push({ date: today(), at: Date.now(), v, ...extra });
 		};
 		seed('bodyweight', bodyweight);
 		const baseline = isObj(args.baseline) ? args.baseline : {};

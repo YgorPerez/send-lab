@@ -72,7 +72,7 @@ function metricValueFromSets(metricId: string, sets: WorkoutSet[]): number | nul
 export function recordAssessment(metricId: string, sets: WorkoutSet[], content: Content): void {
 	const v = metricValueFromSets(metricId, sets);
 	if (v == null) return;
-	const entry: MetricEntry = { date: today(), v };
+	const entry: MetricEntry = { date: today(), at: Date.now(), v };
 	if (SIZED_METRICS.has(metricId)) {
 		entry.mm = sets.find((s) => s.weight === v)?.edge ?? defaultMm(metricId);
 		if (metricId === 'maxhang') {

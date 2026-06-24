@@ -34,6 +34,10 @@ function openInTrain(marker: Marker) {
 	void goto(`/train?ex=${exId}&assess=${marker.id}`);
 }
 
+/** Time-of-day for an entry's precise timestamp (older entries have no `at`). */
+const fmtTime = (at: number) =>
+	new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
 /** Delete one logged entry from the open metric's history (by its index in the
  *  stored, oldest-first array). Recomputes everything downstream (card, sparkline). */
 function removeEntry(index: number) {
@@ -96,7 +100,9 @@ function removeEntry(index: number) {
 				<!-- Newest first; full log so every entry and its date is visible. -->
 				{#each [...history].reverse() as e, i (`${e.date}-${i}`)}
 					<div class="flex items-center justify-between gap-3 border-b border-line/60 py-1 font-mono text-xs">
-						<span class="flex-none text-ink-faint">{e.date}</span>
+						<span class="flex-none text-ink-faint"
+							>{e.date}{#if e.at}<span class="text-ink-faint/70"> · {fmtTime(e.at)}</span>{/if}</span
+						>
 						<div class="flex items-center gap-2">
 							<span class="text-right text-chalk">
 								{#if isGradeMetric(openMetric.id)}

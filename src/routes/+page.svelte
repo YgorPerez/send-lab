@@ -39,7 +39,11 @@ const bwLoggedToday = $derived(appState.metrics.bodyweight.some((e) => e.date ==
 function logBodyweight() {
 	const n = Number.parseFloat(bwInput);
 	if (Number.isNaN(n)) return;
-	appState.metrics.bodyweight.push({ date: today(), v: toMetricCanonical('bodyweight', n) });
+	appState.metrics.bodyweight.push({
+		date: today(),
+		at: Date.now(),
+		v: toMetricCanonical('bodyweight', n),
+	});
 	bwInput = '';
 }
 
