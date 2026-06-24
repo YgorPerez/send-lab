@@ -14,9 +14,11 @@ import {
 	dailyFlags,
 	type FlagArea,
 	getContent,
+	readinessScore,
 } from '$lib/content';
 import DailyFlags from '$lib/DailyFlags.svelte';
 import DeepAssessment from '$lib/DeepAssessment.svelte';
+import MetricChart from '$lib/MetricChart.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -28,7 +30,7 @@ import {
 	taskKey,
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
-import { appState, round, today } from '$lib/state.svelte';
+import { appState, type ReadinessEntry, round, today } from '$lib/state.svelte';
 import { completedSessions, recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
 import { toMetricCanonical } from '$lib/units';
 import { cn } from '$lib/utils';
@@ -85,7 +87,8 @@ const complete = $derived(Object.keys(answers).length === content.quiz.length);
 // Objective fatigue from recent logged effort nudges the recommendation.
 const recent = $derived(recentRpe(appState.workouts));
 const fatigue = $derived(recent == null ? 0 : recent >= 8.5 ? -2 : recent >= 7.5 ? -1 : 0);
-const verdict = $derived(complete ? content.verdicts[computeVerdictId(answers, fatigue)] : null);
+const verdictId = $derived(complete ? computeVerdictId(answers, fatigue) : null);
+const verdict = $derived(verdictId ? content.verdicts[verdictId] : null);
 const flags = $derived<DailyFlag[]>(complete ? dailyFlags(answers, fatigue) : []);
 
 function startRehabToday(area: FlagArea) {
@@ -108,7 +111,7 @@ function recheck() {
 }
 
 function logVerdict() {
-	if (!verdict) return;
+	if (!verdict || !verdictId) return;
 	appState.log.unshift({
 		date: today(),
 		type: 'rec',
@@ -116,6 +119,17 @@ function logVerdict() {
 		color: verdict.color,
 		note: tasks[0] ? `${dayLabel} · ${tasks[0].label}` : verdict.tag,
 	});
+	// Record today's readiness for the trend (one entry per day; update on recheck).
+	const d = today();
+	const entry: ReadinessEntry = {
+		date: d,
+		at: Date.now(),
+		verdict: verdictId,
+		score: readinessScore(answers, fatigue),
+	};
+	const rl = appState.readinessLog;
+	if (rl.length && rl[rl.length - 1].date === d) rl[rl.length - 1] = entry;
+	else rl.push(entry);
 	toast.success(m.toast_session_logged());
 }
 </script>
@@ -310,6 +324,19 @@ function logVerdict() {
 					<Button href="/week" variant="ghost">{m.btn_view_protocol()}</Button>
 				</div>
 			</div>
+		</Card>
+	{/if}
+
+	{#if appState.readinessLog.length > 1}
+		<Card class="mb-[22px] gap-2 p-5">
+			<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+				{m.readiness_trend()}
+			</span>
+			<MetricChart
+				points={appState.readinessLog.slice(-14).map((e) => ({ v: e.score, label: e.date }))}
+				catVar="--teal"
+				fmt={(v) => String(Math.round(v))}
+			/>
 		</Card>
 	{/if}
 

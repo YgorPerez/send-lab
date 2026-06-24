@@ -7,10 +7,16 @@ export type Answers = Record<string, number>;
 // doesn't skew the verdict thresholds.
 const READINESS = ['recovery', 'fingers', 'slot', 'skin', 'cns'];
 
+/** The overall readiness score: summed general-readiness answers + objective
+ *  fatigue. Higher = fresher. Exposed for the readiness trend over time. */
+export function readinessScore(answers: Answers, fatigue = 0): number {
+	return READINESS.reduce((a, k) => a + (answers[k] ?? 0), 0) + fatigue;
+}
+
 /** Day-recommender scoring — locale-independent; returns the verdict id.
  *  `fatigue` is an objective adjustment from recent logged effort (≤ 0 = tired). */
 export function computeVerdictId(answers: Answers, fatigue = 0): VerdictId {
-	const score = READINESS.reduce((a, k) => a + (answers[k] ?? 0), 0) + fatigue;
+	const score = readinessScore(answers, fatigue);
 	const sharp = answers.fingers <= -5;
 	const tender = answers.fingers === -2;
 	const jointPain = (answers.elbow ?? 0) <= -3 || (answers.shoulder ?? 0) <= -3;

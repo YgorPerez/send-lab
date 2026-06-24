@@ -165,6 +165,7 @@
 	"stat_week_sessions": "Last 7 days",
 	"stat_total": "Total sessions",
 	"td_recheck": "Re-check for next task",
+	"readiness_trend": "Readiness trend",
 	"td_applies": "This read is for your next task:",
 	"td_all_done": "All tasks done for today — recover.",
 	"td_rest_day": "Rest day — no training tasks. Recover.",

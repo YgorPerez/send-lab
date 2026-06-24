@@ -68,6 +68,16 @@ interface DeepEntry {
 	band: string;
 }
 
+/** A daily readiness check recorded for the trend over time. */
+export interface ReadinessEntry {
+	date: string;
+	at: number;
+	/** The recommended session type (VerdictId). */
+	verdict: string;
+	/** Overall readiness score (higher = fresher). */
+	score: number;
+}
+
 export type Goal = 'boulder' | 'sport' | 'all';
 export type Focus = 'fingers' | 'power' | 'endurance' | 'tissue';
 export type Level = 'intermediate' | 'advanced' | 'elite';
@@ -128,6 +138,8 @@ interface AppState {
 	customExercises: Record<string, CustomExercise>;
 	/** Injury self-check (deep assessment) results over time. */
 	deepLog: DeepEntry[];
+	/** Daily readiness checks over time (for the readiness trend). */
+	readinessLog: ReadinessEntry[];
 }
 
 /** A per-weekday slot in the program template. */
@@ -235,6 +247,7 @@ function defaultState(): AppState {
 		rehab: null,
 		customExercises: {},
 		deepLog: [],
+		readinessLog: [],
 	};
 }
 
@@ -302,6 +315,7 @@ function applyData(data: Partial<AppState>): void {
 	appState.rehab = data.rehab ?? base.rehab;
 	appState.customExercises = sanitizeCustomExercises(data.customExercises);
 	appState.deepLog = data.deepLog ?? base.deepLog;
+	appState.readinessLog = data.readinessLog ?? base.readinessLog;
 }
 
 // Offline mirror: the per-user state is cached in localStorage so the app works

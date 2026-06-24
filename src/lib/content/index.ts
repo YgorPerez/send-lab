@@ -48,6 +48,7 @@ export {
 	dailyFlags,
 	type FlagArea,
 	phaseId,
+	readinessScore,
 	scoreDeep,
 } from './logic';
 export type { Day, MetricId } from './types';
