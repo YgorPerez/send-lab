@@ -128,12 +128,51 @@ export function weeklyStats(workouts: WorkoutEntry[]): LoadStat[] {
 	return [...buckets.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, v]) => v);
 }
 
-/** Average RPE across the most recent sessions (null if none logged). */
-export function recentRpe(workouts: WorkoutEntry[], sessions = 2): number | null {
-	const rpes: number[] = [];
-	for (const w of workouts.slice(0, sessions))
-		for (const ex of w.exercises) for (const s of ex.sets) if (s.rpe != null) rpes.push(s.rpe);
-	return rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
+export interface Acwr {
+	/** acute / chronic, rounded to 2 dp. */
+	ratio: number;
+	/** Last-7-day internal load. */
+	acute: number;
+	/** Mean weekly load over the last 28 days. */
+	chronic: number;
+	status: 'low' | 'optimal' | 'high' | 'spike';
+}
+
+/** Internal-load surrogate for a session: the sum of its logged set-RPEs (RPE is
+ *  what we record per set; this stands in for session-RPE × volume). */
+function sessionLoad(w: WorkoutEntry): number {
+	let load = 0;
+	for (const ex of w.exercises) for (const s of ex.sets) if (s.rpe != null) load += s.rpe;
+	return load;
+}
+
+/** Acute:chronic workload ratio (Gabbett): acute = last-7-day load, chronic =
+ *  mean weekly load over the last 28 days. Needs ~3 weeks of history to be
+ *  meaningful — returns null otherwise (the UI shows "building baseline").
+ *  `nowMs` is passed in so the function stays pure/testable.
+ *  Bands: <0.8 under-loaded, 0.8–1.3 optimal, 1.3–1.5 high, >1.5 spike. */
+export function acwr(workouts: WorkoutEntry[], nowMs: number): Acwr | null {
+	const DAY = 86_400_000;
+	let acute = 0;
+	let last28 = 0;
+	let earliest = Number.POSITIVE_INFINITY;
+	for (const w of workouts) {
+		const t = Date.parse(`${w.at}T00:00:00Z`);
+		if (Number.isNaN(t)) continue;
+		const ageDays = (nowMs - t) / DAY;
+		if (ageDays < 0) continue;
+		earliest = Math.min(earliest, t);
+		const load = sessionLoad(w);
+		if (ageDays < 7) acute += load;
+		if (ageDays < 28) last28 += load;
+	}
+	// Without ~3 weeks of history the chronic baseline isn't trustworthy.
+	if (!Number.isFinite(earliest) || (nowMs - earliest) / DAY < 21) return null;
+	const chronic = last28 / 4;
+	if (chronic <= 0) return null;
+	const ratio = Math.round((acute / chronic) * 100) / 100;
+	const status = ratio > 1.5 ? 'spike' : ratio < 0.8 ? 'low' : ratio <= 1.3 ? 'optimal' : 'high';
+	return { ratio, acute, chronic, status };
 }
 
 /** A session counts as trained once at least one set is marked done (prefilled

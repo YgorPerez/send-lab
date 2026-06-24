@@ -37,6 +37,26 @@ const PROSE: Record<string, { title: () => string; summary: () => string; applie
 			summary: m.study_ferrer_summary,
 			applies: m.study_ferrer_applies,
 		},
+		hooper: {
+			title: m.study_hooper_title,
+			summary: m.study_hooper_summary,
+			applies: m.study_hooper_applies,
+		},
+		prs: {
+			title: m.study_prs_title,
+			summary: m.study_prs_summary,
+			applies: m.study_prs_applies,
+		},
+		sleep: {
+			title: m.study_sleep_title,
+			summary: m.study_sleep_summary,
+			applies: m.study_sleep_applies,
+		},
+		acwr: {
+			title: m.study_acwr_title,
+			summary: m.study_acwr_summary,
+			applies: m.study_acwr_applies,
+		},
 	};
 </script>
 

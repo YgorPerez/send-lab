@@ -154,6 +154,13 @@ interface QuizQuestion {
 	id: string;
 	q: string;
 	a: QuizOption[];
+	/** One-line rationale shown under the question ("why we ask"). */
+	why?: string;
+	/** Study id (into STUDIES) backing this question. */
+	study?: string;
+	/** Follow-up questions are revealed by logic.ts only when they'd change the
+	 *  outcome; core questions (no `followup`) are always shown. */
+	followup?: boolean;
 }
 
 interface Verdict {

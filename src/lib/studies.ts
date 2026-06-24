@@ -46,4 +46,28 @@ export const STUDIES: Study[] = [
 		year: '2023',
 		url: 'https://peerj.com/articles/15464/',
 	},
+	{
+		id: 'hooper',
+		authors: 'Hooper & Mackinnon — Sports Medicine',
+		year: '1995',
+		url: 'https://pubmed.ncbi.nlm.nih.gov/8571005/',
+	},
+	{
+		id: 'prs',
+		authors: 'Laurent et al. — J Strength Cond Res',
+		year: '2011',
+		url: 'https://pubmed.ncbi.nlm.nih.gov/20581704/',
+	},
+	{
+		id: 'sleep',
+		authors: 'Fullagar et al. — Sports Medicine',
+		year: '2015',
+		url: 'https://link.springer.com/article/10.1007/s40279-014-0260-0',
+	},
+	{
+		id: 'acwr',
+		authors: 'Hulin, Gabbett et al. — Br J Sports Med',
+		year: '2016',
+		url: 'https://pubmed.ncbi.nlm.nih.gov/26511006/',
+	},
 ];

@@ -9,12 +9,10 @@ import { Card, CardContent } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import {
 	type Answers,
-	computeVerdictId,
-	type DailyFlag,
-	dailyFlags,
+	computeReadiness,
 	type FlagArea,
 	getContent,
-	readinessScore,
+	visibleQuestions,
 } from '$lib/content';
 import DailyFlags from '$lib/DailyFlags.svelte';
 import DeepAssessment from '$lib/DeepAssessment.svelte';
@@ -29,8 +27,9 @@ import {
 	taskKey,
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
-import { appState, type ReadinessEntry, round, today } from '$lib/state.svelte';
-import { completedSessions, recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
+import { appState, type ReadinessEntry, today } from '$lib/state.svelte';
+import { acwr, completedSessions, sessionsLast7, trainStreak } from '$lib/stats';
+import { STUDIES } from '$lib/studies';
 import TrendChart from '$lib/TrendChart.svelte';
 import { toMetricCanonical } from '$lib/units';
 import { cn } from '$lib/utils';
@@ -83,13 +82,32 @@ const needsReassess = $derived(
 );
 
 let answers = $state<Answers>({});
-const complete = $derived(Object.keys(answers).length === content.quiz.length);
-// Objective fatigue from recent logged effort nudges the recommendation.
-const recent = $derived(recentRpe(appState.workouts));
-const fatigue = $derived(recent == null ? 0 : recent >= 8.5 ? -2 : recent >= 7.5 ? -1 : 0);
-const verdictId = $derived(complete ? computeVerdictId(answers, fatigue) : null);
-const verdict = $derived(verdictId ? content.verdicts[verdictId] : null);
-const flags = $derived<DailyFlag[]>(complete ? dailyFlags(answers, fatigue) : []);
+// Objective load: acute:chronic workload ratio from logged RPE (null < ~3 weeks).
+const acwrStatus = $derived(acwr(appState.workouts, Date.now())?.status ?? null);
+// Adaptive: show the core, reveal follow-ups only when they'd change the result.
+const visible = $derived(visibleQuestions(answers));
+const visibleQuiz = $derived(content.quiz.filter((q) => visible.includes(q.id)));
+const complete = $derived(visible.every((id) => answers[id] != null));
+const readiness = $derived(complete ? computeReadiness(answers, acwrStatus) : null);
+const verdict = $derived(readiness ? content.verdicts[readiness.verdict] : null);
+const flags = $derived(readiness?.flags ?? []);
+
+const studyUrl = (id?: string) => (id ? STUDIES.find((s) => s.id === id)?.url : undefined);
+
+// The wellness dimensions behind the readiness score (for the breakdown).
+const WELLNESS_DIMS = [
+	{ id: 'sleep', label: () => m.rd_sleep() },
+	{ id: 'fatigue', label: () => m.rd_fatigue() },
+	{ id: 'soreness', label: () => m.rd_soreness() },
+	{ id: 'stress', label: () => m.rd_stress() },
+	{ id: 'mood', label: () => m.rd_mood() },
+];
+const breakdown = $derived(
+	WELLNESS_DIMS.filter((d) => answers[d.id] != null).map((d) => ({
+		label: d.label(),
+		v: answers[d.id],
+	})),
+);
 
 function startRehabToday(area: FlagArea) {
 	rehabToday(content, week, weekday, area);
@@ -111,7 +129,7 @@ function recheck() {
 }
 
 function logVerdict() {
-	if (!verdict || !verdictId) return;
+	if (!verdict || !readiness) return;
 	appState.log.unshift({
 		date: today(),
 		type: 'rec',
@@ -124,8 +142,8 @@ function logVerdict() {
 	const entry: ReadinessEntry = {
 		date: d,
 		at: Date.now(),
-		verdict: verdictId,
-		score: readinessScore(answers, fatigue),
+		verdict: readiness.verdict,
+		score: readiness.score,
 	};
 	const rl = appState.readinessLog;
 	if (rl.length && rl[rl.length - 1].date === d) rl[rl.length - 1] = entry;
@@ -251,19 +269,24 @@ function logVerdict() {
 		</Card>
 	</div>
 
-	{#if recent != null}
-		<p class="mb-[22px] font-mono text-[11px] text-ink-faint">
-			{m.td_fatigue({ rpe: round(recent) })}
-		</p>
-	{/if}
-
 	<Card class="mb-[22px] gap-0 p-6">
 		<CardContent class="space-y-[22px] p-0">
-			{#each content.quiz as q, qi (q.id)}
-				<div>
-					<div class="mb-2.5 text-[15px] font-semibold">
+			{#each visibleQuiz as q, qi (q.id)}
+				<div class="animate-in fade-in duration-200">
+					<div class="mb-1 text-[15px] font-semibold">
 						<span class="mr-2 font-mono text-xs text-flag">0{qi + 1}</span>{q.q}
 					</div>
+					{#if q.why}
+						<p class="mb-2 max-w-[60ch] text-[12px] leading-snug text-ink-faint">
+							{q.why}{#if studyUrl(q.study)}
+								<a
+									href={studyUrl(q.study)}
+									target="_blank"
+									rel="noopener noreferrer"
+									class="ml-1 whitespace-nowrap text-flag hover:underline">{m.rd_evidence()}</a
+								>{/if}
+						</p>
+					{/if}
 					<div class="flex flex-wrap gap-2">
 						{#each q.a as a (a.t)}
 							<button
@@ -285,19 +308,43 @@ function logVerdict() {
 		</CardContent>
 	</Card>
 
-	{#if verdict}
+	{#if verdict && readiness}
 		<Card class="overflow-hidden p-0 animate-in fade-in duration-300">
 			<div class="flex items-center gap-3.5 border-b border-line p-5">
 				<span class="size-3.5 flex-none rounded-full" style:background={verdict.color}></span>
-				<div>
+				<div class="min-w-0 flex-1">
 					<div class="text-[19px] font-extrabold tracking-tight">{verdict.title}</div>
 					<div class="font-mono text-[11px] tracking-wider text-ink-faint uppercase">
 						{verdict.tag}
 					</div>
 				</div>
+				<div class="flex-none text-right">
+					<div class="font-mono text-[22px] leading-none font-bold text-chalk">{readiness.score}</div>
+					<div class="font-mono text-[9px] tracking-wider text-ink-faint uppercase">
+						{m.rd_score()}
+					</div>
+				</div>
 			</div>
 			<div class="p-5 text-[14.5px] text-ink-dim">
 				<div><Prose value={verdict.text} /></div>
+				{#if breakdown.length}
+					<div class="mt-3 flex flex-wrap gap-1.5">
+						{#each breakdown as b (b.label)}
+							<span
+								class={cn(
+									'rounded-full border px-2 py-0.5 font-mono text-[10px]',
+									b.v >= 7
+										? 'border-teal/40 text-teal'
+										: b.v >= 4
+											? 'border-gold/40 text-gold'
+											: 'border-flag/40 text-flag'
+								)}
+							>
+								{b.label} {b.v}/10
+							</span>
+						{/each}
+					</div>
+				{/if}
 				{#if tasks[0]}
 					<p class="mt-2.5 text-[13px] text-ink-faint">
 						{m.td_applies()} <b class="text-chalk">{tasks[0].label}</b>

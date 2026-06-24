@@ -4,7 +4,7 @@
 import { json } from '@sveltejs/kit';
 import { getContent } from '$lib/content';
 import { exerciseParams } from '$lib/content/exercises';
-import { type Answers, computeVerdictId, dailyFlags, scoreDeep } from '$lib/content/logic';
+import { type Answers, computeReadiness, scoreDeep } from '$lib/content/logic';
 import type { CustomExercise } from '$lib/content/types';
 import { isValidExerciseId, sanitizeCustomExercise } from '$lib/customExercise';
 import { deepMerge, isPlainObject } from '$lib/objects';
@@ -26,6 +26,7 @@ import {
 	WEEKDAYS,
 } from '$lib/server/programOps';
 import { loadUserState, saveUserState } from '$lib/server/restApi';
+import { acwr } from '$lib/stats';
 import { defaultMm, SIZED_METRICS } from '$lib/strength';
 import type { RequestHandler } from './$types';
 
@@ -39,7 +40,6 @@ const ASSESS_FOCI = ['fingers', 'power', 'endurance', 'tissue'];
 const ASSESS_LEVELS = ['intermediate', 'advanced', 'elite'];
 const ASSESS_EQUIPMENT = ['hangboard', 'board', 'rings', 'weights'];
 const INJURY_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'];
-const READINESS_KEYS = ['recovery', 'fingers', 'elbow', 'shoulder', 'slot', 'skin', 'cns'];
 // Weekday key for a JS getDay() index — for defaulting rehab_today to today.
 const WEEKDAY_BY_DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -64,7 +64,7 @@ Use list_exercises for valid exercise ids and weekday keys. To add your own exer
 use create_exercise (then reference the id from edit_day/set_target like any built-in). The structured tools \
 (set_periodization, edit_day, set_target, set_auto_progress, create/update/delete_exercise) validate their \
 input — prefer them; use update_state/replace_state for everything else. Assessments: assess_baseline sets goals/level/equipment \
-and seeds starting markers; daily_readiness returns today's session recommendation from quick scores (nothing stored); assess_injury \
+and seeds starting markers; daily_readiness returns today's session recommendation + a 0–100 readiness score from wellness answers and objective load (nothing stored); assess_injury \
 logs a body-area pain self-check (0–10 per item) and returns a 0–100 score, band, and recommended rehab stage. \
 Rehab: start_rehab replaces the program with a stage-capped rehab block (saving the previous program to rehab.previous); \
 rehab_today swaps just one day to low-load rehab work.`;
@@ -275,28 +275,31 @@ const TOOLS: ToolDef[] = [
 	{
 		name: 'daily_readiness',
 		description:
-			"Today's readiness check — ephemeral (not stored): returns the recommended session type and any targeted warnings from the day's answers. Provide each as a score. recovery: fresh 2 / normal 1 / flat 0 / wrecked -2. fingers: fine 2 / stiff 1 / tender -2 / sharp pain -5. elbow & shoulder: good 1 / niggle -1 / painful -3. slot (time): big 2 / standard 1 / short 0 / none -1. skin: solid 1 / ok 0 / thin -1 / split -2. cns (drive): sharp 1 / normal 0 / flat -1 / drained -2.",
+			"Today's readiness check — ephemeral (not stored). Returns a 0–100 readiness score, the recommended session tier, the injured area (if any) and targeted warnings, from wellness answers + objective training load (ACWR, computed from the user's logged sessions). Wellness answers are 0–10 (10 = best): sleep, fatigue (recovery), soreness, plus stress & mood when under-recovered. body = the worst-affected area (0 none, 1 fingers, 2 elbow, 3 shoulder, 4 wrist); severity (when body>0) = 0 stiff, 1 tender, 2 painful, 3 sharp. time = 10 full / 7 standard / 3 short / 0 tight. skin = 0–10 (only relevant on a hard day).",
 		inputSchema: {
 			type: 'object',
 			properties: {
-				recovery: { type: 'number' },
-				fingers: { type: 'number' },
-				elbow: { type: 'number' },
-				shoulder: { type: 'number' },
-				slot: { type: 'number' },
-				skin: { type: 'number' },
-				cns: { type: 'number' },
-				fatigue: {
+				sleep: { type: 'number', description: '0–10 (10 = great).' },
+				fatigue: { type: 'number', description: '0–10 perceived recovery (10 = fresh).' },
+				soreness: { type: 'number', description: '0–10 (10 = none).' },
+				body: {
 					type: 'number',
-					description: 'Optional objective load adjustment (≤0 = tired).',
+					description: '0 none · 1 fingers · 2 elbow · 3 shoulder · 4 wrist.',
 				},
+				severity: { type: 'number', description: '0 stiff · 1 tender · 2 painful · 3 sharp.' },
+				time: { type: 'number', description: '10 full · 7 standard · 3 short · 0 tight.' },
+				stress: { type: 'number', description: '0–10 (10 = calm).' },
+				mood: { type: 'number', description: '0–10 drive (10 = keen).' },
+				skin: { type: 'number', description: '0–10 (10 = solid).' },
 			},
 		},
 		outputSchema: {
 			type: 'object',
-			required: ['verdict', 'flags'],
+			required: ['score', 'verdict', 'flags'],
 			properties: {
+				score: { type: 'number', description: '0–100 readiness.' },
 				verdict: { type: 'string', enum: ['rest', 'tissue', 'moderate', 'short', 'green'] },
+				area: { type: ['string', 'null'], enum: ['fingers', 'elbow', 'shoulder', 'wrist', null] },
 				flags: {
 					type: 'array',
 					items: {
@@ -309,6 +312,7 @@ const TOOLS: ToolDef[] = [
 						},
 					},
 				},
+				asked: { type: 'array', items: { type: 'string' } },
 			},
 		},
 	},
@@ -430,10 +434,21 @@ async function callTool(
 
 	// Today's readiness is ephemeral (like the app): compute and return, no write.
 	if (name === 'daily_readiness') {
+		const keys = [
+			'sleep',
+			'fatigue',
+			'soreness',
+			'body',
+			'time',
+			'severity',
+			'stress',
+			'mood',
+			'skin',
+		];
 		const answers: Answers = {};
-		for (const k of READINESS_KEYS) if (typeof args[k] === 'number') answers[k] = args[k] as number;
-		const fatigue = typeof args.fatigue === 'number' ? args.fatigue : 0;
-		return { verdict: computeVerdictId(answers, fatigue), flags: dailyFlags(answers, fatigue) };
+		for (const k of keys) if (typeof args[k] === 'number') answers[k] = args[k] as number;
+		const workouts = (state.workouts ?? []) as Parameters<typeof acwr>[0];
+		return computeReadiness(answers, acwr(workouts, Date.now())?.status ?? null);
 	}
 
 	// ---- writes ----

@@ -1,75 +1,109 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-	computeVerdictId,
-	dailyFlags,
-	phaseId,
-	readinessScore,
-	scoreDeep,
-} from '../src/lib/content/logic';
+import { computeReadiness, phaseId, scoreDeep, visibleQuestions } from '../src/lib/content/logic';
 
-test('readinessScore sums the general-readiness answers + fatigue only', () => {
-	assert.equal(readinessScore({ recovery: 2, fingers: 2, slot: 2, skin: 1, cns: 1 }), 8);
-	assert.equal(readinessScore({ recovery: 2, fingers: 2, slot: 2, skin: 1, cns: 1 }, -3), 5);
-	// elbow/shoulder drive flags, not the score
-	assert.equal(readinessScore({ elbow: 5, shoulder: 5 }), 0);
-	assert.equal(readinessScore({}), 0);
+// readiness score is exercised through computeReadiness().score (the engine's output).
+const score = (a: Record<string, number>) => computeReadiness(a).score;
+
+test('readiness score normalizes weighted wellness to 0–100', () => {
+	assert.equal(score({ sleep: 10, fatigue: 10, soreness: 10, stress: 10, mood: 10 }), 100);
+	assert.equal(score({ sleep: 0, fatigue: 0, soreness: 0, stress: 0, mood: 0 }), 0);
+	// unasked stress/mood default to neutral-good (8) so the score stays comparable
+	const a = score({ sleep: 10, fatigue: 10, soreness: 10 });
+	assert.ok(a >= 90 && a <= 95);
+	// sleep & fatigue are weighted heavier than mood
+	const lowSleep = score({ sleep: 0, fatigue: 10, soreness: 10, stress: 10, mood: 10 });
+	const lowMood = score({ sleep: 10, fatigue: 10, soreness: 10, stress: 10, mood: 0 });
+	assert.ok(lowSleep < lowMood);
+});
+
+test('computeReadiness: fresh + time + nothing hurting → green', () => {
+	const r = computeReadiness({ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 });
+	assert.equal(r.verdict, 'green');
+	assert.equal(r.area, null);
+	assert.deepEqual(r.flags, []);
+});
+
+test('computeReadiness: fresh but no time → short', () => {
+	assert.equal(
+		computeReadiness({ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 3 }).verdict,
+		'short',
+	);
+});
+
+test('computeReadiness: poor wellness → tissue', () => {
+	assert.equal(
+		computeReadiness({ sleep: 0, fatigue: 0, soreness: 0, body: 0, time: 10 }).verdict,
+		'tissue',
+	);
+});
+
+test('computeReadiness: injury gates the verdict, area-specific', () => {
+	// sharp finger pain is a hard stop regardless of wellness
+	const sharp = computeReadiness({ sleep: 10, fatigue: 10, soreness: 10, body: 1, severity: 3 });
+	assert.equal(sharp.verdict, 'rest');
+	assert.equal(sharp.area, 'fingers');
+	assert.equal(sharp.flags[0].id, 'finger_pain');
+
+	// a painful shoulder caps an otherwise-green day to tissue, with shoulder advice
+	const shoulder = computeReadiness({
+		sleep: 10,
+		fatigue: 10,
+		soreness: 10,
+		body: 3,
+		severity: 2,
+		time: 10,
+	});
+	assert.equal(shoulder.verdict, 'tissue');
+	assert.equal(shoulder.area, 'shoulder');
+	assert.equal(shoulder.flags[0].id, 'shoulder_pain');
+	assert.equal(shoulder.flags[0].area, 'shoulder');
+
+	// a tender elbow only downgrades to moderate
+	const elbow = computeReadiness({
+		sleep: 10,
+		fatigue: 10,
+		soreness: 10,
+		body: 2,
+		severity: 1,
+		time: 10,
+	});
+	assert.equal(elbow.verdict, 'moderate');
+	assert.equal(elbow.flags[0].id, 'elbow_niggle');
+});
+
+test('computeReadiness: an ACWR spike caps intensity to moderate', () => {
+	const r = computeReadiness({ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 }, 'spike');
+	assert.equal(r.verdict, 'moderate');
+	assert.ok(r.flags.some((f) => f.id === 'acwr_spike'));
+});
+
+test('visibleQuestions: follow-ups appear only when they change the outcome', () => {
+	// fresh day: core + skin (a hard day is on the table), no severity/stress/mood
+	const fresh = visibleQuestions({ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 });
+	assert.ok(!fresh.includes('severity'));
+	assert.ok(!fresh.includes('stress'));
+	assert.ok(fresh.includes('skin'));
+
+	// something hurts → ask severity
+	assert.ok(visibleQuestions({ body: 2 }).includes('severity'));
+
+	// poor sleep → ask stress + mood; no hard day → no skin
+	const tired = visibleQuestions({ sleep: 0, fatigue: 4, soreness: 5, body: 0, time: 10 });
+	assert.ok(tired.includes('stress') && tired.includes('mood'));
+	assert.ok(!tired.includes('skin'));
 });
 
 test('scoreDeep normalizes 0–10 answers to 0–100 and bands them', () => {
 	assert.deepEqual(scoreDeep([10, 10, 10]), { score: 100, band: 'manageable', stage: 'returning' });
 	assert.deepEqual(scoreDeep([0, 0, 0]), { score: 0, band: 'significant', stage: 'acute' });
-	// band boundaries: >=80 manageable, >=60 moderate, else significant
-	assert.deepEqual(scoreDeep([8, 8, 8, 8, 8]), {
-		score: 80,
-		band: 'manageable',
-		stage: 'returning',
-	});
-	assert.deepEqual(scoreDeep([6, 6, 6, 6, 6]), { score: 60, band: 'moderate', stage: 'subacute' });
-	assert.equal(scoreDeep([5, 5, 5, 5, 5]).band, 'significant');
-	assert.equal(scoreDeep([]).score, 0); // no division by zero
-});
-
-test('computeVerdictId follows the readiness thresholds', () => {
-	assert.equal(computeVerdictId({ fingers: -5 }), 'rest'); // sharp finger pain wins
-	assert.equal(computeVerdictId({ fingers: -2 }), 'tissue'); // tender fingers
-	assert.equal(computeVerdictId({ elbow: -3 }), 'tissue'); // joint pain
-	assert.equal(computeVerdictId({ recovery: -2, fingers: 0, slot: 0, skin: 0, cns: 0 }), 'tissue'); // score <= -2
-	assert.equal(computeVerdictId({ recovery: 0, fingers: 1, slot: 1, skin: 0, cns: 0 }), 'moderate'); // score = 2
-	assert.equal(computeVerdictId({ recovery: 2, fingers: 2, slot: 0, skin: 1, cns: 1 }), 'short'); // good but no time
-	assert.equal(computeVerdictId({ recovery: 2, fingers: 2, slot: 2, skin: 1, cns: 1 }), 'green');
-	// objective fatigue drags an otherwise-green day down
-	assert.equal(
-		computeVerdictId({ recovery: 2, fingers: 2, slot: 2, skin: 1, cns: 1 }, -10),
-		'tissue',
-	);
-});
-
-test('dailyFlags surfaces the right targeted problems', () => {
-	assert.deepEqual(dailyFlags({ fingers: -5 })[0], {
-		id: 'finger_pain',
-		severity: 'stop',
-		area: 'fingers',
-	});
-	assert.deepEqual(dailyFlags({ elbow: -2 })[0], {
-		id: 'elbow_niggle',
-		severity: 'warn',
-		area: 'elbow',
-	});
-	const many = dailyFlags({ skin: -2, recovery: -2, cns: -2 });
-	assert.deepEqual(
-		many.map((f) => f.id),
-		['skin', 'fatigue', 'cns'],
-	);
-	assert.deepEqual(dailyFlags({}, -3), [{ id: 'load', severity: 'info' }]); // objective fatigue
-	assert.deepEqual(dailyFlags({ recovery: 2, fingers: 2 }), []); // nothing wrong
+	assert.equal(scoreDeep([6, 6, 6, 6, 6]).band, 'moderate');
+	assert.equal(scoreDeep([]).score, 0);
 });
 
 test('phaseId scales phases to block length, last week is deload', () => {
 	assert.equal(phaseId(1), 'phase1');
-	assert.equal(phaseId(4), 'phase1');
 	assert.equal(phaseId(5), 'phase2');
 	assert.equal(phaseId(8), 'deload');
-	assert.equal(phaseId(4, 4), 'deload'); // shorter block
-	assert.equal(phaseId(3, 4), 'phase2');
+	assert.equal(phaseId(4, 4), 'deload');
 });

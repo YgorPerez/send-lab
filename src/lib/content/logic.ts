@@ -1,65 +1,160 @@
 import type { PhaseId, VerdictId } from './types';
 
 export type Answers = Record<string, number>;
-
-// The general-readiness questions that feed the overall score. Body-area
-// questions (elbow/shoulder) drive targeted flags instead, so adding them
-// doesn't skew the verdict thresholds.
-const READINESS = ['recovery', 'fingers', 'slot', 'skin', 'cns'];
-
-/** The overall readiness score: summed general-readiness answers + objective
- *  fatigue. Higher = fresher. Exposed for the readiness trend over time. */
-export function readinessScore(answers: Answers, fatigue = 0): number {
-	return READINESS.reduce((a, k) => a + (answers[k] ?? 0), 0) + fatigue;
-}
-
-/** Day-recommender scoring — locale-independent; returns the verdict id.
- *  `fatigue` is an objective adjustment from recent logged effort (≤ 0 = tired). */
-export function computeVerdictId(answers: Answers, fatigue = 0): VerdictId {
-	const score = readinessScore(answers, fatigue);
-	const sharp = answers.fingers <= -5;
-	const tender = answers.fingers === -2;
-	const jointPain = (answers.elbow ?? 0) <= -3 || (answers.shoulder ?? 0) <= -3;
-
-	if (sharp) return 'rest';
-	if (tender || jointPain || score <= -2) return 'tissue';
-	if (score <= 2) return 'moderate';
-	if (answers.slot <= 0) return 'short';
-	return 'green';
-}
-
-type FlagSeverity = 'stop' | 'warn' | 'info';
 export type FlagArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
+/** Acute:chronic workload ratio band (see stats.ts `acwr`). */
+type AcwrStatus = 'low' | 'optimal' | 'high' | 'spike';
+type FlagSeverity = 'stop' | 'warn' | 'info';
 
-/** A surfaced readiness problem: which advice (`id`), how serious, and which
- *  body area it can route to rehab. Prose lives in the localized `flags` map. */
+/** A surfaced readiness problem: which advice (`id`), how serious, and which body
+ *  area it can route to rehab. Prose lives in the localized `flags` map. */
 export interface DailyFlag {
 	id: string;
 	severity: FlagSeverity;
 	area?: FlagArea;
 }
 
-/** Targeted problems detected from the daily answers + objective fatigue. */
-export function dailyFlags(answers: Answers, fatigue = 0): DailyFlag[] {
-	const out: DailyFlag[] = [];
-	const f = answers.fingers;
-	if (f <= -5) out.push({ id: 'finger_pain', severity: 'stop', area: 'fingers' });
-	else if (f === -2) out.push({ id: 'finger_tender', severity: 'warn', area: 'fingers' });
+// ---------------- adaptive questionnaire ----------------
 
-	const e = answers.elbow ?? 0;
-	if (e <= -3) out.push({ id: 'elbow_pain', severity: 'stop', area: 'elbow' });
-	else if (e <= -1) out.push({ id: 'elbow_niggle', severity: 'warn', area: 'elbow' });
+/** Always asked. Follow-ups are revealed by `visibleQuestions` only when their
+ *  answer could change the recommendation, so no daily question is ever inert. */
+const CORE_QUESTIONS = ['sleep', 'fatigue', 'soreness', 'body', 'time'];
 
-	const s = answers.shoulder ?? 0;
-	if (s <= -3) out.push({ id: 'shoulder_pain', severity: 'stop', area: 'shoulder' });
-	else if (s <= -1) out.push({ id: 'shoulder_niggle', severity: 'warn', area: 'shoulder' });
+// The `body` answer encodes the worst-affected area (0 = nothing bothering you).
+const BODY_AREA: (FlagArea | null)[] = [null, 'fingers', 'elbow', 'shoulder', 'wrist'];
+/** The injured area chosen in the `body` question, or null. */
+function bodyArea(answers: Answers): FlagArea | null {
+	return BODY_AREA[answers.body ?? 0] ?? null;
+}
 
-	if (answers.skin <= -2) out.push({ id: 'skin', severity: 'warn' });
-	if (answers.recovery <= -2) out.push({ id: 'fatigue', severity: 'warn' });
-	if (answers.cns <= -2) out.push({ id: 'cns', severity: 'warn' });
-	if (fatigue <= -2) out.push({ id: 'load', severity: 'info' });
+// The `severity` follow-up: 0 stiff · 1 tender · 2 painful · 3 sharp.
+type Severity = 'stiff' | 'tender' | 'painful' | 'sharp';
+const SEVERITY: Severity[] = ['stiff', 'tender', 'painful', 'sharp'];
+const severityOf = (answers: Answers): Severity | null =>
+	bodyArea(answers) ? (SEVERITY[answers.severity ?? 0] ?? 'stiff') : null;
+
+// ---------------- subjective wellness → 0–100 ----------------
+
+// Each answer is 0–10 (10 = best). Sleep & fatigue carry the most weight — per
+// Saw, Main & Gastin (2016), subjective wellness (led by sleep/fatigue) is the
+// most load-sensitive monitoring tool. stress/mood default to neutral-good when
+// not asked, so the score stays comparable day to day.
+const WELLNESS: { id: string; weight: number; fallback: number }[] = [
+	{ id: 'sleep', weight: 1.2, fallback: 8 },
+	{ id: 'fatigue', weight: 1.2, fallback: 8 },
+	{ id: 'soreness', weight: 1, fallback: 8 },
+	{ id: 'stress', weight: 0.8, fallback: 8 },
+	{ id: 'mood', weight: 0.8, fallback: 8 },
+];
+
+/** Overall readiness, 0–100 (higher = fresher); weighted-normalized like the
+ *  deep-assessment scoring. */
+function readinessScore(answers: Answers): number {
+	let num = 0;
+	let den = 0;
+	for (const it of WELLNESS) {
+		num += it.weight * (answers[it.id] ?? it.fallback);
+		den += it.weight * 10;
+	}
+	return den ? Math.round((num / den) * 100) : 0;
+}
+
+// ---------------- recommendation engine ----------------
+
+type Intensity = 'rest' | 'tissue' | 'moderate' | 'high';
+const INTENSITY_ORDER: Intensity[] = ['rest', 'tissue', 'moderate', 'high'];
+/** The more restrictive of two intensities. */
+const cap = (a: Intensity, b: Intensity): Intensity =>
+	INTENSITY_ORDER[Math.min(INTENSITY_ORDER.indexOf(a), INTENSITY_ORDER.indexOf(b))];
+
+/** Intensity from wellness + the injury gate, before objective load / skin. Used
+ *  both for the final verdict and to decide whether asking about skin matters. */
+function baseIntensity(answers: Answers): Intensity {
+	const score = readinessScore(answers);
+	let i: Intensity = score >= 78 ? 'high' : score >= 60 ? 'moderate' : 'tissue';
+	const area = bodyArea(answers);
+	const sev = severityOf(answers);
+	if (area === 'fingers' && sev === 'sharp') return 'rest';
+	if (sev === 'painful') i = cap(i, 'tissue');
+	else if (sev === 'tender') i = cap(i, 'moderate');
+	return i;
+}
+
+const timeShort = (answers: Answers): boolean => (answers.time ?? 10) <= 3;
+
+/** Which questions to show now — core, plus follow-ups only when they'd change
+ *  the outcome: severity (when something hurts), stress + mood (when sleep/fatigue
+ *  are low), and skin (only when a hard, skin-intensive day is otherwise on). */
+export function visibleQuestions(answers: Answers): string[] {
+	const out = [...CORE_QUESTIONS];
+	if ((answers.body ?? 0) > 0) out.push('severity');
+	if ((answers.sleep ?? 10) <= 3 || (answers.fatigue ?? 10) <= 4) out.push('stress', 'mood');
+	// Skin only matters on a hard day — ask it once the wellness core is in and the
+	// day is still pointing high (don't surface it on the initial defaults).
+	const wellnessIn = answers.sleep != null && answers.fatigue != null && answers.soreness != null;
+	if (wellnessIn && baseIntensity(answers) === 'high') out.push('skin');
 	return out;
 }
+
+export interface Readiness {
+	/** 0–100 wellness readiness. */
+	score: number;
+	/** Session recommendation (maps to content.verdicts). */
+	verdict: VerdictId;
+	/** Injured area, if any (for area-specific advice + rehab routing). */
+	area: FlagArea | null;
+	/** Surfaced problems/notes (render via content.flags + DailyFlags). */
+	flags: DailyFlag[];
+	/** Question ids currently in play (core + revealed follow-ups). */
+	asked: string[];
+}
+
+function areaFlag(area: FlagArea, severe: boolean): DailyFlag {
+	if (area === 'fingers')
+		return severe
+			? { id: 'finger_pain', severity: 'stop', area }
+			: { id: 'finger_tender', severity: 'warn', area };
+	return severe
+		? { id: `${area}_pain`, severity: 'stop', area }
+		: { id: `${area}_niggle`, severity: 'warn', area };
+}
+
+/** Compose the day's recommendation from wellness, the injury gate, objective load
+ *  (ACWR) and the time budget. Every input demonstrably shifts the result. */
+export function computeReadiness(answers: Answers, acwr: AcwrStatus | null = null): Readiness {
+	const score = readinessScore(answers);
+	let intensity = baseIntensity(answers);
+	const area = bodyArea(answers);
+	const sev = severityOf(answers);
+	const flags: DailyFlag[] = [];
+
+	if (area && sev) flags.push(areaFlag(area, sev === 'painful' || sev === 'sharp'));
+
+	if (acwr === 'spike') {
+		intensity = cap(intensity, 'moderate');
+		flags.push({ id: 'acwr_spike', severity: 'warn' });
+	} else if (acwr === 'high') {
+		flags.push({ id: 'acwr_high', severity: 'info' });
+	} else if (acwr === 'low') {
+		flags.push({ id: 'acwr_low', severity: 'info' });
+	}
+
+	const skin = answers.skin;
+	if (skin != null && skin <= 5) {
+		if (skin <= 2) intensity = cap(intensity, 'moderate');
+		flags.push({ id: 'skin', severity: 'warn' });
+	}
+
+	let verdict: VerdictId;
+	if (intensity === 'rest') verdict = 'rest';
+	else if (intensity === 'tissue') verdict = 'tissue';
+	else if (intensity === 'moderate') verdict = 'moderate';
+	else verdict = timeShort(answers) ? 'short' : 'green';
+
+	return { score, verdict, area, flags, asked: visibleQuestions(answers) };
+}
+
+// ---------------- deep injury self-checks ----------------
 
 export type DeepBand = 'manageable' | 'moderate' | 'significant';
 /** Rehab stages, mirrored from rehab.ts (kept local so content has no app import). */

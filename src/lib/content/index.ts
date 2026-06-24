@@ -41,14 +41,13 @@ export function getContent(): Content {
 
 export {
 	type Answers,
-	computeVerdictId,
+	computeReadiness,
 	type DailyFlag,
 	type DeepBand,
 	type DeepResult,
-	dailyFlags,
 	type FlagArea,
 	phaseId,
-	readinessScore,
 	scoreDeep,
+	visibleQuestions,
 } from './logic';
 export type { Day, MetricId } from './types';
