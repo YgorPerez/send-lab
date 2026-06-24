@@ -7,6 +7,7 @@ import { Button } from '$lib/components/ui/button';
 import { getContent, type MetricId } from '$lib/content';
 import { gradeLabel, isGradeMetric } from '$lib/grades';
 import MetricCard from '$lib/MetricCard.svelte';
+import MetricChart from '$lib/MetricChart.svelte';
 import Modal from '$lib/Modal.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -96,7 +97,20 @@ function removeEntry(index: number) {
 			{/if}
 		</div>
 		{#if history.length}
-			<div class="flex max-h-72 flex-col gap-1 overflow-y-auto pr-1">
+			{@const om = openMetric}
+			{@const isGrade = isGradeMetric(om.id)}
+			{#if history.length > 1}
+				<MetricChart
+					points={history.map((e) => ({
+						v: isGrade ? e.v : showMetric(om.id, e.v),
+						label: e.date,
+					}))}
+					catVar={om.cat}
+					fmt={(v) =>
+						isGrade ? gradeLabel(om.id, v) : `${round(v)}${metricUnit(om.id, om.unit)}`}
+				/>
+			{/if}
+			<div class="mt-2 flex max-h-72 flex-col gap-1 overflow-y-auto pr-1">
 				<!-- Newest first; full log so every entry and its date is visible. -->
 				{#each [...history].reverse() as e, i (`${e.date}-${i}`)}
 					<div class="flex items-center justify-between gap-3 border-b border-line/60 py-1 font-mono text-xs">
