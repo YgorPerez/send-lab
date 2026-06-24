@@ -8,6 +8,8 @@ import type { Program, ProgramDayCfg, ProgramTarget } from './state.svelte';
 
 export type RehabArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
 export type RehabStage = 'acute' | 'subacute' | 'returning';
+export const REHAB_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'];
+export const REHAB_STAGES = ['acute', 'subacute', 'returning'];
 
 // Rehab-friendly base pool (low-load tissue / prehab work).
 const POOL = ['antag', 'density', 'slopdens', 'abra', 'wrist', 'repeaters'];

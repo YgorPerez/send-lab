@@ -2,10 +2,19 @@
 // API token (Authorization: Bearer …) and edits *their* program via tools.
 // Minimal JSON-RPC 2.0 over HTTP (initialize / tools/list / tools/call).
 import { json } from '@sveltejs/kit';
+import { getContent } from '$lib/content';
 import { exerciseParams } from '$lib/content/exercises';
 import { type Answers, computeVerdictId, dailyFlags, scoreDeep } from '$lib/content/logic';
 import type { CustomExercise } from '$lib/content/types';
 import { isValidExerciseId, sanitizeCustomExercise } from '$lib/customExercise';
+import {
+	generateRehabProgram,
+	REHAB_AREAS,
+	REHAB_STAGES,
+	type RehabArea,
+	type RehabStage,
+	rehabExercises,
+} from '$lib/rehab';
 import { userIdFromBearer } from '$lib/server/apiToken';
 import {
 	applyEditDay,
@@ -15,12 +24,6 @@ import {
 	EXERCISE_IDS,
 	WEEKDAYS,
 } from '$lib/server/programOps';
-import {
-	generateRehabProgram,
-	REHAB_AREAS,
-	REHAB_STAGES,
-	rehabExercises,
-} from '$lib/server/rehabOps';
 import { loadUserState, saveUserState } from '$lib/server/restApi';
 import { deepMerge, isPlainObject } from '$lib/server/stateOps';
 import { defaultMm, SIZED_METRICS } from '$lib/strength';
@@ -514,7 +517,7 @@ async function callTool(
 			throw new Error(`stage must be one of ${REHAB_STAGES.join(', ')}`);
 		// Stash the current program so the user can return to it after rehab.
 		const previous = structuredClone(state.program);
-		state.program = generateRehabProgram(area as never, stage as never);
+		state.program = generateRehabProgram(getContent(), area as RehabArea, stage as RehabStage);
 		state.rehab = { area, stage, startedAt: today(), previous };
 		const next = await saveUserState(userId, state);
 		return { ok: true, state: next };
@@ -535,7 +538,7 @@ async function callTool(
 					? state.currentWeek
 					: 1;
 		const dayExercises = (state.dayExercises ?? {}) as Record<string, string[]>;
-		dayExercises[`w${week}-${weekday}`] = rehabExercises(area as never);
+		dayExercises[`w${week}-${weekday}`] = rehabExercises(getContent(), area as RehabArea);
 		state.dayExercises = dayExercises;
 		const next = await saveUserState(userId, state);
 		return { ok: true, state: next };
