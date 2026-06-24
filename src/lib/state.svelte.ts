@@ -75,8 +75,11 @@ export interface ReadinessEntry {
 	at: number;
 	/** The recommended session type (VerdictId). */
 	verdict: string;
-	/** Overall readiness score (higher = fresher). */
+	/** Overall readiness score 0–100 (higher = fresher). */
 	score: number;
+	/** Post-session outcome, set after training: 0 bailed · 1 flat · 2 as-expected
+	 *  · 3 strong. Feeds the personal calibration of future scores. */
+	outcome?: number;
 }
 
 export type Goal = 'boulder' | 'sport' | 'all';

@@ -28,7 +28,7 @@ import {
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, type ReadinessEntry, today } from '$lib/state.svelte';
-import { acwr, completedSessions, sessionsLast7, trainStreak } from '$lib/stats';
+import { acwr, completedSessions, readinessInsights, sessionsLast7, trainStreak } from '$lib/stats';
 import { STUDIES } from '$lib/studies';
 import TrendChart from '$lib/TrendChart.svelte';
 import { toMetricCanonical } from '$lib/units';
@@ -84,13 +84,31 @@ const needsReassess = $derived(
 let answers = $state<Answers>({});
 // Objective load: acute:chronic workload ratio from logged RPE (null < ~3 weeks).
 const acwrStatus = $derived(acwr(appState.workouts, Date.now())?.status ?? null);
+// Personalization from logged history: baseline, trend and outcome calibration.
+const insights = $derived(readinessInsights(appState.readinessLog));
 // Adaptive: show the core, reveal follow-ups only when they'd change the result.
 const visible = $derived(visibleQuestions(answers));
 const visibleQuiz = $derived(content.quiz.filter((q) => visible.includes(q.id)));
 const complete = $derived(visible.every((id) => answers[id] != null));
-const readiness = $derived(complete ? computeReadiness(answers, acwrStatus) : null);
+const readiness = $derived(complete ? computeReadiness(answers, acwrStatus, insights) : null);
 const verdict = $derived(readiness ? content.verdicts[readiness.verdict] : null);
 const flags = $derived(readiness?.flags ?? []);
+
+// Today's score vs the user's personal norm.
+const baselineLabel = $derived.by(() => {
+	if (!readiness || insights.baseline == null) return null;
+	const d = readiness.score - insights.baseline;
+	return d <= -10 ? m.rd_vs_below() : d >= 10 ? m.rd_vs_above() : m.rd_vs_usual();
+});
+
+// Post-session outcome (set after training) feeds the calibration loop.
+const todayEntry = $derived(appState.readinessLog.find((e) => e.date === today()));
+function setOutcome(v: number) {
+	const e = appState.readinessLog.find((x) => x.date === today());
+	if (!e) return;
+	e.outcome = v;
+	toast.success(m.rd_outcome_saved());
+}
 
 const studyUrl = (id?: string) => (id ? STUDIES.find((s) => s.id === id)?.url : undefined);
 
@@ -323,6 +341,9 @@ function logVerdict() {
 					<div class="font-mono text-[9px] tracking-wider text-ink-faint uppercase">
 						{m.rd_score()}
 					</div>
+					{#if baselineLabel}
+						<div class="mt-0.5 font-mono text-[9px] text-ink-faint">{baselineLabel}</div>
+					{/if}
 				</div>
 			</div>
 			<div class="p-5 text-[14.5px] text-ink-dim">
@@ -370,6 +391,28 @@ function logVerdict() {
 					<Button variant="outline" onclick={recheck}>{m.td_recheck()}</Button>
 					<Button href="/week" variant="ghost">{m.btn_view_protocol()}</Button>
 				</div>
+
+				{#if todayEntry && todayEntry.outcome == null}
+					<div class="mt-4 border-t border-line pt-3.5">
+						<div class="mb-2 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+							{m.rd_outcome_q()}
+						</div>
+						<div class="flex flex-wrap gap-2">
+							{#each [{ v: 3, l: m.rd_outcome_strong() }, { v: 2, l: m.rd_outcome_ok() }, { v: 1, l: m.rd_outcome_flat() }, { v: 0, l: m.rd_outcome_bailed() }] as o (o.v)}
+								<Button
+									variant="outline"
+									size="sm"
+									class="border-line text-xs"
+									onclick={() => setOutcome(o.v)}
+								>
+									{o.l}
+								</Button>
+							{/each}
+						</div>
+					</div>
+				{:else if todayEntry?.outcome != null}
+					<p class="mt-3 font-mono text-[11px] text-teal">{m.rd_outcome_saved()}</p>
+				{/if}
 			</div>
 		</Card>
 	{/if}

@@ -828,6 +828,16 @@ const content: LocaleContent = {
 			text: 'A carga recente está bem abaixo da sua média. Se estiver saudável, dá pra <b>retomar aos poucos</b> — pequenos aumentos semanais batem um pico repentino.',
 			focus: ['retomar', 'gradual'],
 		},
+		readiness_declining: {
+			title: 'Prontidão caindo',
+			text: 'Sua prontidão vem caindo nos últimos dias — sinal de <b>fadiga acumulada</b>. Segure hoje no moderado ou mais leve e encaixe um dia de recuperação em breve; insistir numa queda é como overreaching vira overtraining.',
+			focus: ['pegar leve', 'recuperar', 'sono'],
+		},
+		below_baseline: {
+			title: 'Abaixo do seu normal',
+			text: 'A prontidão de hoje está bem abaixo da sua média pessoal. Trate como sinal real — priorize <b>qualidade sobre carga</b> e confira sono, comida e estresse.',
+			focus: ['qualidade', 'olho na fadiga'],
+		},
 	},
 	deep: {
 		fingers: {

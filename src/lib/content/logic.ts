@@ -67,17 +67,22 @@ const INTENSITY_ORDER: Intensity[] = ['rest', 'tissue', 'moderate', 'high'];
 const cap = (a: Intensity, b: Intensity): Intensity =>
 	INTENSITY_ORDER[Math.min(INTENSITY_ORDER.indexOf(a), INTENSITY_ORDER.indexOf(b))];
 
-/** Intensity from wellness + the injury gate, before objective load / skin. Used
- *  both for the final verdict and to decide whether asking about skin matters. */
-function baseIntensity(answers: Answers): Intensity {
-	const score = readinessScore(answers);
-	let i: Intensity = score >= 78 ? 'high' : score >= 60 ? 'moderate' : 'tissue';
-	const area = bodyArea(answers);
+const intensityFromScore = (score: number): Intensity =>
+	score >= 78 ? 'high' : score >= 60 ? 'moderate' : 'tissue';
+
+/** Apply the area-specific injury gate to an intensity. */
+function injuryCap(answers: Answers, i: Intensity): Intensity {
 	const sev = severityOf(answers);
-	if (area === 'fingers' && sev === 'sharp') return 'rest';
-	if (sev === 'painful') i = cap(i, 'tissue');
-	else if (sev === 'tender') i = cap(i, 'moderate');
+	if (bodyArea(answers) === 'fingers' && sev === 'sharp') return 'rest';
+	if (sev === 'painful') return cap(i, 'tissue');
+	if (sev === 'tender') return cap(i, 'moderate');
 	return i;
+}
+
+/** Intensity from wellness + the injury gate (raw score, no personalization). Used
+ *  to decide whether asking about skin matters. */
+function baseIntensity(answers: Answers): Intensity {
+	return injuryCap(answers, intensityFromScore(readinessScore(answers)));
 }
 
 const timeShort = (answers: Answers): boolean => (answers.time ?? 10) <= 3;
@@ -119,11 +124,27 @@ function areaFlag(area: FlagArea, severe: boolean): DailyFlag {
 		: { id: `${area}_niggle`, severity: 'warn', area };
 }
 
+/** Personalization derived from the logged history (see stats.ts `readinessInsights`). */
+export interface ReadinessContext {
+	/** Score offset learned from how sessions actually went. */
+	calibration?: number;
+	/** Recent readiness trend. */
+	trend?: 'up' | 'down' | 'flat' | null;
+	/** Personal rolling-mean score, to flag a meaningful drop. */
+	baseline?: number | null;
+}
+
 /** Compose the day's recommendation from wellness, the injury gate, objective load
- *  (ACWR) and the time budget. Every input demonstrably shifts the result. */
-export function computeReadiness(answers: Answers, acwr: AcwrStatus | null = null): Readiness {
-	const score = readinessScore(answers);
-	let intensity = baseIntensity(answers);
+ *  (ACWR), the time budget, and the user's own history (calibration + trend +
+ *  baseline). Every input demonstrably shifts the result. */
+export function computeReadiness(
+	answers: Answers,
+	acwr: AcwrStatus | null = null,
+	hist: ReadinessContext = {},
+): Readiness {
+	// Personal calibration nudges the raw wellness score toward how the user trains.
+	const score = Math.max(0, Math.min(100, readinessScore(answers) + (hist.calibration ?? 0)));
+	let intensity = injuryCap(answers, intensityFromScore(score));
 	const area = bodyArea(answers);
 	const sev = severityOf(answers);
 	const flags: DailyFlag[] = [];
@@ -143,6 +164,16 @@ export function computeReadiness(answers: Answers, acwr: AcwrStatus | null = nul
 	if (skin != null && skin <= 5) {
 		if (skin <= 2) intensity = cap(intensity, 'moderate');
 		flags.push({ id: 'skin', severity: 'warn' });
+	}
+
+	// A multi-day downward trend signals accumulating fatigue — back off, don't push.
+	if (hist.trend === 'down') {
+		intensity = cap(intensity, 'moderate');
+		flags.push({ id: 'readiness_declining', severity: 'warn' });
+	}
+	// A meaningful drop below the personal baseline is worth surfacing.
+	if (hist.baseline != null && score <= hist.baseline - 12) {
+		flags.push({ id: 'below_baseline', severity: 'info' });
 	}
 
 	let verdict: VerdictId;

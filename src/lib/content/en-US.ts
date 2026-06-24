@@ -816,6 +816,16 @@ const content: LocaleContent = {
 			text: 'Recent load is well below your norm. If you feel healthy, it is safe to <b>build back up gradually</b> — small weekly increases beat a sudden spike.',
 			focus: ['build back', 'gradual'],
 		},
+		readiness_declining: {
+			title: 'Readiness trending down',
+			text: 'Your readiness has slid over the last few days — a sign of <b>accumulating fatigue</b>. Hold today to moderate or easier and bank a proper recovery day soon; pushing through a downward trend is how overreaching becomes overtraining.',
+			focus: ['back off', 'recover', 'sleep'],
+		},
+		below_baseline: {
+			title: 'Below your usual',
+			text: "Today's readiness is well under your personal norm. Treat it as a real signal — bias toward <b>quality over load</b> and check sleep, food and stress.",
+			focus: ['quality', 'watch fatigue'],
+		},
 	},
 	deep: {
 		fingers: {

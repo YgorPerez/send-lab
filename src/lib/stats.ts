@@ -4,7 +4,7 @@
 // from the logged sets. Workouts are stored newest-first.
 import { getLocale } from '$lib/paraglide/runtime';
 import { exerciseParams } from './content/exercises';
-import type { WorkoutEntry } from './state.svelte';
+import type { ReadinessEntry, WorkoutEntry } from './state.svelte';
 
 export type NumField = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe';
 
@@ -227,4 +227,42 @@ export function rpeHistogram(workouts: WorkoutEntry[]): Point[] {
 	const out: Point[] = [];
 	for (let r = 1; r <= 10; r++) if (counts[r] > 0) out.push({ label: String(r), value: counts[r] });
 	return out;
+}
+
+export interface ReadinessInsights {
+	/** Personal rolling-mean readiness score, or null until enough history. */
+	baseline: number | null;
+	/** Direction of the recent readiness trend, or null until enough history. */
+	trend: 'up' | 'down' | 'flat' | null;
+	/** A clamped score offset learned from how sessions actually went (0 if too few). */
+	calibration: number;
+}
+
+// Post-session outcome (0 bailed · 1 flat · 2 as-expected · 3 strong) → a rough
+// 0–100 equivalent, compared against the predicted readiness to learn a bias.
+const OUTCOME_SCORE = [20, 45, 70, 95];
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/** Personalize readiness from the logged history: a rolling baseline, the recent
+ *  trend, and a calibration offset that leans future scores toward how the user
+ *  actually trains. Pure; needs a handful of entries before it does anything. */
+export function readinessInsights(log: ReadinessEntry[]): ReadinessInsights {
+	const scores = log.map((e) => e.score);
+	const recent = scores.slice(-14);
+	const baseline = recent.length >= 5 ? Math.round(mean(recent)) : null;
+
+	let trend: ReadinessInsights['trend'] = null;
+	if (scores.length >= 5) {
+		const prior = scores.slice(-8, -3);
+		const d = mean(scores.slice(-3)) - mean(prior);
+		trend = d <= -8 ? 'down' : d >= 8 ? 'up' : 'flat';
+	}
+
+	let calibration = 0;
+	const withOutcome = log.filter((e) => e.outcome != null).slice(-10);
+	if (withOutcome.length >= 4) {
+		const resid = withOutcome.map((e) => (OUTCOME_SCORE[e.outcome as number] ?? 50) - e.score);
+		calibration = Math.max(-12, Math.min(12, Math.round(mean(resid))));
+	}
+	return { baseline, trend, calibration };
 }

@@ -26,7 +26,7 @@ import {
 	WEEKDAYS,
 } from '$lib/server/programOps';
 import { loadUserState, saveUserState } from '$lib/server/restApi';
-import { acwr } from '$lib/stats';
+import { acwr, readinessInsights } from '$lib/stats';
 import { defaultMm, SIZED_METRICS } from '$lib/strength';
 import type { RequestHandler } from './$types';
 
@@ -448,7 +448,12 @@ async function callTool(
 		const answers: Answers = {};
 		for (const k of keys) if (typeof args[k] === 'number') answers[k] = args[k] as number;
 		const workouts = (state.workouts ?? []) as Parameters<typeof acwr>[0];
-		return computeReadiness(answers, acwr(workouts, Date.now())?.status ?? null);
+		const log = (state.readinessLog ?? []) as Parameters<typeof readinessInsights>[0];
+		return computeReadiness(
+			answers,
+			acwr(workouts, Date.now())?.status ?? null,
+			readinessInsights(log),
+		);
 	}
 
 	// ---- writes ----

@@ -78,6 +78,22 @@ test('computeReadiness: an ACWR spike caps intensity to moderate', () => {
 	assert.ok(r.flags.some((f) => f.id === 'acwr_spike'));
 });
 
+test('computeReadiness: personal history (calibration / trend / baseline) adjusts it', () => {
+	const fresh = { sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 };
+	// a declining trend caps a green day to moderate and flags it
+	const declining = computeReadiness(fresh, null, { trend: 'down' });
+	assert.equal(declining.verdict, 'moderate');
+	assert.ok(declining.flags.some((f) => f.id === 'readiness_declining'));
+	// calibration shifts the score directly
+	const base = computeReadiness(fresh).score;
+	assert.equal(computeReadiness(fresh, null, { calibration: -12 }).score, base - 12);
+	// a meaningful drop below the personal baseline is surfaced
+	const low = computeReadiness({ sleep: 3, fatigue: 3, soreness: 3, body: 0, time: 10 }, null, {
+		baseline: 90,
+	});
+	assert.ok(low.flags.some((f) => f.id === 'below_baseline'));
+});
+
 test('visibleQuestions: follow-ups appear only when they change the outcome', () => {
 	// fresh day: core + skin (a hard day is on the table), no severity/stress/mood
 	const fresh = visibleQuestions({ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 });
