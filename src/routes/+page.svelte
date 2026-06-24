@@ -18,7 +18,6 @@ import {
 } from '$lib/content';
 import DailyFlags from '$lib/DailyFlags.svelte';
 import DeepAssessment from '$lib/DeepAssessment.svelte';
-import MetricChart from '$lib/MetricChart.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -32,6 +31,7 @@ import {
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, type ReadinessEntry, round, today } from '$lib/state.svelte';
 import { completedSessions, recentRpe, sessionsLast7, trainStreak } from '$lib/stats';
+import TrendChart from '$lib/TrendChart.svelte';
 import { toMetricCanonical } from '$lib/units';
 import { cn } from '$lib/utils';
 
@@ -332,9 +332,9 @@ function logVerdict() {
 			<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 				{m.readiness_trend()}
 			</span>
-			<MetricChart
-				points={appState.readinessLog.slice(-14).map((e) => ({ v: e.score, label: e.date }))}
-				catVar="--teal"
+			<TrendChart
+				points={appState.readinessLog.slice(-14).map((e) => ({ value: e.score, label: e.date }))}
+				color="var(--teal)"
 				fmt={(v) => String(Math.round(v))}
 			/>
 		</Card>

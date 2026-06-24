@@ -7,12 +7,12 @@ import { Button } from '$lib/components/ui/button';
 import { getContent, type MetricId } from '$lib/content';
 import { gradeLabel, isGradeMetric } from '$lib/grades';
 import MetricCard from '$lib/MetricCard.svelte';
-import MetricChart from '$lib/MetricChart.svelte';
 import Modal from '$lib/Modal.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, round } from '$lib/state.svelte';
+import TrendChart from '$lib/TrendChart.svelte';
 import { metricUnit, showKg, showMetric, showMm } from '$lib/units';
 
 const content = getContent();
@@ -100,12 +100,12 @@ function removeEntry(index: number) {
 			{@const om = openMetric}
 			{@const isGrade = isGradeMetric(om.id)}
 			{#if history.length > 1}
-				<MetricChart
+				<TrendChart
 					points={history.map((e) => ({
-						v: isGrade ? e.v : showMetric(om.id, e.v),
+						value: isGrade ? e.v : showMetric(om.id, e.v),
 						label: e.date,
 					}))}
-					catVar={om.cat}
+					color="var({om.cat})"
 					fmt={(v) =>
 						isGrade ? gradeLabel(om.id, v) : `${round(v)}${metricUnit(om.id, om.unit)}`}
 				/>

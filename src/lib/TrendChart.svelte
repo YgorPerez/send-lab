@@ -6,9 +6,16 @@ interface Props {
 	color?: string;
 	/** Highlight the maximum point as a PR. */
 	pr?: boolean;
+	/** Format y-axis labels + point tooltips (e.g. grade labels, units). */
+	fmt?: (v: number) => string;
 }
 
-let { points, color = 'var(--flag)', pr = false }: Props = $props();
+let {
+	points,
+	color = 'var(--flag)',
+	pr = false,
+	fmt = (v: number) => String(Math.round(v * 10) / 10),
+}: Props = $props();
 
 const W = 320;
 const H = 140;
@@ -25,7 +32,12 @@ const view = $derived.by(() => {
 	const n = points.length;
 	const px = (i: number) => (n === 1 ? (L + (W - R)) / 2 : L + (i / (n - 1)) * (W - R - L));
 	const py = (v: number) => B - ((v - mn) / rng) * (B - T);
-	const coords = points.map((p, i) => ({ x: px(i), y: py(p.value), value: p.value }));
+	const coords = points.map((p, i) => ({
+		x: px(i),
+		y: py(p.value),
+		value: p.value,
+		label: p.label,
+	}));
 	const maxI = vals.indexOf(mx);
 	return { coords, mn, mx, maxI };
 });
@@ -33,7 +45,7 @@ const view = $derived.by(() => {
 const path = $derived(
 	view.coords.map((c, i) => `${i ? 'L' : 'M'}${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' '),
 );
-const round = (n: number) => Math.round(n * 10) / 10;
+// (y-axis formatting handled by `fmt`)
 </script>
 
 <svg class="h-auto w-full" viewBox="0 0 {W} {H}" role="img" aria-label="trend">
@@ -41,10 +53,10 @@ const round = (n: number) => Math.round(n * 10) / 10;
 	<line x1={L} y1={T} x2={W - R} y2={T} stroke="var(--line)" stroke-dasharray="2 4" />
 	<line x1={L} y1={B} x2={W - R} y2={B} stroke="var(--line)" />
 	<text x="2" y={T + 4} font-size="9" fill="var(--ink-faint)" font-family="monospace">
-		{round(view.mx)}
+		{fmt(view.mx)}
 	</text>
 	<text x="2" y={B} font-size="9" fill="var(--ink-faint)" font-family="monospace">
-		{round(view.mn)}
+		{fmt(view.mn)}
 	</text>
 
 	{#if points.length > 1}
@@ -59,7 +71,9 @@ const round = (n: number) => Math.round(n * 10) / 10;
 	{/if}
 	{#each view.coords as c, i (i)}
 		{@const isPr = pr && i === view.maxI}
-		<circle cx={c.x.toFixed(1)} cy={c.y.toFixed(1)} r={isPr ? 5 : 3} fill={color} />
+		<circle cx={c.x.toFixed(1)} cy={c.y.toFixed(1)} r={isPr ? 5 : 3} fill={color}>
+			<title>{c.label}: {fmt(c.value)}</title>
+		</circle>
 		{#if isPr}
 			<circle cx={c.x.toFixed(1)} cy={c.y.toFixed(1)} r="8" fill="none" stroke={color} />
 		{/if}
