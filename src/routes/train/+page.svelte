@@ -14,9 +14,11 @@ import {
 	addSetTo,
 	clearExercise,
 	defaultSet,
+	getDuration,
 	getNote,
 	removeSetFrom,
 	repeatLastInto,
+	setDuration,
 	setNote,
 	setsFor,
 } from '$lib/dayLog';
@@ -322,6 +324,19 @@ function removeItem(exId: string) {
 				placeholder={m.train_note()}
 				class="bg-panel-2 text-sm"
 			/>
+			<div class="flex items-center gap-2">
+				<Input
+					type="number"
+					inputmode="numeric"
+					min="1"
+					value={getDuration(dayLabel)}
+					oninput={(e) =>
+						setDuration(dayLabel, e.currentTarget.value === '' ? null : e.currentTarget.valueAsNumber)}
+					placeholder={m.train_duration()}
+					class="w-28 bg-panel-2 text-sm"
+				/>
+				<span class="text-xs text-ink-faint">{m.train_duration_hint()}</span>
+			</div>
 			<p class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 				{m.train_autosave()}
 			</p>

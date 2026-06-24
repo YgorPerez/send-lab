@@ -70,4 +70,28 @@ export const STUDIES: Study[] = [
 		year: '2016',
 		url: 'https://pubmed.ncbi.nlm.nih.gov/26511006/',
 	},
+	{
+		id: 'ewma',
+		authors: 'Williams, West, Kemp, Stokes et al. — Br J Sports Med',
+		year: '2017',
+		url: 'https://pubmed.ncbi.nlm.nih.gov/27789430/',
+	},
+	{
+		id: 'foster',
+		authors: 'Foster — Med Sci Sports Exerc',
+		year: '1998',
+		url: 'https://pubmed.ncbi.nlm.nih.gov/9662690/',
+	},
+	{
+		id: 'illness',
+		authors: 'Schwellnus et al. — IOC consensus, Br J Sports Med',
+		year: '2016',
+		url: 'https://pubmed.ncbi.nlm.nih.gov/27535991/',
+	},
+	{
+		id: 'probe',
+		authors: 'Claudino et al. — J Sci Med Sport',
+		year: '2017',
+		url: 'https://pubmed.ncbi.nlm.nih.gov/27765661/',
+	},
 ];

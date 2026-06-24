@@ -659,6 +659,17 @@ const content: LocaleContent = {
 			],
 		},
 		{
+			id: 'illness',
+			q: 'Feeling sick at all?',
+			why: 'The "neck check": symptoms below the neck (fever, chest, body aches) mean no training — loading a system already fighting illness backfires and, with fever, even raises cardiac risk. Above-the-neck sniffles → keep it easy.',
+			study: 'illness',
+			a: [
+				{ t: 'Feel fine', v: 0 },
+				{ t: 'Mild — above the neck', v: 1 },
+				{ t: 'Unwell — fever / body aches', v: 2 },
+			],
+		},
+		{
 			id: 'time',
 			q: 'Time for today?',
 			why: 'Time sets the format — a short slot can still be high-value (recruitment), but rules out high-volume work.',
@@ -720,11 +731,11 @@ const content: LocaleContent = {
 	],
 	verdicts: {
 		rest: {
-			title: 'Stop — rest the fingers',
-			tag: 'Pain protocol',
+			title: 'Stop — full rest today',
+			tag: 'Hard stop',
 			color: 'var(--flag)',
-			text: 'Sharp finger pain is a hard stop. <b>No loading today.</b> Pulley injuries are ~60% of finger injuries and driven by pushing through exactly this. If it persists past 3–5 days, get it assessed. Today: gentle mobility, sleep, food.',
-			focus: ['REST', 'assess', 'no hangboard'],
+			text: "A hard stop today — <b>no loading.</b> If it's sharp finger pain, that's often an A2/A4 pulley (~60% of finger injuries) and pushing through is exactly what turns a niggle into months off — get it assessed if it lasts past 3–5 days. If you're unwell with fever or body aches, training a system already fighting illness sets you back further (and with fever, stresses the heart). Today: sleep, food, gentle mobility; reassess tomorrow.",
+			focus: ['REST', 'recover', 'reassess'],
 		},
 		tissue: {
 			title: 'Tissue / recovery day',
@@ -825,6 +836,36 @@ const content: LocaleContent = {
 			title: 'Below your usual',
 			text: "Today's readiness is well under your personal norm. Treat it as a real signal — bias toward <b>quality over load</b> and check sleep, food and stress.",
 			focus: ['quality', 'watch fatigue'],
+		},
+		monotony_high: {
+			title: 'Training too monotonous',
+			text: 'Your last 7 days are <b>samey</b> — similar load every day with no real easy days (high <b>training monotony</b>, Foster). It is the day-to-day variation that lets you adapt; without it, strain accumulates. Make today clearly easier (or rest) so the week has a hard/easy contrast.',
+			focus: ['vary load', 'easy day', 'recover'],
+		},
+		illness_systemic: {
+			title: 'Unwell — do not train',
+			text: 'Fever or below-the-neck symptoms (chest, body aches, gut) are a <b>hard stop</b>. Training while your body is fighting an infection deepens the hole, and exercising with a fever carries a real risk of <b>myocarditis</b>. Rest, hydrate, sleep. Wait until you are symptom-free and fever-free for 24h, then ease back in.',
+			focus: ['no training', 'hydrate', 'sleep'],
+		},
+		illness_mild: {
+			title: 'Mild cold — keep it easy',
+			text: 'Above-the-neck only (runny nose, light sore throat, no fever) is generally OK to train <b>easy</b> — keep intensity moderate, cut the volume, and stop if symptoms drop below the neck or a fever appears. Skip max efforts; favour movement quality.',
+			focus: ['easy only', 'cut volume', 'monitor'],
+		},
+		probe_low: {
+			title: 'Strength down — fatigued',
+			text: "Your max pull is well below your baseline — a sign of real <b>neuromuscular fatigue</b>, whatever the scales say in your head. Treat today as recovery: <b>tissue work only</b>, no max or near-max loading. Force usually rebounds within a day or two once you've recovered.",
+			focus: ['recovery', 'no max', 'tissue'],
+		},
+		probe_fatigued: {
+			title: 'Strength slightly down',
+			text: 'Your max pull is a touch under baseline — some accumulated fatigue. Hold intensity at <b>moderate</b>: train quality, skip true limit work, and let the nervous system catch up.',
+			focus: ['moderate', 'quality', 'no limit'],
+		},
+		probe_fresh: {
+			title: 'Strength on form',
+			text: 'Your max pull is at or above baseline — the nervous system is <b>primed</b>. If nothing else is holding you back, this is a green light for hard, high-quality efforts.',
+			focus: ['primed', 'go hard'],
 		},
 	},
 	deep: {

@@ -57,6 +57,26 @@ const PROSE: Record<string, { title: () => string; summary: () => string; applie
 			summary: m.study_acwr_summary,
 			applies: m.study_acwr_applies,
 		},
+		ewma: {
+			title: m.study_ewma_title,
+			summary: m.study_ewma_summary,
+			applies: m.study_ewma_applies,
+		},
+		foster: {
+			title: m.study_foster_title,
+			summary: m.study_foster_summary,
+			applies: m.study_foster_applies,
+		},
+		illness: {
+			title: m.study_illness_title,
+			summary: m.study_illness_summary,
+			applies: m.study_illness_applies,
+		},
+		probe: {
+			title: m.study_probe_title,
+			summary: m.study_probe_summary,
+			applies: m.study_probe_applies,
+		},
 	};
 </script>
 

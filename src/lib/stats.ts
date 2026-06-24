@@ -4,7 +4,7 @@
 // from the logged sets. Workouts are stored newest-first.
 import { getLocale } from '$lib/paraglide/runtime';
 import { exerciseParams } from './content/exercises';
-import type { ReadinessEntry, WorkoutEntry } from './state.svelte';
+import type { ProbeEntry, ReadinessEntry, WorkoutEntry } from './state.svelte';
 
 export type NumField = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe';
 
@@ -131,48 +131,132 @@ export function weeklyStats(workouts: WorkoutEntry[]): LoadStat[] {
 export interface Acwr {
 	/** acute / chronic, rounded to 2 dp. */
 	ratio: number;
-	/** Last-7-day internal load. */
+	/** EWMA-smoothed acute (≈7-day) daily load. */
 	acute: number;
-	/** Mean weekly load over the last 28 days. */
+	/** EWMA-smoothed chronic (≈28-day) daily load. */
 	chronic: number;
 	status: 'low' | 'optimal' | 'high' | 'spike';
 }
 
-/** Internal-load surrogate for a session: the sum of its logged set-RPEs (RPE is
- *  what we record per set; this stands in for session-RPE × volume). */
+const DAY = 86_400_000;
+/** Midnight (UTC) of the day an ISO date or epoch-ms falls on. */
+const dayStart = (t: number) => Math.floor(t / DAY) * DAY;
+const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/** Session internal load — sRPE (Foster): session-RPE × session minutes. Session-
+ *  RPE is the mean of the logged set RPEs; duration is the logged `durationMin`,
+ *  falling back to the session's work + rest time, then to ~2.5 min/set when
+ *  nothing timed was recorded. Returns 0 for a session with no sets. */
 function sessionLoad(w: WorkoutEntry): number {
-	let load = 0;
-	for (const ex of w.exercises) for (const s of ex.sets) if (s.rpe != null) load += s.rpe;
-	return load;
+	let rpeSum = 0;
+	let rpeN = 0;
+	let workSec = 0;
+	let setCount = 0;
+	for (const ex of w.exercises)
+		for (const s of ex.sets) {
+			setCount += 1;
+			if (s.rpe != null) {
+				rpeSum += s.rpe;
+				rpeN += 1;
+			}
+			workSec += (s.time ?? 0) * (s.reps ?? 1) + (s.rest ?? 0);
+		}
+	if (setCount === 0) return 0;
+	const sessionRpe = rpeN ? rpeSum / rpeN : 5; // no RPE logged → assume moderate
+	const durationMin =
+		w.durationMin && w.durationMin > 0
+			? w.durationMin
+			: workSec > 0
+				? workSec / 60
+				: setCount * 2.5;
+	return sessionRpe * durationMin;
 }
 
-/** Acute:chronic workload ratio (Gabbett): acute = last-7-day load, chronic =
- *  mean weekly load over the last 28 days. Needs ~3 weeks of history to be
+/** sRPE internal load per calendar day (UTC midnight epoch → load), summed across
+ *  any sessions that day; plus the earliest logged day. Future-dated entries are
+ *  ignored. */
+function dailyLoads(
+	workouts: WorkoutEntry[],
+	nowMs: number,
+): { byDay: Map<number, number>; earliest: number } {
+	const byDay = new Map<number, number>();
+	let earliest = Number.POSITIVE_INFINITY;
+	const today = dayStart(nowMs);
+	for (const w of workouts) {
+		const t = Date.parse(`${w.at}T00:00:00Z`);
+		if (Number.isNaN(t)) continue;
+		const d = dayStart(t);
+		if (d > today) continue;
+		earliest = Math.min(earliest, d);
+		byDay.set(d, (byDay.get(d) ?? 0) + sessionLoad(w));
+	}
+	return { byDay, earliest };
+}
+
+// EWMA smoothing constant for an N-day window (Williams et al. 2017): λ = 2/(N+1).
+const ewmaLambda = (n: number) => 2 / (n + 1);
+
+/** Acute:chronic workload ratio via exponentially-weighted moving averages
+ *  (Williams et al. 2017) over daily sRPE load — better-validated and less prone
+ *  to the rolling-average "washout" than the original Gabbett coupled averages.
+ *  Acute window ≈7 days, chronic ≈28 days. Needs ~3 weeks of history to be
  *  meaningful — returns null otherwise (the UI shows "building baseline").
  *  `nowMs` is passed in so the function stays pure/testable.
  *  Bands: <0.8 under-loaded, 0.8–1.3 optimal, 1.3–1.5 high, >1.5 spike. */
 export function acwr(workouts: WorkoutEntry[], nowMs: number): Acwr | null {
-	const DAY = 86_400_000;
-	let acute = 0;
-	let last28 = 0;
-	let earliest = Number.POSITIVE_INFINITY;
-	for (const w of workouts) {
-		const t = Date.parse(`${w.at}T00:00:00Z`);
-		if (Number.isNaN(t)) continue;
-		const ageDays = (nowMs - t) / DAY;
-		if (ageDays < 0) continue;
-		earliest = Math.min(earliest, t);
-		const load = sessionLoad(w);
-		if (ageDays < 7) acute += load;
-		if (ageDays < 28) last28 += load;
-	}
+	const { byDay, earliest } = dailyLoads(workouts, nowMs);
 	// Without ~3 weeks of history the chronic baseline isn't trustworthy.
 	if (!Number.isFinite(earliest) || (nowMs - earliest) / DAY < 21) return null;
-	const chronic = last28 / 4;
+	const lambdaA = ewmaLambda(7);
+	const lambdaC = ewmaLambda(28);
+	let acute = 0;
+	let chronic = 0;
+	// Walk every calendar day from first log to today; rest days contribute 0 load.
+	for (let d = earliest; d <= dayStart(nowMs); d += DAY) {
+		const load = byDay.get(d) ?? 0;
+		acute = load * lambdaA + acute * (1 - lambdaA);
+		chronic = load * lambdaC + chronic * (1 - lambdaC);
+	}
 	if (chronic <= 0) return null;
 	const ratio = Math.round((acute / chronic) * 100) / 100;
 	const status = ratio > 1.5 ? 'spike' : ratio < 0.8 ? 'low' : ratio <= 1.3 ? 'optimal' : 'high';
-	return { ratio, acute, chronic, status };
+	return { ratio, acute: Math.round(acute), chronic: Math.round(chronic), status };
+}
+
+export interface WeekLoad {
+	/** Total sRPE internal load over the last 7 days. */
+	load: number;
+	/** Training monotony (Foster): mean daily load ÷ its SD. High = samey, no easy
+	 *  days; the variability that protects against overload is missing. */
+	monotony: number;
+	/** Training strain (Foster): weekly load × monotony. */
+	strain: number;
+	/** 'monotonous' once monotony ≥ 2 (Foster's risk threshold), else 'varied'. */
+	status: 'varied' | 'monotonous';
+}
+
+/** Weekly training monotony & strain (Foster 1998) over the last 7 calendar days,
+ *  rest days included as zero load. Same weekly volume done evenly every day
+ *  (high monotony) carries more overload risk than the same volume done in spikes
+ *  with easy days between. Returns null when nothing was trained in the window. */
+export function weekLoad(workouts: WorkoutEntry[], nowMs: number): WeekLoad | null {
+	const { byDay } = dailyLoads(workouts, nowMs);
+	const today = dayStart(nowMs);
+	const days: number[] = [];
+	for (let i = 0; i < 7; i++) days.push(byDay.get(today - i * DAY) ?? 0);
+	const load = days.reduce((a, b) => a + b, 0);
+	if (load <= 0) return null;
+	const m = load / 7;
+	const sd = Math.sqrt(days.reduce((s, d) => s + (d - m) ** 2, 0) / 7);
+	// SD 0 means every day was identical & non-zero — maximally monotonous.
+	const monotony = sd > 0 ? m / sd : 7;
+	const strain = load * monotony;
+	return {
+		load: Math.round(load),
+		monotony: Math.round(monotony * 100) / 100,
+		strain: Math.round(strain),
+		status: monotony >= 2 ? 'monotonous' : 'varied',
+	};
 }
 
 /** A session counts as trained once at least one set is marked done (prefilled
@@ -229,6 +313,33 @@ export function rpeHistogram(workouts: WorkoutEntry[]): Point[] {
 	return out;
 }
 
+export interface ProbeReadiness {
+	/** Personal baseline (mean of recent prior readings), or null until enough history. */
+	baseline: number | null;
+	/** Today's shortfall vs baseline, % (negative = above baseline), or null. */
+	deficitPct: number | null;
+	/** Neuromuscular state read from the probe, or null when it can't be judged yet. */
+	status: 'fresh' | 'normal' | 'fatigued' | 'low' | null;
+}
+
+/** Read a climbing-specific objective probe (a quick max finger pull, kg) against
+ *  the personal baseline — the climbing analogue of the countermovement-jump
+ *  readiness test (Claudino 2017): a meaningful drop in maximal force signals
+ *  neuromuscular fatigue. Baseline = mean of the most recent prior readings (today
+ *  excluded), needing a handful before it judges anything. Pure. */
+export function probeReadiness(log: ProbeEntry[], todayValue: number | null): ProbeReadiness {
+	// Prior readings only — never let today's value anchor its own baseline.
+	const prior = todayValue == null ? log : log.filter((e) => e.value !== todayValue);
+	const recent = prior.slice(-10).map((e) => e.value);
+	const baseline = recent.length >= 3 ? Math.round(mean(recent)) : null;
+	if (baseline == null || todayValue == null || baseline <= 0)
+		return { baseline, deficitPct: null, status: null };
+	const deficitPct = Math.round(((baseline - todayValue) / baseline) * 100);
+	const status: ProbeReadiness['status'] =
+		deficitPct >= 15 ? 'low' : deficitPct >= 6 ? 'fatigued' : deficitPct <= -5 ? 'fresh' : 'normal';
+	return { baseline, deficitPct, status };
+}
+
 export interface ReadinessInsights {
 	/** Personal rolling-mean readiness score, or null until enough history. */
 	baseline: number | null;
@@ -241,7 +352,6 @@ export interface ReadinessInsights {
 // Post-session outcome (0 bailed · 1 flat · 2 as-expected · 3 strong) → a rough
 // 0–100 equivalent, compared against the predicted readiness to learn a bias.
 const OUTCOME_SCORE = [20, 45, 70, 95];
-const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 
 /** Personalize readiness from the logged history: a rolling baseline, the recent
  *  trend, and a calibration offset that leans future scores toward how the user

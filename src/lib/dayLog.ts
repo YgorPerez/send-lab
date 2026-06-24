@@ -81,3 +81,16 @@ export function setNote(day: string, note: string): void {
 	const e = todayEntry(day);
 	if (e) e.note = note;
 }
+
+/** Logged session length in minutes today (the sRPE duration term), or '' if unset. */
+export function getDuration(day: string): number | '' {
+	return todayEntry(day)?.durationMin ?? '';
+}
+
+/** Record (or clear) today's session length in minutes. Creates the entry so the
+ *  duration can be set before any set is logged. */
+export function setDuration(day: string, min: number | null): void {
+	const e = ensureEntry(day);
+	if (min == null || Number.isNaN(min) || min <= 0) e.durationMin = undefined;
+	else e.durationMin = Math.round(min);
+}

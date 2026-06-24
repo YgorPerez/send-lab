@@ -671,6 +671,17 @@ const content: LocaleContent = {
 			],
 		},
 		{
+			id: 'illness',
+			q: 'Sentindo-se doente?',
+			why: 'O "teste do pescoço": sintomas abaixo do pescoço (febre, peito, dores no corpo) significam não treinar — carregar um corpo que já combate uma infecção é contraproducente e, com febre, ainda eleva o risco cardíaco. Coriza acima do pescoço → pegue leve.',
+			study: 'illness',
+			a: [
+				{ t: 'Estou bem', v: 0 },
+				{ t: 'Leve — acima do pescoço', v: 1 },
+				{ t: 'Doente — febre / dores', v: 2 },
+			],
+		},
+		{
 			id: 'time',
 			q: 'Quanto tempo hoje?',
 			why: 'O tempo define o formato — uma janela curta ainda rende muito (recruitment), mas exclui trabalho de alto volume.',
@@ -732,11 +743,11 @@ const content: LocaleContent = {
 	],
 	verdicts: {
 		rest: {
-			title: 'Pare — descanse os dedos',
-			tag: 'Protocolo de dor',
+			title: 'Pare — descanso total hoje',
+			tag: 'Parada obrigatória',
 			color: 'var(--flag)',
-			text: 'Dor aguda no dedo é parada obrigatória. <b>Nada de carga hoje.</b> Lesão de polia é ~60% das lesões de dedo e vem justamente de forçar nessas horas. Se passar de 3–5 dias, procure um profissional. Hoje: mobilidade leve, sono e comida.',
-			focus: ['DESCANSO', 'avaliar', 'sem hangboard'],
+			text: 'Parada obrigatória hoje — <b>nada de carga.</b> Se for dor aguda no dedo, costuma ser polia A2/A4 (~60% das lesões de dedo) e forçar é justamente o que transforma um incômodo em meses parado — avalie com um profissional se passar de 3–5 dias. Se você está doente, com febre ou dores no corpo, treinar um corpo que já combate uma infecção atrasa mais ainda (e, com febre, sobrecarrega o coração). Hoje: sono, comida, mobilidade leve; reavalie amanhã.',
+			focus: ['DESCANSO', 'recuperar', 'reavaliar'],
 		},
 		tissue: {
 			title: 'Dia de tecido / recuperação',
@@ -837,6 +848,36 @@ const content: LocaleContent = {
 			title: 'Abaixo do seu normal',
 			text: 'A prontidão de hoje está bem abaixo da sua média pessoal. Trate como sinal real — priorize <b>qualidade sobre carga</b> e confira sono, comida e estresse.',
 			focus: ['qualidade', 'olho na fadiga'],
+		},
+		monotony_high: {
+			title: 'Treino monótono demais',
+			text: 'Seus últimos 7 dias estão <b>iguais</b> — carga parecida todo dia, sem dias realmente leves (alta <b>monotonia de treino</b>, Foster). É a variação entre os dias que permite adaptar; sem ela, a sobrecarga se acumula. Deixe hoje claramente mais leve (ou descanse) para a semana ter contraste forte/fraco.',
+			focus: ['variar carga', 'dia leve', 'recuperar'],
+		},
+		illness_systemic: {
+			title: 'Doente — não treine',
+			text: 'Febre ou sintomas abaixo do pescoço (peito, dores no corpo, intestino) são <b>parada obrigatória</b>. Treinar enquanto o corpo combate uma infecção aprofunda o buraco, e exercitar-se com febre traz risco real de <b>miocardite</b>. Descanse, hidrate, durma. Espere ficar 24h sem sintomas e sem febre antes de voltar aos poucos.',
+			focus: ['não treinar', 'hidratar', 'dormir'],
+		},
+		illness_mild: {
+			title: 'Resfriado leve — pegue leve',
+			text: 'Só acima do pescoço (coriza, garganta levemente irritada, sem febre) geralmente dá para treinar <b>leve</b> — mantenha a intensidade moderada, corte o volume e pare se os sintomas descerem abaixo do pescoço ou surgir febre. Evite esforços máximos; priorize qualidade de movimento.',
+			focus: ['só leve', 'cortar volume', 'monitorar'],
+		},
+		probe_low: {
+			title: 'Força caiu — fadiga',
+			text: 'Sua puxada máxima está bem abaixo da linha de base — sinal de <b>fadiga neuromuscular</b> real, não importa o que a cabeça diga. Trate hoje como recuperação: <b>só trabalho de tecido</b>, sem carga máxima ou quase máxima. A força costuma voltar em um ou dois dias após recuperar.',
+			focus: ['recuperação', 'sem máximo', 'tecido'],
+		},
+		probe_fatigued: {
+			title: 'Força um pouco abaixo',
+			text: 'Sua puxada máxima está um pouco abaixo da base — alguma fadiga acumulada. Mantenha a intensidade <b>moderada</b>: treine qualidade, pule o trabalho de limite e deixe o sistema nervoso se recuperar.',
+			focus: ['moderado', 'qualidade', 'sem limite'],
+		},
+		probe_fresh: {
+			title: 'Força em dia',
+			text: 'Sua puxada máxima está na base ou acima — o sistema nervoso está <b>pronto</b>. Se nada mais estiver te segurando, é sinal verde para esforços duros e de alta qualidade.',
+			focus: ['pronto', 'pode forçar'],
 		},
 	},
 	deep: {

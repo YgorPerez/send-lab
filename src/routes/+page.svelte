@@ -28,7 +28,15 @@ import {
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, type ReadinessEntry, today } from '$lib/state.svelte';
-import { acwr, completedSessions, readinessInsights, sessionsLast7, trainStreak } from '$lib/stats';
+import {
+	acwr,
+	completedSessions,
+	probeReadiness,
+	readinessInsights,
+	sessionsLast7,
+	trainStreak,
+	weekLoad,
+} from '$lib/stats';
 import { STUDIES } from '$lib/studies';
 import TrendChart from '$lib/TrendChart.svelte';
 import { toMetricCanonical } from '$lib/units';
@@ -82,15 +90,24 @@ const needsReassess = $derived(
 );
 
 let answers = $state<Answers>({});
-// Objective load: acute:chronic workload ratio from logged RPE (null < ~3 weeks).
-const acwrStatus = $derived(acwr(appState.workouts, Date.now())?.status ?? null);
+// Climbing-specific objective probe: today's quick max pull (kg), optional.
+let probeValue = $state<number | null>(null);
+const probeResult = $derived(probeReadiness(appState.probeLog, probeValue));
+// Objective signals: EWMA acute:chronic ratio (null < ~3 weeks), Foster training
+// monotony, and the max-pull probe vs baseline — all feed the recommendation.
+const loadSignals = $derived({
+	acwr: acwr(appState.workouts, Date.now())?.status ?? null,
+	monotony:
+		weekLoad(appState.workouts, Date.now())?.status === 'monotonous' ? ('high' as const) : null,
+	probe: probeResult.status,
+});
 // Personalization from logged history: baseline, trend and outcome calibration.
 const insights = $derived(readinessInsights(appState.readinessLog));
 // Adaptive: show the core, reveal follow-ups only when they'd change the result.
 const visible = $derived(visibleQuestions(answers));
 const visibleQuiz = $derived(content.quiz.filter((q) => visible.includes(q.id)));
 const complete = $derived(visible.every((id) => answers[id] != null));
-const readiness = $derived(complete ? computeReadiness(answers, acwrStatus, insights) : null);
+const readiness = $derived(complete ? computeReadiness(answers, loadSignals, insights) : null);
 const verdict = $derived(readiness ? content.verdicts[readiness.verdict] : null);
 const flags = $derived(readiness?.flags ?? []);
 
@@ -100,6 +117,11 @@ const baselineLabel = $derived.by(() => {
 	const d = readiness.score - insights.baseline;
 	return d <= -10 ? m.rd_vs_below() : d >= 10 ? m.rd_vs_above() : m.rd_vs_usual();
 });
+
+// Honest framing of the score: the weighting is a reasoned default heuristic
+// until enough post-session feedback (the calibration threshold) personalizes it.
+const calibrated = $derived(appState.readinessLog.filter((e) => e.outcome != null).length >= 4);
+const scoreNote = $derived(calibrated ? m.rd_note_tuned() : m.rd_note_heuristic());
 
 // Post-session outcome (set after training) feeds the calibration loop.
 const todayEntry = $derived(appState.readinessLog.find((e) => e.date === today()));
@@ -144,6 +166,7 @@ function pick(qid: string, value: number) {
 
 function recheck() {
 	answers = {};
+	probeValue = null;
 }
 
 function logVerdict() {
@@ -166,6 +189,13 @@ function logVerdict() {
 	const rl = appState.readinessLog;
 	if (rl.length && rl[rl.length - 1].date === d) rl[rl.length - 1] = entry;
 	else rl.push(entry);
+	// Bank today's probe reading so the personal baseline builds over time.
+	if (probeValue != null && !Number.isNaN(probeValue) && probeValue > 0) {
+		const pl = appState.probeLog;
+		const pe = { date: d, at: Date.now(), value: probeValue };
+		if (pl.length && pl[pl.length - 1].date === d) pl[pl.length - 1] = pe;
+		else pl.push(pe);
+	}
 	toast.success(m.toast_session_logged());
 }
 </script>
@@ -323,6 +353,53 @@ function logVerdict() {
 					</div>
 				</div>
 			{/each}
+
+			<!-- Optional climbing-specific objective probe: a quick max finger pull. -->
+			<div class="border-t border-line pt-[22px] animate-in fade-in duration-200">
+				<div class="mb-1 text-[15px] font-semibold">
+					<span class="mr-2 font-mono text-xs text-flag">+</span>{m.rd_probe_label()}
+				</div>
+				<p class="mb-2 max-w-[60ch] text-[12px] leading-snug text-ink-faint">
+					{m.rd_probe_why()}{#if studyUrl('probe')}
+						<a
+							href={studyUrl('probe')}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="ml-1 whitespace-nowrap text-flag hover:underline">{m.rd_evidence()}</a
+						>{/if}
+				</p>
+				<div class="flex items-center gap-2">
+					<Input
+						type="number"
+						inputmode="decimal"
+						step="any"
+						min="0"
+						value={probeValue ?? ''}
+						oninput={(e) =>
+							(probeValue = e.currentTarget.value === '' ? null : e.currentTarget.valueAsNumber)}
+						placeholder={m.rd_probe_ph()}
+						class="w-32 bg-panel-2 text-sm"
+					/>
+					<span class="text-xs text-ink-faint">kg</span>
+					{#if probeResult.baseline != null}
+						<span class="font-mono text-[11px] text-ink-faint">
+							{m.rd_probe_baseline({ kg: probeResult.baseline })}{#if probeResult.deficitPct != null}
+								· <span
+									class={cn(
+										probeResult.deficitPct >= 6
+											? 'text-flag'
+											: probeResult.deficitPct <= -5
+												? 'text-teal'
+												: 'text-ink-faint'
+									)}
+									>{probeResult.deficitPct > 0 ? '−' : '+'}{Math.abs(probeResult.deficitPct)}%</span
+								>{/if}
+						</span>
+					{:else if probeValue != null}
+						<span class="font-mono text-[11px] text-ink-faint">{m.rd_probe_building()}</span>
+					{/if}
+				</div>
+			</div>
 		</CardContent>
 	</Card>
 
@@ -366,6 +443,7 @@ function logVerdict() {
 						{/each}
 					</div>
 				{/if}
+				<p class="mt-2 text-[11px] leading-snug text-ink-faint italic">{scoreNote}</p>
 				{#if tasks[0]}
 					<p class="mt-2.5 text-[13px] text-ink-faint">
 						{m.td_applies()} <b class="text-chalk">{tasks[0].label}</b>

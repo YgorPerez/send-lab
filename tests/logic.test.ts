@@ -73,24 +73,66 @@ test('computeReadiness: injury gates the verdict, area-specific', () => {
 });
 
 test('computeReadiness: an ACWR spike caps intensity to moderate', () => {
-	const r = computeReadiness({ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 }, 'spike');
+	const r = computeReadiness(
+		{ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 },
+		{ acwr: 'spike' },
+	);
 	assert.equal(r.verdict, 'moderate');
 	assert.ok(r.flags.some((f) => f.id === 'acwr_spike'));
+});
+
+test('computeReadiness: illness gates the verdict (neck check)', () => {
+	const well = { sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 };
+	// systemic illness is a hard stop regardless of wellness
+	const sick = computeReadiness({ ...well, illness: 2 });
+	assert.equal(sick.verdict, 'rest');
+	assert.ok(sick.flags.some((f) => f.id === 'illness_systemic' && f.severity === 'stop'));
+	// above-the-neck only → keep it easy (moderate), not a stop
+	const mild = computeReadiness({ ...well, illness: 1 });
+	assert.equal(mild.verdict, 'moderate');
+	assert.ok(mild.flags.some((f) => f.id === 'illness_mild'));
+});
+
+test('computeReadiness: the objective probe shifts the verdict', () => {
+	const well = { sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 };
+	// a big max-pull drop → tissue (acute neuromuscular fatigue)
+	const low = computeReadiness(well, { probe: 'low' });
+	assert.equal(low.verdict, 'tissue');
+	assert.ok(low.flags.some((f) => f.id === 'probe_low'));
+	// a slight drop → moderate
+	assert.equal(computeReadiness(well, { probe: 'fatigued' }).verdict, 'moderate');
+	// a fresh reading doesn't cap, just confirms it
+	const fresh = computeReadiness(well, { probe: 'fresh' });
+	assert.equal(fresh.verdict, 'green');
+	assert.ok(fresh.flags.some((f) => f.id === 'probe_fresh'));
+});
+
+test('computeReadiness: high training monotony caps intensity to moderate', () => {
+	const r = computeReadiness(
+		{ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 },
+		{ monotony: 'high' },
+	);
+	assert.equal(r.verdict, 'moderate');
+	assert.ok(r.flags.some((f) => f.id === 'monotony_high'));
 });
 
 test('computeReadiness: personal history (calibration / trend / baseline) adjusts it', () => {
 	const fresh = { sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 };
 	// a declining trend caps a green day to moderate and flags it
-	const declining = computeReadiness(fresh, null, { trend: 'down' });
+	const declining = computeReadiness(fresh, {}, { trend: 'down' });
 	assert.equal(declining.verdict, 'moderate');
 	assert.ok(declining.flags.some((f) => f.id === 'readiness_declining'));
 	// calibration shifts the score directly
 	const base = computeReadiness(fresh).score;
-	assert.equal(computeReadiness(fresh, null, { calibration: -12 }).score, base - 12);
+	assert.equal(computeReadiness(fresh, {}, { calibration: -12 }).score, base - 12);
 	// a meaningful drop below the personal baseline is surfaced
-	const low = computeReadiness({ sleep: 3, fatigue: 3, soreness: 3, body: 0, time: 10 }, null, {
-		baseline: 90,
-	});
+	const low = computeReadiness(
+		{ sleep: 3, fatigue: 3, soreness: 3, body: 0, time: 10 },
+		{},
+		{
+			baseline: 90,
+		},
+	);
 	assert.ok(low.flags.some((f) => f.id === 'below_baseline'));
 });
 

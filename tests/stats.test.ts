@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { acwr, readinessInsights } from '../src/lib/stats';
+import { acwr, probeReadiness, readinessInsights, weekLoad } from '../src/lib/stats';
 
 const DAY = 86_400_000;
 const NOW = Date.parse('2026-06-24T12:00:00Z');
@@ -47,6 +47,44 @@ test('acwr flags a recent spike', () => {
 	for (let d = 0; d < 7; d += 1) ws.push(w(d, 10, 9)); // heavy last 7 days
 	const r = acwr(ws, NOW);
 	assert.equal(r?.status, 'spike');
+});
+
+test('weekLoad: even daily load is monotonous, spiky load with rest days is varied', () => {
+	// same session every day for 7 days → no day-to-day variation → monotonous
+	const even = [];
+	for (let d = 0; d < 7; d += 1) even.push(w(d, 5, 7));
+	const e = weekLoad(even, NOW);
+	assert.equal(e?.status, 'monotonous');
+	assert.ok((e?.monotony ?? 0) >= 2);
+
+	// the same weekly volume in two sessions with rest days between → varied
+	const spiky = weekLoad([w(0, 10, 8), w(3, 10, 8)], NOW);
+	assert.equal(spiky?.status, 'varied');
+
+	// nothing in the last 7 days → null
+	assert.equal(weekLoad([w(10, 5, 7)], NOW), null);
+});
+
+test('probeReadiness: compares today against the personal baseline', () => {
+	const probe = (value: number) => ({ date: 'd', at: 0, value });
+	// too few prior readings → no baseline, no judgement
+	assert.deepEqual(probeReadiness([probe(50), probe(50)], 40), {
+		baseline: null,
+		deficitPct: null,
+		status: null,
+	});
+	const hist = [probe(50), probe(50), probe(50), probe(50)];
+	// baseline 50; a 20% drop → low (fatigued)
+	const low = probeReadiness(hist, 40);
+	assert.equal(low.baseline, 50);
+	assert.equal(low.deficitPct, 20);
+	assert.equal(low.status, 'low');
+	// on baseline → normal
+	assert.equal(probeReadiness(hist, 49).status, 'normal');
+	// above baseline → fresh
+	assert.equal(probeReadiness(hist, 55).status, 'fresh');
+	// no reading today → baseline known, status null
+	assert.deepEqual(probeReadiness(hist, null), { baseline: 50, deficitPct: null, status: null });
 });
 
 const entry = (score: number, outcome?: number) => ({

@@ -59,6 +59,10 @@ export interface WorkoutEntry {
 	day: string;
 	exercises: WorkoutLogExercise[];
 	note: string;
+	/** Session length in minutes — the duration term of sRPE internal load
+	 *  (sRPE = session-RPE × minutes; Foster). Optional; estimated from logged
+	 *  work + rest when absent. */
+	durationMin?: number;
 }
 
 /** A logged injury self-check result (deep assessment), newest last. */
@@ -67,6 +71,15 @@ interface DeepEntry {
 	area: string;
 	score: number;
 	band: string;
+}
+
+/** A climbing-specific objective readiness probe: a quick max finger pull (kg)
+ *  logged over time so today's value can be compared against the personal norm. */
+export interface ProbeEntry {
+	date: string;
+	at: number;
+	/** Max pull / finger-strength reading, kg. */
+	value: number;
 }
 
 /** A daily readiness check recorded for the trend over time. */
@@ -144,6 +157,8 @@ interface AppState {
 	deepLog: DeepEntry[];
 	/** Daily readiness checks over time (for the readiness trend). */
 	readinessLog: ReadinessEntry[];
+	/** Objective readiness-probe readings over time (for the personal baseline). */
+	probeLog: ProbeEntry[];
 }
 
 /** A per-weekday slot in the program template. */
@@ -252,6 +267,7 @@ function defaultState(): AppState {
 		customExercises: {},
 		deepLog: [],
 		readinessLog: [],
+		probeLog: [],
 	};
 }
 
@@ -317,6 +333,7 @@ function applyData(data: Partial<AppState>): void {
 	appState.customExercises = sanitizeCustomExercises(data.customExercises);
 	appState.deepLog = data.deepLog ?? base.deepLog;
 	appState.readinessLog = data.readinessLog ?? base.readinessLog;
+	appState.probeLog = data.probeLog ?? base.probeLog;
 }
 
 // Offline mirror: the per-user state is cached in localStorage so the app works
@@ -352,6 +369,8 @@ function sanitize(raw: unknown): Partial<AppState> {
 	if (raw.rehab === null || isObj(raw.rehab)) out.rehab = raw.rehab as RehabState | null;
 	out.customExercises = sanitizeCustomExercises(raw.customExercises);
 	if (Array.isArray(raw.deepLog)) out.deepLog = raw.deepLog as DeepEntry[];
+	if (Array.isArray(raw.readinessLog)) out.readinessLog = raw.readinessLog as ReadinessEntry[];
+	if (Array.isArray(raw.probeLog)) out.probeLog = raw.probeLog as ProbeEntry[];
 	return out;
 }
 

@@ -26,7 +26,7 @@ import {
 	WEEKDAYS,
 } from '$lib/server/programOps';
 import { loadUserState, saveUserState } from '$lib/server/restApi';
-import { acwr, readinessInsights } from '$lib/stats';
+import { acwr, probeReadiness, readinessInsights, weekLoad } from '$lib/stats';
 import { defaultMm, SIZED_METRICS } from '$lib/strength';
 import type { RequestHandler } from './$types';
 
@@ -57,14 +57,16 @@ Canonical units everywhere: weights in kg, edge/block sizes in mm, durations in 
 stored as scale indices, not strings. Top-level fields: currentWeek (number); completed/taskDone (maps \
 keyed like "w1-Mon" / "w1-Tue:pinch" → bool); swaps/daySwaps (exercise → variant index); dayPlan \
 ("w1-Tue" → weekday key); dayExercises ("w1-Tue" → exercise id[]); metrics (MetricId → [{date,v,mm?,bw?}], \
-newest last); log ([{date,type,label,color,note}]); workouts ([{date,at,day,exercises,note}], newest first); \
+newest last); log ([{date,type,label,color,note}]); workouts ([{date,at,day,exercises,note,durationMin?}], newest first; \
+durationMin is the session length used for sRPE load tracking); \
 assessment (object or null); prefs ({weight:'kg'|'lb',length:'mm'|'in',notify:bool}); program; \
-savedPrograms ([{name,program}]); rehab (object or null); customExercises (id → user-authored exercise). \
+savedPrograms ([{name,program}]); rehab (object or null); customExercises (id → user-authored exercise); \
+probeLog ([{date,at,value}] — objective max finger-pull readings (kg) for the readiness baseline). \
 Use list_exercises for valid exercise ids and weekday keys. To add your own exercises/categories/variants, \
 use create_exercise (then reference the id from edit_day/set_target like any built-in). The structured tools \
 (set_periodization, edit_day, set_target, set_auto_progress, create/update/delete_exercise) validate their \
 input — prefer them; use update_state/replace_state for everything else. Assessments: assess_baseline sets goals/level/equipment \
-and seeds starting markers; daily_readiness returns today's session recommendation + a 0–100 readiness score from wellness answers and objective load (nothing stored); assess_injury \
+and seeds starting markers; daily_readiness returns today's session recommendation + a 0–100 readiness score from wellness answers, an illness check, objective load (ACWR + monotony) and an optional max-pull probe vs baseline (nothing stored); assess_injury \
 logs a body-area pain self-check (0–10 per item) and returns a 0–100 score, band, and recommended rehab stage. \
 Rehab: start_rehab replaces the program with a stage-capped rehab block (saving the previous program to rehab.previous); \
 rehab_today swaps just one day to low-load rehab work.`;
@@ -275,7 +277,7 @@ const TOOLS: ToolDef[] = [
 	{
 		name: 'daily_readiness',
 		description:
-			"Today's readiness check — ephemeral (not stored). Returns a 0–100 readiness score, the recommended session tier, the injured area (if any) and targeted warnings, from wellness answers + objective training load (ACWR, computed from the user's logged sessions). Wellness answers are 0–10 (10 = best): sleep, fatigue (recovery), soreness, plus stress & mood when under-recovered. body = the worst-affected area (0 none, 1 fingers, 2 elbow, 3 shoulder, 4 wrist); severity (when body>0) = 0 stiff, 1 tender, 2 painful, 3 sharp. time = 10 full / 7 standard / 3 short / 0 tight. skin = 0–10 (only relevant on a hard day).",
+			"Today's readiness check — ephemeral (not stored). Returns a 0–100 readiness score, the recommended session tier, the injured area (if any) and targeted warnings, from wellness answers + objective signals (ACWR & training monotony from logged sessions, and an optional max-pull probe vs the user's baseline). Wellness answers are 0–10 (10 = best): sleep, fatigue (recovery), soreness, plus stress & mood when under-recovered. body = the worst-affected area (0 none, 1 fingers, 2 elbow, 3 shoulder, 4 wrist); severity (when body>0) = 0 stiff, 1 tender, 2 painful, 3 sharp. illness = 0 fine / 1 mild above-the-neck / 2 systemic (fever, below the neck — a hard stop). time = 10 full / 7 standard / 3 short / 0 tight. skin = 0–10 (only relevant on a hard day). probe = today's max finger-pull in kg (compared to the personal baseline from probeLog; a meaningful drop signals neuromuscular fatigue).",
 		inputSchema: {
 			type: 'object',
 			properties: {
@@ -287,10 +289,15 @@ const TOOLS: ToolDef[] = [
 					description: '0 none · 1 fingers · 2 elbow · 3 shoulder · 4 wrist.',
 				},
 				severity: { type: 'number', description: '0 stiff · 1 tender · 2 painful · 3 sharp.' },
+				illness: {
+					type: 'number',
+					description: '0 fine · 1 mild (above the neck) · 2 systemic (fever / below the neck).',
+				},
 				time: { type: 'number', description: '10 full · 7 standard · 3 short · 0 tight.' },
 				stress: { type: 'number', description: '0–10 (10 = calm).' },
 				mood: { type: 'number', description: '0–10 drive (10 = keen).' },
 				skin: { type: 'number', description: '0–10 (10 = solid).' },
+				probe: { type: 'number', description: "Today's max finger-pull, kg (objective probe)." },
 			},
 		},
 		outputSchema: {
@@ -439,6 +446,7 @@ async function callTool(
 			'fatigue',
 			'soreness',
 			'body',
+			'illness',
 			'time',
 			'severity',
 			'stress',
@@ -449,9 +457,16 @@ async function callTool(
 		for (const k of keys) if (typeof args[k] === 'number') answers[k] = args[k] as number;
 		const workouts = (state.workouts ?? []) as Parameters<typeof acwr>[0];
 		const log = (state.readinessLog ?? []) as Parameters<typeof readinessInsights>[0];
+		const probeLog = (state.probeLog ?? []) as Parameters<typeof probeReadiness>[0];
+		const probe = typeof args.probe === 'number' ? (args.probe as number) : null;
+		const now = Date.now();
 		return computeReadiness(
 			answers,
-			acwr(workouts, Date.now())?.status ?? null,
+			{
+				acwr: acwr(workouts, now)?.status ?? null,
+				monotony: weekLoad(workouts, now)?.status === 'monotonous' ? 'high' : null,
+				probe: probeReadiness(probeLog, probe).status,
+			},
 			readinessInsights(log),
 		);
 	}

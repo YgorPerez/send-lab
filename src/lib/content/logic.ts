@@ -6,6 +6,19 @@ export type FlagArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
 type AcwrStatus = 'low' | 'optimal' | 'high' | 'spike';
 type FlagSeverity = 'stop' | 'warn' | 'info';
 
+/** Objective signals fed into the recommendation. ACWR is one input among several
+ *  (it has been critiqued — Impellizzeri 2020 — so it never decides alone);
+ *  monotony adds Foster's load-variability dimension; probe adds a climbing-specific
+ *  neuromuscular reading. */
+export interface LoadSignals {
+	/** Acute:chronic workload ratio band (EWMA; see stats.ts `acwr`). */
+	acwr?: AcwrStatus | null;
+	/** 'high' when weekly training monotony crosses Foster's risk threshold. */
+	monotony?: 'high' | null;
+	/** Objective max-pull probe vs personal baseline (see stats.ts `probeReadiness`). */
+	probe?: 'fresh' | 'normal' | 'fatigued' | 'low' | null;
+}
+
 /** A surfaced readiness problem: which advice (`id`), how serious, and which body
  *  area it can route to rehab. Prose lives in the localized `flags` map. */
 export interface DailyFlag {
@@ -18,7 +31,7 @@ export interface DailyFlag {
 
 /** Always asked. Follow-ups are revealed by `visibleQuestions` only when their
  *  answer could change the recommendation, so no daily question is ever inert. */
-const CORE_QUESTIONS = ['sleep', 'fatigue', 'soreness', 'body', 'time'];
+const CORE_QUESTIONS = ['sleep', 'fatigue', 'soreness', 'body', 'illness', 'time'];
 
 // The `body` answer encodes the worst-affected area (0 = nothing bothering you).
 const BODY_AREA: (FlagArea | null)[] = [null, 'fingers', 'elbow', 'shoulder', 'wrist'];
@@ -39,6 +52,13 @@ const severityOf = (answers: Answers): Severity | null =>
 // Saw, Main & Gastin (2016), subjective wellness (led by sleep/fatigue) is the
 // most load-sensitive monitoring tool. stress/mood default to neutral-good when
 // not asked, so the score stays comparable day to day.
+//
+// NOTE: the *direction* (sleep/fatigue matter most) is evidence-based, but these
+// exact weights — and the band thresholds in `intensityFromScore` — are a
+// reasoned default, NOT empirically derived. The principled validation is the
+// per-user feedback loop (stats.ts `readinessInsights` → `hist.calibration`),
+// which nudges the score toward how the individual's sessions actually go. Treat
+// the constants as a sensible starting heuristic, not calibrated truth.
 const WELLNESS: { id: string; weight: number; fallback: number }[] = [
 	{ id: 'sleep', weight: 1.2, fallback: 8 },
 	{ id: 'fatigue', weight: 1.2, fallback: 8 },
@@ -67,6 +87,8 @@ const INTENSITY_ORDER: Intensity[] = ['rest', 'tissue', 'moderate', 'high'];
 const cap = (a: Intensity, b: Intensity): Intensity =>
 	INTENSITY_ORDER[Math.min(INTENSITY_ORDER.indexOf(a), INTENSITY_ORDER.indexOf(b))];
 
+// Band thresholds are a heuristic (see the WELLNESS note); the calibration loop,
+// not these cutoffs, is what tunes the score to the individual.
 const intensityFromScore = (score: number): Intensity =>
 	score >= 78 ? 'high' : score >= 60 ? 'moderate' : 'tissue';
 
@@ -139,7 +161,7 @@ export interface ReadinessContext {
  *  baseline). Every input demonstrably shifts the result. */
 export function computeReadiness(
 	answers: Answers,
-	acwr: AcwrStatus | null = null,
+	load: LoadSignals = {},
 	hist: ReadinessContext = {},
 ): Readiness {
 	// Personal calibration nudges the raw wellness score toward how the user trains.
@@ -151,13 +173,45 @@ export function computeReadiness(
 
 	if (area && sev) flags.push(areaFlag(area, sev === 'painful' || sev === 'sharp'));
 
-	if (acwr === 'spike') {
+	// Illness gate ("neck check"): systemic symptoms (fever / below the neck) are a
+	// hard stop — training a taxed system risks more than it gains (Schwellnus 2016).
+	// Above-the-neck symptoms only → keep it easy.
+	const illness = answers.illness ?? 0;
+	if (illness >= 2) {
+		intensity = cap(intensity, 'rest');
+		flags.push({ id: 'illness_systemic', severity: 'stop' });
+	} else if (illness === 1) {
+		intensity = cap(intensity, 'moderate');
+		flags.push({ id: 'illness_mild', severity: 'warn' });
+	}
+
+	if (load.acwr === 'spike') {
 		intensity = cap(intensity, 'moderate');
 		flags.push({ id: 'acwr_spike', severity: 'warn' });
-	} else if (acwr === 'high') {
+	} else if (load.acwr === 'high') {
 		flags.push({ id: 'acwr_high', severity: 'info' });
-	} else if (acwr === 'low') {
+	} else if (load.acwr === 'low') {
 		flags.push({ id: 'acwr_low', severity: 'info' });
+	}
+
+	// High training monotony (Foster): same load every day, no easy days — back off
+	// to inject the variability that protects against overload.
+	if (load.monotony === 'high') {
+		intensity = cap(intensity, 'moderate');
+		flags.push({ id: 'monotony_high', severity: 'warn' });
+	}
+
+	// Objective probe: a sizeable drop in maximal pull vs baseline is acute
+	// neuromuscular fatigue regardless of how you feel; a fresh reading just
+	// confirms it's safe to push.
+	if (load.probe === 'low') {
+		intensity = cap(intensity, 'tissue');
+		flags.push({ id: 'probe_low', severity: 'warn' });
+	} else if (load.probe === 'fatigued') {
+		intensity = cap(intensity, 'moderate');
+		flags.push({ id: 'probe_fatigued', severity: 'warn' });
+	} else if (load.probe === 'fresh') {
+		flags.push({ id: 'probe_fresh', severity: 'info' });
 	}
 
 	const skin = answers.skin;
