@@ -1,5 +1,5 @@
 {
-	"ignorePatterns": ["src/lib/paraglide/**"],
+	"ignorePatterns": ["src/lib/paraglide/**", "tests/**"],
 	"ignoreExports": [{ "file": "src/lib/components/ui/**", "exports": ["*"] }],
 	"rules": {
 		"duplicate-exports": "off"

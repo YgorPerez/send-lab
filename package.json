@@ -24,7 +24,8 @@
 		"doctor": "svelte-doctor check",
 		"fallow": "fallow dead-code",
 		"fallow:health": "fallow health",
-		"verify": "pnpm run lint && pnpm run check && pnpm run typecheck:ts7 && pnpm run doctor && pnpm run fallow"
+		"test": "node --import tsx --test tests/*.test.ts",
+		"verify": "pnpm run lint && pnpm run check && pnpm run typecheck:ts7 && pnpm run doctor && pnpm run fallow && pnpm run test"
 	},
 	"dependencies": {
 		"@libsql/client": "^0.17.4",
