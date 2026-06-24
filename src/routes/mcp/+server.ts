@@ -58,6 +58,7 @@ const TOOLS = [
 		description:
 			'Return the entire account document (program, metrics, logs, workouts, assessment, preferences, saved programs, rehab, day overrides). This is everything the user has.',
 		inputSchema: { type: 'object', properties: {} },
+		outputSchema: { type: 'object', description: 'The full account document.' },
 	},
 	{
 		name: 'update_state',
@@ -86,12 +87,24 @@ const TOOLS = [
 		description:
 			'Return the current training program (block length, periodization phases, per-weekday template, per-exercise target overrides, auto-progression).',
 		inputSchema: { type: 'object', properties: {} },
+		outputSchema: {
+			type: 'object',
+			description: 'The program: weeks, template, targets, phases, autoProgress.',
+		},
 	},
 	{
 		name: 'list_exercises',
 		description:
 			'List the valid weekday keys and exercise ids (with region, qualities, variant count) to use in other tools.',
 		inputSchema: { type: 'object', properties: {} },
+		outputSchema: {
+			type: 'object',
+			required: ['weekdays', 'exercises'],
+			properties: {
+				weekdays: { type: 'array', items: { type: 'string' } },
+				exercises: { type: 'array', items: { type: 'object' } },
+			},
+		},
 	},
 	{
 		name: 'set_periodization',
@@ -236,6 +249,11 @@ const TOOLS = [
 				},
 			},
 		},
+		outputSchema: {
+			type: 'object',
+			required: ['ok'],
+			properties: { ok: { type: 'boolean' }, assessment: { type: 'object' } },
+		},
 	},
 	{
 		name: 'daily_readiness',
@@ -257,6 +275,25 @@ const TOOLS = [
 				},
 			},
 		},
+		outputSchema: {
+			type: 'object',
+			required: ['verdict', 'flags'],
+			properties: {
+				verdict: { type: 'string', enum: ['rest', 'tissue', 'moderate', 'short', 'green'] },
+				flags: {
+					type: 'array',
+					items: {
+						type: 'object',
+						required: ['id', 'severity'],
+						properties: {
+							id: { type: 'string' },
+							severity: { type: 'string', enum: ['stop', 'warn', 'info'] },
+							area: { type: 'string' },
+						},
+					},
+				},
+			},
+		},
 	},
 	{
 		name: 'assess_injury',
@@ -274,6 +311,17 @@ const TOOLS = [
 				},
 			},
 		},
+		outputSchema: {
+			type: 'object',
+			required: ['score', 'band', 'stage'],
+			properties: {
+				score: { type: 'number', description: '0–100, where 100 = no symptoms.' },
+				band: { type: 'string', enum: ['manageable', 'moderate', 'significant'] },
+				stage: { type: 'string', enum: ['acute', 'subacute', 'returning'] },
+				area: { type: 'string' },
+				logged: { type: 'boolean' },
+			},
+		},
 	},
 ];
 
@@ -283,51 +331,43 @@ async function callTool(
 	name: string,
 	args: Record<string, unknown>,
 	userId: string,
-): Promise<string> {
+): Promise<string | object> {
 	const state = await loadUserState(userId);
 	const program = state.program as Program;
 
-	// ---- reads ----
-	if (name === 'get_state') return JSON.stringify(state, null, 2);
-	if (name === 'get_program') return JSON.stringify(program, null, 2);
+	// ---- reads (return objects → emitted as structuredContent) ----
+	if (name === 'get_state') return state;
+	if (name === 'get_program') return program;
 	const custom = (state.customExercises as Record<string, CustomExercise>) ?? {};
 	if (name === 'list_exercises')
-		return JSON.stringify(
-			{
-				weekdays: WEEKDAYS,
-				exercises: [
-					...EXERCISE_IDS.map((id) => ({
-						id,
-						custom: false,
-						region: exerciseParams[id].variants[0].region,
-						qualities: exerciseParams[id].variants[0].qualities,
-						variants: exerciseParams[id].variants.length,
-					})),
-					...Object.entries(custom).map(([id, ex]) => ({
-						id,
-						custom: true,
-						name: ex.name,
-						cat: ex.cat,
-						region: ex.variants[0]?.region,
-						qualities: ex.variants[0]?.qualities,
-						variants: ex.variants.length,
-					})),
-				],
-			},
-			null,
-			2,
-		);
+		return {
+			weekdays: WEEKDAYS,
+			exercises: [
+				...EXERCISE_IDS.map((id) => ({
+					id,
+					custom: false,
+					region: exerciseParams[id].variants[0].region,
+					qualities: exerciseParams[id].variants[0].qualities,
+					variants: exerciseParams[id].variants.length,
+				})),
+				...Object.entries(custom).map(([id, ex]) => ({
+					id,
+					custom: true,
+					name: ex.name,
+					cat: ex.cat,
+					region: ex.variants[0]?.region,
+					qualities: ex.variants[0]?.qualities,
+					variants: ex.variants.length,
+				})),
+			],
+		};
 
 	// Today's readiness is ephemeral (like the app): compute and return, no write.
 	if (name === 'daily_readiness') {
 		const answers: Answers = {};
 		for (const k of READINESS_KEYS) if (typeof args[k] === 'number') answers[k] = args[k] as number;
 		const fatigue = typeof args.fatigue === 'number' ? args.fatigue : 0;
-		return JSON.stringify(
-			{ verdict: computeVerdictId(answers, fatigue), flags: dailyFlags(answers, fatigue) },
-			null,
-			2,
-		);
+		return { verdict: computeVerdictId(answers, fatigue), flags: dailyFlags(answers, fatigue) };
 	}
 
 	// ---- writes ----
@@ -380,7 +420,7 @@ async function callTool(
 		}
 		state.metrics = metrics;
 		const next = await saveUserState(userId, state);
-		return `OK. Baseline assessment saved.\n${JSON.stringify(next.assessment, null, 2)}`;
+		return { ok: true, assessment: next.assessment };
 	}
 
 	if (name === 'assess_injury') {
@@ -395,7 +435,7 @@ async function callTool(
 		deepLog.push({ date: today(), area, score: result.score, band: result.band });
 		state.deepLog = deepLog;
 		await saveUserState(userId, state);
-		return `OK. ${area} self-check logged.\n${JSON.stringify(result, null, 2)}`;
+		return { ...result, area, logged: true };
 	}
 	const customIds = Object.keys(custom);
 	if (name === 'create_exercise' || name === 'update_exercise') {
@@ -450,7 +490,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (method === 'initialize')
 		return json(
 			rpcResult(id, {
-				protocolVersion: '2024-11-05',
+				protocolVersion: '2025-06-18',
 				capabilities: { tools: {} },
 				serverInfo: { name: 'send-lab', version: '1' },
 				instructions: INSTRUCTIONS,
@@ -462,8 +502,21 @@ export const POST: RequestHandler = async ({ request }) => {
 		const name = String(params.name);
 		const args = isObj(params.arguments) ? params.arguments : {};
 		try {
-			const text = await callTool(name, args, userId);
-			return json(rpcResult(id, { content: [{ type: 'text', text }] }));
+			const result = await callTool(name, args, userId);
+			// Structured tools return an object → emit it as `structuredContent`, with
+			// the JSON also serialized into a text block. Text tools return a string.
+			const structured = typeof result === 'object' && result !== null;
+			return json(
+				rpcResult(id, {
+					content: [
+						{
+							type: 'text',
+							text: structured ? JSON.stringify(result, null, 2) : (result as string),
+						},
+					],
+					...(structured ? { structuredContent: result } : {}),
+				}),
+			);
 		} catch (e) {
 			return json(
 				rpcResult(id, {
