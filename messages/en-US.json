@@ -132,6 +132,8 @@
 	"conf_low": "low confidence",
 	"metric_no_history": "No entries yet.",
 	"metric_bw": "bw",
+	"metric_delete_entry": "Remove entry",
+	"metric_delete_confirm": "Remove this entry from the history?",
 	"log_empty": "No sessions logged yet. Run the day recommender, tick a day, or log a marker test — it'll show up here.",
 	"log_type_rec": "rec",
 	"log_type_day": "day",

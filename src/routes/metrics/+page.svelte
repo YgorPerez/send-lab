@@ -1,5 +1,6 @@
 <script lang="ts">
 import TimerIcon from '@lucide/svelte/icons/timer';
+import TrashIcon from '@lucide/svelte/icons/trash-2';
 import { goto } from '$app/navigation';
 import { customMarkers, type Marker, METRIC_EXERCISE } from '$lib/assessment';
 import { Button } from '$lib/components/ui/button';
@@ -31,6 +32,16 @@ function openInTrain(marker: Marker) {
 	if (!exId) return;
 	openMetric = null;
 	void goto(`/train?ex=${exId}&assess=${marker.id}`);
+}
+
+/** Delete one logged entry from the open metric's history (by its index in the
+ *  stored, oldest-first array). Recomputes everything downstream (card, sparkline). */
+function removeEntry(index: number) {
+	if (!openMetric) return;
+	const arr = appState.metrics[openMetric.id];
+	if (!arr || index < 0 || index >= arr.length) return;
+	if (!confirm(m.metric_delete_confirm())) return;
+	arr.splice(index, 1);
 }
 </script>
 
@@ -84,20 +95,31 @@ function openInTrain(marker: Marker) {
 			<div class="flex max-h-72 flex-col gap-1 overflow-y-auto pr-1">
 				<!-- Newest first; full log so every entry and its date is visible. -->
 				{#each [...history].reverse() as e, i (`${e.date}-${i}`)}
-					<div class="flex justify-between gap-3 border-b border-line/60 py-1 font-mono text-xs">
+					<div class="flex items-center justify-between gap-3 border-b border-line/60 py-1 font-mono text-xs">
 						<span class="flex-none text-ink-faint">{e.date}</span>
-						<span class="text-right text-chalk">
-							{#if isGradeMetric(openMetric.id)}
-								{gradeLabel(openMetric.id, e.v)}
-							{:else}
-								{round(showMetric(openMetric.id, e.v))}{metricUnit(openMetric.id, openMetric.unit)}
-							{/if}
-							{#if e.mm != null}<span class="text-ink-faint">@{showMm(e.mm)}{appState.prefs.length}</span
-								>{/if}
-							{#if e.bw != null}<span class="text-ink-faint"
-									>· {showKg(e.bw)}{appState.prefs.weight} {m.metric_bw()}</span
-								>{/if}
-						</span>
+						<div class="flex items-center gap-2">
+							<span class="text-right text-chalk">
+								{#if isGradeMetric(openMetric.id)}
+									{gradeLabel(openMetric.id, e.v)}
+								{:else}
+									{round(showMetric(openMetric.id, e.v))}{metricUnit(openMetric.id, openMetric.unit)}
+								{/if}
+								{#if e.mm != null}<span class="text-ink-faint">@{showMm(e.mm)}{appState.prefs.length}</span
+									>{/if}
+								{#if e.bw != null}<span class="text-ink-faint"
+										>· {showKg(e.bw)}{appState.prefs.weight} {m.metric_bw()}</span
+									>{/if}
+							</span>
+							<button
+								type="button"
+								aria-label={m.metric_delete_entry()}
+								title={m.metric_delete_entry()}
+								class="flex-none text-ink-faint transition hover:text-flag"
+								onclick={() => removeEntry(history.length - 1 - i)}
+							>
+								<TrashIcon class="size-3" />
+							</button>
+						</div>
 					</div>
 				{/each}
 			</div>

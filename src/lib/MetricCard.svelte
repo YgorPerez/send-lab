@@ -18,7 +18,16 @@ import {
 	pinchStrength,
 	SIZED_METRICS,
 } from '$lib/strength';
-import { metricUnit, showKg, showMetric, showMm, toMetricCanonical, toMm } from '$lib/units';
+import {
+	edgeLabel,
+	metricUnit,
+	showKg,
+	showMetric,
+	showMm,
+	toMetricCanonical,
+	toMm,
+	weightLabel,
+} from '$lib/units';
 import { cn } from '$lib/utils';
 
 interface Metric {
@@ -173,7 +182,7 @@ function saveGrade(label: string) {
 
 	<Sparkline data={spark} catVar={metric.cat} />
 
-	<div class="mt-3.5 flex gap-2">
+	<div class="mt-3.5">
 		{#if grade}
 			<Select
 				type="single"
@@ -187,31 +196,55 @@ function saveGrade(label: string) {
 					{#each gradeScale(id) as g (g)}<SelectItem value={g}>{g}</SelectItem>{/each}
 				</SelectContent>
 			</Select>
+		{:else if sized}
+			<!-- Weight + edge are two distinct measurements: label them so it's clear
+			     which box is which (the bare boxes read as cryptic before). -->
+			<div class="flex items-end gap-2">
+				<label class="flex min-w-0 flex-1 flex-col gap-1">
+					<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">{weightLabel()}</span>
+					<Input
+						type="number"
+						step="any"
+						bind:value
+						class="border-line bg-panel-2 font-mono text-[13px]"
+					/>
+				</label>
+				<label class="flex w-[5.5rem] flex-none flex-col gap-1">
+					<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">{edgeLabel()}</span>
+					<Input
+						type="number"
+						step="any"
+						bind:value={mmValue}
+						class="border-line bg-panel-2 text-center font-mono text-[13px]"
+					/>
+				</label>
+				<Button
+					variant="secondary"
+					size="sm"
+					class="flex-none bg-chalk text-bg hover:bg-chalk/90"
+					onclick={saveNumeric}
+				>
+					{m.btn_save()}
+				</Button>
+			</div>
 		{:else}
-			<Input
-				type="number"
-				step="any"
-				placeholder={m.metric_input_ph({ abbr: metric.abbr.toLowerCase() })}
-				bind:value
-				class="border-line bg-panel-2 font-mono text-[13px]"
-			/>
-			{#if sized}
+			<div class="flex gap-2">
 				<Input
 					type="number"
 					step="any"
-					placeholder={appState.prefs.length}
-					bind:value={mmValue}
-					class="w-16 border-line bg-panel-2 text-center font-mono text-[13px]"
+					placeholder={m.metric_input_ph({ abbr: metric.abbr.toLowerCase() })}
+					bind:value
+					class="border-line bg-panel-2 font-mono text-[13px]"
 				/>
-			{/if}
-			<Button
-				variant="secondary"
-				size="sm"
-				class="bg-chalk text-bg hover:bg-chalk/90"
-				onclick={saveNumeric}
-			>
-				{m.btn_save()}
-			</Button>
+				<Button
+					variant="secondary"
+					size="sm"
+					class="bg-chalk text-bg hover:bg-chalk/90"
+					onclick={saveNumeric}
+				>
+					{m.btn_save()}
+				</Button>
+			</div>
 		{/if}
 	</div>
 </Card>
