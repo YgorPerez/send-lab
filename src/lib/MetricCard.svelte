@@ -1,4 +1,5 @@
 <script lang="ts">
+import HistoryIcon from '@lucide/svelte/icons/history';
 import InfoIcon from '@lucide/svelte/icons/info';
 import { toast } from 'svelte-sonner';
 import { Button } from '$lib/components/ui/button';
@@ -111,6 +112,17 @@ function saveGrade(label: string) {
 			<span class="font-mono text-[10px] font-bold tracking-wider" style:color="var({metric.cat})">
 				<Prose value={metric.abbr} />
 			</span>
+			{#if data.length}
+				<button
+					type="button"
+					class="text-ink-faint transition hover:text-ink"
+					aria-label={m.metric_history()}
+					title={m.metric_history()}
+					onclick={() => onInfo(metric)}
+				>
+					<HistoryIcon class="size-3.5" />
+				</button>
+			{/if}
 			<button
 				type="button"
 				class="text-ink-faint transition hover:text-ink"

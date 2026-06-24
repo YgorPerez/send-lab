@@ -11,7 +11,7 @@ import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, round } from '$lib/state.svelte';
-import { metricUnit, showMetric } from '$lib/units';
+import { metricUnit, showKg, showMetric, showMm } from '$lib/units';
 
 const content = getContent();
 
@@ -72,21 +72,31 @@ function openInTrain(marker: Marker) {
 			</Button>
 		{/if}
 
-		<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-			{m.metric_history()}
+		<div class="mb-1.5 flex items-center justify-between">
+			<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+				{m.metric_history()}
+			</span>
+			{#if history.length}
+				<span class="font-mono text-[10px] text-ink-faint">{history.length}</span>
+			{/if}
 		</div>
 		{#if history.length}
-			<div class="flex flex-col gap-1">
-				{#each [...history].reverse().slice(0, 12) as e (e.date + e.v)}
-					<div class="flex justify-between border-b border-line/60 py-1 font-mono text-xs">
-						<span class="text-ink-faint">{e.date}</span>
-						<span class="text-chalk">
+			<div class="flex max-h-72 flex-col gap-1 overflow-y-auto pr-1">
+				<!-- Newest first; full log so every entry and its date is visible. -->
+				{#each [...history].reverse() as e, i (`${e.date}-${i}`)}
+					<div class="flex justify-between gap-3 border-b border-line/60 py-1 font-mono text-xs">
+						<span class="flex-none text-ink-faint">{e.date}</span>
+						<span class="text-right text-chalk">
 							{#if isGradeMetric(openMetric.id)}
 								{gradeLabel(openMetric.id, e.v)}
 							{:else}
-								{round(showMetric(openMetric.id, e.v))}
-								{metricUnit(openMetric.id, openMetric.unit)}
+								{round(showMetric(openMetric.id, e.v))}{metricUnit(openMetric.id, openMetric.unit)}
 							{/if}
+							{#if e.mm != null}<span class="text-ink-faint">@{showMm(e.mm)}{appState.prefs.length}</span
+								>{/if}
+							{#if e.bw != null}<span class="text-ink-faint"
+									>· {showKg(e.bw)}{appState.prefs.weight} {m.metric_bw()}</span
+								>{/if}
 						</span>
 					</div>
 				{/each}

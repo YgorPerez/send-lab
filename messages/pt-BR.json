@@ -131,6 +131,7 @@
 	"conf_med": "estimativa aproximada",
 	"conf_low": "baixa confiança",
 	"metric_no_history": "Nenhum registro ainda.",
+	"metric_bw": "pc",
 	"log_empty": "Nada registrado ainda. Use o recomendador da sessão, marque um dia ou registre um teste — vai aparecer aqui.",
 	"log_type_rec": "rec",
 	"log_type_day": "dia",
