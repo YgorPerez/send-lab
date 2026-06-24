@@ -2,6 +2,7 @@
 // endpoint. Each validates its input and throws on bad data (the caller turns
 // that into a tool error). Mirrors the client editor's semantics.
 import { exerciseParams } from '$lib/content/exercises';
+import { isPlainObject as isObj } from '$lib/objects';
 import type { Program, ProgramTarget } from '$lib/state.svelte';
 
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -12,9 +13,6 @@ export function defaultProgram(): Program {
 	return { weeks: 8, template: {}, targets: {}, phases: [], autoProgress: true };
 }
 
-function isObj(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
 function num(v: unknown, lo: number, hi: number, fallback: number): number {
 	const n = Math.round(Number(v));
 	return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fallback;

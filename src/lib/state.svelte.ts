@@ -2,6 +2,7 @@
 // Reactive app state (Svelte 5 runes), persisted per signed-in user via the
 // authenticated /api/state endpoint (SQLite). Replaces the old localStorage doc.
 import { browser } from '$app/environment';
+import { isPlainObject as isObj } from '$lib/objects';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { CustomExercise } from './content/types';
@@ -250,9 +251,6 @@ function defaultState(): AppState {
 		readinessLog: [],
 	};
 }
-
-const isObj = (v: unknown): v is Record<string, unknown> =>
-	typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** Coerce a possibly-old, partial, or untrusted program into the current shape
  *  (back-fills targets / phases that older or imported programs won't have). */

@@ -3,6 +3,7 @@
 // is run through sanitizeState() — mirroring the client's sanitize()/normalizeProgram()
 // — to guarantee the persisted blob always has the right shape and can't crash the app.
 import { sanitizeCustomExercises } from '$lib/customExercise';
+import { isPlainObject } from '$lib/objects';
 import { defaultProgram } from '$lib/server/programOps';
 
 export const METRIC_IDS = [
@@ -17,9 +18,6 @@ export const METRIC_IDS = [
 	'route',
 	'bodyweight',
 ];
-
-export const isPlainObject = (v: unknown): v is Record<string, unknown> =>
-	typeof v === 'object' && v !== null && !Array.isArray(v);
 
 function emptyMetrics(): Record<string, unknown[]> {
 	return Object.fromEntries(METRIC_IDS.map((id) => [id, []]));
@@ -83,20 +81,4 @@ export function sanitizeState(raw: unknown): Record<string, unknown> {
 	if (Array.isArray(raw.deepLog)) out.deepLog = raw.deepLog;
 	if (Array.isArray(raw.readinessLog)) out.readinessLog = raw.readinessLog;
 	return out;
-}
-
-/** Recursively merge `patch` into `target` in place: plain objects merge, arrays
- *  and primitives (including null) replace. Returns `target`. */
-export function deepMerge(
-	target: Record<string, unknown>,
-	patch: Record<string, unknown>,
-): Record<string, unknown> {
-	for (const [k, v] of Object.entries(patch)) {
-		if (isPlainObject(v) && isPlainObject(target[k])) {
-			deepMerge(target[k] as Record<string, unknown>, v);
-		} else {
-			target[k] = v;
-		}
-	}
-	return target;
 }

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
+import { isPlainObject } from '$lib/objects';
 import { loadUserState, requireUser, saveUserState } from '$lib/server/restApi';
-import { isPlainObject } from '$lib/server/stateOps';
 import type { RequestHandler } from './$types';
 
 type Saved = { name: string; program: Record<string, unknown> };

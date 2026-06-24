@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
+import { deepMerge, isPlainObject } from '$lib/objects';
 import { loadUserState, requireUser, saveUserState } from '$lib/server/restApi';
-import { deepMerge, isPlainObject } from '$lib/server/stateOps';
 import type { RequestHandler } from './$types';
 
 /** The active training program. */

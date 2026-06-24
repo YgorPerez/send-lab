@@ -3,6 +3,7 @@
 // must be a {min,max} Range and every variant must carry the prose the UI reads.
 // Pure (types only) — shared by the client state layer and the server endpoints.
 import type { CustomExercise, Range, Variant } from './content/types';
+import { isPlainObject as isObj } from './objects';
 
 const ACCENT_TOKENS = ['--flag', '--gold', '--teal', '--violet', '--ink-faint'];
 const RANGE_FIELDS = [
@@ -42,9 +43,6 @@ const METRIC_IDS = [
 	'route',
 	'bodyweight',
 ];
-
-const isObj = (v: unknown): v is Record<string, unknown> =>
-	typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** A storage-safe exercise id (used as an object key and in program refs). */
 export const isValidExerciseId = (id: unknown): id is string =>

@@ -7,6 +7,7 @@ import { exerciseParams } from '$lib/content/exercises';
 import { type Answers, computeVerdictId, dailyFlags, scoreDeep } from '$lib/content/logic';
 import type { CustomExercise } from '$lib/content/types';
 import { isValidExerciseId, sanitizeCustomExercise } from '$lib/customExercise';
+import { deepMerge, isPlainObject } from '$lib/objects';
 import {
 	generateRehabProgram,
 	REHAB_AREAS,
@@ -25,12 +26,8 @@ import {
 	WEEKDAYS,
 } from '$lib/server/programOps';
 import { loadUserState, saveUserState } from '$lib/server/restApi';
-import { deepMerge, isPlainObject } from '$lib/server/stateOps';
 import { defaultMm, SIZED_METRICS } from '$lib/strength';
 import type { RequestHandler } from './$types';
-
-const isObj = (v: unknown): v is Record<string, unknown> =>
-	typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** Local YYYY-MM-DD for dating new entries (matches the client's `today()`). */
 const today = () => new Date().toISOString().slice(0, 10);
@@ -481,7 +478,7 @@ async function callTool(
 				metrics[key].push({ date: today(), at: Date.now(), v, ...extra });
 		};
 		seed('bodyweight', bodyweight);
-		const baseline = isObj(args.baseline) ? args.baseline : {};
+		const baseline = isPlainObject(args.baseline) ? args.baseline : {};
 		for (const [key, raw] of Object.entries(baseline)) {
 			const extra: Partial<MetricEntry> = SIZED_METRICS.has(key)
 				? { mm: defaultMm(key), ...(key === 'maxhang' ? { bw: bodyweight ?? undefined } : {}) }
@@ -581,13 +578,14 @@ const rpcError = (id: unknown, code: number, message: string) => ({
 export const POST: RequestHandler = async ({ request }) => {
 	const userId = await userIdFromBearer(request);
 	const body: unknown = await request.json().catch(() => null);
-	const id = isObj(body) ? body.id : null;
+	const id = isPlainObject(body) ? body.id : null;
 
 	if (!userId)
 		return json(rpcError(id, -32001, 'Unauthorized — provide a valid Bearer API token'), {
 			status: 401,
 		});
-	if (!isObj(body) || body.jsonrpc !== '2.0') return json(rpcError(id, -32600, 'Invalid Request'));
+	if (!isPlainObject(body) || body.jsonrpc !== '2.0')
+		return json(rpcError(id, -32600, 'Invalid Request'));
 
 	// Notifications (no id) get an empty ack.
 	if (!('id' in body)) return new Response(null, { status: 202 });
@@ -595,7 +593,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const method = body.method;
 	if (method === 'initialize') {
 		// Echo the client's protocol version when we support it, else our latest.
-		const requested = isObj(body.params) ? String(body.params.protocolVersion ?? '') : '';
+		const requested = isPlainObject(body.params) ? String(body.params.protocolVersion ?? '') : '';
 		const protocolVersion = SUPPORTED_PROTOCOLS.includes(requested) ? requested : LATEST_PROTOCOL;
 		return json(
 			rpcResult(id, {
@@ -608,9 +606,9 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 	if (method === 'tools/list') return json(rpcResult(id, { tools: TOOLS }));
 	if (method === 'tools/call') {
-		const params = isObj(body.params) ? body.params : {};
+		const params = isPlainObject(body.params) ? body.params : {};
 		const name = String(params.name);
-		const args = isObj(params.arguments) ? params.arguments : {};
+		const args = isPlainObject(params.arguments) ? params.arguments : {};
 		try {
 			const result = await callTool(name, args, userId);
 			// Structured tools return an object → emit it as `structuredContent`, with
