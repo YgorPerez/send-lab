@@ -3,6 +3,7 @@
 // Minimal JSON-RPC 2.0 over HTTP (initialize / tools/list / tools/call).
 import { json } from '@sveltejs/kit';
 import { exerciseParams } from '$lib/content/exercises';
+import { type Answers, computeVerdictId, dailyFlags, scoreDeep } from '$lib/content/logic';
 import type { CustomExercise } from '$lib/content/types';
 import { isValidExerciseId, sanitizeCustomExercise } from '$lib/customExercise';
 import { userIdFromBearer } from '$lib/server/apiToken';
@@ -16,10 +17,23 @@ import {
 } from '$lib/server/programOps';
 import { loadUserState, saveUserState } from '$lib/server/restApi';
 import { deepMerge, isPlainObject } from '$lib/server/stateOps';
+import { defaultMm, SIZED_METRICS } from '$lib/strength';
 import type { RequestHandler } from './$types';
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
 	typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Local YYYY-MM-DD for dating new entries (matches the client's `today()`). */
+const today = () => new Date().toISOString().slice(0, 10);
+
+type MetricEntry = { date: string; v: number; mm?: number; bw?: number };
+
+const ASSESS_GOALS = ['boulder', 'sport', 'all'];
+const ASSESS_FOCI = ['fingers', 'power', 'endurance', 'tissue'];
+const ASSESS_LEVELS = ['intermediate', 'advanced', 'elite'];
+const ASSESS_EQUIPMENT = ['hangboard', 'board', 'rings', 'weights'];
+const INJURY_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'];
+const READINESS_KEYS = ['recovery', 'fingers', 'elbow', 'shoulder', 'slot', 'skin', 'cns'];
 
 // Briefing handed to the connecting AI so it understands what it's editing.
 const INSTRUCTIONS = `Edit a single climber's Send Lab account. The whole account is one JSON document; \
@@ -34,7 +48,9 @@ savedPrograms ([{name,program}]); rehab (object or null); customExercises (id �
 Use list_exercises for valid exercise ids and weekday keys. To add your own exercises/categories/variants, \
 use create_exercise (then reference the id from edit_day/set_target like any built-in). The structured tools \
 (set_periodization, edit_day, set_target, set_auto_progress, create/update/delete_exercise) validate their \
-input — prefer them; use update_state/replace_state for everything else.`;
+input — prefer them; use update_state/replace_state for everything else. Assessments: assess_baseline sets goals/level/equipment \
+and seeds starting markers; daily_readiness returns today's session recommendation from quick scores (nothing stored); assess_injury \
+logs a body-area pain self-check (0–10 per item) and returns a 0–100 score, band, and recommended rehab stage.`;
 
 const TOOLS = [
 	{
@@ -183,6 +199,82 @@ const TOOLS = [
 			properties: { id: { type: 'string' } },
 		},
 	},
+	{
+		name: 'assess_baseline',
+		description:
+			"Record (or replace) the climber's baseline assessment — the same data the onboarding flow collects: goals, context, and optional starting strength markers. Canonical units (kg). Each baseline marker seeds the metric history only when that marker has no entries yet (it won't overwrite logged data).",
+		inputSchema: {
+			type: 'object',
+			required: ['goal', 'focus', 'level', 'daysPerWeek'],
+			properties: {
+				goal: { type: 'string', enum: ASSESS_GOALS },
+				focus: { type: 'string', enum: ASSESS_FOCI },
+				level: { type: 'string', enum: ASSESS_LEVELS },
+				daysPerWeek: { type: 'number', description: 'Training days per week, 1–7.' },
+				bodyweight: { type: ['number', 'null'], description: 'Bodyweight in kg.' },
+				equipment: {
+					type: 'array',
+					items: { type: 'string', enum: ASSESS_EQUIPMENT },
+					description: 'Gear on hand; filters the generated program.',
+				},
+				boulderGrade: { type: ['string', 'null'], description: 'Hardest boulder, e.g. "V8".' },
+				routeGrade: { type: ['string', 'null'], description: 'Hardest route, e.g. "7c".' },
+				niggle: {
+					type: 'boolean',
+					description: 'Current finger/tendon niggle (caps finger load).',
+				},
+				synovitis: { type: 'boolean', description: 'Finger-joint pain/swelling.' },
+				age: { type: ['number', 'null'] },
+				sessionMinutes: {
+					type: ['number', 'null'],
+					description: 'Typical session length, minutes.',
+				},
+				baseline: {
+					type: 'object',
+					description:
+						'Optional starting marker values in canonical units (kg), e.g. { "maxhang": 30, "pinch": 25, "pull": 40 }. Valid ids: maxhang, pinch, pull, contact, cf, rfd, density.',
+				},
+			},
+		},
+	},
+	{
+		name: 'daily_readiness',
+		description:
+			"Today's readiness check — ephemeral (not stored): returns the recommended session type and any targeted warnings from the day's answers. Provide each as a score. recovery: fresh 2 / normal 1 / flat 0 / wrecked -2. fingers: fine 2 / stiff 1 / tender -2 / sharp pain -5. elbow & shoulder: good 1 / niggle -1 / painful -3. slot (time): big 2 / standard 1 / short 0 / none -1. skin: solid 1 / ok 0 / thin -1 / split -2. cns (drive): sharp 1 / normal 0 / flat -1 / drained -2.",
+		inputSchema: {
+			type: 'object',
+			properties: {
+				recovery: { type: 'number' },
+				fingers: { type: 'number' },
+				elbow: { type: 'number' },
+				shoulder: { type: 'number' },
+				slot: { type: 'number' },
+				skin: { type: 'number' },
+				cns: { type: 'number' },
+				fatigue: {
+					type: 'number',
+					description: 'Optional objective load adjustment (≤0 = tired).',
+				},
+			},
+		},
+	},
+	{
+		name: 'assess_injury',
+		description:
+			'Deep injury self-check for one body area (VISA-C / PRTEE / SPADI-style). Provide an answer per item as 0–10, where 0 = most symptomatic and 10 = no symptoms. Returns and logs a 0–100 score, a severity band, and the recommended rehab stage.',
+		inputSchema: {
+			type: 'object',
+			required: ['area', 'answers'],
+			properties: {
+				area: { type: 'string', enum: INJURY_AREAS },
+				answers: {
+					type: 'array',
+					items: { type: 'number' },
+					description: 'One 0–10 score per item (0 worst, 10 none); typically 6 items.',
+				},
+			},
+		},
+	},
 ];
 
 type Program = Parameters<typeof applySetPhases>[0];
@@ -226,10 +318,84 @@ async function callTool(
 			2,
 		);
 
+	// Today's readiness is ephemeral (like the app): compute and return, no write.
+	if (name === 'daily_readiness') {
+		const answers: Answers = {};
+		for (const k of READINESS_KEYS) if (typeof args[k] === 'number') answers[k] = args[k] as number;
+		const fatigue = typeof args.fatigue === 'number' ? args.fatigue : 0;
+		return JSON.stringify(
+			{ verdict: computeVerdictId(answers, fatigue), flags: dailyFlags(answers, fatigue) },
+			null,
+			2,
+		);
+	}
+
 	// ---- writes ----
 	if (name === 'replace_state') {
 		const next = await saveUserState(userId, args.state);
 		return `OK. Account replaced.\n${JSON.stringify(next, null, 2)}`;
+	}
+
+	if (name === 'assess_baseline') {
+		if (!ASSESS_GOALS.includes(String(args.goal)))
+			throw new Error(`goal must be one of ${ASSESS_GOALS.join(', ')}`);
+		if (!ASSESS_FOCI.includes(String(args.focus)))
+			throw new Error(`focus must be one of ${ASSESS_FOCI.join(', ')}`);
+		if (!ASSESS_LEVELS.includes(String(args.level)))
+			throw new Error(`level must be one of ${ASSESS_LEVELS.join(', ')}`);
+		const num = (v: unknown): number | null =>
+			v == null || Number.isNaN(Number(v)) ? null : Number(v);
+		const bodyweight = num(args.bodyweight);
+		state.assessment = {
+			goal: args.goal,
+			focus: args.focus,
+			level: args.level,
+			daysPerWeek: num(args.daysPerWeek) ?? 3,
+			bodyweight,
+			equipment: Array.isArray(args.equipment)
+				? args.equipment.filter((e) => ASSESS_EQUIPMENT.includes(String(e)))
+				: [],
+			boulderGrade: typeof args.boulderGrade === 'string' ? args.boulderGrade : null,
+			routeGrade: typeof args.routeGrade === 'string' ? args.routeGrade : null,
+			niggle: Boolean(args.niggle),
+			synovitis: Boolean(args.synovitis),
+			age: num(args.age),
+			sessionMinutes: num(args.sessionMinutes),
+			completedAt: today(),
+		};
+		const metrics = (state.metrics ?? {}) as Record<string, MetricEntry[]>;
+		// Seed a marker only when it has no history yet — never clobber logged data.
+		const seed = (key: string, v: number | null, extra: Partial<MetricEntry> = {}) => {
+			if (v == null) return;
+			if (!metrics[key]) metrics[key] = [];
+			if (metrics[key].length === 0) metrics[key].push({ date: today(), v, ...extra });
+		};
+		seed('bodyweight', bodyweight);
+		const baseline = isObj(args.baseline) ? args.baseline : {};
+		for (const [key, raw] of Object.entries(baseline)) {
+			const extra: Partial<MetricEntry> = SIZED_METRICS.has(key)
+				? { mm: defaultMm(key), ...(key === 'maxhang' ? { bw: bodyweight ?? undefined } : {}) }
+				: {};
+			seed(key, num(raw), extra);
+		}
+		state.metrics = metrics;
+		const next = await saveUserState(userId, state);
+		return `OK. Baseline assessment saved.\n${JSON.stringify(next.assessment, null, 2)}`;
+	}
+
+	if (name === 'assess_injury') {
+		const area = String(args.area);
+		if (!INJURY_AREAS.includes(area))
+			throw new Error(`area must be one of ${INJURY_AREAS.join(', ')}`);
+		if (!Array.isArray(args.answers) || args.answers.length === 0)
+			throw new Error('`answers` must be a non-empty array of 0–10 numbers');
+		const values = args.answers.map((n) => Math.max(0, Math.min(10, Number(n) || 0)));
+		const result = scoreDeep(values);
+		const deepLog = Array.isArray(state.deepLog) ? state.deepLog : [];
+		deepLog.push({ date: today(), area, score: result.score, band: result.band });
+		state.deepLog = deepLog;
+		await saveUserState(userId, state);
+		return `OK. ${area} self-check logged.\n${JSON.stringify(result, null, 2)}`;
 	}
 	const customIds = Object.keys(custom);
 	if (name === 'create_exercise' || name === 'update_exercise') {
