@@ -483,7 +483,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 		variants: [
 			// Hangboard · 2 hands · Standard
 			{
-				prepareSec: 5,
 				workSec: n(10),
 				restSec: n(20),
 				rounds: n(20),
@@ -498,7 +497,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			},
 			// Block · 1 hand · Standard (2s switch between hands, 2 cycles)
 			{
-				prepareSec: 5,
 				workSec: n(10),
 				restSec: n(2),
 				rounds: n(20),
@@ -513,7 +511,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			},
 			// Hangboard · 2 hands · Fast (abrafast)
 			{
-				prepareSec: 5,
 				workSec: n(15),
 				restSec: n(20),
 				rounds: n(13),
@@ -528,7 +525,6 @@ export const exerciseParams: Record<string, ExerciseParams> = {
 			},
 			// Block · 1 hand · Fast (abrafast 1-handed)
 			{
-				prepareSec: 5,
 				workSec: n(15),
 				restSec: n(2),
 				rounds: n(13),

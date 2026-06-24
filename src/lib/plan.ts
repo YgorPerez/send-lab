@@ -250,7 +250,9 @@ export function timerSeedFor(spec: VariantParams, key: string, name: string): Ti
 	return {
 		key,
 		name,
-		prepare: spec.prepareSec ?? 0,
+		// Default to a 5s get-ready countdown when the exercise doesn't specify one
+		// (an explicit prepareSec — including 0 — is respected).
+		prepare: spec.prepareSec ?? 5,
 		work: mid(spec.workSec),
 		rest: spec.restSec ? mid(spec.restSec) : 0,
 		rounds: spec.rounds ? mid(spec.rounds) : 1,
