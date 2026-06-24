@@ -1,3 +1,12 @@
+overrides:
+  # esrap 2.2.12 (Svelte's codegen printer) mis-emits TypeScript optional
+  # parameters: `(r?: T)` is printed as an invalid `(r?)`, which crashes
+  # `vite build` with a parse error. Pin to 2.2.11 until the regression is fixed.
+  esrap: 2.2.11
+  # Force every transitive esbuild (incl. the old 0.18.20 inside drizzle-kit's
+  # deprecated @esbuild-kit chain) up to a patched release — clears the
+  # GHSA-67mh-4wv8-2f99 dev-server advisory.
+  esbuild: 0.25.12
 allowBuilds:
   esbuild: true
   better-sqlite3: true
@@ -11,11 +20,11 @@ minimumReleaseAgeExclude:
   - '@fallow-cli/win32-arm64-msvc@2.101.0'
   - '@fallow-cli/win32-x64-msvc@2.101.0'
   - fallow@2.101.0
-  - '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260620.1'
-  - '@typescript/native-preview-darwin-x64@7.0.0-dev.20260620.1'
-  - '@typescript/native-preview-linux-arm64@7.0.0-dev.20260620.1'
-  - '@typescript/native-preview-linux-arm@7.0.0-dev.20260620.1'
-  - '@typescript/native-preview-linux-x64@7.0.0-dev.20260620.1'
-  - '@typescript/native-preview-win32-arm64@7.0.0-dev.20260620.1'
-  - '@typescript/native-preview-win32-x64@7.0.0-dev.20260620.1'
-  - '@typescript/native-preview@7.0.0-dev.20260620.1'
+  - '@typescript/native-preview-darwin-arm64@7.0.0-dev.20260622.1'
+  - '@typescript/native-preview-darwin-x64@7.0.0-dev.20260622.1'
+  - '@typescript/native-preview-linux-arm64@7.0.0-dev.20260622.1'
+  - '@typescript/native-preview-linux-arm@7.0.0-dev.20260622.1'
+  - '@typescript/native-preview-linux-x64@7.0.0-dev.20260622.1'
+  - '@typescript/native-preview-win32-arm64@7.0.0-dev.20260622.1'
+  - '@typescript/native-preview-win32-x64@7.0.0-dev.20260622.1'
+  - '@typescript/native-preview@7.0.0-dev.20260622.1'
