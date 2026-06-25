@@ -170,35 +170,55 @@ function recheck() {
 	probeValue = null;
 }
 
-function logVerdict() {
-	if (!verdict || !readiness) return;
-	appState.log.unshift({
-		date: today(),
-		type: 'rec',
-		label: verdict.title,
-		color: verdict.color,
-		note: tasks[0] ? `${dayLabel} · ${tasks[0].label}` : verdict.tag,
-	});
-	// Record today's readiness for the trend (one entry per day; update on recheck).
+// Auto-log the readiness check once every shown question is answered: upsert
+// today's entry with the full response + conclusion. No manual save needed; the
+// early-return on no-change keeps the write from re-triggering this effect.
+$effect(() => {
+	if (!complete || !readiness) return;
 	const d = today();
+	const rl = appState.readinessLog;
+	const existing = rl.find((e) => e.date === d);
+	const flags = readiness.flags.map((f) => ({
+		id: f.id,
+		severity: f.severity,
+		...(f.area ? { area: f.area } : {}),
+	}));
+	const snap = { ...answers };
+	if (
+		existing &&
+		existing.score === readiness.score &&
+		existing.verdict === readiness.verdict &&
+		JSON.stringify(existing.answers) === JSON.stringify(snap) &&
+		JSON.stringify(existing.flags) === JSON.stringify(flags)
+	)
+		return;
 	const entry: ReadinessEntry = {
 		date: d,
-		at: Date.now(),
+		at: existing?.at ?? Date.now(),
 		verdict: readiness.verdict,
 		score: readiness.score,
+		answers: snap,
+		flags,
+		...(existing?.outcome != null ? { outcome: existing.outcome } : {}),
 	};
-	const rl = appState.readinessLog;
-	if (rl.length && rl[rl.length - 1].date === d) rl[rl.length - 1] = entry;
+	if (existing) Object.assign(existing, entry);
 	else rl.push(entry);
-	// Bank today's probe reading so the personal baseline builds over time.
-	if (probeValue != null && !Number.isNaN(probeValue) && probeValue > 0) {
-		const pl = appState.probeLog;
-		const pe = { date: d, at: Date.now(), value: probeValue };
-		if (pl.length && pl[pl.length - 1].date === d) pl[pl.length - 1] = pe;
-		else pl.push(pe);
+});
+
+// Bank today's objective probe reading (for the personal baseline) once the
+// check is complete and a value has been entered.
+$effect(() => {
+	if (!complete) return;
+	const v = probeValue;
+	if (v == null || Number.isNaN(v) || v <= 0) return;
+	const d = today();
+	const pe = appState.probeLog.find((p) => p.date === d);
+	if (pe) {
+		if (pe.value !== v) pe.value = v;
+	} else {
+		appState.probeLog.push({ date: d, at: Date.now(), value: v });
 	}
-	toast.success(m.toast_session_logged());
-}
+});
 </script>
 
 <section class="animate-in fade-in duration-300">
@@ -452,12 +472,12 @@ function logVerdict() {
 						</Badge>
 					{/each}
 				</div>
-				<div class="mt-[18px] flex flex-wrap gap-2.5">
-					<Button class="bg-flag text-white hover:bg-flag/90" onclick={logVerdict}>
-						{m.btn_log_session()}
-					</Button>
+				<div class="mt-[18px] flex flex-wrap items-center gap-2.5">
 					<Button variant="outline" onclick={recheck}>{m.td_recheck()}</Button>
 					<Button href="/week" variant="ghost">{m.btn_view_protocol()}</Button>
+					<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+						{m.train_autosave()}
+					</span>
 				</div>
 
 				{#if todayEntry && todayEntry.outcome == null}

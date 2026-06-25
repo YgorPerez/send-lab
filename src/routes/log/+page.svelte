@@ -8,6 +8,7 @@ import {
 import { getContent } from '$lib/content';
 import type { VerdictId } from '$lib/content/types';
 import * as m from '$lib/paraglide/messages';
+import { getLocale } from '$lib/paraglide/runtime';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import SetRows from '$lib/SetRows.svelte';
 import { appState } from '$lib/state.svelte';
@@ -53,6 +54,26 @@ function removeReadiness(entry: (typeof appState.readinessLog)[number]) {
 	const i = appState.readinessLog.indexOf(entry);
 	if (i >= 0) appState.readinessLog.splice(i, 1);
 }
+
+/** Logged time-of-day (HH:MM) for an epoch-ms timestamp. */
+const hour = (at: number) =>
+	new Date(at).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
+
+/** Map a stored answers map back to readable question → chosen-answer pairs. */
+function responses(answers?: Record<string, number>): { q: string; a: string }[] {
+	if (!answers) return [];
+	const out: { q: string; a: string }[] = [];
+	for (const q of content.quiz) {
+		const v = answers[q.id];
+		if (v == null) continue;
+		out.push({ q: q.q, a: q.a.find((o) => o.v === v)?.t ?? String(v) });
+	}
+	return out;
+}
+
+/** The conclusion's flag titles. */
+const flagTitles = (flags?: { id: string }[]): string[] =>
+	(flags ?? []).map((f) => content.flags[f.id]?.title ?? f.id);
 </script>
 
 <section class="animate-in fade-in duration-300">
@@ -63,34 +84,67 @@ function removeReadiness(entry: (typeof appState.readinessLog)[number]) {
 		<h3 class="mb-2 font-mono text-[11px] tracking-wider text-ink-faint uppercase">
 			{m.log_readiness()}
 		</h3>
-		<div class="mb-6 flex flex-col gap-2.5">
-			{#each [...appState.readinessLog].reverse() as r (r)}
+		<Accordion type="multiple" class="mb-6 flex flex-col gap-2.5">
+			{#each [...appState.readinessLog].reverse() as r, i (r)}
 				{@const v = content.verdicts[r.verdict as VerdictId]}
-				<div class="flex items-center gap-3.5 rounded-[10px] border border-line bg-panel px-4 py-3.5">
-					<span class="w-[90px] flex-none font-mono text-xs text-ink-faint">{r.date}</span>
-					<span
-						class="flex-none rounded-md px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums"
-						style:background="color-mix(in srgb, {v?.color ?? 'var(--ink-faint)'} 18%, transparent)"
-						style:color={v?.color ?? 'var(--ink-faint)'}
-					>
-						{r.score}
-					</span>
-					<span class="flex-1 text-[13px] text-ink-dim">
-						<b class="text-chalk">{v?.title ?? r.verdict}</b>{#if r.outcome != null}
-							· <span class="text-ink-faint">{OUTCOME_LABEL[r.outcome]?.() ?? ''}</span>
+				<AccordionItem value={`r${i}`} class="rounded-xl border border-line bg-panel last:border-b">
+					<AccordionTrigger class="px-4 py-3 hover:no-underline">
+						<span class="font-mono text-xs text-ink-faint">{r.date} · {hour(r.at)}</span>
+						<span
+							class="ml-2 flex-none rounded-md px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums"
+							style:background="color-mix(in srgb, {v?.color ?? 'var(--ink-faint)'} 18%, transparent)"
+							style:color={v?.color ?? 'var(--ink-faint)'}
+						>
+							{r.score}
+						</span>
+						<span class="ml-2 flex-1 text-left text-[13px]">
+							<b class="text-chalk">{v?.title ?? r.verdict}</b>{#if r.outcome != null}<span
+									class="text-ink-faint"
+								>
+									· {OUTCOME_LABEL[r.outcome]?.() ?? ''}</span
+								>{/if}
+						</span>
+					</AccordionTrigger>
+					<AccordionContent class="px-4 pb-4">
+						{#if responses(r.answers).length}
+							<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+								{m.log_rd_responses()}
+							</div>
+							<div class="mb-3 flex flex-col gap-1">
+								{#each responses(r.answers) as row (row.q)}
+									<div class="flex items-baseline justify-between gap-3 text-[13px]">
+										<span class="text-ink-dim">{row.q}</span>
+										<span class="flex-none font-semibold text-chalk">{row.a}</span>
+									</div>
+								{/each}
+							</div>
 						{/if}
-					</span>
-					<button
-						type="button"
-						title={m.btn_delete()}
-						onclick={() => removeReadiness(r)}
-						class="px-1 text-base text-ink-faint transition hover:text-flag"
-					>
-						✕
-					</button>
-				</div>
+						<div class="mb-1.5 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
+							{m.log_rd_conclusion()}
+						</div>
+						<p class="text-[13px] text-ink-dim">
+							<b class="text-chalk">{v?.title ?? r.verdict}</b>
+						</p>
+						{#if flagTitles(r.flags).length}
+							<div class="mt-2 flex flex-wrap gap-1.5">
+								{#each flagTitles(r.flags) as t (t)}
+									<span class="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-dim">
+										{t}
+									</span>
+								{/each}
+							</div>
+						{/if}
+						<button
+							type="button"
+							class="mt-3 font-mono text-[10px] tracking-wider text-ink-faint uppercase hover:text-flag"
+							onclick={() => removeReadiness(r)}
+						>
+							✕ {m.btn_delete()}
+						</button>
+					</AccordionContent>
+				</AccordionItem>
 			{/each}
-		</div>
+		</Accordion>
 	{/if}
 
 	{#if appState.workouts.length > 0}

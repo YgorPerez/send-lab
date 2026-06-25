@@ -85,11 +85,17 @@ export interface ProbeEntry {
 /** A daily readiness check recorded for the trend over time. */
 export interface ReadinessEntry {
 	date: string;
+	/** Epoch ms when the check was first completed (drives the logged time-of-day). */
 	at: number;
 	/** The recommended session type (VerdictId). */
 	verdict: string;
 	/** Overall readiness score 0–100 (higher = fresher). */
 	score: number;
+	/** The full set of answers given (question id → chosen value), so the history
+	 *  can show exactly what was reported. */
+	answers?: Record<string, number>;
+	/** The surfaced flags at the time (the conclusion's warnings). */
+	flags?: { id: string; severity: string; area?: string }[];
 	/** Post-session outcome, set after training: 0 bailed · 1 flat · 2 as-expected
 	 *  · 3 strong. Feeds the personal calibration of future scores. */
 	outcome?: number;
