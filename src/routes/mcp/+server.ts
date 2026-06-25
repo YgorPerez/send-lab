@@ -256,7 +256,7 @@ const TOOLS: ToolDef[] = [
 					description: 'Current finger/tendon niggle (caps finger load).',
 				},
 				synovitis: { type: 'boolean', description: 'Finger-joint pain/swelling.' },
-				age: { type: ['number', 'null'] },
+				birthDate: { type: ['string', 'null'], description: 'Birth date, ISO YYYY-MM-DD.' },
 				sessionMinutes: {
 					type: ['number', 'null'],
 					description: 'Typical session length, minutes.',
@@ -500,7 +500,7 @@ async function callTool(
 			routeGrade: typeof args.routeGrade === 'string' ? args.routeGrade : null,
 			niggle: Boolean(args.niggle),
 			synovitis: Boolean(args.synovitis),
-			age: num(args.age),
+			birthDate: typeof args.birthDate === 'string' ? args.birthDate : null,
 			sessionMinutes: num(args.sessionMinutes),
 			completedAt: today(),
 		};

@@ -1,5 +1,5 @@
 <script lang="ts">
-import { goto } from '$app/navigation';
+import AssessExercise from '$lib/AssessExercise.svelte';
 import { customMarkers, type Marker, METRIC_EXERCISE } from '$lib/assessment';
 import { Input } from '$lib/components/ui/input';
 import { getContent, type MetricId } from '$lib/content';
@@ -29,6 +29,9 @@ const markers = $derived<Marker[]>([...builtinMarkers, ...customMarkers()]);
 
 const markerExercise = (mk: Marker) =>
 	METRIC_EXERCISE[mk.id as MetricId] ?? (mk.custom ? mk.id : undefined);
+
+// The marker currently being tested in the focused timer modal.
+let assessing = $state<{ marker: Marker; exId: string } | null>(null);
 </script>
 
 <p class="text-xs text-ink-faint">{m.welcome_baseline_help()}</p>
@@ -49,11 +52,24 @@ const markerExercise = (mk: Marker) =>
 				<button
 					type="button"
 					class="self-start font-mono text-[10px] tracking-wider text-flag uppercase hover:underline"
-					onclick={() => goto(`/train?ex=${exId}&assess=${mk.id}&from=welcome`)}
+					onclick={() => (assessing = { marker: mk, exId })}
 				>
-					{m.assess_test_in_train()}
+					{m.assess_test_it()}
 				</button>
 			{/if}
 		</div>
 	{/each}
 </div>
+
+{#if assessing}
+	<AssessExercise
+		exId={assessing.exId}
+		name={assessing.marker.name}
+		unit={metricUnit(assessing.marker.id, assessing.marker.unit)}
+		onSave={(v) => {
+			if (assessing) baseline[assessing.marker.id] = v;
+			assessing = null;
+		}}
+		onClose={() => (assessing = null)}
+	/>
+{/if}

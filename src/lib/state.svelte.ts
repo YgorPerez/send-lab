@@ -122,7 +122,8 @@ export interface Assessment {
 	niggle: boolean;
 	/** Finger-joint pain/swelling from the fist-hook synovitis self-check. */
 	synovitis: boolean;
-	age: number | null;
+	/** Birth date (ISO YYYY-MM-DD), informational. Replaces the old free-text age. */
+	birthDate: string | null;
 	/** Typical session length (min) → caps exercises per day. */
 	sessionMinutes: number | null;
 	completedAt: string;

@@ -1,11 +1,8 @@
 <script lang="ts">
-import CheckIcon from '@lucide/svelte/icons/check';
-import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 import { toast } from 'svelte-sonner';
 import { goto } from '$app/navigation';
-import { Badge } from '$lib/components/ui/badge';
 import { Button } from '$lib/components/ui/button';
-import { Card, CardContent } from '$lib/components/ui/card';
+import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import {
 	type Answers,
@@ -26,6 +23,8 @@ import {
 	resolveSwapIndex,
 	taskKey,
 } from '$lib/plan';
+import ReadinessQuiz from '$lib/ReadinessQuiz.svelte';
+import ReadinessVerdict from '$lib/ReadinessVerdict.svelte';
 import Rehab from '$lib/Rehab.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, type ReadinessEntry, today } from '$lib/state.svelte';
@@ -39,9 +38,9 @@ import {
 	weekLoad,
 } from '$lib/stats';
 import { STUDIES } from '$lib/studies';
+import TodayPlan from '$lib/TodayPlan.svelte';
 import TrendChart from '$lib/TrendChart.svelte';
 import { toMetricCanonical } from '$lib/units';
-import { cn } from '$lib/utils';
 
 // Daily bodyweight nudge — it anchors the % bodyweight strength estimates.
 let bwInput = $state('');
@@ -262,47 +261,7 @@ $effect(() => {
 		</div>
 	{/if}
 
-	<!-- Today's plan + per-task checklist -->
-	<Card class="mb-[22px] gap-3 border-l-[3px] p-5" style="border-left-color: {day.color}">
-		<div class="flex items-baseline justify-between gap-2">
-			<span class="font-bold">{m.td_today_label()} · {dayLabel}</span>
-			<div class="flex items-baseline gap-2.5">
-				<a href="/week" class="font-mono text-[11px] text-ink-faint hover:text-ink">
-					{m.week_label({ n: week })}
-				</a>
-				<span class="font-mono text-[11px] tracking-wider uppercase" style:color={day.color}>
-					{day.load}
-				</span>
-			</div>
-		</div>
-		{#if isRestDay}
-			<p class="text-sm text-teal">{m.td_rest_day()}</p>
-			<p class="text-xs text-ink-dim"><Prose value={day.sec} /></p>
-		{:else}
-			<div class="flex flex-col gap-2">
-				{#each tasks as task (task.id)}
-					<a
-						href="/train?ex={task.id}"
-						class={cn(
-							'flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition',
-							task.done
-								? 'border-teal/40 bg-teal/5 text-ink-faint'
-								: 'border-line bg-panel-2 text-ink-dim hover:border-flag hover:text-chalk'
-						)}
-					>
-						{#if task.done}
-							<CheckIcon class="size-4 flex-none text-teal" />
-						{/if}
-						<span class={cn('flex-1', task.done && 'line-through')}>{task.label}</span>
-						<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-							{task.done ? m.lbl_done() : m.td_open_train()}
-						</span>
-						<ChevronRightIcon class="size-4" />
-					</a>
-				{/each}
-			</div>
-		{/if}
-	</Card>
+	<TodayPlan {day} {dayLabel} {week} {isRestDay} {tasks} />
 
 	<div class="mb-[22px] grid grid-cols-3 gap-3">
 		<Card class="items-center gap-0 p-3.5 text-center">
@@ -327,182 +286,29 @@ $effect(() => {
 		</Card>
 	</div>
 
-	<Card class="mb-[22px] gap-0 p-6">
-		<CardContent class="space-y-[22px] p-0">
-			{#each visibleQuiz as q, qi (q.id)}
-				<div class="animate-in fade-in duration-200">
-					<div class="mb-1 text-[15px] font-semibold">
-						<span class="mr-2 font-mono text-xs text-flag">0{qi + 1}</span>{q.q}
-					</div>
-					{#if q.why}
-						<p class="mb-2 max-w-[60ch] text-[12px] leading-snug text-ink-faint">
-							{q.why}{#if studyUrl(q.study)}
-								<a
-									href={studyUrl(q.study)}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="ml-1 whitespace-nowrap text-flag hover:underline">{m.rd_evidence()}</a
-								>{/if}
-						</p>
-					{/if}
-					<div class="flex flex-wrap gap-2">
-						{#each q.a as a (a.t)}
-							<button
-								type="button"
-								onclick={() => pick(q.id, a.v)}
-								class={cn(
-									'min-w-[120px] flex-1 rounded-[9px] border px-3 py-[11px] text-left text-[13.5px] transition',
-									answers[q.id] === a.v
-										? 'border-flag bg-flag/10 font-semibold text-chalk'
-										: 'border-line bg-panel-2 text-ink-dim hover:border-ink-faint hover:text-ink'
-								)}
-							>
-								{a.t}
-							</button>
-						{/each}
-					</div>
-				</div>
-			{/each}
-
-			<!-- Optional climbing-specific objective probe: a quick max finger pull. -->
-			<div class="border-t border-line pt-[22px] animate-in fade-in duration-200">
-				<div class="mb-1 text-[15px] font-semibold">
-					<span class="mr-2 font-mono text-xs text-flag">+</span>{m.rd_probe_label()}
-				</div>
-				<p class="mb-2 max-w-[60ch] text-[12px] leading-snug text-ink-faint">
-					{m.rd_probe_why()}{#if studyUrl('probe')}
-						<a
-							href={studyUrl('probe')}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="ml-1 whitespace-nowrap text-flag hover:underline">{m.rd_evidence()}</a
-						>{/if}
-				</p>
-				<div class="flex items-center gap-2">
-					<Input
-						type="number"
-						inputmode="decimal"
-						step="any"
-						min="0"
-						value={probeValue ?? ''}
-						oninput={(e) =>
-							(probeValue = e.currentTarget.value === '' ? null : e.currentTarget.valueAsNumber)}
-						placeholder={m.rd_probe_ph()}
-						class="w-32 bg-panel-2 text-sm"
-					/>
-					<span class="text-xs text-ink-faint">kg</span>
-					{#if probeResult.baseline != null}
-						<span class="font-mono text-[11px] text-ink-faint">
-							{m.rd_probe_baseline({ kg: probeResult.baseline })}{#if probeResult.deficitPct != null}
-								· <span
-									class={cn(
-										probeResult.deficitPct >= 6
-											? 'text-flag'
-											: probeResult.deficitPct <= -5
-												? 'text-teal'
-												: 'text-ink-faint'
-									)}
-									>{probeResult.deficitPct > 0 ? '−' : '+'}{Math.abs(probeResult.deficitPct)}%</span
-								>{/if}
-						</span>
-					{:else if probeValue != null}
-						<span class="font-mono text-[11px] text-ink-faint">{m.rd_probe_building()}</span>
-					{/if}
-				</div>
-			</div>
-		</CardContent>
-	</Card>
+	<ReadinessQuiz
+		questions={visibleQuiz}
+		{answers}
+		onPick={pick}
+		{studyUrl}
+		{probeValue}
+		onProbe={(v) => (probeValue = v)}
+		{probeResult}
+	/>
 
 	{#if verdict && readiness}
-		<Card class="overflow-hidden p-0 animate-in fade-in duration-300">
-			<div class="flex items-center gap-3.5 border-b border-line p-5">
-				<span class="size-3.5 flex-none rounded-full" style:background={verdict.color}></span>
-				<div class="min-w-0 flex-1">
-					<div class="text-[19px] font-extrabold tracking-tight">{verdict.title}</div>
-					<div class="font-mono text-[11px] tracking-wider text-ink-faint uppercase">
-						{verdict.tag}
-					</div>
-				</div>
-				<div class="flex-none text-right">
-					<div class="font-mono text-[22px] leading-none font-bold text-chalk">{readiness.score}</div>
-					<div class="font-mono text-[9px] tracking-wider text-ink-faint uppercase">
-						{m.rd_score()}
-					</div>
-					{#if baselineLabel}
-						<div class="mt-0.5 font-mono text-[9px] text-ink-faint">{baselineLabel}</div>
-					{/if}
-				</div>
-			</div>
-			<div class="p-5 text-[14.5px] text-ink-dim">
-				<div><Prose value={verdict.text} /></div>
-				{#if breakdown.length}
-					<div class="mt-3 flex flex-wrap gap-1.5">
-						{#each breakdown as b (b.label)}
-							<span
-								class={cn(
-									'rounded-full border px-2 py-0.5 font-mono text-[10px]',
-									b.v >= 7
-										? 'border-teal/40 text-teal'
-										: b.v >= 4
-											? 'border-gold/40 text-gold'
-											: 'border-flag/40 text-flag'
-								)}
-							>
-								{b.label} {b.v}/10
-							</span>
-						{/each}
-					</div>
-				{/if}
-				<p class="mt-2 text-[11px] leading-snug text-ink-faint italic">{scoreNote}</p>
-				{#if tasks[0]}
-					<p class="mt-2.5 text-[13px] text-ink-faint">
-						{m.td_applies()} <b class="text-chalk">{tasks[0].label}</b>
-					</p>
-				{/if}
-				<div class="mt-3.5 flex flex-wrap gap-2">
-					{#each verdict.focus as f, i (f)}
-						<Badge
-							variant="outline"
-							class={cn(
-								'border-line font-mono text-[11px] font-normal text-ink-dim',
-								i === 0 && 'border-flag text-flag'
-							)}
-						>
-							<Prose value={f} />
-						</Badge>
-					{/each}
-				</div>
-				<div class="mt-[18px] flex flex-wrap items-center gap-2.5">
-					<Button variant="outline" onclick={recheck}>{m.td_recheck()}</Button>
-					<Button href="/week" variant="ghost">{m.btn_view_protocol()}</Button>
-					<span class="font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-						{m.train_autosave()}
-					</span>
-				</div>
-
-				{#if todayEntry && todayEntry.outcome == null}
-					<div class="mt-4 border-t border-line pt-3.5">
-						<div class="mb-2 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
-							{m.rd_outcome_q()}
-						</div>
-						<div class="flex flex-wrap gap-2">
-							{#each [{ v: 3, l: m.rd_outcome_strong() }, { v: 2, l: m.rd_outcome_ok() }, { v: 1, l: m.rd_outcome_flat() }, { v: 0, l: m.rd_outcome_bailed() }] as o (o.v)}
-								<Button
-									variant="outline"
-									size="sm"
-									class="border-line text-xs"
-									onclick={() => setOutcome(o.v)}
-								>
-									{o.l}
-								</Button>
-							{/each}
-						</div>
-					</div>
-				{:else if todayEntry?.outcome != null}
-					<p class="mt-3 font-mono text-[11px] text-teal">{m.rd_outcome_saved()}</p>
-				{/if}
-			</div>
-		</Card>
+		<ReadinessVerdict
+			{verdict}
+			score={readiness.score}
+			{baselineLabel}
+			{breakdown}
+			{scoreNote}
+			firstTaskLabel={tasks[0]?.label}
+			showOutcomeCapture={!!todayEntry && todayEntry.outcome == null}
+			outcomeSaved={todayEntry?.outcome != null}
+			onRecheck={recheck}
+			onSetOutcome={setOutcome}
+		/>
 	{/if}
 
 	{#if appState.readinessLog.length > 1}

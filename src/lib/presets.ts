@@ -33,7 +33,7 @@ function assessmentFor(p: Preset): Assessment {
 		routeGrade: null,
 		niggle: false,
 		synovitis: false,
-		age: null,
+		birthDate: null,
 		sessionMinutes: null,
 		completedAt: '',
 	};

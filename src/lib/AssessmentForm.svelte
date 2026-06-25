@@ -2,14 +2,13 @@
 import { browser } from '$app/environment';
 import { customMarkers } from '$lib/assessment';
 import BaselineStep from '$lib/BaselineStep.svelte';
+import ContextStep from '$lib/ContextStep.svelte';
 import { Button } from '$lib/components/ui/button';
 import { Card, CardContent } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { getContent } from '$lib/content';
-import { BOULDER_SCALE, gradeIndex, ROUTE_SCALE } from '$lib/grades';
+import { gradeIndex } from '$lib/grades';
 import OptionCards from '$lib/OptionCards.svelte';
-import PainCheck from '$lib/PainCheck.svelte';
 import * as m from '$lib/paraglide/messages';
 import { generateProgram } from '$lib/programGen';
 import {
@@ -29,6 +28,13 @@ let { onComplete }: { onComplete: () => void } = $props();
 
 const content = getContent();
 const a = appState.assessment;
+
+/** Latest logged value for a metric, in display units (for redo prefill). */
+function lastMetricDisplay(id: string): number | null {
+	const series = appState.metrics[id];
+	const last = series?.[series.length - 1];
+	return last ? showMetric(id, last.v) : null;
+}
 
 // Persist the in-progress wizard so a refresh mid-assessment doesn't lose it.
 const DRAFT_KEY = 'sendlab:assessmentDraft';
@@ -54,7 +60,9 @@ const FRESH_LOAD: Record<Level, { maxhang: number; pull: number; pinch: number }
 	elite: { maxhang: 45, pull: 45, pinch: 28 },
 };
 let bodyweight = $state<number | null>(
-	(d?.bodyweight as number | null) ?? showKg(a?.bodyweight ?? (a ? null : 70)),
+	(d?.bodyweight as number | null) ??
+		lastMetricDisplay('bodyweight') ??
+		showKg(a?.bodyweight ?? (a ? null : 70)),
 );
 let equipment = $state<Equipment[]>(
 	(d?.equipment as Equipment[]) ?? a?.equipment ?? ['hangboard', 'board', 'rings', 'weights'],
@@ -63,14 +71,27 @@ let boulderGrade = $state<string>((d?.boulderGrade as string) ?? a?.boulderGrade
 let routeGrade = $state<string>((d?.routeGrade as string) ?? a?.routeGrade ?? '');
 let niggle = $state<boolean>((d?.niggle as boolean) ?? a?.niggle ?? false);
 let synovitis = $state<boolean>((d?.synovitis as boolean) ?? a?.synovitis ?? false);
-let age = $state<number | null>((d?.age as number | null) ?? a?.age ?? null);
+let birthDate = $state<string | null>((d?.birthDate as string | null) ?? a?.birthDate ?? null);
 let sessionMinutes = $state<number | null>(
 	(d?.sessionMinutes as number | null) ?? a?.sessionMinutes ?? null,
 );
 const BASELINES = ['pull', 'pinch', 'maxhang', 'contact', 'cf', 'rfd', 'density'];
 // Baseline test values keyed by marker id (display units; converted on submit).
 function freshBaseline(): Record<string, number | null> {
-	if (a) return {}; // redo: leave blank — real markers already live in Metrics
+	if (a) {
+		// Redo: prefill every marker from the latest logged value, so the user just
+		// confirms or re-tests rather than re-entering everything from scratch.
+		const out: Record<string, number | null> = {};
+		for (const id of BASELINES) {
+			const v = lastMetricDisplay(id);
+			if (v != null) out[id] = v;
+		}
+		for (const mk of customMarkers()) {
+			const v = lastMetricDisplay(mk.id);
+			if (v != null) out[mk.id] = v;
+		}
+		return out;
+	}
 	const L = FRESH_LOAD[level];
 	return {
 		maxhang: showMetric('maxhang', L.maxhang),
@@ -97,7 +118,7 @@ $effect(() => {
 		routeGrade,
 		niggle,
 		synovitis,
-		age,
+		birthDate,
 		sessionMinutes,
 		baseline,
 		step,
@@ -143,17 +164,6 @@ const levelOpts = $derived(
 	})),
 );
 
-const EQUIPMENT: Equipment[] = ['hangboard', 'board', 'rings', 'weights'];
-const equipLabel: Record<Equipment, () => string> = {
-	hangboard: m.equip_hangboard,
-	board: m.equip_board,
-	rings: m.equip_rings,
-	weights: m.equip_weights,
-};
-function toggleEquip(e: Equipment) {
-	equipment = equipment.includes(e) ? equipment.filter((x) => x !== e) : [...equipment, e];
-}
-
 const STEPS = [m.welcome_step_goals, m.welcome_step_context, m.welcome_step_baseline];
 
 function generate() {
@@ -179,7 +189,7 @@ function generate() {
 		routeGrade: routeGrade.trim() || null,
 		niggle,
 		synovitis,
-		age,
+		birthDate,
 		sessionMinutes,
 		completedAt: today(),
 	};
@@ -240,56 +250,15 @@ function back() {
 				<Input type="number" min="1" max="7" bind:value={days} class="bg-panel-2" />
 			</label>
 		{:else if step === 2}
-			<p class="text-xs text-ink-faint">{m.welcome_context_help()}</p>
-			<div class="flex flex-col gap-1.5">
-				<span class="text-xs text-ink-dim">{m.field_equipment()}</span>
-				<div class="flex flex-wrap gap-1.5">
-					{#each EQUIPMENT as eq (eq)}
-						<button
-							type="button"
-							onclick={() => toggleEquip(eq)}
-							aria-pressed={equipment.includes(eq)}
-							class={cn(
-								'rounded-md border px-2.5 py-1 text-xs transition',
-								equipment.includes(eq)
-									? 'border-flag bg-flag/15 text-flag'
-									: 'border-line text-ink-faint hover:text-ink'
-							)}
-						>
-							{equipLabel[eq]()}
-						</button>
-					{/each}
-				</div>
-			</div>
-			<div class="grid grid-cols-2 gap-3">
-				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-					{m.field_boulder_grade()}
-					<Select type="single" value={boulderGrade} onValueChange={(v) => (boulderGrade = v ?? '')}>
-						<SelectTrigger class="bg-panel-2">{boulderGrade || '—'}</SelectTrigger>
-						<SelectContent>
-							{#each BOULDER_SCALE as g (g)}<SelectItem value={g}>{g}</SelectItem>{/each}
-						</SelectContent>
-					</Select>
-				</label>
-				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-					{m.field_route_grade()}
-					<Select type="single" value={routeGrade} onValueChange={(v) => (routeGrade = v ?? '')}>
-						<SelectTrigger class="bg-panel-2">{routeGrade || '—'}</SelectTrigger>
-						<SelectContent>
-							{#each ROUTE_SCALE as g (g)}<SelectItem value={g}>{g}</SelectItem>{/each}
-						</SelectContent>
-					</Select>
-				</label>
-				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-					{m.field_age()}
-					<Input type="number" min="0" bind:value={age} class="bg-panel-2" />
-				</label>
-				<label class="flex flex-col gap-1.5 text-xs text-ink-dim">
-					{m.field_session()}
-					<Input type="number" min="0" bind:value={sessionMinutes} class="bg-panel-2" />
-				</label>
-			</div>
-			<PainCheck bind:niggle bind:synovitis />
+			<ContextStep
+				bind:equipment
+				bind:boulderGrade
+				bind:routeGrade
+				bind:birthDate
+				bind:sessionMinutes
+				bind:niggle
+				bind:synovitis
+			/>
 		{:else}
 			<BaselineStep bind:bodyweight bind:baseline />
 		{/if}
