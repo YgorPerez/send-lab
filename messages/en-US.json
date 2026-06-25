@@ -369,6 +369,7 @@
 	"train_empty": "No exercises today — add some in the Week tab, or it's a rest day.",
 	"wk_add_ex": "Add exercise",
 	"log_workouts": "Workouts",
+	"log_readiness": "Readiness checks",
 	"log_activity": "Activity",
 	"welcome_title": "Baseline assessment",
 	"welcome_sub": "Tell us your goals and where you're at — we'll propose a starting protocol.",

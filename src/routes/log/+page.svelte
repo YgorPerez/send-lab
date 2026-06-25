@@ -5,6 +5,8 @@ import {
 	AccordionItem,
 	AccordionTrigger,
 } from '$lib/components/ui/accordion';
+import { getContent } from '$lib/content';
+import type { VerdictId } from '$lib/content/types';
 import * as m from '$lib/paraglide/messages';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import SetRows from '$lib/SetRows.svelte';
@@ -29,17 +31,67 @@ const typeLabel: Record<string, () => string> = {
 	test: m.log_type_test,
 };
 
+const content = getContent();
+// Post-session outcome, indexed by the stored value: 0 bailed · 1 flat · 2 as
+// expected · 3 strong.
+const OUTCOME_LABEL = [
+	m.rd_outcome_bailed,
+	m.rd_outcome_flat,
+	m.rd_outcome_ok,
+	m.rd_outcome_strong,
+];
+
 function remove(idx: number) {
 	appState.log.splice(idx, 1);
 }
 function removeWorkout(idx: number) {
 	appState.workouts.splice(idx, 1);
 }
+// readinessLog is stored oldest→newest, so removal is by identity (the list is
+// reversed for display).
+function removeReadiness(entry: (typeof appState.readinessLog)[number]) {
+	const i = appState.readinessLog.indexOf(entry);
+	if (i >= 0) appState.readinessLog.splice(i, 1);
+}
 </script>
 
 <section class="animate-in fade-in duration-300">
 	<SectionHeading title={m.sec_log()} />
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim">{m.lede_log()}</p>
+
+	{#if appState.readinessLog.length > 0}
+		<h3 class="mb-2 font-mono text-[11px] tracking-wider text-ink-faint uppercase">
+			{m.log_readiness()}
+		</h3>
+		<div class="mb-6 flex flex-col gap-2.5">
+			{#each [...appState.readinessLog].reverse() as r (r)}
+				{@const v = content.verdicts[r.verdict as VerdictId]}
+				<div class="flex items-center gap-3.5 rounded-[10px] border border-line bg-panel px-4 py-3.5">
+					<span class="w-[90px] flex-none font-mono text-xs text-ink-faint">{r.date}</span>
+					<span
+						class="flex-none rounded-md px-2.5 py-1 font-mono text-[11px] font-bold tabular-nums"
+						style:background="color-mix(in srgb, {v?.color ?? 'var(--ink-faint)'} 18%, transparent)"
+						style:color={v?.color ?? 'var(--ink-faint)'}
+					>
+						{r.score}
+					</span>
+					<span class="flex-1 text-[13px] text-ink-dim">
+						<b class="text-chalk">{v?.title ?? r.verdict}</b>{#if r.outcome != null}
+							· <span class="text-ink-faint">{OUTCOME_LABEL[r.outcome]?.() ?? ''}</span>
+						{/if}
+					</span>
+					<button
+						type="button"
+						title={m.btn_delete()}
+						onclick={() => removeReadiness(r)}
+						class="px-1 text-base text-ink-faint transition hover:text-flag"
+					>
+						✕
+					</button>
+				</div>
+			{/each}
+		</div>
+	{/if}
 
 	{#if appState.workouts.length > 0}
 		<h3 class="mb-2 font-mono text-[11px] tracking-wider text-ink-faint uppercase">
