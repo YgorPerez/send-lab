@@ -26,6 +26,7 @@ import {
 	resolveSwapIndex,
 	taskKey,
 } from '$lib/plan';
+import Rehab from '$lib/Rehab.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, type ReadinessEntry, today } from '$lib/state.svelte';
 import {
@@ -206,17 +207,6 @@ function logVerdict() {
 		<Prose value={m.lede_today()} />
 	</p>
 
-	{#if appState.rehab}
-		<div class="mb-[22px] flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3">
-			<span class="flex-1 text-[13px] text-gold">{m.rehab_active()} — {m.rehab_label()}</span>
-			<a
-				href="/settings"
-				class="font-mono text-[11px] tracking-wider text-gold uppercase hover:underline"
-			>
-				{m.nav_settings()}
-			</a>
-		</div>
-	{/if}
 
 	{#if !bwLoggedToday}
 		<div class="mb-[22px] flex items-center gap-2 rounded-xl border border-line bg-panel px-4 py-2.5">
@@ -515,6 +505,11 @@ function logVerdict() {
 		onPlan={() => goto('/settings')}
 		onDeep={(a) => (deepArea = a)}
 	/>
+
+	<!-- Injury / rehab entry point: start (or end) a conservative rehab block right here. -->
+	<div class="mt-[22px]">
+		<Rehab />
+	</div>
 </section>
 
 {#if deepArea}

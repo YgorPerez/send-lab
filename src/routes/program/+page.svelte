@@ -1,5 +1,6 @@
 <script lang="ts">
 import { toast } from 'svelte-sonner';
+import { goto } from '$app/navigation';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
@@ -57,6 +58,22 @@ const content = getContent();
 		<ProtocolPresets />
 		<SavedPrograms />
 	</div>
+
+	<!-- Baseline assessment: re-run onboarding to regenerate the whole program. -->
+	<Card class="mt-3 flex-row items-center justify-between gap-4 p-[18px]">
+		<div>
+			<span class="font-bold">{m.welcome_title()}</span>
+			<p class="mt-0.5 max-w-[52ch] text-xs text-ink-dim">{m.set_assessment_desc()}</p>
+		</div>
+		<Button
+			variant="outline"
+			size="sm"
+			class="flex-none border-line text-xs"
+			onclick={() => goto('/welcome')}
+		>
+			{m.set_redo_assessment()}
+		</Button>
+	</Card>
 
 	<Button
 		variant="outline"

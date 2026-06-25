@@ -7,6 +7,9 @@ export interface Study {
 	year: string;
 	/** A real, stable destination (paper, PubMed search, or the author's site). */
 	url: string;
+	/** Omitted for peer-reviewed studies; 'reference' marks a book or coaching
+	 *  resource — cited for practical guidance, not as primary evidence. */
+	kind?: 'reference';
 }
 
 export const STUDIES: Study[] = [
@@ -27,6 +30,7 @@ export const STUDIES: Study[] = [
 		authors: 'Eric Hörst — Training for Climbing',
 		year: '—',
 		url: 'https://trainingforclimbing.com',
+		kind: 'reference',
 	},
 	{
 		id: 'lattice',
@@ -39,6 +43,7 @@ export const STUDIES: Study[] = [
 		authors: 'Tyler Nelson — Camp4 Human Performance',
 		year: '—',
 		url: 'https://www.camp4humanperformance.com',
+		kind: 'reference',
 	},
 	{
 		id: 'ferrer',

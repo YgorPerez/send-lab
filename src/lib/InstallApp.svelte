@@ -12,6 +12,9 @@ interface BeforeInstallPromptEvent extends Event {
 
 let deferred = $state<BeforeInstallPromptEvent | null>(null);
 let installed = $state(false);
+// Fallback (Brave/Firefox/iOS never fire the prompt): the button reveals the
+// per-browser manual steps instead, since there's no API to install for them.
+let showSteps = $state(false);
 
 $effect(() => {
 	// Hide the card entirely when already running as an installed app.
@@ -44,22 +47,38 @@ async function install() {
 </script>
 
 {#if !installed}
-	<Card class="flex-row items-center justify-between gap-4 p-[18px]">
-		<div>
-			<span class="font-bold">{m.install_title()}</span>
-			<p class="mt-0.5 max-w-[52ch] text-xs text-ink-dim">
-				{deferred ? m.install_desc() : m.install_manual()}
-			</p>
+	<Card class="flex-col gap-3 p-[18px]">
+		<div class="flex items-center justify-between gap-4">
+			<div>
+				<span class="font-bold">{m.install_title()}</span>
+				<p class="mt-0.5 max-w-[52ch] text-xs text-ink-dim">{m.install_desc()}</p>
+			</div>
+			{#if deferred}
+				<Button
+					size="sm"
+					class="flex-none bg-flag text-xs text-white hover:bg-flag/90"
+					onclick={install}
+				>
+					<DownloadIcon class="size-3.5" />
+					{m.install_btn()}
+				</Button>
+			{:else}
+				<Button
+					size="sm"
+					variant="outline"
+					class="flex-none border-line text-xs"
+					aria-expanded={showSteps}
+					onclick={() => (showSteps = !showSteps)}
+				>
+					<DownloadIcon class="size-3.5" />
+					{m.install_btn()}
+				</Button>
+			{/if}
 		</div>
-		{#if deferred}
-			<Button
-				size="sm"
-				class="flex-none bg-flag text-xs text-white hover:bg-flag/90"
-				onclick={install}
-			>
-				<DownloadIcon class="size-3.5" />
-				{m.install_btn()}
-			</Button>
+		{#if !deferred && showSteps}
+			<p class="max-w-[52ch] border-t border-line pt-3 text-xs text-ink-dim">
+				{m.install_manual()}
+			</p>
 		{/if}
 	</Card>
 {/if}

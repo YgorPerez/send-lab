@@ -99,7 +99,16 @@ const PROSE: Record<string, { title: () => string; summary: () => string; applie
 			{@const p = PROSE[s.id]}
 			<Card class="gap-2 p-[18px]">
 				<div class="flex items-baseline justify-between gap-3">
-					<span class="font-bold">{p.title()}</span>
+					<span class="flex flex-wrap items-center gap-2 font-bold">
+						{p.title()}
+						{#if s.kind === 'reference'}
+							<span
+								class="rounded border border-line px-1.5 py-0.5 font-mono text-[9px] font-normal tracking-wider text-ink-faint uppercase"
+							>
+								{m.study_kind_reference()}
+							</span>
+						{/if}
+					</span>
 					<span class="flex-none font-mono text-[11px] text-ink-faint">{s.year}</span>
 				</div>
 				<div class="font-mono text-[11px] text-ink-faint">{s.authors}</div>

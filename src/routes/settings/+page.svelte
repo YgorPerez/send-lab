@@ -131,38 +131,6 @@ const seg =
 		<LanguageSwitcher />
 	</Card>
 
-	<!-- Program -->
-	<Card class="flex-row items-center justify-between gap-4 p-[18px]">
-		<div>
-			<span class="font-bold">{m.nav_program()}</span>
-			<p class="mt-0.5 text-xs text-ink-dim">{m.set_program_desc()}</p>
-		</div>
-		<Button
-			variant="outline"
-			size="sm"
-			class="flex-none border-line text-xs"
-			onclick={() => goto('/program')}
-		>
-			{m.set_open_program()}
-		</Button>
-	</Card>
-
-	<!-- Assessment -->
-	<Card class="flex-row items-center justify-between gap-4 p-[18px]">
-		<div>
-			<span class="font-bold">{m.welcome_title()}</span>
-			<p class="mt-0.5 max-w-[52ch] text-xs text-ink-dim">{m.set_assessment_desc()}</p>
-		</div>
-		<Button
-			variant="outline"
-			size="sm"
-			class="flex-none border-line text-xs"
-			onclick={() => goto('/welcome')}
-		>
-			{m.set_redo_assessment()}
-		</Button>
-	</Card>
-
 	<Rehab />
 
 	<!-- Data -->
