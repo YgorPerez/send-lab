@@ -191,7 +191,7 @@
 	"td_recheck": "Re-check for next task",
 	"readiness_trend": "Readiness trend",
 	"rd_score": "Readiness",
-	"rd_evidence": "why",
+	"rd_evidence": "reference",
 	"rd_note_heuristic": "The score's weighting is a reasoned default (sleep & recovery count most), not a calibrated number — log how sessions actually go and it personalizes to you over time.",
 	"rd_note_tuned": "Now personalized to you: your logged session outcomes have tuned the score's default weighting toward how you actually train.",
 	"rd_sleep": "Sleep",

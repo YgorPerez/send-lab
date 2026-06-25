@@ -35,8 +35,8 @@ const content: LocaleContent = {
 		{
 			k: 'Thu',
 			label: 'Qui',
-			type: 'Tração',
-			prime: 'Dia de tração pesada + Densidade em sloper',
+			type: 'Puxada',
+			prime: 'Dia de puxada pesada + Densidade em sloper',
 			sec: 'Barras com peso, OAP · Abrahangs de manhã',
 			load: 'MOD',
 			color: 'var(--violet)',
@@ -277,15 +277,15 @@ const content: LocaleContent = {
 			],
 		},
 		pull: {
-			name: 'Tração',
-			cat: 'Potência de tração',
+			name: 'Puxada',
+			cat: 'Potência de puxada',
 			variants: [
 				{
 					name: 'Barras com peso pesadas + OAP',
 					what: 'Barras com peso + trabalho de OAP',
 					note: 'Duro mas limpo · OAP negativas / assistidas 3–4 séries/lado.',
 					why: [
-						'De propósito num dia de baixo custo pros dedos — potência de tração sem gastar pele nem polias.',
+						'De propósito num dia de baixo custo pros dedos — potência de puxada sem gastar pele nem polias.',
 						'Fase 2: vá pra menos reps / mais carga, ou mais trabalho técnico de OAP.',
 					],
 				},
@@ -307,7 +307,7 @@ const content: LocaleContent = {
 					name: 'Combo front-lever + barra com peso',
 					what: 'Front-lever + barra',
 					note: 'Progressões de front-lever + barras com peso.',
-					why: ['Potência de tração comandada pelo core pra terreno inclinado.'],
+					why: ['Potência de puxada comandada pelo core pra terreno inclinado.'],
 				},
 			],
 		},
@@ -320,7 +320,7 @@ const content: LocaleContent = {
 					what: 'Parte de baixo de um sloper',
 					note: '2 braços · mão aberta.',
 					why: [
-						'Trabalho de tecido em mão aberta que não castiga as polias — encaixa bem depois do dia de tração.',
+						'Trabalho de tecido em mão aberta que não castiga as polias — encaixa bem depois do dia de puxada.',
 					],
 				},
 				{
@@ -774,8 +774,8 @@ const content: LocaleContent = {
 			title: 'Sinal verde — vá com tudo',
 			tag: 'Dia de limite / máximo',
 			color: 'var(--flag)',
-			text: 'Inteiro, dedos bons, tempo e pele de sobra. Manda um <b>dia duro</b>: recruitment pulls emendando em <b>boulder no limite</b>, ou um dia de tração pesada. Descanse de verdade entre os esforços máximos. Tome colágeno ~60 min antes: 15g de colágeno + 50mg de vit. C.',
-			focus: ['recruitment pulls', 'boulder no limite', 'tração pesada'],
+			text: 'Inteiro, dedos bons, tempo e pele de sobra. Manda um <b>dia duro</b>: recruitment pulls emendando em <b>boulder no limite</b>, ou um dia de puxada pesada. Descanse de verdade entre os esforços máximos. Tome colágeno ~60 min antes: 15g de colágeno + 50mg de vit. C.',
+			focus: ['recruitment pulls', 'boulder no limite', 'puxada pesada'],
 		},
 	},
 	flags: {
@@ -791,13 +791,13 @@ const content: LocaleContent = {
 		},
 		elbow_pain: {
 			title: 'Dor no cotovelo',
-			text: 'Epicondilite (cotovelo de escalador) piora com tração e preensão. Zere o volume de tração hoje; faça <b>excêntricos de punho</b> sem dor e isometria leve. Considere um bloco de reabilitação de cotovelo.',
+			text: 'Epicondilite (cotovelo de escalador) piora com puxada e preensão. Zere o volume de puxada hoje; faça <b>excêntricos de punho</b> sem dor e isometria leve. Considere um bloco de reabilitação de cotovelo.',
 			focus: ['sem trações duras', 'excêntricos', 'reabilitação'],
 		},
 		elbow_niggle: {
 			title: 'Incômodo no cotovelo',
-			text: 'Tendinopatia inicial de cotovelo. Mantenha a tração <b>submáxima</b> e adicione excêntricos leves de punho/antebraço. Não busque recordes em tração hoje.',
-			focus: ['tração submáx', 'excêntricos'],
+			text: 'Tendinopatia inicial de cotovelo. Mantenha a puxada <b>submáxima</b> e adicione excêntricos leves de punho/antebraço. Não busque recordes em puxada hoje.',
+			focus: ['puxada submáx', 'excêntricos'],
 		},
 		shoulder_pain: {
 			title: 'Dor no ombro',
@@ -999,7 +999,7 @@ const content: LocaleContent = {
 				},
 				{
 					id: 'pull',
-					q: 'Consegue treinar tração?',
+					q: 'Consegue treinar puxada?',
 					a: [
 						{ t: 'Totalmente', v: 10 },
 						{ t: 'Reduzido', v: 6 },
@@ -1093,13 +1093,13 @@ const content: LocaleContent = {
 		phase1: {
 			name: 'Fase 1 · Capacidade & Base de Tecido (Sem 1–4)',
 			banner:
-				'Construa qualidade de recruitment, fixe o máximo de pinça de 7s, suba o volume de repeaters, ganhe volume de tração + negativas de OAP, densidade completa. Colágeno + vit. C ~60 min antes da sessão de dedo mais pesada.',
+				'Construa qualidade de recruitment, fixe o máximo de pinça de 7s, suba o volume de repeaters, ganhe volume de puxada + negativas de OAP, densidade completa. Colágeno + vit. C ~60 min antes da sessão de dedo mais pesada.',
 			cat: '--gold',
 		},
 		phase2: {
 			name: 'Fase 2 · Expressão & Pico (Sem 5–7)',
 			banner:
-				'Enfatize força de contato em agarras piores; pinça mais estreita; corte séries de repeaters pra manter a potência; tração vai pra menos reps / mais carga. Max hangs seguem no mínimo.',
+				'Enfatize força de contato em agarras piores; pinça mais estreita; corte séries de repeaters pra manter a potência; puxada vai pra menos reps / mais carga. Max hangs seguem no mínimo.',
 			cat: '--flag',
 		},
 		deload: {
