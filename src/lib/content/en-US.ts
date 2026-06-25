@@ -814,7 +814,7 @@ const content: LocaleContent = {
 		},
 		acwr_spike: {
 			title: 'Training-load spike',
-			text: 'Your last 7 days are well above your 4-week norm (<b>ACWR &gt; 1.5</b>) — the range linked to higher injury risk. Hold intensity at moderate and let the load settle before the next hard push.',
+			text: 'Your last 7 days are well above your 4-week norm (<b>ACWR &gt; 1.5</b>) — a range associated with higher injury risk in some research. The ACWR is a debated heuristic, not a hard rule, so treat it as one cue among several: hold intensity at moderate and let the load settle before the next hard push.',
 			focus: ['ease off', 'moderate', 'recover'],
 		},
 		acwr_high: {
@@ -839,7 +839,7 @@ const content: LocaleContent = {
 		},
 		monotony_high: {
 			title: 'Training too monotonous',
-			text: 'Your last 7 days are <b>samey</b> — similar load every day with no real easy days (high <b>training monotony</b>, Foster). It is the day-to-day variation that lets you adapt; without it, strain accumulates. Make today clearly easier (or rest) so the week has a hard/easy contrast.',
+			text: 'Your last 7 days are <b>samey</b> — similar load every day with no real easy days (high <b>training monotony</b>, Foster; the ≥2 mark is a rough guide, not a hard cutoff). It is the day-to-day variation that lets you adapt; without it, strain accumulates. Make today clearly easier (or rest) so the week has a hard/easy contrast.',
 			focus: ['vary load', 'easy day', 'recover'],
 		},
 		illness_systemic: {

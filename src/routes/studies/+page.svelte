@@ -72,6 +72,16 @@ const PROSE: Record<string, { title: () => string; summary: () => string; applie
 			summary: m.study_illness_summary,
 			applies: m.study_illness_applies,
 		},
+		neckcheck: {
+			title: m.study_neckcheck_title,
+			summary: m.study_neckcheck_summary,
+			applies: m.study_neckcheck_applies,
+		},
+		illness_revisit: {
+			title: m.study_illness_revisit_title,
+			summary: m.study_illness_revisit_summary,
+			applies: m.study_illness_revisit_applies,
+		},
 		probe: {
 			title: m.study_probe_title,
 			summary: m.study_probe_summary,

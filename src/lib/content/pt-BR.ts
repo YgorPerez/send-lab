@@ -826,7 +826,7 @@ const content: LocaleContent = {
 		},
 		acwr_spike: {
 			title: 'Pico de carga de treino',
-			text: 'Seus últimos 7 dias estão bem acima da sua média de 4 semanas (<b>ACWR &gt; 1,5</b>) — a faixa ligada a mais risco de lesão. Segure a intensidade no moderado e deixe a carga assentar antes do próximo dia duro.',
+			text: 'Seus últimos 7 dias estão bem acima da sua média de 4 semanas (<b>ACWR &gt; 1,5</b>) — uma faixa associada a mais risco de lesão em alguns estudos. O ACWR é uma heurística debatida, não uma regra rígida, então trate como um sinal entre vários: segure a intensidade no moderado e deixe a carga assentar antes do próximo dia duro.',
 			focus: ['pegue leve', 'moderado', 'recuperar'],
 		},
 		acwr_high: {
@@ -851,7 +851,7 @@ const content: LocaleContent = {
 		},
 		monotony_high: {
 			title: 'Treino monótono demais',
-			text: 'Seus últimos 7 dias estão <b>iguais</b> — carga parecida todo dia, sem dias realmente leves (alta <b>monotonia de treino</b>, Foster). É a variação entre os dias que permite adaptar; sem ela, a sobrecarga se acumula. Deixe hoje claramente mais leve (ou descanse) para a semana ter contraste forte/fraco.',
+			text: 'Seus últimos 7 dias estão <b>iguais</b> — carga parecida todo dia, sem dias realmente leves (alta <b>monotonia de treino</b>, Foster; o limite ≥2 é um guia aproximado, não um corte rígido). É a variação entre os dias que permite adaptar; sem ela, a sobrecarga se acumula. Deixe hoje claramente mais leve (ou descanse) para a semana ter contraste forte/fraco.',
 			focus: ['variar carga', 'dia leve', 'recuperar'],
 		},
 		illness_systemic: {

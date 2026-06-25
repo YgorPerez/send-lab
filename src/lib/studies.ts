@@ -89,6 +89,18 @@ export const STUDIES: Study[] = [
 		url: 'https://pubmed.ncbi.nlm.nih.gov/27535991/',
 	},
 	{
+		id: 'neckcheck',
+		authors: 'Börjesson, Janse van Rensburg & Schwellnus — Return to Play in Football (Springer)',
+		year: '2017',
+		url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC7123245/',
+	},
+	{
+		id: 'illness_revisit',
+		authors: 'Ruuskanen et al. — J Sport Health Sci',
+		year: '2023',
+		url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11282332/',
+	},
+	{
 		id: 'probe',
 		authors: 'Claudino et al. — J Sci Med Sport',
 		year: '2017',

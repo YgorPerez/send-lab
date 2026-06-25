@@ -48,21 +48,26 @@ const severityOf = (answers: Answers): Severity | null =>
 
 // ---------------- subjective wellness → 0–100 ----------------
 
-// Each answer is 0–10 (10 = best). Sleep & fatigue carry the most weight — per
-// Saw, Main & Gastin (2016), subjective wellness (led by sleep/fatigue) is the
-// most load-sensitive monitoring tool. stress/mood default to neutral-good when
-// not asked, so the score stays comparable day to day.
+// Each answer is 0–10 (10 = best). Perceived fatigue/recovery carries the most
+// weight — Saw, Main & Gastin (2016) found fatigue, physical recovery and general
+// well-being the most load-responsive subjective items, and the Perceived Recovery
+// Status scale (Laurent 2011) tracks next-session performance (r≈-.63). Soreness
+// and sleep follow; note Saw found self-rated sleep *quality* among the *less*
+// load-responsive items, so sleep is no longer privileged above soreness here
+// (it still matters for recovery — Fullagar 2015 — hence not the lowest). stress
+// & mood default to neutral-good when not asked, so the score stays comparable.
 //
-// NOTE: the *direction* (sleep/fatigue matter most) is evidence-based, but these
-// exact weights — and the band thresholds in `intensityFromScore` — are a
-// reasoned default, NOT empirically derived. The principled validation is the
-// per-user feedback loop (stats.ts `readinessInsights` → `hist.calibration`),
-// which nudges the score toward how the individual's sessions actually go. Treat
-// the constants as a sensible starting heuristic, not calibrated truth.
+// NOTE: the *direction* (fatigue weighted most) has support, but these exact
+// weights — and the band thresholds in `intensityFromScore` — are a reasoned
+// default, NOT empirically derived (the literature on per-item weighting is
+// genuinely mixed). The principled validation is the per-user feedback loop
+// (stats.ts `readinessInsights` → `hist.calibration`), which nudges the score
+// toward how the individual's sessions actually go. Treat the constants as a
+// sensible starting heuristic, not calibrated truth.
 const WELLNESS: { id: string; weight: number; fallback: number }[] = [
-	{ id: 'sleep', weight: 1.2, fallback: 8 },
 	{ id: 'fatigue', weight: 1.2, fallback: 8 },
 	{ id: 'soreness', weight: 1, fallback: 8 },
+	{ id: 'sleep', weight: 1, fallback: 8 },
 	{ id: 'stress', weight: 0.8, fallback: 8 },
 	{ id: 'mood', weight: 0.8, fallback: 8 },
 ];
