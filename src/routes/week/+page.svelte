@@ -7,6 +7,7 @@ import { Card } from '$lib/components/ui/card';
 import { Progress } from '$lib/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
 import { type Day, getContent, phaseId } from '$lib/content';
+import type { VerdictId } from '$lib/content/types';
 import Modal from '$lib/Modal.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
@@ -30,6 +31,9 @@ import { cn } from '$lib/utils';
 import VariantPicker from '$lib/VariantPicker.svelte';
 
 const content = getContent();
+// Today's logged readiness check, surfaced on today's card so the week reflects
+// the recommendation from the Today tab.
+const todayRd = $derived(appState.readinessLog.find((e) => e.date === today()));
 // Which day's customize dialog is open (slot key), or null.
 let editing = $state<string | null>(null);
 
@@ -197,6 +201,15 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 							title={m.wk_customize()}> ✎</span
 						>{/if}
 				</div>
+				{#if isToday && todayRd}
+					{@const v = content.verdicts[todayRd.verdict as VerdictId]}
+					<div
+						class="font-mono text-[10px] leading-tight font-bold tracking-wider uppercase"
+						style:color={v?.color}
+					>
+						↳ {m.rd_score()} {todayRd.score} · {v?.tag ?? todayRd.verdict}
+					</div>
+				{/if}
 				<div class="text-sm leading-snug font-bold">{dayPrime(slot.k)}</div>
 				<div class="text-xs leading-snug text-ink-dim"><Prose value={resolved.sec} /></div>
 				<label

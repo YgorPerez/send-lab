@@ -1,9 +1,9 @@
 <script lang="ts">
 import { toast } from 'svelte-sonner';
 import { goto } from '$app/navigation';
+import BodyweightNudge from '$lib/BodyweightNudge.svelte';
 import { Button } from '$lib/components/ui/button';
 import { Card } from '$lib/components/ui/card';
-import { Input } from '$lib/components/ui/input';
 import {
 	type Answers,
 	computeReadiness,
@@ -16,6 +16,8 @@ import DeepAssessment from '$lib/DeepAssessment.svelte';
 import Prose from '$lib/Prose.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
+	carryForward,
+	missedYesterday,
 	programWeeks,
 	rehabToday,
 	resolveDay,
@@ -26,6 +28,8 @@ import {
 import ReadinessQuiz from '$lib/ReadinessQuiz.svelte';
 import ReadinessVerdict from '$lib/ReadinessVerdict.svelte';
 import Rehab from '$lib/Rehab.svelte';
+import { loadReadinessDraft, saveReadinessDraft } from '$lib/readinessDraft';
+import { capByVerdict } from '$lib/readinessPlan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, type ReadinessEntry, today } from '$lib/state.svelte';
 import {
@@ -37,24 +41,8 @@ import {
 	trainStreak,
 	weekLoad,
 } from '$lib/stats';
-import { STUDIES } from '$lib/studies';
 import TodayPlan from '$lib/TodayPlan.svelte';
 import TrendChart from '$lib/TrendChart.svelte';
-import { toMetricCanonical } from '$lib/units';
-
-// Daily bodyweight nudge — it anchors the % bodyweight strength estimates.
-let bwInput = $state('');
-const bwLoggedToday = $derived(appState.metrics.bodyweight.some((e) => e.date === today()));
-function logBodyweight() {
-	const n = Number.parseFloat(bwInput);
-	if (Number.isNaN(n)) return;
-	appState.metrics.bodyweight.push({
-		date: today(),
-		at: Date.now(),
-		v: toMetricCanonical('bodyweight', n),
-	});
-	bwInput = '';
-}
 
 const content = getContent();
 
@@ -89,10 +77,13 @@ const needsReassess = $derived(
 	!reassessDismissed && appState.assessment != null && week >= programWeeks(),
 );
 
-let answers = $state<Answers>({});
+// A partial readiness check is persisted (per day) so leaving mid-answer is safe.
+const rdDraft = loadReadinessDraft();
+let answers = $state<Answers>(rdDraft.answers);
 // Climbing-specific objective probe: today's quick max pull (kg), optional.
-let probeValue = $state<number | null>(null);
+let probeValue = $state<number | null>(rdDraft.probe);
 const probeResult = $derived(probeReadiness(appState.probeLog, probeValue));
+$effect(() => saveReadinessDraft(answers, probeValue));
 // Objective signals: EWMA acute:chronic ratio (null < ~3 weeks), Foster training
 // monotony, and the max-pull probe vs baseline — all feed the recommendation.
 const loadSignals = $derived({
@@ -103,13 +94,34 @@ const loadSignals = $derived({
 });
 // Personalization from logged history: baseline, trend and outcome calibration.
 const insights = $derived(readinessInsights(appState.readinessLog));
-// Adaptive: show the core, reveal follow-ups only when they'd change the result.
+// Adaptive: show the core, reveal follow-ups only when they'd change the result
+// (ReadinessQuiz nests each follow-up under its parent question).
 const visible = $derived(visibleQuestions(answers));
-const visibleQuiz = $derived(content.quiz.filter((q) => visible.includes(q.id)));
 const complete = $derived(visible.every((id) => answers[id] != null));
 const readiness = $derived(complete ? computeReadiness(answers, loadSignals, insights) : null);
 const verdict = $derived(readiness ? content.verdicts[readiness.verdict] : null);
 const flags = $derived(readiness?.flags ?? []);
+// Readiness caps today's session: exercises that exceed the verdict are held back
+// (they resurface as a catch-up the next training day, via missedYesterday).
+const heldIds = $derived(
+	readiness
+		? new Set(
+				capByVerdict(
+					tasks.map((t) => t.id),
+					readiness.verdict,
+				).held,
+			)
+		: new Set<string>(),
+);
+
+// A training day skipped yesterday — offer it today (also covers tomorrow
+// inheriting work skipped today).
+let missedDismissed = $state(false);
+const missed = $derived(missedDismissed ? null : missedYesterday(content));
+function doMissed() {
+	if (missed) carryForward(content, week, weekday, missed.exIds);
+	missedDismissed = true;
+}
 
 // Today's score vs the user's personal norm.
 const baselineLabel = $derived.by(() => {
@@ -131,8 +143,6 @@ function setOutcome(v: number) {
 	e.outcome = v;
 	toast.success(m.rd_outcome_saved());
 }
-
-const studyUrl = (id?: string) => (id ? STUDIES.find((s) => s.id === id)?.url : undefined);
 
 // The wellness dimensions behind the readiness score (for the breakdown).
 const WELLNESS_DIMS = [
@@ -227,22 +237,7 @@ $effect(() => {
 	</p>
 
 
-	{#if !bwLoggedToday}
-		<div class="mb-[22px] flex items-center gap-2 rounded-xl border border-line bg-panel px-4 py-2.5">
-			<span class="flex-1 text-[13px] text-ink-dim">
-				{m.bw_prompt()} ({appState.prefs.weight})
-			</span>
-			<Input
-				type="number"
-				step="any"
-				bind:value={bwInput}
-				class="h-8 w-24 bg-panel-2 text-center text-sm"
-			/>
-			<Button size="sm" class="bg-chalk text-bg hover:bg-chalk/90" onclick={logBodyweight}>
-				{m.btn_save()}
-			</Button>
-		</div>
-	{/if}
+	<BodyweightNudge />
 
 	{#if needsReassess}
 		<div class="mb-[22px] flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3">
@@ -261,7 +256,26 @@ $effect(() => {
 		</div>
 	{/if}
 
-	<TodayPlan {day} {dayLabel} {week} {isRestDay} {tasks} />
+	{#if missed}
+		<div
+			class="mb-[22px] flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 motion-preset-slide-down motion-duration-300"
+		>
+			<span class="flex-1 text-[13px] text-ink-dim">{m.td_missed({ day: missed.label })}</span>
+			<Button size="sm" class="flex-none bg-gold text-bg hover:bg-gold/90" onclick={doMissed}>
+				{m.td_missed_do()}
+			</Button>
+			<button
+				type="button"
+				aria-label={m.btn_close()}
+				class="text-ink-faint transition hover:text-ink"
+				onclick={() => (missedDismissed = true)}
+			>
+				✕
+			</button>
+		</div>
+	{/if}
+
+	<TodayPlan {day} {dayLabel} {week} {isRestDay} {tasks} {heldIds} />
 
 	<div class="mb-[22px] grid grid-cols-3 gap-3">
 		<Card class="items-center gap-0 p-3.5 text-center">
@@ -287,10 +301,8 @@ $effect(() => {
 	</div>
 
 	<ReadinessQuiz
-		questions={visibleQuiz}
 		{answers}
 		onPick={pick}
-		{studyUrl}
 		{probeValue}
 		onProbe={(v) => (probeValue = v)}
 		{probeResult}

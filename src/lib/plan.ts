@@ -102,6 +102,36 @@ export function removeDayExercise(
 	);
 }
 
+const WEEKDAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** A scheduled training day yesterday with no logged workout — offered as a
+ *  catch-up today. The same mechanism lets tomorrow inherit work skipped today. */
+export function missedYesterday(content: Content): { label: string; exIds: string[] } | null {
+	const y = new Date();
+	y.setDate(y.getDate() - 1);
+	const yIso = y.toISOString().slice(0, 10);
+	const weekday = WEEKDAY_KEYS[y.getDay()];
+	const exIds = resolveExerciseIds(content, appState.currentWeek, weekday).filter(
+		(id) => id !== 'rest' && content.exercises[id],
+	);
+	if (exIds.length === 0) return null; // a rest day — nothing was missed
+	const trained = appState.workouts.some(
+		(w) => w.at === yIso && w.exercises.some((ex) => ex.sets.some((s) => s.done)),
+	);
+	if (trained) return null;
+	return { label: content.days.find((d) => d.k === weekday)?.label ?? weekday, exIds };
+}
+
+/** Pull a missed day's exercises into today's plan (a per-day override). */
+export function carryForward(
+	content: Content,
+	week: number,
+	weekday: string,
+	exIds: string[],
+): void {
+	for (const id of exIds) addDayExercise(content, week, weekday, id);
+}
+
 /** Variant index for an exercise on a given day:
  *  per-day swap → program default variant → global swap → 0. */
 export function resolveSwapIndex(week: number, weekday: string, exId: string): number {

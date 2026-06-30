@@ -49,5 +49,6 @@ export {
 	phaseId,
 	scoreDeep,
 	visibleQuestions,
+	visibleQuestionsOrdered,
 } from './logic';
 export type { Day, MetricId } from './types';

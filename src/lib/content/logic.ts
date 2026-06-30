@@ -128,6 +128,30 @@ export function visibleQuestions(answers: Answers): string[] {
 	return out;
 }
 
+/** Each follow-up sits directly beneath the core question that triggers it, so it
+ *  reads as a sub-question in context (severity under `body`, etc.). */
+const FOLLOWUP_PARENT: Record<string, string> = {
+	severity: 'body',
+	stress: 'fatigue',
+	mood: 'fatigue',
+	skin: 'time',
+};
+
+/** Visible questions in display order: each core question immediately followed by
+ *  any of its revealed follow-ups, tagged `sub` for indented rendering. */
+export function visibleQuestionsOrdered(answers: Answers): { id: string; sub: boolean }[] {
+	const visible = new Set(visibleQuestions(answers));
+	const out: { id: string; sub: boolean }[] = [];
+	for (const id of CORE_QUESTIONS) {
+		if (!visible.has(id)) continue;
+		out.push({ id, sub: false });
+		for (const [followup, parent] of Object.entries(FOLLOWUP_PARENT)) {
+			if (parent === id && visible.has(followup)) out.push({ id: followup, sub: true });
+		}
+	}
+	return out;
+}
+
 export interface Readiness {
 	/** 0–100 wellness readiness. */
 	score: number;
