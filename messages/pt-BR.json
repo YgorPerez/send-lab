@@ -81,6 +81,8 @@
 	"study_probe_title": "Força máxima como sonda de prontidão",
 	"study_probe_summary": "Meta-análise que valida o salto contramovimento — um esforço máximo breve — como marcador sensível da prontidão neuromuscular do dia: a força cai com fadiga e volta quando se está descansado. O Send Lab aplica o mesmo princípio a uma puxada máxima de dedos específica da escalada.",
 	"study_probe_applies": "Check diário · sonda objetiva",
+	"prog_adherence": "Treinado esta semana",
+	"prog_adherence_ease": "Semana passada {pct}% — progressão suavizada",
 	"prog_weeks": "Duração do bloco (semanas)",
 	"prog_weeks_from_phases": "Definido pelas suas fases",
 	"prog_reset": "Restaurar programa padrão",

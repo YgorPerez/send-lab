@@ -81,6 +81,8 @@
 	"study_probe_title": "Max force as a readiness probe",
 	"study_probe_summary": "Meta-analysis validating the countermovement jump — a brief maximal effort — as a sensitive marker of day-to-day neuromuscular readiness: force drops when fatigued, recovers when fresh. Send Lab applies the same principle to a climbing-specific max finger pull.",
 	"study_probe_applies": "Daily check · objective probe",
+	"prog_adherence": "Trained this week",
+	"prog_adherence_ease": "Last week {pct}% — progression eased to match",
 	"prog_weeks": "Block length (weeks)",
 	"prog_weeks_from_phases": "Set by your phases",
 	"prog_reset": "Reset to default program",

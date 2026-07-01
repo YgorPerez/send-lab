@@ -469,18 +469,25 @@ export function moveProgramExercise(
 	};
 }
 
-/** Fraction of a program week's scheduled tasks that were actually trained
- *  (taskDone is set when a set is logged) — the adherence that earns progression. */
-function weekAdherence(content: Content, week: number): number {
-	let total = 0;
-	let done = 0;
-	for (const d of content.days)
-		for (const exId of resolveExerciseIds(content, week, d.k)) {
-			if (exId === 'rest' || !content.exercises[exId]) continue;
-			total += 1;
-			if (appState.taskDone[taskKey(week, d.k, exId)]) done += 1;
-		}
-	return adherenceRatio(done, total);
+/** A program week's completion: scheduled training days vs. those actually
+ *  trained. A day counts as trained if ANY of its exercises has a logged done set
+ *  (taskDone) — including exercises you added off-script, so extra/random work
+ *  you mark done counts toward your training, not against it. */
+export function weekCompletion(
+	content: Content,
+	week: number,
+): { trained: number; scheduled: number } {
+	let scheduled = 0;
+	let trained = 0;
+	for (const d of content.days) {
+		const exIds = resolveExerciseIds(content, week, d.k).filter(
+			(id) => id !== 'rest' && content.exercises[id],
+		);
+		if (exIds.length === 0) continue; // a rest day
+		scheduled += 1;
+		if (exIds.some((id) => appState.taskDone[taskKey(week, d.k, id)])) trained += 1;
+	}
+	return { trained, scheduled };
 }
 
 /** Build weeks elapsed before `week`, scaled by each week's adherence so the load
@@ -489,7 +496,11 @@ function weekAdherence(content: Content, week: number): number {
  *  with full adherence it matches a plain count of prior non-deload weeks. */
 function buildWeeksThrough(content: Content, week: number): number {
 	let sum = 0;
-	for (let w = 1; w < week; w++) if (!phaseForWeek(w)?.deload) sum += weekAdherence(content, w);
+	for (let w = 1; w < week; w++) {
+		if (phaseForWeek(w)?.deload) continue;
+		const c = weekCompletion(content, w);
+		sum += adherenceRatio(c.trained, c.scheduled);
+	}
 	return 1 + sum;
 }
 

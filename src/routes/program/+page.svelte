@@ -11,12 +11,21 @@ import ProgramSummary from '$lib/ProgramSummary.svelte';
 import Prose from '$lib/Prose.svelte';
 import ProtocolPresets from '$lib/ProtocolPresets.svelte';
 import * as m from '$lib/paraglide/messages';
-import { programWeeks, resetProgram, setProgramWeeks } from '$lib/plan';
+import { programWeeks, resetProgram, setProgramWeeks, weekCompletion } from '$lib/plan';
 import SavedPrograms from '$lib/SavedPrograms.svelte';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState } from '$lib/state.svelte';
 
 const content = getContent();
+
+// Adherence: how much of this (and last) week you actually trained. Last week's
+// share is what eases the auto-progression, so surface it when it's below full.
+const pct = (c: { trained: number; scheduled: number }) =>
+	c.scheduled ? Math.round((100 * c.trained) / c.scheduled) : null;
+const thisWeek = $derived(pct(weekCompletion(content, appState.currentWeek)));
+const lastWeek = $derived(
+	appState.currentWeek > 1 ? pct(weekCompletion(content, appState.currentWeek - 1)) : null,
+);
 </script>
 
 <section class="animate-in fade-in duration-300">
@@ -24,6 +33,17 @@ const content = getContent();
 	<p class="mb-[26px] max-w-[62ch] text-[15px] text-ink-dim"><Prose value={m.lede_program()} /></p>
 
 	<div class="mb-[22px] flex flex-col gap-3">
+		{#if thisWeek != null}
+			<Card class="flex-row items-center justify-between gap-3 p-[18px]">
+				<div>
+					<span class="font-bold">{m.prog_adherence()}</span>
+					{#if lastWeek != null && lastWeek < 100 && appState.program.autoProgress}
+						<p class="mt-0.5 text-xs text-ink-dim">{m.prog_adherence_ease({ pct: lastWeek })}</p>
+					{/if}
+				</div>
+				<span class="font-mono text-lg font-bold text-chalk">{thisWeek}%</span>
+			</Card>
+		{/if}
 		<Card class="flex-row items-center justify-between gap-3 p-[18px]">
 			<span class="font-bold">{m.prog_weeks()}</span>
 			{#if appState.program.phases.length}
