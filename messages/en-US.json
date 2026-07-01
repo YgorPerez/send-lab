@@ -190,7 +190,7 @@
 	"td_next_task": "next task",
 	"td_open_train": "Train",
 	"td_held": "held · readiness",
-	"td_missed": "You skipped {day} yesterday — do it today?",
+	"td_missed": "Unfinished work from {day} — do it today?",
 	"td_missed_do": "Do it today",
 	"td_fatigue": "Recent effort · RPE {rpe} — factored into today's read.",
 	"stat_streak": "Day streak",

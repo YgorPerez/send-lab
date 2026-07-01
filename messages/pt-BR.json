@@ -190,7 +190,7 @@
 	"td_next_task": "próxima tarefa",
 	"td_open_train": "Treino",
 	"td_held": "segurado · readiness",
-	"td_missed": "Você pulou {day} ontem — fazer hoje?",
+	"td_missed": "Ficou trabalho de {day} pendente — fazer hoje?",
 	"td_missed_do": "Fazer hoje",
 	"td_fatigue": "Esforço recente · RPE {rpe} — considerado na leitura de hoje.",
 	"stat_streak": "Sequência",

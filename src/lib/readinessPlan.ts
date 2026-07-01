@@ -38,3 +38,20 @@ export function capByVerdict(
 	for (const id of exIds) (fitsVerdict(id, verdict) ? keep : held).push(id);
 	return { keep, held };
 }
+
+/** Scheduled exercises that weren't trained — to carry forward as a catch-up.
+ *  Covers a fully-skipped day (nothing done) and a partial one (held / unfinished
+ *  work within a session that was otherwise trained). */
+export function pendingExercises(scheduled: string[], done: Iterable<string>): string[] {
+	const set = new Set(done);
+	return scheduled.filter((id) => !set.has(id));
+}
+
+/** A training week's completion → a build-week credit for auto-progression.
+ *  Untracked or zero-logged weeks get full credit (no surprise load drop for
+ *  users who don't tick tasks); a partially-completed week counts for at least
+ *  half, so progression eases off a deviation without collapsing. */
+export function adherenceRatio(done: number, total: number): number {
+	if (total === 0 || done === 0) return 1;
+	return Math.max(0.5, done / total);
+}

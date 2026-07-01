@@ -15,6 +15,7 @@ import type {
 	VariantParams,
 } from './content/types';
 import { progressionFactor, SYNERGY, weeklyRate } from './progression';
+import { adherenceRatio, pendingExercises } from './readinessPlan';
 import { generateRehabProgram, type RehabArea, type RehabStage, rehabExercises } from './rehab';
 import {
 	appState,
@@ -104,21 +105,25 @@ export function removeDayExercise(
 
 const WEEKDAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-/** A scheduled training day yesterday with no logged workout — offered as a
- *  catch-up today. The same mechanism lets tomorrow inherit work skipped today. */
+/** Yesterday's scheduled work that wasn't trained — offered as a catch-up today.
+ *  Returns the *unfinished* subset, so it covers both a fully-skipped day and
+ *  work held back / left undone within a session that was otherwise trained. The
+ *  same mechanism lets tomorrow inherit whatever is skipped today. */
 export function missedYesterday(content: Content): { label: string; exIds: string[] } | null {
 	const y = new Date();
 	y.setDate(y.getDate() - 1);
 	const yIso = y.toISOString().slice(0, 10);
 	const weekday = WEEKDAY_KEYS[y.getDay()];
-	const exIds = resolveExerciseIds(content, appState.currentWeek, weekday).filter(
+	const scheduled = resolveExerciseIds(content, appState.currentWeek, weekday).filter(
 		(id) => id !== 'rest' && content.exercises[id],
 	);
-	if (exIds.length === 0) return null; // a rest day — nothing was missed
-	const trained = appState.workouts.some(
-		(w) => w.at === yIso && w.exercises.some((ex) => ex.sets.some((s) => s.done)),
-	);
-	if (trained) return null;
+	if (scheduled.length === 0) return null; // a rest day — nothing was scheduled
+	const done = new Set<string>();
+	for (const w of appState.workouts)
+		if (w.at === yIso)
+			for (const ex of w.exercises) if (ex.sets.some((s) => s.done)) done.add(ex.exId);
+	const exIds = pendingExercises(scheduled, done);
+	if (exIds.length === 0) return null; // everything got done
 	return { label: content.days.find((d) => d.k === weekday)?.label ?? weekday, exIds };
 }
 
@@ -464,11 +469,28 @@ export function moveProgramExercise(
 	};
 }
 
-/** Build weeks elapsed through `week` (non-deload weeks), for compounding loads. */
-function buildWeeksThrough(week: number): number {
-	let n = 0;
-	for (let w = 1; w <= week; w++) if (!phaseForWeek(w)?.deload) n += 1;
-	return n;
+/** Fraction of a program week's scheduled tasks that were actually trained
+ *  (taskDone is set when a set is logged) — the adherence that earns progression. */
+function weekAdherence(content: Content, week: number): number {
+	let total = 0;
+	let done = 0;
+	for (const d of content.days)
+		for (const exId of resolveExerciseIds(content, week, d.k)) {
+			if (exId === 'rest' || !content.exercises[exId]) continue;
+			total += 1;
+			if (appState.taskDone[taskKey(week, d.k, exId)]) done += 1;
+		}
+	return adherenceRatio(done, total);
+}
+
+/** Build weeks elapsed before `week`, scaled by each week's adherence so the load
+ *  only climbs as much as you actually trained (periodization aware of missed
+ *  work). Returns 1 + Σ adherence, so progressionFactor's exponent is that sum;
+ *  with full adherence it matches a plain count of prior non-deload weeks. */
+function buildWeeksThrough(content: Content, week: number): number {
+	let sum = 0;
+	for (let w = 1; w < week; w++) if (!phaseForWeek(w)?.deload) sum += weekAdherence(content, w);
+	return 1 + sum;
 }
 
 /** Whether an exercise is programmed anywhere in the training week (for synergy). */
@@ -483,7 +505,9 @@ function loadPct(content: Content, week: number, exId: string, phase: ProgramPha
 		if (phase?.deload) return phase.intensity;
 		const level: Level = appState.assessment?.level ?? 'advanced';
 		const synergy = SYNERGY[exId] ? programIncludesExercise(content, week, SYNERGY[exId]) : false;
-		return progressionFactor(weeklyRate(exId, level, synergy), buildWeeksThrough(week)) * 100;
+		return (
+			progressionFactor(weeklyRate(exId, level, synergy), buildWeeksThrough(content, week)) * 100
+		);
 	}
 	return phase ? phase.intensity : 100;
 }
