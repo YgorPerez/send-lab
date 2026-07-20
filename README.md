@@ -70,6 +70,23 @@ pnpm dev                   # http://localhost:5173
 - Env: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DATABASE_URL` (see `.env.example`).
   The `.env` and `*.db` files are git-ignored.
 
+## AI / MCP access
+
+The account is editable by an AI client over MCP at `/mcp` (`src/routes/mcp/`).
+Two ways to authenticate, both resolving to the same account:
+
+- **Personal token** — a permanent `sl_…` Bearer token shown in Settings. Paste it
+  into a header-auth client (Claude Code, Cursor, VS Code). Same token also drives
+  the REST API under `/api/v1`.
+- **OAuth 2.1** — for clients that require it (e.g. a claude.ai custom connector),
+  the server is its own authorization server: discovery metadata at
+  `/.well-known/oauth-protected-resource` + `/.well-known/oauth-authorization-server`,
+  dynamic client registration at `/oauth/register`, a consent screen at
+  `/oauth/authorize`, and the token endpoint at `/oauth/token`. It's PKCE-only
+  (S256) with rotating refresh tokens; the user signs in and approves instead of
+  pasting a secret. Add the connector with just the `/mcp` URL — no token. Core
+  logic lives in `src/lib/server/oauth.ts`.
+
 ## Build
 
 ```bash

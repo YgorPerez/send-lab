@@ -22,6 +22,9 @@ turso db tokens create send-lab       # → TURSO_AUTH_TOKEN
 TURSO_DATABASE_URL='libsql://…' TURSO_AUTH_TOKEN='…' pnpm run db:push
 ```
 
+Re-run this same command after pulling schema changes (e.g. the OAuth tables that
+back MCP connectors) to apply them to an existing database.
+
 ## 3. Deploy on Vercel
 
 Import the repo at vercel.com (it auto-detects SvelteKit). Add these environment

@@ -16,7 +16,8 @@ import {
 	type RehabStage,
 	rehabExercises,
 } from '$lib/rehab';
-import { userIdFromBearer } from '$lib/server/apiToken';
+import { bearerFromRequest } from '$lib/server/apiToken';
+import { CORS_HEADERS, resolveMcpUser } from '$lib/server/oauth';
 import {
 	applyEditDay,
 	applySetAutoProgress,
@@ -610,15 +611,29 @@ const rpcError = (id: unknown, code: number, message: string) => ({
 	error: { code, message },
 });
 
-export const POST: RequestHandler = async ({ request }) => {
-	const userId = await userIdFromBearer(request);
+// Preflight for browser-based MCP clients hitting the endpoint cross-origin.
+export const OPTIONS: RequestHandler = () =>
+	new Response(null, { status: 204, headers: CORS_HEADERS });
+
+export const POST: RequestHandler = async ({ request, url }) => {
+	// Accept either a personal `sl_` token or an OAuth access token.
+	const token = bearerFromRequest(request);
+	const userId = await resolveMcpUser(token);
 	const body: unknown = await request.json().catch(() => null);
 	const id = isPlainObject(body) ? body.id : null;
 
-	if (!userId)
-		return json(rpcError(id, -32001, 'Unauthorized — provide a valid Bearer API token'), {
-			status: 401,
-		});
+	if (!userId) {
+		// Point unauthenticated clients at the protected-resource metadata so they
+		// can discover the OAuth flow (RFC 9728 / MCP authorization).
+		const resourceMeta = `${url.origin}/.well-known/oauth-protected-resource`;
+		const challenge = token
+			? `Bearer error="invalid_token", resource_metadata="${resourceMeta}"`
+			: `Bearer resource_metadata="${resourceMeta}"`;
+		return json(
+			rpcError(id, -32001, 'Unauthorized — provide a valid Bearer token (personal token or OAuth)'),
+			{ status: 401, headers: { 'WWW-Authenticate': challenge, ...CORS_HEADERS } },
+		);
+	}
 	if (!isPlainObject(body) || body.jsonrpc !== '2.0')
 		return json(rpcError(id, -32600, 'Invalid Request'));
 

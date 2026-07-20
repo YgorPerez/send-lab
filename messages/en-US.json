@@ -477,6 +477,7 @@
 	"mcp_regenerate": "Regenerate",
 	"mcp_regenerate_confirm": "Generate a new token? The current one stops working immediately and any connected AI client must be reconnected with the new token.",
 	"mcp_rest_note": "The same token also works with the REST API at {url}.",
+	"mcp_connector_note": "For claude.ai and other OAuth clients, add a custom connector with just the URL {url} — you sign in to authorize, no token to paste.",
 	"flags_heading": "Watch-outs",
 	"flag_rehab_today": "Rehab today",
 	"flag_rehab_plan": "Rehab plan",
