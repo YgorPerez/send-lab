@@ -34,8 +34,11 @@ async function submit(e: Event) {
 			leaveGuest();
 			// Full navigation so the app reloads with the new session cookie already
 			// present — avoids a race where the redirect guard bounces back to /login
-			// before the client session store has refreshed.
-			window.location.href = '/';
+			// before the client session store has refreshed. Honor a `next` target
+			// (e.g. the OAuth authorize page) but only if it's a local path.
+			const next = new URLSearchParams(location.search).get('next');
+			const dest = next?.startsWith('/') && !next.startsWith('//') ? next : '/';
+			window.location.href = dest;
 		}
 	} catch {
 		error = m.auth_error();

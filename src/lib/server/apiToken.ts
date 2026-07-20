@@ -33,10 +33,8 @@ export async function regenerateToken(userId: string): Promise<string> {
 	return token;
 }
 
-/** Resolve a Bearer token from a request to its user id, or null. */
-export async function userIdFromBearer(request: Request): Promise<string | null> {
-	const auth = request.headers.get('authorization') ?? '';
-	const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+/** Resolve a personal API token string to its user id, or null. */
+export async function userIdFromToken(token: string): Promise<string | null> {
 	if (!token) return null;
 	const row = await db
 		.select({ userId: apiToken.userId })
@@ -44,4 +42,15 @@ export async function userIdFromBearer(request: Request): Promise<string | null>
 		.where(eq(apiToken.token, token))
 		.get();
 	return row?.userId ?? null;
+}
+
+/** Extract the `Authorization: Bearer <token>` value from a request, or ''. */
+export function bearerFromRequest(request: Request): string {
+	const auth = request.headers.get('authorization') ?? '';
+	return auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+}
+
+/** Resolve a Bearer token from a request to its user id, or null. */
+export async function userIdFromBearer(request: Request): Promise<string | null> {
+	return userIdFromToken(bearerFromRequest(request));
 }

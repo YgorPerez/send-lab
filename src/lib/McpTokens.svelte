@@ -109,4 +109,5 @@ async function regenerate() {
 	</div>
 
 	<p class="text-[11px] text-ink-faint">{m.mcp_rest_note({ url: restEndpoint })}</p>
+	<p class="text-[11px] text-ink-faint">{m.mcp_connector_note({ url: endpoint })}</p>
 </Card>
