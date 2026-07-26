@@ -124,6 +124,42 @@ pnpm fallow:health    # fallow — complexity / maintainability hotspots
 > stays on TS 6 while `tsgo` provides a forward-looking TS 7 typecheck over the
 > plain `.ts` sources (`tsgo` can't parse `.svelte`; `svelte-check` covers those).
 
+## Semantic code search (Serena)
+
+[Serena](https://github.com/oraios/serena) is registered as an MCP server so an AI
+client can navigate this repo by symbol instead of by grep. `.mcp.json`,
+`.serena/project.yml` and `.claude/settings.json` are committed; the tooling itself
+is a one-time local install:
+
+```bash
+uv tool install -p 3.13 serena-agent    # needs `uv` and `~/.local/bin` on PATH
+pnpm install                            # svelte-language-server comes from node_modules
+serena project index .                  # ~140s here, 173 files; optional but makes the first query fast
+```
+
+`languages: [svelte]` is deliberately the only entry. Serena measured `svelte` at 100%
+of the source files — it subsumes `.ts` — and adding `typescript` alongside it makes
+things *worse*: whichever server is listed first claims `.ts`, and
+`typescript-language-server` cannot read `.svelte` at all, so every component consumer
+disappears from reference results.
+
+Two limitations, both measured on this workspace rather than assumed:
+
+- **`find_referencing_symbols` over-reports for `.ts` exports.** It answers with every
+  file that imports *anything* from that module: asking who uses `weekdayLabel`
+  (genuinely used in one file) returns 19. Recall is intact — the real caller is always
+  in the list — so treat the result as a candidate set to narrow, not a usage count.
+  References *within* one file are exact.
+- **Components have no referenceable symbol.** A `.svelte` file's only file-level symbol
+  is of kind `File`, which `find_referencing_symbols` rejects. To find where a component
+  is used, search the text for `<ComponentName` or its import path.
+
+`find_symbol` and `get_symbols_overview` are accurate for both file types, and the first
+semantic query of a session spends 13–30s warming the language server before answering.
+
+> Unlike a Rust workspace, there is no readiness cliff here: the Svelte server answers
+> correctly as soon as it answers at all, so no timeout tuning is needed.
+
 ## Notes
 
 Not medical advice. Stop on any sharp or lingering finger pain. Training
