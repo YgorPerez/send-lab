@@ -5,6 +5,10 @@
 			"command": "serena",
 			"args": ["start-mcp-server", "--context", "claude-code", "--project-from-cwd"],
 			"env": {}
+		},
+		"send-lab": {
+			"type": "http",
+			"url": "https://send-lab-sable.vercel.app/mcp"
 		}
 	}
 }
