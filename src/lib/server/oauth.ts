@@ -11,12 +11,17 @@ import { userIdFromToken } from '$lib/server/apiToken';
 import { db } from '$lib/server/db';
 import { oauthAccessToken, oauthClient, oauthCode, oauthRefreshToken } from '$lib/server/db/schema';
 
-export const ACCESS_TTL_SEC = 60 * 60; // 1 hour
+const ACCESS_TTL_SEC = 60 * 60; // 1 hour
 const CODE_TTL_SEC = 60 * 10; // 10 minutes
 const SUPPORTED_SCOPES = ['mcp'];
 
 /** Permissive CORS headers so browser- and server-side MCP clients can reach the
- *  discovery/token endpoints cross-origin. These endpoints carry no cookies. */
+ *  discovery/token endpoints cross-origin. Dynamic client registration means there
+ *  is no origin allowlist to write. Safe because these endpoints authenticate with
+ *  an explicitly-attached Bearer token, never cookies, and
+ *  `Access-Control-Allow-Credentials` is deliberately never set — do not add it.
+ *  See ADR-0004; svelte-doctor's `no-broad-cors` finding here is reviewed and
+ *  accepted, not unnoticed. */
 export const CORS_HEADERS: Record<string, string> = {
 	'Access-Control-Allow-Origin': '*',
 	'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -325,7 +330,9 @@ export async function purgeExpired(): Promise<void> {
 	await db.delete(oauthAccessToken).where(lt(oauthAccessToken.expiresAt, now)).run();
 }
 
-/** Guard used by the authorize endpoint: is this redirect URI registered? */
+/** Guard used by the authorize endpoint: is this redirect URI registered? Every
+ *  redirect back to a client — success, denial, and each error path — must pass
+ *  this first. Load-bearing, not stylistic (ADR-0004). */
 export function redirectAllowed(client: ClientRow, redirectUri: string): boolean {
 	return client.redirectUris.includes(redirectUri);
 }

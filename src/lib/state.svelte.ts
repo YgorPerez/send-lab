@@ -7,6 +7,7 @@ import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { CustomExercise } from './content/types';
 import { sanitizeCustomExercises } from './customExercise';
+import { isoDayOf, isoToday } from './dates';
 import { migrateState } from './migrate';
 import type { RehabArea, RehabStage } from './rehab';
 import { defaultMm, SIZED_METRICS } from './strength';
@@ -535,6 +536,15 @@ export function today(): string {
 }
 
 export { isoToday } from './dates';
+
+/** Whether a dated log entry belongs to today. Prefers the locale-independent
+ *  timestamp; falls back to the stored display date only for entries written
+ *  before timestamps were recorded, so a language switch can't split today's
+ *  entry in two (ADR-0003). */
+export function isTodayEntry(e: { at?: number; date?: string }): boolean {
+	if (typeof e.at === 'number') return isoDayOf(e.at) === isoToday();
+	return e.date === today();
+}
 
 /** Format a stored ISO calendar date (YYYY-MM-DD) for display in the active
  *  locale. Prefer this over a stored display date, which is frozen in whatever

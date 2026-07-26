@@ -6,6 +6,7 @@ import {
 	exchangeAuthCode,
 	exchangeRefreshToken,
 	OAuthError,
+	purgeExpired,
 	type TokenResponse,
 } from '$lib/server/oauth';
 import type { RequestHandler } from './$types';
@@ -28,6 +29,12 @@ function clientCreds(
 }
 
 export const POST: RequestHandler = async ({ request }) => {
+	// Opportunistic cleanup — expired codes and access tokens are never otherwise
+	// deleted, so the tables would grow without bound. This endpoint is the natural
+	// hook: every client hits it on connect and on each hourly refresh, but not per
+	// request. Fire-and-forget, so a cleanup failure can't break token issuance.
+	void purgeExpired().catch(() => {});
+
 	const form = new URLSearchParams(await request.text());
 	const grantType = form.get('grant_type');
 	const { id: clientId, secret: clientSecret } = clientCreds(request, form);

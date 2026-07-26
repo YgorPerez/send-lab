@@ -31,7 +31,7 @@ import Rehab from '$lib/Rehab.svelte';
 import { loadReadinessDraft, saveReadinessDraft } from '$lib/readinessDraft';
 import { capByVerdict } from '$lib/readinessPlan';
 import SectionHeading from '$lib/SectionHeading.svelte';
-import { appState, type ReadinessEntry, today } from '$lib/state.svelte';
+import { appState, isTodayEntry, type ReadinessEntry, today } from '$lib/state.svelte';
 import {
 	acwr,
 	completedSessions,
@@ -136,9 +136,9 @@ const calibrated = $derived(appState.readinessLog.filter((e) => e.outcome != nul
 const scoreNote = $derived(calibrated ? m.rd_note_tuned() : m.rd_note_heuristic());
 
 // Post-session outcome (set after training) feeds the calibration loop.
-const todayEntry = $derived(appState.readinessLog.find((e) => e.date === today()));
+const todayEntry = $derived(appState.readinessLog.find(isTodayEntry));
 function setOutcome(v: number) {
-	const e = appState.readinessLog.find((x) => x.date === today());
+	const e = appState.readinessLog.find(isTodayEntry);
 	if (!e) return;
 	e.outcome = v;
 	toast.success(m.rd_outcome_saved());
@@ -186,7 +186,7 @@ $effect(() => {
 	if (!complete || !readiness) return;
 	const d = today();
 	const rl = appState.readinessLog;
-	const existing = rl.find((e) => e.date === d);
+	const existing = rl.find(isTodayEntry);
 	const flags = readiness.flags.map((f) => ({
 		id: f.id,
 		severity: f.severity,
@@ -221,7 +221,7 @@ $effect(() => {
 	const v = probeValue;
 	if (v == null || Number.isNaN(v) || v <= 0) return;
 	const d = today();
-	const pe = appState.probeLog.find((p) => p.date === d);
+	const pe = appState.probeLog.find(isTodayEntry);
 	if (pe) {
 		if (pe.value !== v) pe.value = v;
 	} else {

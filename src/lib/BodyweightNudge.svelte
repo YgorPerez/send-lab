@@ -2,13 +2,13 @@
 import { Button } from '$lib/components/ui/button';
 import { Input } from '$lib/components/ui/input';
 import * as m from '$lib/paraglide/messages';
-import { appState, today } from '$lib/state.svelte';
+import { appState, isTodayEntry, today } from '$lib/state.svelte';
 import { toMetricCanonical } from '$lib/units';
 
 // Daily bodyweight nudge — it anchors the % bodyweight strength estimates.
 // Hidden once today's bodyweight is logged.
 let bwInput = $state('');
-const bwLoggedToday = $derived(appState.metrics.bodyweight.some((e) => e.date === today()));
+const bwLoggedToday = $derived(appState.metrics.bodyweight.some(isTodayEntry));
 function logBodyweight() {
 	const n = Number.parseFloat(bwInput);
 	if (Number.isNaN(n)) return;

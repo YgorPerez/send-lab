@@ -16,3 +16,8 @@ export function isoDay(d: Date): string {
 export function isoToday(): string {
 	return isoDay(new Date());
 }
+
+/** Epoch ms as an ISO calendar date (YYYY-MM-DD) in local time. */
+export function isoDayOf(ms: number): string {
+	return isoDay(new Date(ms));
+}
