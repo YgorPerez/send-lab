@@ -625,7 +625,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	if (!userId) {
 		// Point unauthenticated clients at the protected-resource metadata so they
 		// can discover the OAuth flow (RFC 9728 / MCP authorization).
-		const resourceMeta = `${url.origin}/.well-known/oauth-protected-resource`;
+		// RFC 9728 path-inserted form (…/.well-known/oauth-protected-resource/mcp) —
+		// what MCP clients expect to fetch.
+		const resourceMeta = `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
 		const challenge = token
 			? `Bearer error="invalid_token", resource_metadata="${resourceMeta}"`
 			: `Bearer resource_metadata="${resourceMeta}"`;
