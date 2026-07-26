@@ -1,0 +1,14 @@
+{
+	"name": "ygorperez",
+	"description": "Plugins for Send Lab, an 8-week climbing training console.",
+	"owner": {
+		"name": "Ygor Perez"
+	},
+	"plugins": [
+		{
+			"name": "send-lab",
+			"source": "./plugins/send-lab",
+			"description": "Read and edit your Send Lab climbing training account (program, metrics, workouts, rehab) over MCP."
+		}
+	]
+}
