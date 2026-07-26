@@ -27,7 +27,7 @@ import {
 	today,
 } from './state.svelte';
 
-export function slotKey(week: number, weekday: string): string {
+function slotKey(week: number, weekday: string): string {
 	return `w${week}-${weekday}`;
 }
 
@@ -35,24 +35,29 @@ export function taskKey(week: number, weekday: string, exId: string): string {
 	return `w${week}-${weekday}:${exId}`;
 }
 
-/** Template weekday key for a slot: per-week override → program template → built-in. */
-function resolveDayKey(week: number, weekday: string): string {
+/** The day type a weekday runs in the built-in week (its calendar default). */
+export function builtInDayType(content: Content, weekday: string): string {
+	return content.days.find((d) => d.k === weekday)?.id ?? content.days[0].id;
+}
+
+/** Day-type id for a slot: per-week override → program template → built-in. */
+function resolveDayKey(content: Content, week: number, weekday: string): string {
 	return (
 		appState.dayPlan[slotKey(week, weekday)] ??
 		appState.program.template[weekday]?.dayKey ??
-		weekday
+		builtInDayType(content, weekday)
 	);
 }
 
-/** Look up a built-in Day template by its weekday key. */
-export function dayTemplate(content: Content, dayKey: string): Day {
-	return content.days.find((d) => d.k === dayKey) ?? content.days[0];
+/** Look up a Day type by its stable id. */
+export function dayTemplate(content: Content, dayTypeId: string): Day {
+	return content.days.find((d) => d.id === dayTypeId) ?? content.days[0];
 }
 
 /** The Day template a slot will actually run, after overrides (incl. the
  *  program's custom focus name, which replaces the built-in category label). */
 export function resolveDay(content: Content, week: number, weekday: string): Day {
-	const base = dayTemplate(content, resolveDayKey(week, weekday));
+	const base = dayTemplate(content, resolveDayKey(content, week, weekday));
 	const name = appState.program.template[weekday]?.name;
 	return name ? { ...base, type: name } : base;
 }
@@ -112,16 +117,15 @@ const WEEKDAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function missedYesterday(content: Content): { label: string; exIds: string[] } | null {
 	const y = new Date();
 	y.setDate(y.getDate() - 1);
-	const yIso = y.toISOString().slice(0, 10);
 	const weekday = WEEKDAY_KEYS[y.getDay()];
-	const scheduled = resolveExerciseIds(content, appState.currentWeek, weekday).filter(
+	const week = appState.currentWeek;
+	const scheduled = resolveExerciseIds(content, week, weekday).filter(
 		(id) => id !== 'rest' && content.exercises[id],
 	);
 	if (scheduled.length === 0) return null; // a rest day — nothing was scheduled
-	const done = new Set<string>();
-	for (const w of appState.workouts)
-		if (w.at === yIso)
-			for (const ex of w.exercises) if (ex.sets.some((s) => s.done)) done.add(ex.exId);
+	// Reads the same per-task completion record as weekCompletion, so carry-forward
+	// and adherence can't disagree about what was trained (ADR-0001).
+	const done = scheduled.filter((id) => appState.taskDone[taskKey(week, weekday, id)]);
 	const exIds = pendingExercises(scheduled, done);
 	if (exIds.length === 0) return null; // everything got done
 	return { label: content.days.find((d) => d.k === weekday)?.label ?? weekday, exIds };
@@ -157,11 +161,17 @@ export function exerciseLabel(ex: { variants: Variant[] }, idx: number): string 
 	return variantOf(ex, idx).name;
 }
 
-/** Set/clear a per-day protocol override for a slot. */
-export function setDayPlan(week: number, weekday: string, templateKey: string): void {
+/** Set/clear a per-day protocol override for a slot. Clears when it matches the
+ *  weekday's built-in day type, so the override only exists when it deviates. */
+export function setDayPlan(
+	content: Content,
+	week: number,
+	weekday: string,
+	dayTypeId: string,
+): void {
 	const k = slotKey(week, weekday);
-	if (templateKey === weekday) delete appState.dayPlan[k];
-	else appState.dayPlan[k] = templateKey;
+	if (dayTypeId === builtInDayType(content, weekday)) delete appState.dayPlan[k];
+	else appState.dayPlan[k] = dayTypeId;
 }
 
 /** Set/clear a per-day swap override for an exercise (clears when it matches the global default). */
@@ -219,6 +229,12 @@ const GRIP_LABEL: Record<Grip, () => string> = {
 	wrist: m.grip_wrist,
 	jug: m.grip_jug,
 };
+
+/** Localized label for a stable weekday key. Display only — resolved at render
+ *  time so a session logged in one language reads correctly in the other. */
+export function weekdayLabel(content: Content, weekday: string): string {
+	return content.days.find((d) => d.k === weekday)?.label ?? weekday;
+}
 
 /** Localized label for a grip id (falls back to the raw id). */
 export function gripLabel(grip: string): string {
@@ -308,14 +324,17 @@ export function resetDay(week: number, weekday: string): void {
 
 // ---------------- PROGRAM TEMPLATE (applies to every week) ----------------
 
-/** The day-type key set for a weekday in the program template (else the weekday). */
-export function programDayKey(weekday: string): string {
-	return appState.program.template[weekday]?.dayKey ?? weekday;
+/** The day-type id set for a weekday in the program template (else its built-in). */
+export function programDayKey(content: Content, weekday: string): string {
+	return appState.program.template[weekday]?.dayKey ?? builtInDayType(content, weekday);
 }
 
 /** The default exercise ids for a weekday in the program template. */
 export function programExercises(content: Content, weekday: string): string[] {
-	return appState.program.template[weekday]?.ex ?? dayTemplate(content, programDayKey(weekday)).ex;
+	return (
+		appState.program.template[weekday]?.ex ??
+		dayTemplate(content, programDayKey(content, weekday)).ex
+	);
 }
 
 /** Whether a weekday has been customized (day-type, exercises, or prescriptions). */
@@ -334,7 +353,7 @@ export function addProgramExercise(content: Content, weekday: string, exId: stri
 	if (ex.includes(exId)) return;
 	appState.program.template[weekday] = {
 		...appState.program.template[weekday],
-		dayKey: programDayKey(weekday),
+		dayKey: programDayKey(content, weekday),
 		ex: [...ex, exId],
 	};
 }
@@ -343,7 +362,7 @@ export function removeProgramExercise(content: Content, weekday: string, exId: s
 	const ex = programExercises(content, weekday).filter((id) => id !== exId);
 	appState.program.template[weekday] = {
 		...appState.program.template[weekday],
-		dayKey: programDayKey(weekday),
+		dayKey: programDayKey(content, weekday),
 		ex,
 	};
 	delete appState.program.targets[`${weekday}:${exId}`];
@@ -464,15 +483,39 @@ export function moveProgramExercise(
 	[ex[i], ex[j]] = [ex[j], ex[i]];
 	appState.program.template[weekday] = {
 		...appState.program.template[weekday],
-		dayKey: programDayKey(weekday),
+		dayKey: programDayKey(content, weekday),
 		ex,
 	};
 }
 
+/** Whether a slot counts as trained: ANY of its tasks completed — including
+ *  exercises added off-script, so extra work counts toward your training, not
+ *  against it. The single definition of "trained" (ADR-0001); adherence and
+ *  carry-forward both read it. */
+export function isSlotTrained(content: Content, week: number, weekday: string): boolean {
+	return resolveExerciseIds(content, week, weekday)
+		.filter((id) => id !== 'rest' && content.exercises[id])
+		.some((id) => appState.taskDone[taskKey(week, weekday, id)]);
+}
+
+/** Mark every task in a slot trained, or clear them all. What the Week tab's
+ *  slot tick writes, so a tick earns adherence credit like any logged work. */
+export function setSlotTrained(
+	content: Content,
+	week: number,
+	weekday: string,
+	trained: boolean,
+): void {
+	for (const id of resolveExerciseIds(content, week, weekday)) {
+		if (id === 'rest' || !content.exercises[id]) continue;
+		const k = taskKey(week, weekday, id);
+		if (trained) appState.taskDone[k] = true;
+		else delete appState.taskDone[k];
+	}
+}
+
 /** A program week's completion: scheduled training days vs. those actually
- *  trained. A day counts as trained if ANY of its exercises has a logged done set
- *  (taskDone) — including exercises you added off-script, so extra/random work
- *  you mark done counts toward your training, not against it. */
+ *  trained. */
 export function weekCompletion(
 	content: Content,
 	week: number,
@@ -485,7 +528,7 @@ export function weekCompletion(
 		);
 		if (exIds.length === 0) continue; // a rest day
 		scheduled += 1;
-		if (exIds.some((id) => appState.taskDone[taskKey(week, d.k, id)])) trained += 1;
+		if (isSlotTrained(content, week, d.k)) trained += 1;
 	}
 	return { trained, scheduled };
 }
@@ -576,19 +619,15 @@ export function programDayName(weekday: string): string {
 }
 
 /** Set/clear a weekday's custom focus name (shown wherever the day-type is). */
-export function setProgramDayName(weekday: string, name: string): void {
+export function setProgramDayName(content: Content, weekday: string, name: string): void {
 	const n = name.trim();
-	const e = { ...appState.program.template[weekday], dayKey: programDayKey(weekday) };
+	const e = { ...appState.program.template[weekday], dayKey: programDayKey(content, weekday) };
 	if (n) e.name = n;
 	else delete e.name;
-	if (!e.name && e.ex === undefined && e.dayKey === weekday)
+	// Drop the entry entirely once it carries nothing but the weekday's default.
+	if (!e.name && e.ex === undefined && e.dayKey === builtInDayType(content, weekday))
 		delete appState.program.template[weekday];
 	else appState.program.template[weekday] = e;
-}
-
-/** The weekday key of the built-in rest day (the OFF-load day). */
-export function restDayKey(content: Content): string {
-	return content.days.find((d) => d.load === 'OFF')?.k ?? 'Sun';
 }
 
 /** Copy a weekday's whole config (day-type, exercises, name, prescriptions) onto another. */
@@ -596,7 +635,7 @@ export function duplicateProgramDay(content: Content, from: string, to: string):
 	if (from === to) return;
 	const name = programDayName(from);
 	appState.program.template[to] = {
-		dayKey: programDayKey(from),
+		dayKey: programDayKey(content, from),
 		ex: [...programExercises(content, from)],
 		...(name ? { name } : {}),
 	};

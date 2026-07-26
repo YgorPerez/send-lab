@@ -4,6 +4,7 @@ import {
 	applyEditDay,
 	applySetPhases,
 	applySetTarget,
+	DAY_TYPE_IDS,
 	defaultProgram,
 	EXERCISE_IDS,
 } from '../src/lib/server/programOps';
@@ -36,17 +37,29 @@ test('applySetPhases normalizes, clamps, and validates', () => {
 test('applyEditDay validates weekday + exercise ids and accepts custom ids', () => {
 	const p = defaultProgram();
 	const id = EXERCISE_IDS[0];
-	applyEditDay(p, 'Mon', 'Tue', [id]);
-	assert.equal(p.template.Mon.dayKey, 'Tue');
+	applyEditDay(p, 'Mon', 'pinch-wrist', [id]);
+	assert.equal(p.template.Mon.dayKey, 'pinch-wrist');
 	assert.deepEqual(p.template.Mon.ex, [id]);
 
 	assert.throws(() => applyEditDay(p, 'Funday'));
 	assert.throws(() => applyEditDay(p, 'Mon', undefined, ['nope_not_real']));
+	// a weekday key is no longer a valid protocol reference (ADR-0002)
+	assert.throws(() => applyEditDay(p, 'Mon', 'Tue'));
 
 	// a custom id is accepted when passed via extraIds
 	applyEditDay(p, 'Wed', undefined, ['my_custom'], ['my_custom']);
 	assert.deepEqual(p.template.Wed.ex, ['my_custom']);
-	assert.equal(p.template.Wed.dayKey, 'Wed'); // defaults to the weekday
+	// defaults to the day type that weekday runs in the built-in week
+	assert.equal(p.template.Wed.dayKey, 'endurance');
+});
+
+test('DAY_TYPE_IDS are day types, not weekdays', () => {
+	assert.ok(DAY_TYPE_IDS.includes('limit-power'));
+	assert.ok(DAY_TYPE_IDS.includes('rest'));
+	assert.equal(DAY_TYPE_IDS.length, 7);
+	for (const wd of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
+		assert.ok(!DAY_TYPE_IDS.includes(wd), `${wd} must not be a day-type id`);
+	}
 });
 
 test('applySetTarget sets, clears a field, and removes empty targets', () => {

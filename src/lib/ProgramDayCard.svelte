@@ -6,11 +6,12 @@ import { toast } from 'svelte-sonner';
 import { Card } from '$lib/components/ui/card';
 import { Input } from '$lib/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select';
-import type { Content, Day } from '$lib/content/types';
+import { type Content, type Day, REST_DAY_TYPE } from '$lib/content/types';
 import ProgramExerciseRow from '$lib/ProgramExerciseRow.svelte';
 import * as m from '$lib/paraglide/messages';
 import {
 	addProgramExercise,
+	builtInDayType,
 	dayTemplate,
 	duplicateProgramDay,
 	isProgramDayCustom,
@@ -18,24 +19,23 @@ import {
 	programDayName,
 	programExercises,
 	resetProgramDay,
-	restDayKey,
 	setProgramDay,
 	setProgramDayName,
 } from '$lib/plan';
 
 let { content, slot }: { content: Content; slot: Day } = $props();
 
-const resolved = $derived(dayTemplate(content, programDayKey(slot.k)));
+const resolved = $derived(dayTemplate(content, programDayKey(content, slot.k)));
 const exIds = $derived(programExercises(content, slot.k));
 const custom = $derived(isProgramDayCustom(slot.k));
 const avail = $derived(
 	Object.entries(content.exercises).filter(([id]) => id !== 'rest' && !exIds.includes(id)),
 );
-const isRest = $derived(resolved.load === 'OFF');
+const isRest = $derived(resolved.id === REST_DAY_TYPE);
 const others = $derived(content.days.filter((d) => d.k !== slot.k));
 
 function toggleRest() {
-	setProgramDay(slot.k, isRest ? slot.k : restDayKey(content));
+	setProgramDay(slot.k, isRest ? builtInDayType(content, slot.k) : REST_DAY_TYPE);
 }
 function duplicate(to: string) {
 	duplicateProgramDay(content, slot.k, to);
@@ -57,14 +57,14 @@ function duplicate(to: string) {
 
 	<Input
 		value={programDayName(slot.k)}
-		oninput={(e) => setProgramDayName(slot.k, e.currentTarget.value)}
+		oninput={(e) => setProgramDayName(content, slot.k, e.currentTarget.value)}
 		placeholder={m.prog_day_name_ph()}
 		class="h-8 bg-panel-2 text-sm"
 	/>
 
 	<Select
 		type="single"
-		value={programDayKey(slot.k)}
+		value={programDayKey(content, slot.k)}
 		onValueChange={(v) => v && setProgramDay(slot.k, v)}
 	>
 		<SelectTrigger class="h-9 w-full border-line bg-panel-2 text-xs">
@@ -72,7 +72,7 @@ function duplicate(to: string) {
 		</SelectTrigger>
 		<SelectContent>
 			{#each content.days as opt (opt.k)}
-				<SelectItem value={opt.k}>{opt.type} · {opt.load}</SelectItem>
+				<SelectItem value={opt.id}>{opt.type} · {opt.load}</SelectItem>
 			{/each}
 		</SelectContent>
 	</Select>

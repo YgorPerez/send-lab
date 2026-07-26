@@ -48,7 +48,6 @@ const content = getContent();
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const weekday = WEEKDAYS[new Date().getDay()];
 const week = $derived(appState.currentWeek);
-const dayLabel = $derived(content.days.find((d) => d.k === weekday)?.label ?? weekday);
 
 const dayExIds = $derived(resolveExerciseIds(content, week, weekday));
 // Arrived here from the onboarding assessment to run a test — offer a way back.
@@ -112,7 +111,7 @@ const timerTarget = $derived.by(() => {
 	if (picked) return picked;
 	const next = items.find((it) => {
 		if (!it.timed) return false;
-		const sets = setsFor(dayLabel, it.exId);
+		const sets = setsFor(weekday, it.exId);
 		return sets.length === 0 || sets.some((s) => !s.done);
 	});
 	return next ?? items.find((it) => it.timed) ?? null;
@@ -131,13 +130,13 @@ $effect(() => {
 $effect(() => {
 	for (const it of items) {
 		const k = taskKey(week, weekday, it.exId);
-		const done = setsFor(dayLabel, it.exId).some((s) => s.done);
+		const done = setsFor(weekday, it.exId).some((s) => s.done);
 		if (done) {
 			if (!appState.taskDone[k]) appState.taskDone[k] = true;
 			const metricId = assess[it.exId];
 			if (metricId && !recorded[it.exId]) {
 				recorded[it.exId] = true;
-				recordAssessment(metricId, setsFor(dayLabel, it.exId), content);
+				recordAssessment(metricId, setsFor(weekday, it.exId), content);
 			}
 		} else if (appState.taskDone[k]) {
 			delete appState.taskDone[k];
@@ -197,7 +196,7 @@ function restAfter(it: Item) {
 }
 
 // Whether anything is logged today (gates the "repeat last session" shortcut).
-const loggedAny = $derived(items.some((it) => setsFor(dayLabel, it.exId).length > 0));
+const loggedAny = $derived(items.some((it) => setsFor(weekday, it.exId).length > 0));
 
 /** A first set for an exercise: prescription midpoints, with a sensible load
  *  pulled from the athlete's markers when the prescription has no fixed weight. */
@@ -213,13 +212,13 @@ let staged = $state(false);
 $effect(() => {
 	if (staged || items.length === 0) return;
 	staged = true;
-	if (items.some((it) => setsFor(dayLabel, it.exId).length > 0)) return;
-	for (const it of items) addSetTo(dayLabel, it.exId, logName(it), freshSet(it));
+	if (items.some((it) => setsFor(weekday, it.exId).length > 0)) return;
+	for (const it of items) addSetTo(weekday, it.exId, logName(it), freshSet(it));
 });
 
 /** Pre-fill today from the most recent prior session of the same weekday. */
 function repeatLast() {
-	const ids = repeatLastInto(dayLabel);
+	const ids = repeatLastInto(weekday);
 	if (!ids) {
 		toast.error(m.train_no_prev());
 		return;
@@ -229,20 +228,20 @@ function repeatLast() {
 }
 
 function addSet(it: Item) {
-	const existing = setsFor(dayLabel, it.exId);
+	const existing = setsFor(weekday, it.exId);
 	// First set: prefill from the target. Later sets: carry over the previous one
 	// (so your edits become the default for what you add next).
 	const seed: WorkoutSet = existing.length
 		? { ...existing[existing.length - 1], done: false }
 		: freshSet(it);
-	addSetTo(dayLabel, it.exId, logName(it), seed);
+	addSetTo(weekday, it.exId, logName(it), seed);
 }
 function removeSet(exId: string, i: number) {
-	removeSetFrom(dayLabel, exId, i);
+	removeSetFrom(weekday, exId, i);
 }
 function removeItem(exId: string) {
 	removeDayExercise(content, week, weekday, exId);
-	clearExercise(dayLabel, exId);
+	clearExercise(weekday, exId);
 }
 </script>
 
@@ -273,7 +272,7 @@ function removeItem(exId: string) {
 				<TrainExerciseCard
 					{it}
 					ex={content.exercises[it.exId]}
-					sets={setsFor(dayLabel, it.exId)}
+					sets={setsFor(weekday, it.exId)}
 					isActive={timer.key === `${it.exId}:${it.idx}` || it.exId === activeExId}
 					onUseTimer={() => useInTimer(it)}
 					onSelectVariant={(i) => selectVariant(it, i)}
@@ -319,8 +318,8 @@ function removeItem(exId: string) {
 	{#if items.length > 0}
 		<div class="mt-4 flex flex-col gap-1.5">
 			<Input
-				value={getNote(dayLabel)}
-				oninput={(e) => setNote(dayLabel, e.currentTarget.value)}
+				value={getNote(weekday)}
+				oninput={(e) => setNote(weekday, e.currentTarget.value)}
 				placeholder={m.train_note()}
 				class="bg-panel-2 text-sm"
 			/>
@@ -329,9 +328,9 @@ function removeItem(exId: string) {
 					type="number"
 					inputmode="numeric"
 					min="1"
-					value={getDuration(dayLabel)}
+					value={getDuration(weekday)}
 					oninput={(e) =>
-						setDuration(dayLabel, e.currentTarget.value === '' ? null : e.currentTarget.valueAsNumber)}
+						setDuration(weekday, e.currentTarget.value === '' ? null : e.currentTarget.valueAsNumber)}
 					placeholder={m.train_duration()}
 					class="w-28 bg-panel-2 text-sm"
 				/>

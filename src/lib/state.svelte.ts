@@ -7,6 +7,7 @@ import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { CustomExercise } from './content/types';
 import { sanitizeCustomExercises } from './customExercise';
+import { migrateState } from './migrate';
 import type { RehabArea, RehabStage } from './rehab';
 import { defaultMm, SIZED_METRICS } from './strength';
 
@@ -52,10 +53,13 @@ interface WorkoutLogExercise {
 }
 
 export interface WorkoutEntry {
-	/** Localized display date (e.g. "Jun 21"). */
+	/** Localized display date (e.g. "Jun 21"). Display only — never matched on. */
 	date: string;
-	/** ISO calendar date (YYYY-MM-DD) for ordering / streaks / weekly buckets. */
+	/** ISO calendar date (YYYY-MM-DD, local). Identifies the session's day, and
+	 *  drives ordering / streaks / weekly buckets. */
 	at: string;
+	/** Stable weekday key (Mon..Sun) for the slot trained. Never a localized label
+	 *  — a language switch used to orphan the session (ADR-0003). */
 	day: string;
 	exercises: WorkoutLogExercise[];
 	note: string;
@@ -131,17 +135,16 @@ export interface Assessment {
 
 interface AppState {
 	currentWeek: number;
-	/** Completed days, keyed "w1-Mon". */
-	completed: Record<string, boolean>;
 	/** Global exercise id → chosen swap index (library-wide default). */
 	swaps: Record<string, number>;
-	/** Per-day protocol override: "w1-Tue" → template weekday key (e.g. "Fri"). */
+	/** Per-day protocol override: "w1-Tue" → day-type id (e.g. "max-tissue"). */
 	dayPlan: Record<string, string>;
 	/** Per-day exercise swap override: "w1-Tue:pinch" → swap index. */
 	daySwaps: Record<string, number>;
 	/** Per-day exercise-list override: "w1-Tue" → exercise ids (add/remove freely). */
 	dayExercises: Record<string, string[]>;
-	/** Per-task completion: "w1-Tue:pinch" → done. */
+	/** Per-task completion: "w1-Tue:pinch" → done. The single record of what was
+	 *  trained — adherence and carry-forward both read it (ADR-0001). */
 	taskDone: Record<string, boolean>;
 	/** Marker series keyed by metric id — built-in MetricIds plus custom exercise ids. */
 	metrics: Record<string, MetricEntry[]>;
@@ -170,7 +173,7 @@ interface AppState {
 
 /** A per-weekday slot in the program template. */
 export interface ProgramDayCfg {
-	/** Which built-in day-type (category / load / color / default exercises) it uses. */
+	/** Day-type id (category / load / color / default exercises) this weekday runs. */
 	dayKey: string;
 	/** Ordered exercise ids (primary first); absent = the day-type's defaults. */
 	ex?: string[];
@@ -246,7 +249,6 @@ export function defaultProgram(): Program {
 function defaultState(): AppState {
 	return {
 		currentWeek: 1,
-		completed: {},
 		swaps: {},
 		dayPlan: {},
 		daySwaps: {},
@@ -320,10 +322,14 @@ export const syncStatus = $state<{
 	at: number | null;
 }>({ status: 'idle', at: null });
 
-function applyData(data: Partial<AppState>): void {
+/** Apply a state document to the reactive store. Every hydration path funnels
+ *  through here — server fetch, offline cache, guest cache, backup import — so
+ *  this is where legacy documents get upgraded (see migrate.ts). The migrated
+ *  shape is written back by the normal debounced persistence. */
+function applyData(raw: Partial<AppState>): void {
+	const data = migrateState(raw);
 	const base = defaultState();
 	appState.currentWeek = data.currentWeek ?? base.currentWeek;
-	appState.completed = data.completed ?? base.completed;
 	appState.swaps = data.swaps ?? base.swaps;
 	appState.dayPlan = data.dayPlan ?? base.dayPlan;
 	appState.daySwaps = data.daySwaps ?? base.daySwaps;
@@ -359,7 +365,6 @@ function sanitize(raw: unknown): Partial<AppState> {
 	if (!isObj(raw)) throw new Error('Backup is not a valid object');
 	const out: Partial<AppState> = {};
 	if (typeof raw.currentWeek === 'number') out.currentWeek = raw.currentWeek;
-	if (isObj(raw.completed)) out.completed = raw.completed as AppState['completed'];
 	if (isObj(raw.swaps)) out.swaps = raw.swaps as AppState['swaps'];
 	if (isObj(raw.dayPlan)) out.dayPlan = raw.dayPlan as AppState['dayPlan'];
 	if (isObj(raw.daySwaps)) out.daySwaps = raw.daySwaps as AppState['daySwaps'];
@@ -523,8 +528,24 @@ export function resetAll(): void {
 }
 
 // ---------------- UTIL ----------------
+/** Localized display date (e.g. "Jun 24"). Display only — never an identity, since
+ *  it changes with the active locale (ADR-0003). */
 export function today(): string {
 	return new Date().toLocaleDateString(getLocale(), { month: 'short', day: 'numeric' });
+}
+
+export { isoToday } from './dates';
+
+/** Format a stored ISO calendar date (YYYY-MM-DD) for display in the active
+ *  locale. Prefer this over a stored display date, which is frozen in whatever
+ *  language it was written (ADR-0003). */
+export function displayDate(iso: string): string {
+	const [y, m2, d] = iso.split('-').map(Number);
+	if (!y || !m2 || !d) return iso;
+	return new Date(y, m2 - 1, d).toLocaleDateString(getLocale(), {
+		month: 'short',
+		day: 'numeric',
+	});
 }
 
 export function round(n: number): number {

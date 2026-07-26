@@ -3,7 +3,7 @@
 // the baseline tests. Built by trimming/recolouring the built-in week rather
 // than inventing days from scratch.
 import { exerciseParams } from './content/exercises';
-import type { Content, MetricId } from './content/types';
+import { type Content, type MetricId, REST_DAY_TYPE } from './content/types';
 import * as m from './paraglide/messages';
 import type {
 	Assessment,
@@ -123,7 +123,7 @@ export function generateProgram(
 	a: Assessment,
 	baselines: Partial<Record<MetricId, number | null>>,
 ): Program {
-	const restKey = content.days.find((d) => d.load === 'OFF')?.k ?? 'Sun';
+	const restKey = REST_DAY_TYPE;
 	const keep = new Set(trainingDays(content, a));
 	const have = new Set(a.equipment);
 	const cap = sessionCap(a.sessionMinutes);

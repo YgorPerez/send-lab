@@ -9,9 +9,10 @@ import { getContent } from '$lib/content';
 import type { VerdictId } from '$lib/content/types';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
+import { weekdayLabel } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import SetRows from '$lib/SetRows.svelte';
-import { appState } from '$lib/state.svelte';
+import { appState, displayDate } from '$lib/state.svelte';
 import type { Col } from '$lib/trainColumns';
 import { edgeLabel, weightLabel } from '$lib/units';
 
@@ -155,9 +156,9 @@ const flagTitles = (flags?: { id: string }[]): string[] =>
 			{#each appState.workouts.slice(0, 60) as w, idx (w)}
 				<AccordionItem value={`w${idx}`} class="rounded-xl border border-line bg-panel last:border-b">
 					<AccordionTrigger class="px-4 py-3 hover:no-underline">
-						<span class="font-mono text-xs text-ink-faint">{w.date}</span>
+						<span class="font-mono text-xs text-ink-faint">{displayDate(w.at)}</span>
 						<span class="ml-2 flex-1 text-left text-[13px]">
-							<b class="text-chalk">{w.day}</b>
+							<b class="text-chalk">{weekdayLabel(content, w.day)}</b>
 							<span class="text-ink-faint">· {w.exercises.length}×</span>
 						</span>
 					</AccordionTrigger>

@@ -107,9 +107,9 @@ and whether it was completed.
 _Avoid_: rep, attempt, effort
 
 **Trained**:
-A slot is trained once at least one of its tasks has a completed set — including
+A slot is trained once at least one of its tasks is marked complete — including
 exercises the athlete added off-script, which count toward training rather than
-against it.
+against it. The one question adherence and carry-forward both ask.
 _Avoid_: completed, done, logged
 
 **Adherence**:

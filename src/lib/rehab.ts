@@ -2,7 +2,7 @@
 // with a conservative, tissue-biased plan: aggravating exercises removed, effort
 // capped by stage, fewer training days, low-load isometrics + antagonists kept.
 // Deliberately cautious — not medical advice; the user tunes it in the editor.
-import type { Content } from './content/types';
+import { type Content, REST_DAY_TYPE } from './content/types';
 import * as m from './paraglide/messages';
 import type { Program, ProgramDayCfg, ProgramTarget } from './state.svelte';
 
@@ -47,18 +47,17 @@ export function generateRehabProgram(
 ): Program {
 	const s = STAGE[stage];
 	const dayEx = rehabExercises(content, area);
-	const restKey = content.days.find((d) => d.load === 'OFF')?.k ?? 'Sun';
 	const keep = new Set(PRIORITY.slice(0, s.days));
 
 	const template: Record<string, ProgramDayCfg> = {};
 	const targets: Record<string, ProgramTarget> = {};
 	for (const d of content.days) {
-		if (d.k === restKey) continue;
+		if (d.id === REST_DAY_TYPE) continue;
 		if (!keep.has(d.k)) {
-			template[d.k] = { dayKey: restKey };
+			template[d.k] = { dayKey: REST_DAY_TYPE };
 			continue;
 		}
-		template[d.k] = { dayKey: d.k, ex: [...dayEx], name: m.rehab_label() };
+		template[d.k] = { dayKey: d.id, ex: [...dayEx], name: m.rehab_label() };
 		for (const exId of dayEx) targets[`${d.k}:${exId}`] = { rpe: s.rpe };
 	}
 

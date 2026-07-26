@@ -1,11 +1,19 @@
 // Server-side, framework-free mutations on a Program object, used by the MCP
 // endpoint. Each validates its input and throws on bad data (the caller turns
 // that into a tool error). Mirrors the client editor's semantics.
+import enUS from '$lib/content/en-US';
 import { exerciseParams } from '$lib/content/exercises';
 import { isPlainObject as isObj } from '$lib/objects';
 import type { Program, ProgramTarget } from '$lib/state.svelte';
 
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+/** Valid day-type ids — what a template's dayKey references (ADR-0002). Read from
+ *  the base locale's day list; the ids are language-neutral. */
+export const DAY_TYPE_IDS: string[] = enUS.days.map((d) => d.id);
+/** Weekday key → the day type it runs in the built-in week. */
+const BUILT_IN_DAY_TYPE: Record<string, string> = Object.fromEntries(
+	enUS.days.map((d) => [d.k, d.id]),
+);
 export const EXERCISE_IDS = Object.keys(exerciseParams);
 const TARGET_FIELDS = ['variant', 'sets', 'reps', 'loadKg', 'edgeMm', 'workSec', 'restSec', 'rpe'];
 
@@ -40,8 +48,9 @@ export function applySetAutoProgress(program: Program, enabled: unknown): void {
 const isKnown = (id: string, extraIds: string[]) =>
 	EXERCISE_IDS.includes(id) || extraIds.includes(id);
 
-/** Set a weekday's day-type and/or its ordered exercise list. `extraIds` are the
- *  user's custom exercise ids, also accepted alongside the built-in library. */
+/** Set a weekday's day-type (a day-type id) and/or its ordered exercise list.
+ *  `extraIds` are the user's custom exercise ids, also accepted alongside the
+ *  built-in library. */
 export function applyEditDay(
 	program: Program,
 	weekday: unknown,
@@ -53,11 +62,11 @@ export function applyEditDay(
 		throw new Error(`weekday must be one of ${WEEKDAYS.join(', ')}`);
 	const entry = { ...program.template[weekday] };
 	if (dayKey !== undefined) {
-		if (typeof dayKey !== 'string' || !WEEKDAYS.includes(dayKey))
-			throw new Error(`dayKey must be one of ${WEEKDAYS.join(', ')}`);
+		if (typeof dayKey !== 'string' || !DAY_TYPE_IDS.includes(dayKey))
+			throw new Error(`dayKey must be one of ${DAY_TYPE_IDS.join(', ')}`);
 		entry.dayKey = dayKey;
 	} else {
-		entry.dayKey ??= weekday;
+		entry.dayKey ??= BUILT_IN_DAY_TYPE[weekday];
 	}
 	if (ex !== undefined) {
 		if (!Array.isArray(ex) || ex.some((id) => !isKnown(id, extraIds)))

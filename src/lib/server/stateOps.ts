@@ -27,7 +27,6 @@ function emptyMetrics(): Record<string, unknown[]> {
 function defaultState(): Record<string, unknown> {
 	return {
 		currentWeek: 1,
-		completed: {},
 		swaps: {},
 		dayPlan: {},
 		daySwaps: {},
@@ -44,6 +43,7 @@ function defaultState(): Record<string, unknown> {
 		customExercises: {},
 		deepLog: [],
 		readinessLog: [],
+		probeLog: [],
 	};
 }
 
@@ -66,7 +66,7 @@ export function sanitizeState(raw: unknown): Record<string, unknown> {
 	if (!isPlainObject(raw)) return base;
 	const out = { ...base };
 	if (typeof raw.currentWeek === 'number') out.currentWeek = raw.currentWeek;
-	for (const k of ['completed', 'swaps', 'dayPlan', 'daySwaps', 'dayExercises', 'taskDone']) {
+	for (const k of ['swaps', 'dayPlan', 'daySwaps', 'dayExercises', 'taskDone']) {
 		if (isPlainObject(raw[k])) out[k] = raw[k];
 	}
 	out.metrics = { ...emptyMetrics(), ...(isPlainObject(raw.metrics) ? raw.metrics : {}) };
@@ -80,5 +80,6 @@ export function sanitizeState(raw: unknown): Record<string, unknown> {
 	out.customExercises = sanitizeCustomExercises(raw.customExercises);
 	if (Array.isArray(raw.deepLog)) out.deepLog = raw.deepLog;
 	if (Array.isArray(raw.readinessLog)) out.readinessLog = raw.readinessLog;
+	if (Array.isArray(raw.probeLog)) out.probeLog = raw.probeLog;
 	return out;
 }

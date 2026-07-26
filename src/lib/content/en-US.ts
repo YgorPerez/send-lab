@@ -3,6 +3,7 @@ import type { LocaleContent } from './types';
 const content: LocaleContent = {
 	days: [
 		{
+			id: 'limit-power',
 			k: 'Mon',
 			label: 'Mon',
 			type: 'Limit / Power',
@@ -13,6 +14,7 @@ const content: LocaleContent = {
 			ex: ['recruit', 'limitboulder'],
 		},
 		{
+			id: 'pinch-wrist',
 			k: 'Tue',
 			label: 'Tue',
 			type: 'Pinch / Wrist',
@@ -23,6 +25,7 @@ const content: LocaleContent = {
 			ex: ['pinch', 'wrist', 'abra', 'antag'],
 		},
 		{
+			id: 'endurance',
 			k: 'Wed',
 			label: 'Wed',
 			type: 'Endurance',
@@ -33,6 +36,7 @@ const content: LocaleContent = {
 			ex: ['repeaters', 'sport'],
 		},
 		{
+			id: 'pull',
 			k: 'Thu',
 			label: 'Thu',
 			type: 'Pull',
@@ -43,6 +47,7 @@ const content: LocaleContent = {
 			ex: ['pull', 'slopdens', 'abra', 'antag'],
 		},
 		{
+			id: 'max-tissue',
 			k: 'Fri',
 			label: 'Fri',
 			type: 'Max / Tissue',
@@ -53,6 +58,7 @@ const content: LocaleContent = {
 			ex: ['maxhang', 'density'],
 		},
 		{
+			id: 'performance',
 			k: 'Sat',
 			label: 'Sat',
 			type: 'Performance',
@@ -63,6 +69,7 @@ const content: LocaleContent = {
 			ex: ['perform'],
 		},
 		{
+			id: 'rest',
 			k: 'Sun',
 			label: 'Sun',
 			type: 'Rest',

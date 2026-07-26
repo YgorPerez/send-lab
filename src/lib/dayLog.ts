@@ -1,8 +1,9 @@
 // The Train tab logs directly into today's workout entry in appState.workouts —
 // per day, auto-saved (server-persisted), never reset. Today's entry is matched
-// by date + day label; it's created lazily when the first set is added.
+// by ISO date + stable weekday key, never by localized display strings (ADR-0003);
+// it's created lazily when the first set is added.
 import type { Range, Variant } from './content/types';
-import { appState, today, type WorkoutSet } from './state.svelte';
+import { appState, isoToday, today, type WorkoutSet } from './state.svelte';
 
 const mid = (r?: Range): number | null => (r ? Math.round((r.min + r.max) / 2) : null);
 
@@ -20,14 +21,17 @@ export function defaultSet(spec: Variant): WorkoutSet {
 	};
 }
 
+/** Today's session for a weekday key. Matches on the ISO date so a language
+ *  switch mid-session can't orphan it. */
 function todayEntry(day: string) {
-	return appState.workouts.find((w) => w.date === today() && w.day === day);
+	const iso = isoToday();
+	return appState.workouts.find((w) => w.at === iso && w.day === day);
 }
 
 function ensureEntry(day: string) {
 	let e = todayEntry(day);
 	if (!e) {
-		e = { date: today(), at: new Date().toISOString().slice(0, 10), day, exercises: [], note: '' };
+		e = { date: today(), at: isoToday(), day, exercises: [], note: '' };
 		appState.workouts.unshift(e);
 	}
 	return e;
@@ -62,7 +66,8 @@ export function clearExercise(day: string, exId: string): void {
 
 /** Copy the most recent prior session for this day into today; returns its exercise ids. */
 export function repeatLastInto(day: string): string[] | null {
-	const prev = appState.workouts.find((w) => w.day === day && w.date !== today());
+	const iso = isoToday();
+	const prev = appState.workouts.find((w) => w.day === day && w.at !== iso);
 	if (!prev) return null;
 	const e = ensureEntry(day);
 	e.exercises = prev.exercises.map((x) => ({

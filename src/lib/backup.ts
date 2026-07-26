@@ -5,7 +5,11 @@ import { appState, importState } from './state.svelte';
 
 // Bump when the state shape changes incompatibly. Backups carry it so a future
 // importer can migrate (and so old/foreign files are recognisable).
-const SCHEMA_VERSION = 1;
+//   1 → 2: day-type ids replace weekday keys as protocol references (ADR-0002);
+//          sessions store the stable weekday key, not a localized label
+//          (ADR-0003); the slot-level `completed` map folded into `taskDone`
+//          (ADR-0001). A v1 backup imports fine — migrate.ts upgrades it.
+const SCHEMA_VERSION = 2;
 
 interface BackupFile {
 	app: 'sendlab';
@@ -70,7 +74,9 @@ export function exportWorkoutsCsv(): void {
 		for (const ex of w.exercises)
 			ex.sets.forEach((s, i) => {
 				rows.push([
-					w.date,
+					// ISO date + stable weekday key, so the dump sorts correctly and
+					// doesn't depend on the language the session was logged in.
+					w.at,
 					w.day,
 					ex.name,
 					i + 1,

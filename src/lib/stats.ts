@@ -4,6 +4,7 @@
 // from the logged sets. Workouts are stored newest-first.
 import { getLocale } from '$lib/paraglide/runtime';
 import { exerciseParams } from './content/exercises';
+import { isoDay } from './dates';
 import type { ProbeEntry, ReadinessEntry, WorkoutEntry } from './state.svelte';
 
 export type NumField = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe';
@@ -15,7 +16,6 @@ export interface Point {
 
 const params = (exId: string) => exerciseParams[exId]?.variants[0];
 const CNS_WEIGHT: Record<string, number> = { low: 1, mod: 2, high: 3 };
-const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Chronological (oldest→newest) workouts. */
 function chronological(workouts: WorkoutEntry[]): WorkoutEntry[] {

@@ -1,7 +1,7 @@
 // Read-only analytics over the program template (the standard week, before
 // per-week phase scaling): weekly volume, CNS load, region/quality balance, and
 // safety warnings. Pure functions; the Program editor renders the result.
-import type { Content } from './content/types';
+import { type Content, REST_DAY_TYPE } from './content/types';
 import * as m from './paraglide/messages';
 import {
 	dayTemplate,
@@ -56,9 +56,9 @@ export function programSummary(content: Content): ProgramSummary {
 	let totalCns = 0;
 
 	for (const slot of content.days) {
-		const resolved = dayTemplate(content, programDayKey(slot.k));
+		const resolved = dayTemplate(content, programDayKey(content, slot.k));
 		const exIds = programExercises(content, slot.k).filter((id) => id !== 'rest');
-		const rest = resolved.load === 'OFF' || exIds.length === 0;
+		const rest = resolved.id === REST_DAY_TYPE || exIds.length === 0;
 		let sets = 0;
 		let cns = 0;
 		for (const exId of exIds) {

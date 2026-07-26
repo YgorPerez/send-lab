@@ -7,6 +7,7 @@ import { exerciseParams } from '$lib/content/exercises';
 import { type Answers, computeReadiness, scoreDeep } from '$lib/content/logic';
 import type { CustomExercise } from '$lib/content/types';
 import { isValidExerciseId, sanitizeCustomExercise } from '$lib/customExercise';
+import { isoDay } from '$lib/dates';
 import { deepMerge, isPlainObject } from '$lib/objects';
 import {
 	generateRehabProgram,
@@ -23,6 +24,7 @@ import {
 	applySetAutoProgress,
 	applySetPhases,
 	applySetTarget,
+	DAY_TYPE_IDS,
 	EXERCISE_IDS,
 	WEEKDAYS,
 } from '$lib/server/programOps';
@@ -31,8 +33,8 @@ import { acwr, probeReadiness, readinessInsights, weekLoad } from '$lib/stats';
 import { defaultMm, SIZED_METRICS } from '$lib/strength';
 import type { RequestHandler } from './$types';
 
-/** Local YYYY-MM-DD for dating new entries (matches the client's `today()`). */
-const today = () => new Date().toISOString().slice(0, 10);
+/** Local YYYY-MM-DD for dating new entries (matches the client's `isoToday()`). */
+const today = () => isoDay(new Date());
 
 type MetricEntry = { date: string; at?: number; v: number; mm?: number; bw?: number };
 
@@ -55,10 +57,12 @@ type ToolDef = { name: string; description: string; inputSchema: object; outputS
 const INSTRUCTIONS = `Edit a single climber's Send Lab account. The whole account is one JSON document; \
 get_state returns it, update_state deep-merges a partial patch, replace_state overwrites it whole. \
 Canonical units everywhere: weights in kg, edge/block sizes in mm, durations in seconds. Grades are \
-stored as scale indices, not strings. Top-level fields: currentWeek (number); completed/taskDone (maps \
-keyed like "w1-Mon" / "w1-Tue:pinch" → bool); swaps/daySwaps (exercise → variant index); dayPlan \
-("w1-Tue" → weekday key); dayExercises ("w1-Tue" → exercise id[]); metrics (MetricId → [{date,v,mm?,bw?}], \
+stored as scale indices, not strings. Top-level fields: currentWeek (number); taskDone (map keyed like \
+"w1-Tue:pinch" → bool — the single record of what was trained; adherence and carry-forward both read it); \
+swaps/daySwaps (exercise → variant index); dayPlan ("w1-Tue" → day-type id, see edit_day); \
+dayExercises ("w1-Tue" → exercise id[]); metrics (MetricId → [{date,v,mm?,bw?}], \
 newest last); log ([{date,type,label,color,note}]); workouts ([{date,at,day,exercises,note,durationMin?}], newest first; \
+at is the local ISO date and day a stable weekday key (Mon..Sun) — never a translated label; \
 durationMin is the session length used for sRPE load tracking); \
 assessment (object or null); prefs ({weight:'kg'|'lb',length:'mm'|'in',notify:bool}); program; \
 savedPrograms ([{name,program}]); rehab (object or null); customExercises (id → user-authored exercise); \
@@ -162,13 +166,13 @@ const TOOLS: ToolDef[] = [
 	{
 		name: 'edit_day',
 		description:
-			"Set a weekday's day-type (dayKey) and/or its ordered exercise list. Omit a field to leave it. Use list_exercises for valid ids; dayKey is also a weekday key (its built-in category).",
+			"Set a weekday's day-type (dayKey) and/or its ordered exercise list. Omit a field to leave it. Use list_exercises for valid exercise ids. dayKey is a day-type id — the protocol a weekday runs — independent of the weekday itself.",
 		inputSchema: {
 			type: 'object',
 			required: ['weekday'],
 			properties: {
 				weekday: { type: 'string', enum: WEEKDAYS },
-				dayKey: { type: 'string', enum: WEEKDAYS },
+				dayKey: { type: 'string', enum: DAY_TYPE_IDS },
 				exercises: { type: 'array', items: { type: 'string' } },
 			},
 		},

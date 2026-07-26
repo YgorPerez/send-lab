@@ -119,10 +119,28 @@ export interface CustomExercise extends Exercise {
 	track?: { field: 'weight' | 'time' };
 }
 
+/** Stable id of a day type — the protocol a slot runs. Independent of weekdays:
+ *  a day type keeps its identity wherever it is scheduled (see ADR-0002). */
+export type DayTypeId =
+	| 'limit-power'
+	| 'pinch-wrist'
+	| 'endurance'
+	| 'pull'
+	| 'max-tissue'
+	| 'performance'
+	| 'rest';
+
+/** The rest day type — no exercises, never counts as scheduled work. Identified
+ *  by id rather than by matching its localized load label. */
+export const REST_DAY_TYPE: DayTypeId = 'rest';
+
 export interface Day {
-	/** Stable id (Mon..Sun) — used in storage keys and exercise refs. */
+	/** Stable day-type id — what this protocol *is*, independent of when it runs. */
+	id: DayTypeId;
+	/** The weekday this day type occupies in the built-in week (Mon..Sun). Calendar
+	 *  position only; it never identifies the protocol. */
 	k: string;
-	/** Localized weekday label. */
+	/** Localized weekday label. Display only — never stored, never matched on. */
 	label: string;
 	/** Localized day category/type (e.g. "Limit / Power", "Rest"). */
 	type: string;

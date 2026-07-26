@@ -15,6 +15,7 @@ import {
 	addDayExercise,
 	exerciseLabel,
 	isDayCustomized,
+	isSlotTrained,
 	programWeeks,
 	removeDayExercise,
 	resetDay,
@@ -23,7 +24,7 @@ import {
 	resolveSwapIndex,
 	setDayPlan,
 	setDaySwap,
-	slotKey,
+	setSlotTrained,
 } from '$lib/plan';
 import SectionHeading from '$lib/SectionHeading.svelte';
 import { appState, today } from '$lib/state.svelte';
@@ -74,10 +75,12 @@ function dayPrime(slot: string): string {
 	return base;
 }
 
+// The tick records the slot's tasks as trained — the same record Train writes and
+// adherence reads — so a ticked day earns progression credit and is not offered
+// again as missed work (ADR-0001).
 function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
-	const id = slotKey(week, slot);
+	setSlotTrained(content, week, slot, checked);
 	if (checked) {
-		appState.completed[id] = true;
 		appState.log.unshift({
 			date: today(),
 			type: 'day',
@@ -86,8 +89,6 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 			note: m.log_note_day({ load: day.load }),
 		});
 		toast.success(m.toast_day_logged({ day: label }));
-	} else {
-		delete appState.completed[id];
 	}
 }
 </script>
@@ -150,7 +151,7 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 		{#each content.days as slot (slot.k)}
 			{@const resolved = resolveDay(content, week, slot.k)}
 			{@const customized = isDayCustomized(week, slot.k)}
-			{@const done = !!appState.completed[slotKey(week, slot.k)]}
+			{@const done = isSlotTrained(content, week, slot.k)}
 			{@const exIds = resolveExerciseIds(content, week, slot.k)}
 			{@const isToday = slot.k === todayKey && isCurrent}
 			{@const avail = Object.entries(content.exercises).filter(
@@ -230,13 +231,17 @@ function toggleDay(slot: string, label: string, day: Day, checked: boolean) {
 					<div class="mb-1 font-mono text-[10px] tracking-wider text-ink-faint uppercase">
 						{m.wk_protocol()}
 					</div>
-					<Select type="single" value={resolved.k} onValueChange={(v) => v && setDayPlan(week, slot.k, v)}>
+					<Select
+						type="single"
+						value={resolved.id}
+						onValueChange={(v) => v && setDayPlan(content, week, slot.k, v)}
+					>
 						<SelectTrigger class="mb-3 h-9 w-full border-line bg-panel-2 text-xs">
 							{resolved.type} · {resolved.load}
 						</SelectTrigger>
 						<SelectContent>
 							{#each content.days as opt (opt.k)}
-								<SelectItem value={opt.k}>{opt.type} · {opt.load}</SelectItem>
+								<SelectItem value={opt.id}>{opt.type} · {opt.load}</SelectItem>
 							{/each}
 						</SelectContent>
 					</Select>
