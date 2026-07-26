@@ -6,10 +6,11 @@
 // grants (RFC 6749 + RFC 7636). The MCP endpoint accepts the resulting access
 // tokens; the pre-existing personal `sl_` token keeps working alongside them.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { eq, lt } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { userIdFromToken } from '$lib/server/apiToken';
 import { db } from '$lib/server/db';
 import { oauthAccessToken, oauthClient, oauthCode, oauthRefreshToken } from '$lib/server/db/schema';
+import { purgeExpiredIn } from '$lib/server/oauthCleanup';
 
 const ACCESS_TTL_SEC = 60 * 60; // 1 hour
 const CODE_TTL_SEC = 60 * 10; // 10 minutes
@@ -323,11 +324,11 @@ export async function resolveMcpUser(token: string): Promise<string | null> {
 	return (await userIdFromToken(token)) ?? (await userIdFromAccessToken(token));
 }
 
-/** Best-effort cleanup of expired codes and access tokens (called opportunistically). */
+/** Best-effort cleanup of expired codes and tokens, and of abandoned client
+ *  registrations. Called opportunistically from the token endpoint — see
+ *  purgeExpiredIn for the rules and why they are safe. */
 export async function purgeExpired(): Promise<void> {
-	const now = new Date();
-	await db.delete(oauthCode).where(lt(oauthCode.expiresAt, now)).run();
-	await db.delete(oauthAccessToken).where(lt(oauthAccessToken.expiresAt, now)).run();
+	await purgeExpiredIn(db);
 }
 
 /** Guard used by the authorize endpoint: is this redirect URI registered? Every
