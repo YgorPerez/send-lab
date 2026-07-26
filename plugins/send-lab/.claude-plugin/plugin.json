@@ -1,0 +1,11 @@
+{
+	"name": "send-lab",
+	"description": "Connects Claude to your Send Lab training account over MCP — read and edit your program, periodization, exercises, metrics, workouts, assessments and rehab. Authenticates via OAuth in the browser; no token to paste.",
+	"version": "1.0.0",
+	"author": {
+		"name": "Ygor Perez"
+	},
+	"homepage": "https://send-lab-sable.vercel.app",
+	"repository": "https://github.com/YgorPerez/send-lab",
+	"license": "GPL-3.0"
+}

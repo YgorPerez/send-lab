@@ -1,0 +1,8 @@
+{
+	"mcpServers": {
+		"send-lab": {
+			"type": "http",
+			"url": "https://send-lab-sable.vercel.app/mcp"
+		}
+	}
+}
