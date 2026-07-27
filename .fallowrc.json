@@ -1,5 +1,6 @@
 {
 	"ignorePatterns": ["src/lib/paraglide/**", "tests/**"],
+	"ignoreDependencies": ["@inlang/plugin-message-format", "@inlang/plugin-m-function-matcher"],
 	"ignoreExports": [{ "file": "src/lib/components/ui/**", "exports": ["*"] }],
 	"rules": {
 		"duplicate-exports": "off"

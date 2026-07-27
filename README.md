@@ -101,6 +101,17 @@ pnpm preview      # serve the production build locally
 - The Vite plugin compiles messages on dev/build; `pnpm paraglide` compiles them
   manually (the `check`/`typecheck` scripts run it first so the generated
   `src/lib/paraglide/` exists). That folder is generated and git-ignored.
+- Compilation needs **no network access**. `settings.json` names its two inlang
+  plugins as CDN URLs, but `scripts/inlang-local-plugins.ts` serves them from
+  `node_modules` — both entry points (the compile script and `vite.config.ts`)
+  install that shim first. This is why `@inlang/plugin-message-format` and
+  `@inlang/plugin-m-function-matcher` are devDependencies that nothing imports,
+  and why they are listed under `ignoreDependencies` in `.fallowrc.json`:
+  **removing them breaks the build.** Keep their majors in step with the URLs —
+  the shim asserts they match rather than letting them drift.
+- `pnpm paraglide` fails loudly if a compile emits zero messages. Left unguarded
+  that state is silent: `paraglide-js` warns, prints "Successfully compiled",
+  exits 0, and the app builds with no strings at all.
 - Domain content (exercises, days, quiz, verdicts, phases) is translated in
   `src/lib/content/en-US.ts` and `pt-BR.ts`, selected at runtime by the locale.
 

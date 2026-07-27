@@ -1,52 +1,41 @@
 // Compiles the inlang project, then refuses to succeed on an empty result.
 //
-// `paraglide-js compile` loads the plugins named in project.inlang/settings.json
-// over the network from a CDN. When that fetch is blocked — an offline dev box, a
-// CI runner without egress, a restrictive proxy — the import fails, the compiler
-// prints `PluginImportError` as a *warning*, then reports "Successfully compiled"
-// and exits 0 having emitted zero of the ~534 messages. Nothing downstream
-// notices: `svelte-check` types every `m.foo()` call against an empty module and
-// produces hundreds of "Property 'foo' does not exist" errors, which read as a
-// mass regression in the app rather than one failed download. A `vite build` in
-// that state ships a UI with no strings at all.
+// Two problems, one script:
 //
-// So this wrapper turns that silent degradation into a loud, specific failure.
-// Two independent signals, either of which fails the build:
+// 1. Message compilation used to require network access. The plugins in
+//    `project.inlang/settings.json` are CDN URLs the SDK fetches on every compile,
+//    so an offline box, a CI runner without egress, or a filtering proxy broke the
+//    build. `useLocalInlangPlugins()` serves them from `node_modules` instead —
+//    see scripts/inlang-local-plugins.ts for why interception is the mechanism.
 //
-//   1. the compiler reported a plugin it couldn't import — the direct cause, and
-//      the one that actually explains what to fix
-//   2. the compiler emitted no messages while the base locale defines some — a
-//      backstop that catches an empty result whatever the reason
+// 2. An empty compile used to pass silently. When a plugin fails to load,
+//    `paraglide-js` reports `PluginImportError` as a *warning*, prints
+//    "Successfully compiled", and exits 0 having emitted none of the messages.
+//    Nothing downstream noticed: `svelte-check` typed every `m.foo()` call against
+//    an empty module and produced 629 "Property 'foo' does not exist" errors, which
+//    read as a mass regression in the app rather than as one failed download, and a
+//    `vite build` in that state would ship a UI with no strings at all.
 //
-// (2) deliberately trips only on *zero* messages rather than comparing against
-// the base locale's key count. Message-to-export mapping is a codegen detail of
-// the paraglide version in use, so a strict parity check would risk failing a
-// perfectly good build; "the base locale has strings but nothing was generated"
-// is unambiguous at any codegen shape.
-import { spawnSync } from 'node:child_process';
+// The guard below trips only on *zero* messages rather than comparing against the
+// base locale's key count: message-to-export mapping is a codegen detail of the
+// paraglide version in use, so a strict parity check could fail a perfectly good
+// build, while "the base locale has strings but nothing was generated" is
+// unambiguous at any codegen shape.
+//
+// This runs the compiler in-process rather than shelling out to the `paraglide-js`
+// CLI, because the local-plugin shim patches `fetch` and so only affects this
+// process. `vite.config.ts` installs the same shim for the dev/build path.
 import { readdirSync, readFileSync } from 'node:fs';
+import { compile } from '@inlang/paraglide-js';
+import { useLocalInlangPlugins } from './inlang-local-plugins';
 
 const PROJECT = './project.inlang';
 const OUTDIR = './src/lib/paraglide';
 
 type Settings = {
 	baseLocale: string;
-	modules?: string[];
 	'plugin.inlang.messageFormat'?: { pathPattern?: string };
 };
-
-/** The compiler treats a failed plugin import as a warning; we don't. */
-const PLUGIN_FAILURE = /PluginImportError|Couldn't import the plugin/;
-
-const run = spawnSync(
-	'paraglide-js',
-	['compile', '--project', PROJECT, '--outdir', OUTDIR],
-	// Capture the output so we can inspect it, but keep showing it to the user.
-	{ encoding: 'utf8', shell: true },
-);
-
-const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
-process.stdout.write(output);
 
 function fail(problem: string, explanation: string): never {
 	console.error(`\n✗ paraglide compile produced no usable messages: ${problem}\n`);
@@ -54,33 +43,12 @@ function fail(problem: string, explanation: string): never {
 	process.exit(1);
 }
 
-if (run.status !== 0) {
-	console.error('\n✗ paraglide-js compile exited non-zero.\n');
-	process.exit(run.status ?? 1);
-}
+const served = useLocalInlangPlugins(`${PROJECT}/settings.json`);
+for (const file of served) console.log(`i inlang plugin served locally: ${file}`);
+
+await compile({ project: PROJECT, outdir: OUTDIR });
 
 const settings: Settings = JSON.parse(readFileSync(`${PROJECT}/settings.json`, 'utf8'));
-
-// --- signal 1: a plugin failed to load ---
-
-if (PLUGIN_FAILURE.test(output)) {
-	const hosts = [
-		...new Set(
-			(settings.modules ?? []).filter((m) => m.startsWith('http')).map((m) => new URL(m).host),
-		),
-	];
-	fail(
-		'the compiler could not import one or more inlang plugins',
-		`Those plugins are fetched at compile time from: ${hosts.join(', ') || '(none)'}\n` +
-			`Without them the message files are never parsed, so every m.*() call\n` +
-			`resolves to nothing. Restore network access to the host(s) above and re-run.\n` +
-			`The compiler reports this as a warning and exits 0 on its own — see the\n` +
-			`PluginImportError above for the underlying cause.`,
-	);
-}
-
-// --- signal 2: nothing was emitted ---
-
 const pathPattern = settings['plugin.inlang.messageFormat']?.pathPattern;
 if (!pathPattern) {
 	fail(

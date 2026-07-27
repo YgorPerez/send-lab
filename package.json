@@ -42,6 +42,8 @@
 		"@fontsource-variable/inter": "^5.2.8",
 		"@fontsource-variable/roboto-mono": "^5.2.9",
 		"@inlang/paraglide-js": "^2.20.1",
+		"@inlang/plugin-m-function-matcher": "2.2.9",
+		"@inlang/plugin-message-format": "4.4.0",
 		"@lucide/svelte": "^1.21.0",
 		"@sveltejs/adapter-vercel": "^6.3.4",
 		"@sveltejs/kit": "^2.67.0",
