@@ -12,7 +12,7 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"paraglide": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide",
+		"paraglide": "tsx scripts/compile-messages.ts",
 		"check": "pnpm run paraglide && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "pnpm run paraglide && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"typecheck:ts7": "pnpm run paraglide && svelte-kit sync && tsgo --noEmit -p tsconfig.gate.json",
