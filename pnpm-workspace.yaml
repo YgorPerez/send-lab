@@ -11,6 +11,17 @@ overrides:
   # (adds stricter character validation) and clears the advisory; staying on
   # 0.7 rather than 1.x avoids breaking changes on the auth-cookie path.
   cookie: ^0.7.2
+  # adapter-vercel pulls tar in through @vercel/nft > @mapbox/node-pre-gyp.
+  # Three advisories land on it — GHSA-23hp-3jrh-7fpw (critical, decompression
+  # DoS), plus an infinite loop on negative entry sizes and a parse DoS. 7.5.21
+  # clears all three. Build-time only; no tar on the request path.
+  tar: ^7.5.21
+  # Same @vercel/nft chain, via glob > minimatch. GHSA-3jxr-9vmj-r5cp: quadratic
+  # expansion of consecutive non-expanding `{}` groups. Patched in 5.0.8.
+  brace-expansion: ^5.0.8
+  # Reached through the Tailwind/Vite toolchain. 8.5.18 clears the advisory and
+  # is a patch bump within postcss 8 — no plugin API change.
+  postcss: ^8.5.18
 allowBuilds:
   esbuild: true
   better-sqlite3: true

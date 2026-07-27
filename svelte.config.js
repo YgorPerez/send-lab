@@ -11,7 +11,11 @@ const config = {
 		// Replaced by the equivalent guard in src/lib/server/csrf.ts, which this app
 		// needs because the built-in check cannot exempt a route and so blocks the
 		// form-encoded, Origin-less POST that the OAuth token endpoint must accept.
-		csrf: { checkOrigin: false },
+		// `trustedOrigins: ['*']` is how the built-in check is turned off since
+		// SvelteKit 2.69 — the spelling `checkOrigin: false` is deprecated, and the
+		// two are documented as equivalent. Trusting every origin here is safe only
+		// because csrf.ts re-applies the same rule to every non-exempt route.
+		csrf: { trustedOrigins: ['*'] },
 	},
 };
 

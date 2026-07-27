@@ -120,7 +120,7 @@ pnpm preview      # serve the production build locally
 `pnpm verify` runs the full gate chain; each is also runnable on its own:
 
 ```bash
-pnpm verify           # lint → check → typecheck:ts7 → doctor → fallow
+pnpm verify           # lint → check → typecheck:ts7 → doctor → fallow → test
 pnpm lint             # Biome (check); `pnpm lint:fix` to auto-fix
 pnpm format           # Biome formatter (write)
 pnpm check            # svelte-check (TypeScript 6)
@@ -128,7 +128,13 @@ pnpm typecheck:ts7    # tsgo — TypeScript 7 native, scoped to .ts via tsconfig
 pnpm doctor           # svelte-doctor — Svelte correctness/perf/a11y health
 pnpm fallow           # fallow — dead code, cycles, dependency hygiene
 pnpm fallow:health    # fallow — complexity / maintainability hotspots
+pnpm test             # node:test — unit tests over src/lib
 ```
+
+`pnpm doctor` runs with `--baseline`, which suppresses the three reviewed security
+findings recorded in `.svelte-doctor/baseline.json` (ADR-0004). Suppression is by
+fingerprint, so both rules stay active everywhere else — a new violation still
+fails the gate.
 
 > Why TS 6 *and* TS 7: `svelte-check` requires the legacy `typescript` package
 > API, which the native TS 7 preview no longer exposes — so the Svelte toolchain

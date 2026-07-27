@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-27T02:00:49.854Z",
+  "entries": [
+    {
+      "fingerprint": "no-dangerous-redirect-param::src/lib/server/oauth.ts::162::4::potential open redirect from untrusted redirect parameter",
+      "rule": "no-dangerous-redirect-param",
+      "severity": "error",
+      "category": "Security",
+      "filePath": "src/lib/server/oauth.ts",
+      "line": 162,
+      "column": 4,
+      "message": "Potential open redirect from untrusted redirect parameter"
+    },
+    {
+      "fingerprint": "no-dangerous-redirect-param::src/lib/server/oauth.ts::274::10::potential open redirect from untrusted redirect parameter",
+      "rule": "no-dangerous-redirect-param",
+      "severity": "error",
+      "category": "Security",
+      "filePath": "src/lib/server/oauth.ts",
+      "line": 274,
+      "column": 10,
+      "message": "Potential open redirect from untrusted redirect parameter"
+    },
+    {
+      "fingerprint": "no-broad-cors::src/lib/server/oauth.ts::27::1::overly broad cors configuration detected",
+      "rule": "no-broad-cors",
+      "severity": "error",
+      "category": "Security",
+      "filePath": "src/lib/server/oauth.ts",
+      "line": 27,
+      "column": 1,
+      "message": "Overly broad CORS configuration detected"
+    }
+  ]
+}

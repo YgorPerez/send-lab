@@ -15,7 +15,8 @@
 			"!**/*.svg",
 			"!**/app.css",
 			"!src/lib/paraglide",
-			"!src/lib/components/ui"
+			"!src/lib/components/ui",
+			"!.svelte-doctor"
 		]
 	},
 	"formatter": {

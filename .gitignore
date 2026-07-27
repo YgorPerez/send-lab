@@ -22,6 +22,11 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .svelte-doctor/*
+# ...except the baseline, which IS versioned: it pins the three reviewed
+# security findings in src/lib/server/oauth.ts (see ADR-0004) so `pnpm doctor`
+# stays green without disabling the rules that found them. svelte-doctor's
+# gitignore sync deliberately preserves negations like this one.
+!.svelte-doctor/baseline.json
 
 # Paraglide JS generated output (reproducible from messages/ + project.inlang/)
 /src/lib/paraglide
