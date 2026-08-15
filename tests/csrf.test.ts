@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isForbiddenCrossSiteForm } from '../src/lib/server/csrf';
+import { isAllowedMcpOrigin, isForbiddenCrossSiteForm } from '../src/lib/server/csrf';
 
 const ORIGIN = 'https://send-lab-sable.vercel.app';
 
@@ -118,4 +118,52 @@ test('every unsafe method is covered, not just POST', () => {
 			`${method} should be guarded`,
 		);
 	}
+});
+
+// --- MCP Origin validation (isAllowedMcpOrigin) ------------------------------
+// The MCP spec makes Origin validation a MUST for HTTP-hosted servers. These tests
+// pin the asymmetry with the form guard above: a missing Origin is *fine* here,
+// because the callers are not browsers and auth is an explicit Bearer token.
+
+/** An /mcp request carrying the given Origin, or none at all when omitted. */
+function mcpReq(origin?: string): Request {
+	const headers = new Headers();
+	if (origin !== undefined) headers.set('origin', origin);
+	return new Request(`${ORIGIN}/mcp`, { method: 'POST', headers, body: '' });
+}
+
+const allowed = (origin?: string) => isAllowedMcpOrigin(mcpReq(origin), ORIGIN);
+
+test('a request with no Origin is allowed — every real MCP client is non-browser', () => {
+	// Claude Code, the Messages API and hosted connectors all send no Origin.
+	// Rejecting this case would take the endpoint offline for all of them.
+	assert.equal(allowed(undefined), true);
+});
+
+test('same-origin is allowed', () => {
+	assert.equal(allowed(ORIGIN), true);
+});
+
+test('a foreign origin is refused', () => {
+	assert.equal(allowed('https://evil.test'), false);
+	// A prefix of our own origin must not pass by string coincidence.
+	assert.equal(allowed('https://send-lab-sable.vercel.app.evil.test'), false);
+});
+
+test('loopback is allowed so the MCP Inspector can drive the endpoint', () => {
+	assert.equal(allowed('http://localhost:6274'), true);
+	assert.equal(allowed('http://127.0.0.1:6274'), true);
+	assert.equal(allowed('http://[::1]:6274'), true);
+});
+
+test('an opaque or unparseable origin is refused', () => {
+	// A sandboxed iframe sends the literal string `null`.
+	assert.equal(allowed('null'), false);
+	assert.equal(allowed(''), true); // empty header is absent-equivalent
+	assert.equal(allowed('not a url'), false);
+});
+
+test('non-http schemes are refused even on a loopback host', () => {
+	assert.equal(allowed('file://localhost'), false);
+	assert.equal(allowed('ftp://localhost'), false);
 });

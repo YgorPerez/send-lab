@@ -18,6 +18,7 @@ import {
 	rehabExercises,
 } from '$lib/rehab';
 import { bearerFromRequest } from '$lib/server/apiToken';
+import { isAllowedMcpOrigin } from '$lib/server/csrf';
 import { CORS_HEADERS, resolveMcpUser } from '$lib/server/oauth';
 import {
 	applyEditDay,
@@ -615,11 +616,22 @@ const rpcError = (id: unknown, code: number, message: string) => ({
 	error: { code, message },
 });
 
+const forbiddenOrigin = () =>
+	json(rpcError(null, -32600, 'Forbidden — Origin not allowed'), {
+		status: 403,
+		headers: CORS_HEADERS,
+	});
+
 // Preflight for browser-based MCP clients hitting the endpoint cross-origin.
-export const OPTIONS: RequestHandler = () =>
-	new Response(null, { status: 204, headers: CORS_HEADERS });
+export const OPTIONS: RequestHandler = ({ request, url }) =>
+	isAllowedMcpOrigin(request, url.origin)
+		? new Response(null, { status: 204, headers: CORS_HEADERS })
+		: forbiddenOrigin();
 
 export const POST: RequestHandler = async ({ request, url }) => {
+	// Reject a cross-origin browser caller before doing any other work (MCP spec).
+	if (!isAllowedMcpOrigin(request, url.origin)) return forbiddenOrigin();
+
 	// Accept either a personal `sl_` token or an OAuth access token.
 	const token = bearerFromRequest(request);
 	const userId = await resolveMcpUser(token);

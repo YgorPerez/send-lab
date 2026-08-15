@@ -58,3 +58,38 @@ export function isForbiddenCrossSiteForm(
 	// not something to trust.
 	return request.headers.get('origin') !== origin;
 }
+
+/**
+ * Whether an MCP request's `Origin` is acceptable.
+ *
+ * The MCP spec requires an HTTP-hosted server to validate `Origin` on incoming requests,
+ * as a DNS-rebinding defence.
+ *
+ * Note the deliberate asymmetry with isForbiddenCrossSiteForm above: there, a *missing*
+ * Origin is refused, because a form POST rides on the athlete's cookies and a browser
+ * always sends Origin on one. Here a missing Origin is accepted, because these callers
+ * are not browsers at all — Claude Code, the Messages API and hosted connectors send no
+ * Origin — and /mcp authenticates with an explicitly attached Bearer token rather than
+ * ambient cookies. Rejecting an absent Origin here would break every real client. Don't
+ * "fix" either function to match the other; they guard different things.
+ *
+ * Loopback is allowed so the MCP Inspector can drive the endpoint during development.
+ *
+ * @param selfOrigin the app's own origin, i.e. `event.url.origin`
+ */
+export function isAllowedMcpOrigin(request: Request, selfOrigin: string): boolean {
+	const origin = request.headers.get('origin');
+	if (!origin) return true;
+	if (origin === selfOrigin) return true;
+
+	let parsed: URL;
+	try {
+		parsed = new URL(origin);
+	} catch {
+		// Includes the literal `null` a sandboxed iframe sends for an opaque origin.
+		return false;
+	}
+	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+	const { hostname } = parsed;
+	return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+}
