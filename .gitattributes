@@ -1,0 +1,17 @@
+# The repository stores LF, and Biome's formatter expects LF. Without this file a
+# Windows checkout with core.autocrlf=true writes CRLF on the way out, and `pnpm lint`
+# then fails on files nobody edited — a whole-file "needs formatting" diff with no
+# visible change in it. Pin the working-tree ending instead of relying on each
+# machine's git config.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending normalised.
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.db binary
+
+# Lockfiles are generated: keep them out of diffs and merges by hand.
+pnpm-lock.yaml -diff linguist-generated
