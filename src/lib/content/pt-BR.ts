@@ -871,21 +871,6 @@ const content: LocaleContent = {
 			text: 'Só acima do pescoço (coriza, garganta levemente irritada, sem febre) geralmente dá para treinar <b>leve</b> — mantenha a intensidade moderada, corte o volume e pare se os sintomas descerem abaixo do pescoço ou surgir febre. Evite esforços máximos; priorize qualidade de movimento.',
 			focus: ['só leve', 'cortar volume', 'monitorar'],
 		},
-		probe_low: {
-			title: 'Força caiu — fadiga',
-			text: 'Sua puxada máxima está bem abaixo da linha de base — sinal de <b>fadiga neuromuscular</b> real, não importa o que a cabeça diga. Trate hoje como recuperação: <b>só trabalho de tecido</b>, sem carga máxima ou quase máxima. A força costuma voltar em um ou dois dias após recuperar.',
-			focus: ['recuperação', 'sem máximo', 'tecido'],
-		},
-		probe_fatigued: {
-			title: 'Força um pouco abaixo',
-			text: 'Sua puxada máxima está um pouco abaixo da base — alguma fadiga acumulada. Mantenha a intensidade <b>moderada</b>: treine qualidade, pule o trabalho de limite e deixe o sistema nervoso se recuperar.',
-			focus: ['moderado', 'qualidade', 'sem limite'],
-		},
-		probe_fresh: {
-			title: 'Força em dia',
-			text: 'Sua puxada máxima está na base ou acima — o sistema nervoso está <b>pronto</b>. Se nada mais estiver te segurando, é sinal verde para esforços duros e de alta qualidade.',
-			focus: ['pronto', 'pode forçar'],
-		},
 	},
 	deep: {
 		fingers: {

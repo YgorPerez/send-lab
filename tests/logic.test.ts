@@ -93,20 +93,6 @@ test('computeReadiness: illness gates the verdict (neck check)', () => {
 	assert.ok(mild.flags.some((f) => f.id === 'illness_mild'));
 });
 
-test('computeReadiness: the objective probe shifts the verdict', () => {
-	const well = { sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 };
-	// a big max-pull drop → tissue (acute neuromuscular fatigue)
-	const low = computeReadiness(well, { probe: 'low' });
-	assert.equal(low.verdict, 'tissue');
-	assert.ok(low.flags.some((f) => f.id === 'probe_low'));
-	// a slight drop → moderate
-	assert.equal(computeReadiness(well, { probe: 'fatigued' }).verdict, 'moderate');
-	// a fresh reading doesn't cap, just confirms it
-	const fresh = computeReadiness(well, { probe: 'fresh' });
-	assert.equal(fresh.verdict, 'green');
-	assert.ok(fresh.flags.some((f) => f.id === 'probe_fresh'));
-});
-
 test('computeReadiness: high training monotony caps intensity to moderate', () => {
 	const r = computeReadiness(
 		{ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 },

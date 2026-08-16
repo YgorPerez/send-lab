@@ -8,15 +8,13 @@ type FlagSeverity = 'stop' | 'warn' | 'info';
 
 /** Objective signals fed into the recommendation. ACWR is one input among several
  *  (it has been critiqued — Impellizzeri 2020 — so it never decides alone);
- *  monotony adds Foster's load-variability dimension; probe adds a climbing-specific
- *  neuromuscular reading. */
+ *  monotony adds Foster's load-variability dimension. Both are derived from
+ *  logged sessions — the readiness check takes no objective same-day reading. */
 export interface LoadSignals {
 	/** Acute:chronic workload ratio band (EWMA; see stats.ts `acwr`). */
 	acwr?: AcwrStatus | null;
 	/** 'high' when weekly training monotony crosses Foster's risk threshold. */
 	monotony?: 'high' | null;
-	/** Objective max-pull probe vs personal baseline (see stats.ts `probeReadiness`). */
-	probe?: 'fresh' | 'normal' | 'fatigued' | 'low' | null;
 }
 
 /** A surfaced readiness problem: which advice (`id`), how serious, and which body
@@ -228,19 +226,6 @@ export function computeReadiness(
 	if (load.monotony === 'high') {
 		intensity = cap(intensity, 'moderate');
 		flags.push({ id: 'monotony_high', severity: 'warn' });
-	}
-
-	// Objective probe: a sizeable drop in maximal pull vs baseline is acute
-	// neuromuscular fatigue regardless of how you feel; a fresh reading just
-	// confirms it's safe to push.
-	if (load.probe === 'low') {
-		intensity = cap(intensity, 'tissue');
-		flags.push({ id: 'probe_low', severity: 'warn' });
-	} else if (load.probe === 'fatigued') {
-		intensity = cap(intensity, 'moderate');
-		flags.push({ id: 'probe_fatigued', severity: 'warn' });
-	} else if (load.probe === 'fresh') {
-		flags.push({ id: 'probe_fresh', severity: 'info' });
 	}
 
 	const skin = answers.skin;

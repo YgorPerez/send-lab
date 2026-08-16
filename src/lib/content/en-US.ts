@@ -859,21 +859,6 @@ const content: LocaleContent = {
 			text: 'Above-the-neck only (runny nose, light sore throat, no fever) is generally OK to train <b>easy</b> — keep intensity moderate, cut the volume, and stop if symptoms drop below the neck or a fever appears. Skip max efforts; favour movement quality.',
 			focus: ['easy only', 'cut volume', 'monitor'],
 		},
-		probe_low: {
-			title: 'Strength down — fatigued',
-			text: "Your max pull is well below your baseline — a sign of real <b>neuromuscular fatigue</b>, whatever the scales say in your head. Treat today as recovery: <b>tissue work only</b>, no max or near-max loading. Force usually rebounds within a day or two once you've recovered.",
-			focus: ['recovery', 'no max', 'tissue'],
-		},
-		probe_fatigued: {
-			title: 'Strength slightly down',
-			text: 'Your max pull is a touch under baseline — some accumulated fatigue. Hold intensity at <b>moderate</b>: train quality, skip true limit work, and let the nervous system catch up.',
-			focus: ['moderate', 'quality', 'no limit'],
-		},
-		probe_fresh: {
-			title: 'Strength on form',
-			text: 'Your max pull is at or above baseline — the nervous system is <b>primed</b>. If nothing else is holding you back, this is a green light for hard, high-quality efforts.',
-			focus: ['primed', 'go hard'],
-		},
 	},
 	deep: {
 		fingers: {

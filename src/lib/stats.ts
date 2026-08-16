@@ -5,7 +5,7 @@
 import { getLocale } from '$lib/paraglide/runtime';
 import { exerciseParams } from './content/exercises';
 import { isoDay } from './dates';
-import type { ProbeEntry, ReadinessEntry, WorkoutEntry } from './types';
+import type { ReadinessEntry, WorkoutEntry } from './types';
 
 export type NumField = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe';
 
@@ -311,33 +311,6 @@ export function rpeHistogram(workouts: WorkoutEntry[]): Point[] {
 	const out: Point[] = [];
 	for (let r = 1; r <= 10; r++) if (counts[r] > 0) out.push({ label: String(r), value: counts[r] });
 	return out;
-}
-
-export interface ProbeReadiness {
-	/** Personal baseline (mean of recent prior readings), or null until enough history. */
-	baseline: number | null;
-	/** Today's shortfall vs baseline, % (negative = above baseline), or null. */
-	deficitPct: number | null;
-	/** Neuromuscular state read from the probe, or null when it can't be judged yet. */
-	status: 'fresh' | 'normal' | 'fatigued' | 'low' | null;
-}
-
-/** Read a climbing-specific objective probe (a quick max finger pull, kg) against
- *  the personal baseline — the climbing analogue of the countermovement-jump
- *  readiness test (Claudino 2017): a meaningful drop in maximal force signals
- *  neuromuscular fatigue. Baseline = mean of the most recent prior readings (today
- *  excluded), needing a handful before it judges anything. Pure. */
-export function probeReadiness(log: ProbeEntry[], todayValue: number | null): ProbeReadiness {
-	// Prior readings only — never let today's value anchor its own baseline.
-	const prior = todayValue == null ? log : log.filter((e) => e.value !== todayValue);
-	const recent = prior.slice(-10).map((e) => e.value);
-	const baseline = recent.length >= 3 ? Math.round(mean(recent)) : null;
-	if (baseline == null || todayValue == null || baseline <= 0)
-		return { baseline, deficitPct: null, status: null };
-	const deficitPct = Math.round(((baseline - todayValue) / baseline) * 100);
-	const status: ProbeReadiness['status'] =
-		deficitPct >= 15 ? 'low' : deficitPct >= 6 ? 'fatigued' : deficitPct <= -5 ? 'fresh' : 'normal';
-	return { baseline, deficitPct, status };
 }
 
 export interface ReadinessInsights {

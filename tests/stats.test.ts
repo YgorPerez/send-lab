@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { acwr, probeReadiness, readinessInsights, weekLoad } from '../src/lib/stats';
+import { acwr, readinessInsights, weekLoad } from '../src/lib/stats';
 
 const DAY = 86_400_000;
 const NOW = Date.parse('2026-06-24T12:00:00Z');
@@ -63,28 +63,6 @@ test('weekLoad: even daily load is monotonous, spiky load with rest days is vari
 
 	// nothing in the last 7 days → null
 	assert.equal(weekLoad([w(10, 5, 7)], NOW), null);
-});
-
-test('probeReadiness: compares today against the personal baseline', () => {
-	const probe = (value: number) => ({ date: 'd', at: 0, value });
-	// too few prior readings → no baseline, no judgement
-	assert.deepEqual(probeReadiness([probe(50), probe(50)], 40), {
-		baseline: null,
-		deficitPct: null,
-		status: null,
-	});
-	const hist = [probe(50), probe(50), probe(50), probe(50)];
-	// baseline 50; a 20% drop → low (fatigued)
-	const low = probeReadiness(hist, 40);
-	assert.equal(low.baseline, 50);
-	assert.equal(low.deficitPct, 20);
-	assert.equal(low.status, 'low');
-	// on baseline → normal
-	assert.equal(probeReadiness(hist, 49).status, 'normal');
-	// above baseline → fresh
-	assert.equal(probeReadiness(hist, 55).status, 'fresh');
-	// no reading today → baseline known, status null
-	assert.deepEqual(probeReadiness(hist, null), { baseline: 50, deficitPct: null, status: null });
 });
 
 const entry = (score: number, outcome?: number) => ({

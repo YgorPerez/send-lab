@@ -10,7 +10,7 @@ const browser = typeof window !== 'undefined';
 
 const KEY = 'sendlab:readinessDraft';
 
-export function loadReadinessDraft(): { answers: Answers; probe: number | null } {
+export function loadReadinessDraft(): { answers: Answers } {
 	if (browser) {
 		try {
 			const d = JSON.parse(localStorage.getItem(KEY) ?? 'null');
@@ -18,14 +18,14 @@ export function loadReadinessDraft(): { answers: Answers; probe: number | null }
 			// accepted so switching language doesn't discard a draft written today
 			// under the old scheme (ADR-0003).
 			if (d && (d.day === isoToday() || (d.day == null && d.date === today())))
-				return { answers: (d.answers ?? {}) as Answers, probe: d.probe ?? null };
+				return { answers: (d.answers ?? {}) as Answers };
 		} catch {
 			// corrupt draft — start fresh
 		}
 	}
-	return { answers: {}, probe: null };
+	return { answers: {} };
 }
 
-export function saveReadinessDraft(answers: Answers, probe: number | null): void {
-	if (browser) localStorage.setItem(KEY, JSON.stringify({ day: isoToday(), answers, probe }));
+export function saveReadinessDraft(answers: Answers): void {
+	if (browser) localStorage.setItem(KEY, JSON.stringify({ day: isoToday(), answers }));
 }

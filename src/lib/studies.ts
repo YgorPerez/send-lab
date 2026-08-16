@@ -105,10 +105,4 @@ export const STUDIES: Study[] = [
 		year: '2023',
 		url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC11282332/',
 	},
-	{
-		id: 'probe',
-		authors: 'Claudino et al. — J Sci Med Sport',
-		year: '2017',
-		url: 'https://pubmed.ncbi.nlm.nih.gov/27765661/',
-	},
 ];

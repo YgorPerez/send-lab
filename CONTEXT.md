@@ -66,8 +66,8 @@ _Avoid_: off day, recovery day
 A named movement in the library, with one or more variants. The library is the
 app's, not the athlete's — they choose among movements rather than adding them.
 _Avoid_: movement, drill, protocol
-_Changing_: athlete-authored exercises exist in the SvelteKit app and are dropped
-in the rebuild, which closes the library.
+_Changing_: athlete-authored exercises exist in the SvelteKit app and are
+**already removed from the rebuild**, which closes the library.
 
 **Variant**:
 One interchangeable option of an exercise, carrying its own targets. Every
@@ -172,8 +172,9 @@ An objective same-day reading — a quick maximal finger pull — compared again
 the athlete's own recent norm to catch fatigue they haven't noticed. Read for
 today's freshness, never for progress.
 _Avoid_: test, metric, marker, measurement
-_Leaving_: dropped in the rebuild. A readiness check will rest on wellness
-answers and load alone, with no objective reading to contradict them.
+_Leaving_: **already removed from the rebuild.** A readiness check rests on
+wellness answers and load alone, with no objective reading to contradict them.
+Still present in the SvelteKit app until cutover.
 
 **Injury self-check**:
 A per-area questionnaire modelled on a validated clinical instrument, scoring
@@ -189,13 +190,20 @@ _Avoid_: recovery, prehab, deload
 
 **Marker**:
 A tested performance number tracked over time — max hang, pinch, rate of force
-development, contact strength, critical force, density, pull, hardest grades,
-bodyweight. Read for progress, never for today's freshness.
+development, contact strength, critical force, density, pull, hardest grades.
+Read for progress, never for today's freshness.
 _Avoid_: metric, PR, benchmark, stat
 _Leaving_: dropped in the rebuild — the athlete's tested numbers stop being
 tracked over time. Internal load, workload ratio and monotony are unaffected:
 they are derived from sessions, not from markers, and a readiness check still
-reads them.
+reads them. **Bodyweight is the exception and survives** — it is not a test.
+
+**Bodyweight**:
+The athlete's weight, tracked over time. Not a marker: nothing is tested and no
+effort is expended, and it is read as the divisor other numbers are expressed
+against rather than as progress in its own right. The baseline captures the
+first reading; every later one is logged from Today.
+_Avoid_: weight, mass, bw
 
 **Strength index**:
 A marker normalized so readings taken on different edge depths or block widths

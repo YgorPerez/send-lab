@@ -78,15 +78,6 @@ export interface DeepEntry {
 	band: string;
 }
 
-/** A climbing-specific objective readiness probe: a quick max finger pull (kg)
- *  logged over time so today's value can be compared against the personal norm. */
-export interface ProbeEntry {
-	date: string;
-	at: number;
-	/** Max pull / finger-strength reading, kg. */
-	value: number;
-}
-
 /** A daily readiness check recorded for the trend over time. */
 export interface ReadinessEntry {
 	date: string;

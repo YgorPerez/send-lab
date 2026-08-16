@@ -16,12 +16,12 @@ export const Route = createFileRoute('/api/me')({
 					db
 						.select({ name: user.name, email: user.email })
 						.from(user)
-						.where(eq(user.id, athlete.userId))
+						.where(eq(user.id, athlete.accountId))
 						.limit(1),
 					db
 						.select({ updatedAt: appStateTable.updatedAt })
 						.from(appStateTable)
-						.where(eq(appStateTable.userId, athlete.userId))
+						.where(eq(appStateTable.userId, athlete.accountId))
 						.limit(1),
 				]);
 				return Response.json({

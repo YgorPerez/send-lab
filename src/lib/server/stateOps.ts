@@ -45,7 +45,6 @@ function defaultState(): Record<string, unknown> {
 		rehab: null,
 		deepLog: [],
 		readinessLog: [],
-		probeLog: [],
 	};
 }
 
@@ -81,6 +80,5 @@ export function sanitizeState(raw: unknown): Record<string, unknown> {
 	if (raw.rehab === null || isPlainObject(raw.rehab)) out.rehab = raw.rehab;
 	if (Array.isArray(raw.deepLog)) out.deepLog = raw.deepLog;
 	if (Array.isArray(raw.readinessLog)) out.readinessLog = raw.readinessLog;
-	if (Array.isArray(raw.probeLog)) out.probeLog = raw.probeLog;
 	return out;
 }

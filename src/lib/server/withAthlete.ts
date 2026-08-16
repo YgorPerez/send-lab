@@ -12,10 +12,17 @@ import { getAuth } from './auth';
 import { isForbiddenCrossSiteForm } from './csrf';
 import { assertRuntimeEnv } from './env';
 
-/** The signed-in athlete. Identity is the stable account id, never a display
- *  string (ADR 0003). */
+/**
+ * The signed-in athlete, identified by the account that owns their training
+ * record. Per CONTEXT.md the authenticated identity is the **account** — the
+ * athlete is the person it trains — so the id is `accountId`, not `userId`.
+ * `user` is a word the glossary rejects for both; it survives only as
+ * better-auth's own table name, which is not ours to rename.
+ *
+ * Identity is a stable id, never a display string (ADR 0003).
+ */
 export interface Athlete {
-	userId: string;
+	accountId: string;
 }
 
 interface HandlerContext {
@@ -50,11 +57,11 @@ export function withAthlete(handler: AthleteHandler) {
 		}
 
 		const session = await getAuth().api.getSession({ headers: request.headers });
-		const userId = session?.user?.id ?? (await userIdFromBearer(request));
-		if (!userId) {
+		const accountId = session?.user?.id ?? (await userIdFromBearer(request));
+		if (!accountId) {
 			return new Response('Unauthorized', { status: 401 });
 		}
 
-		return handler({ request, athlete: { userId } });
+		return handler({ request, athlete: { accountId } });
 	};
 }
