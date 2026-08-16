@@ -1,0 +1,15 @@
+{
+  "name": "Send Lab — device tests",
+  "short_name": "SL tests",
+  "description": "Throwaway harness for the fourteen iOS/Android questions on issue #54.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c0d10",
+  "theme_color": "#0c0d10",
+  "icons": [
+    { "src": "./icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "./icon.png", "sizes": "180x180", "type": "image/png", "purpose": "maskable" }
+  ]
+}
