@@ -61,9 +61,18 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 
 ### Live maps
 
-- **Map: Next.js rebuild** — [#11](https://github.com/YgorPerez/send-lab/issues/11), with tickets #12–#24
-  as sub-issues. Blocking is expressed as native dependencies, so the frontier is visible in GitHub's own
-  UI. Resolve it with `/wayfinder https://github.com/YgorPerez/send-lab/issues/11`.
+- **Map: TanStack Start rebuild** — [#11](https://github.com/YgorPerez/send-lab/issues/11), with tickets
+  #12–#28 as sub-issues. Named for Next.js until 2026-08-15, when the framework decision resolved in
+  TanStack Start's favour; anything on it written before that date saying "Next.js" is stale phrasing,
+  not a live decision. Resolve it with `/wayfinder https://github.com/YgorPerez/send-lab/issues/11`.
+- **Map: Every claim traceable and graded** — [#29](https://github.com/YgorPerez/send-lab/issues/29),
+  with tickets #30–#37 as sub-issues. Charted 2026-08-16. Every number the app shows must resolve to a
+  cited, evidence-graded claim. It **supplies** the rebuild map rather than duplicating it: this map
+  specifies the model, grades, workflows and page design; the rebuild map builds the pages. Resolve it
+  with `/wayfinder https://github.com/YgorPerez/send-lab/issues/29`.
+
+Both maps express blocking as native dependencies, so each frontier is visible in GitHub's own UI without
+opening the map. They are worked independently and may be edited by concurrent sessions.
 
 This map was charted as local markdown under `.scratch/` before the repo was configured, and has since been
 migrated. **`.scratch/` is no longer in use as a tracker** — don't reintroduce it, or the two copies will
