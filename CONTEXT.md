@@ -14,8 +14,10 @@ to exactly one athlete.
 _Avoid_: user, client, patient
 
 **Account**:
-The authenticated identity that owns one athlete's training record. Only ever
-appears in sign-in, tokens, and API authorization.
+The authenticated identity that owns one athlete's training record. Appears in
+sign-in, tokens and API authorization — and, once the training record is also
+held on the device, as the boundary keeping one athlete's record separate from
+another's on a shared device.
 _Avoid_: user, profile
 
 **Baseline**:
@@ -61,8 +63,11 @@ work, so they never count against adherence.
 _Avoid_: off day, recovery day
 
 **Exercise**:
-A named movement in the library, with one or more variants.
+A named movement in the library, with one or more variants. The library is the
+app's, not the athlete's — they choose among movements rather than adding them.
 _Avoid_: movement, drill, protocol
+_Changing_: athlete-authored exercises exist in the SvelteKit app and are dropped
+in the rebuild, which closes the library.
 
 **Variant**:
 One interchangeable option of an exercise, carrying its own targets. Every
@@ -127,6 +132,14 @@ Scheduled work that went untrained — skipped or held — offered again on the 
 training day.
 _Avoid_: missed work, backlog, catch-up
 
+**Unsynced work**:
+Training the athlete has recorded on this device that has not yet reached the
+server. Safe to keep training on — reads come from the device — but it exists in
+one place only, and an uninstalled app may have it deleted by the browser after
+a week idle. Work that can never be sent is unsynced work in its final state,
+not a separate thing.
+_Avoid_: pending, queued, unsaved, outbox, offline changes
+
 ### Readiness
 
 **Readiness check**:
@@ -159,6 +172,8 @@ An objective same-day reading — a quick maximal finger pull — compared again
 the athlete's own recent norm to catch fatigue they haven't noticed. Read for
 today's freshness, never for progress.
 _Avoid_: test, metric, marker, measurement
+_Leaving_: dropped in the rebuild. A readiness check will rest on wellness
+answers and load alone, with no objective reading to contradict them.
 
 **Injury self-check**:
 A per-area questionnaire modelled on a validated clinical instrument, scoring
@@ -177,11 +192,16 @@ A tested performance number tracked over time — max hang, pinch, rate of force
 development, contact strength, critical force, density, pull, hardest grades,
 bodyweight. Read for progress, never for today's freshness.
 _Avoid_: metric, PR, benchmark, stat
+_Leaving_: dropped in the rebuild — the athlete's tested numbers stop being
+tracked over time. Internal load, workload ratio and monotony are unaffected:
+they are derived from sessions, not from markers, and a readiness check still
+reads them.
 
 **Strength index**:
 A marker normalized so readings taken on different edge depths or block widths
 are comparable, carrying how much to trust the conversion.
 _Avoid_: normalized score, adjusted max
+_Leaving_: dropped with Marker.
 
 **Internal load**:
 Session effort multiplied by session minutes — what a session cost the athlete,
