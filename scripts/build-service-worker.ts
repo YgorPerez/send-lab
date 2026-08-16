@@ -13,10 +13,10 @@
 // name — that would invalidate the whole cache on every redeploy, including the
 // builds where nothing changed, which is the opposite of what an installed app
 // on a phone wants.
-import { fileURLToPath } from 'node:url';
 import { generateSW } from 'workbox-build';
+import { clientOutputDir } from './output-dir.ts';
 
-const clientDir = fileURLToPath(new URL('../dist/client', import.meta.url));
+const clientDir = clientOutputDir();
 
 const { count, size, warnings } = await generateSW({
 	globDirectory: clientDir,

@@ -3,6 +3,7 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
+import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 import { serveInlangPluginsLocally } from './scripts/inlang-local-plugins.ts';
 
@@ -42,6 +43,14 @@ export default defineConfig({
 				prerender: { outputPath: '/_shell.html' },
 			},
 		}),
+		// The server half of the build. Nitro detects Vercel from the build
+		// environment and emits Build Output API v3 into `.vercel/output`, which is
+		// what Vercel actually serves — a plain `dist/` deploys but 404s, which is
+		// how this was found. Nitro's only npm dist-tag is a beta; ADR 0005 accepted
+		// that knowingly, on the grounds that a Nitro failure is a *deploy-time*
+		// failure — loud, immediate and reversible. Pinned exactly, like everything
+		// else in the rebuild.
+		nitro(),
 		react(),
 	],
 });

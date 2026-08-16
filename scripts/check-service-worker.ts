@@ -10,13 +10,12 @@
 // It also asserts the shell is in the manifest, because that single entry is
 // what an installed app cold-starts from.
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { clientOutputDir } from './output-dir.ts';
 
-// The path below is a runtime `new URL()` against the build output, not an
-// import — fallow reads it as one.
-// fallow-ignore-next-line unresolved-import
-const swPath = fileURLToPath(new URL('../dist/client/sw.js', import.meta.url));
-const shellPath = fileURLToPath(new URL('../dist/client/_shell.html', import.meta.url));
+const clientDir = clientOutputDir();
+const swPath = join(clientDir, 'sw.js');
+const shellPath = join(clientDir, '_shell.html');
 
 function fail(message: string): never {
 	console.error(`check:sw — ${message}`);
