@@ -45,8 +45,20 @@ let asserted = false;
  */
 export function assertRuntimeEnv(): void {
 	if (asserted || dev) return;
-	if (!env.BETTER_AUTH_SECRET) {
-		throw new Error('BETTER_AUTH_SECRET must be set in production');
+
+	const missing: string[] = [];
+	if (!env.BETTER_AUTH_SECRET) missing.push('BETTER_AUTH_SECRET');
+	// Without a Turso URL the client falls back to `file:local.db`, which on a
+	// serverless host is an empty database on a read-only, per-invocation
+	// filesystem. That fallback is right for `pnpm dev` and silently wrong in
+	// production, so it is refused rather than tolerated.
+	if (!env.TURSO_DATABASE_URL) missing.push('TURSO_DATABASE_URL');
+
+	if (missing.length) {
+		throw new Error(
+			`Missing required production environment: ${missing.join(', ')}. ` +
+				'Preview deployments need their own values — see DEPLOY.md.',
+		);
 	}
 	asserted = true;
 }
