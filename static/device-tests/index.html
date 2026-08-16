@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0c0d10">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon.png">
+<title>Send Lab — device tests</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  :root{
+    --bg:#0c0d10; --panel:#15171c; --panel2:#1c1f26; --line:#2a2e38;
+    --ink:#eef1f5; --dim:#9aa3b0; --faint:#5d6470;
+    --ok:#3fd0c9; --bad:#ff5a2c; --meh:#f4c04e;
+    color-scheme:dark;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{padding:max(12px,env(safe-area-inset-top)) 12px calc(96px + env(safe-area-inset-bottom))}
+  h1{font-size:19px;margin:8px 0 2px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:14px;margin-bottom:14px}
+  .qid{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+  .q{font-weight:650;font-size:16px;margin-bottom:8px}
+  .do{background:var(--panel2);border-left:3px solid var(--meh);border-radius:6px;
+    padding:9px 11px;font-size:14px;margin:10px 0}
+  .do b{color:var(--meh)}
+  .look{font-size:13px;color:var(--dim);margin:8px 0}
+  .readout{font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:#0a0b0e;
+    border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;
+    white-space:pre-wrap;word-break:break-word;overflow-x:auto}
+  .verdict{display:flex;gap:8px;margin-top:12px}
+  .verdict button{flex:1;min-height:48px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--dim);font-size:14px;font-weight:600;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .verdict button:active{filter:brightness(1.4)}
+  .verdict button[aria-pressed=true][data-v=yes]{background:var(--ok);color:#04211f;border-color:var(--ok)}
+  .verdict button[aria-pressed=true][data-v=no]{background:var(--bad);color:#2a0b03;border-color:var(--bad)}
+  .verdict button[aria-pressed=true][data-v=idk]{background:var(--meh);color:#2a2003;border-color:var(--meh)}
+  textarea{width:100%;margin-top:8px;background:#0a0b0e;color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:9px;font-size:16px;font-family:inherit;min-height:44px;resize:vertical}
+  button.act{min-height:48px;padding:0 16px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);font-size:15px;font-weight:600;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  button.act:active{filter:brightness(1.4)}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:rgba(21,23,28,.96);
+    border-top:1px solid var(--line);backdrop-filter:blur(12px);
+    padding:10px 12px max(10px,env(safe-area-inset-bottom));display:flex;gap:8px;z-index:50}
+  .bar button{flex:1}
+  .tag{display:inline-block;font:600 10px/1 ui-monospace,monospace;letter-spacing:.08em;
+    text-transform:uppercase;padding:4px 7px;border-radius:5px;background:var(--panel2);
+    color:var(--dim);border:1px solid var(--line);margin-left:6px;vertical-align:middle}
+  .tag.auto{color:var(--ok);border-color:#1d4a48}
+  .grow{height:0;overflow:hidden;background:#241a06;border-radius:8px;
+    transition:none;font-size:13px;color:var(--meh);padding:0 10px}
+  .grow.on{height:120px;padding:10px}
+  .tall{max-height:210px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;
+    margin:10px 0;background:#0a0b0e}
+  .row{display:flex;align-items:center;gap:12px;padding:13px 12px;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .row span{flex:1;font-size:14px}
+  input[type=checkbox]{width:52px;height:32px;flex:none}
+  .plain{appearance:none;-webkit-appearance:none;width:52px;height:32px;border-radius:16px;
+    background:var(--line);position:relative;transition:background .18s;flex:none;border:0}
+  .plain:checked{background:var(--ok)}
+  .plain::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;
+    border-radius:50%;background:#fff;transition:transform .18s}
+  .plain:checked::after{transform:translateX(20px)}
+  .overlaywrap{position:relative;display:inline-block}
+  .overlaywrap input{position:absolute;inset:0;width:100%;height:100%;opacity:.001;margin:0;z-index:2}
+  .fakebtn{min-height:52px;padding:0 22px;border-radius:12px;background:var(--panel2);
+    border:1px solid var(--line);color:var(--ink);font-weight:650;font-size:15px;
+    display:flex;align-items:center;justify-content:center}
+  .vtbox{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:10px 0}
+  .vtpane{padding:26px 14px;font-size:17px;font-weight:650;text-align:center;view-transition-name:vtdemo}
+  .vtfoot{position:sticky;bottom:0;background:var(--bad);color:#2a0b03;font-weight:700;
+    text-align:center;padding:11px;font-size:13px}
+  .zoomrow{display:flex;gap:8px;margin:8px 0;align-items:center}
+  .zoomrow label{flex:none;width:74px;font:12px/1 ui-monospace,monospace;color:var(--dim)}
+  .zoomrow input{flex:1;background:#0a0b0e;color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:9px}
+  .swipepad{height:130px;border:1px dashed var(--line);border-radius:10px;margin:10px 0;
+    background:linear-gradient(90deg,rgba(255,90,44,.28) 0 44px,transparent 44px);
+    display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px;
+    touch-action:pan-y}
+  a.callout{-webkit-touch-callout:none;color:var(--ok);font-weight:600}
+  .done{color:var(--ok)}
+  .warn{color:var(--bad)}
+</style>
+</head>
+<body>
+
+<h1>Send Lab — device tests</h1>
+<div class="sub">Fourteen questions no amount of reading settled. Issue&nbsp;#54.</div>
+
+<div class="card">
+  <div class="qid">Context <span class="tag auto">auto</span></div>
+  <div class="q">Where am I running?</div>
+  <div class="do"><b>Install to the home screen first.</b> Share → Add to Home Screen, then open it
+    from the icon. Several answers differ between a browser tab and an installed app — that split is the
+    whole point of this page.</div>
+  <div class="readout" id="ctx">…</div>
+</div>
+
+<!-- Q7 -->
+<div class="card" data-q="Q7">
+  <div class="qid">Q7 · standalone detection <span class="tag auto">auto</span></div>
+  <div class="q">What does the app report about its own display mode?</div>
+  <div class="look">Every "make it not look like a web page" rule is scoped behind this query. If it
+    reports <code>false</code> in an installed app, the whole approach needs a different detector.</div>
+  <div class="readout" id="q7">…</div>
+  <div class="verdict" data-for="Q7"></div>
+</div>
+
+<!-- Q4 -->
+<div class="card" data-q="Q4">
+  <div class="qid">Q4 · viewport units <span class="tag auto">auto</span></div>
+  <div class="q">Are <code>svh</code>, <code>lvh</code> and <code>dvh</code> all the same here?</div>
+  <div class="look">If they're equal in the installed app, every full-height surface can just use
+    <code>dvh</code> and skip the three-unit dance.</div>
+  <div class="readout" id="q4">…</div>
+  <div class="verdict" data-for="Q4"></div>
+</div>
+
+<!-- Q8/Q9 -->
+<div class="card" data-q="Q8">
+  <div class="qid">Q8 / Q9 · safe areas <span class="tag auto">auto</span></div>
+  <div class="q">What insets does this device actually report?</div>
+  <div class="do"><b>Android:</b> switch between gesture nav and three-button nav in Settings, come
+    back, and see whether the bottom number changes. <b>iOS:</b> rotate to landscape and back.</div>
+  <div class="look">The bottom bar's padding depends on this, and the two Android nav modes are
+    documented to differ without anyone saying how.</div>
+  <div class="readout" id="q8">…</div>
+  <div class="verdict" data-for="Q8"></div>
+</div>
+
+<!-- Q1 -->
+<div class="card" data-q="Q1">
+  <div class="qid">Q1 · pull to refresh <span class="tag">ranked #1</span></div>
+  <div class="q">Does pulling down reload the app, or just bounce?</div>
+  <div class="do"><b>Scroll to the very top, then pull down hard and let go.</b> Do it three times.</div>
+  <div class="look">No Apple or WebKit source answers this either way. If an installed iOS app has no
+    reload gesture, there is nothing to suppress and one whole class of workaround disappears.</div>
+  <div class="readout" id="q1">…</div>
+  <div class="verdict" data-for="Q1"></div>
+</div>
+
+<!-- Q2b -->
+<div class="card" data-q="Q2b">
+  <div class="qid">Q2b · WebKit 237851 <span class="tag">ranked #2</span></div>
+  <div class="q">Does <code>visualViewport.offsetTop</code> read <code>0</code> when the keyboard opens?</div>
+  <div class="do"><b>Tap the field below, let the keyboard open, dismiss it. Repeat four or five
+    times</b> — the bug is intermittent, so one clean sample proves nothing.</div>
+  <div class="look">This is the only keyboard tool iOS gives us, and the only installed-app-specific
+    divergence with a primary source behind it. If <code>sync</code> ever reads 0 while
+    <code>raf²</code> doesn't, every keyboard-avoidance handler in the app needs a double
+    <code>requestAnimationFrame</code>.</div>
+  <input id="kbd" type="text" placeholder="Tap here to open the keyboard" autocomplete="off"
+    style="width:100%;background:#0a0b0e;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:16px">
+  <div class="readout" id="q2b">no samples yet</div>
+  <div class="verdict" data-for="Q2b"></div>
+</div>
+
+<!-- Q3 -->
+<div class="card" data-q="Q3">
+  <div class="qid">Q3 · WebKit 320238 <span class="tag">ranked #3</span></div>
+  <div class="q">Does a view transition flash over the fixed bar?</div>
+  <div class="do"><b>Tap “Run transition” and watch the orange bar</b>, and the black bar pinned at the
+    bottom of the screen. Run it several times.</div>
+  <div class="look">Every direction wants a fixed bottom nav plus full-screen route transitions —
+    exactly the shape this open WebKit bug is filed against. If it flashes here, the navigation
+    architecture has to change before four prototypes are built on it.</div>
+  <div class="vtbox">
+    <div class="vtpane" id="vtpane">Panel A</div>
+    <div class="vtfoot">watch me — I should never flicker</div>
+  </div>
+  <button class="act" id="vtrun" style="width:100%">Run transition</button>
+  <div class="readout" id="q3">…</div>
+  <div class="verdict" data-for="Q3"></div>
+</div>
+
+<!-- Q5 -->
+<div class="card" data-q="Q5">
+  <div class="qid">Q5 · haptics, styled <span class="tag">ranked #5</span></div>
+  <div class="q">Does styling a switch kill its haptic?</div>
+  <div class="do"><b>Tap both switches with the phone in your hand and off any hard surface.</b>
+    The first is untouched; the second has <code>appearance:none</code> and custom styling.</div>
+  <div class="look">A real switch is the <em>only</em> haptic iOS allows — <code>navigator.vibrate</code>
+    is dead there and Apple formally opposed the spec. So if styling removes the buzz, then "ticking a
+    task buzzes" dictates what the control looks like, and that belongs in the component vocabulary
+    rather than being added later.</div>
+  <div class="row"><span>Native, unstyled</span><input type="checkbox" switch id="sw1"></div>
+  <div class="row"><span><code>appearance:none</code> + styled</span><input type="checkbox" switch class="plain" id="sw2"></div>
+  <div class="readout" id="q5">Both buzz → styling is free. Only the first buzzes → the haptic dictates the control's look.</div>
+  <div class="verdict" data-for="Q5"></div>
+</div>
+
+<!-- Q5b -->
+<div class="card" data-q="Q5b">
+  <div class="qid">Q5b · WebKit 321591 <span class="tag">filed 4 days before the research</span></div>
+  <div class="q">Do switches break scrolling in a list?</div>
+  <div class="do"><b>Put your finger on a switch and try to scroll the list.</b> Then start on the text
+    beside one and scroll. Compare.</div>
+  <div class="look">Today's task list is exactly this: a scrolling list of tick controls. If a switch
+    swallows the drag, or toggles when you release somewhere else, it can't be the tick control.</div>
+  <div class="tall" id="swlist"></div>
+  <div class="verdict" data-for="Q5b"></div>
+</div>
+
+<!-- Q5c -->
+<div class="card" data-q="Q5c">
+  <div class="qid">Q5c · overlaid switch</div>
+  <div class="q">Does an invisible switch over a button still buzz?</div>
+  <div class="do"><b>Tap the button below.</b> It looks like a button; a real, invisible switch sits on
+    top of it.</div>
+  <div class="look">If this works it's the escape hatch — a haptic on a control that isn't shaped like a
+    system switch. Two WebKit commits closed the scripted route, so this overlay is the only survivor.</div>
+  <div class="overlaywrap"><div class="fakebtn" id="fakebtn">Tick this task</div>
+    <input type="checkbox" switch id="sw3" aria-label="overlaid switch"></div>
+  <div class="readout" id="q5c">…</div>
+  <div class="verdict" data-for="Q5c"></div>
+</div>
+
+<!-- Q6 -->
+<div class="card" data-q="Q6">
+  <div class="qid">Q6 · long-press</div>
+  <div class="q">Is <code>-webkit-touch-callout:none</code> still honoured?</div>
+  <div class="do"><b>Long-press this link:</b> <a class="callout" href="#" onclick="return false">a link with the callout suppressed</a>.
+    Then long-press <a href="#" onclick="return false">this ordinary one</a> to compare.</div>
+  <div class="look">Decides whether the iOS share/copy sheet can be suppressed at all — it's the most
+    web-page-ish thing that can happen during a set.</div>
+  <div class="verdict" data-for="Q6"></div>
+</div>
+
+<!-- Bonus: auto-zoom + pt-BR -->
+<div class="card" data-q="ZOOM">
+  <div class="qid">Bonus · input auto-zoom, in pt-BR</div>
+  <div class="q">Below what font size does iOS zoom the page?</div>
+  <div class="do"><b>Tap each field in turn.</b> Watch whether the page zooms in when it focuses.</div>
+  <div class="look">iOS zooms unless the computed font-size is ≥16px. Set rows are the densest thing in
+    the app and <b>pt-BR labels run longer than English</b> — so the temptation to shrink type lands
+    exactly here, and the bug would be invisible in English.</div>
+  <div class="zoomrow"><label>17px</label><input style="font-size:17px" placeholder="Repetições"></div>
+  <div class="zoomrow"><label>16px</label><input style="font-size:16px" placeholder="Repetições"></div>
+  <div class="zoomrow"><label>15px</label><input style="font-size:15px" placeholder="Repetições"></div>
+  <div class="zoomrow"><label>13px</label><input style="font-size:13px" placeholder="Repetições"></div>
+  <div class="verdict" data-for="ZOOM"></div>
+</div>
+
+<!-- Bonus: edge swipe -->
+<div class="card" data-q="EDGE">
+  <div class="qid">Bonus · edge swipe-back</div>
+  <div class="q">How far in does iOS steal a horizontal drag?</div>
+  <div class="do"><b>Drag right, starting from inside the orange strip, then a bit further right, then
+    further still.</b> Note the X where your drag stops being stolen by the OS.</div>
+  <div class="look">iOS's edge swipe-back can't be disabled or intercepted — WebKit's position is that
+    app-level gestures always win. Direction D is built on swipe-to-tick, so the usable region is a hard
+    design input, not a detail.</div>
+  <div class="swipepad" id="edge">drag right, starting here →</div>
+  <div class="readout" id="qedge">…</div>
+  <div class="verdict" data-for="EDGE"></div>
+</div>
+
+<!-- Bonus: scroll anchoring -->
+<div class="card" data-q="ANCHOR">
+  <div class="qid">Bonus · scroll anchoring</div>
+  <div class="q">Does content growing above the fold shove the page?</div>
+  <div class="do"><b>Tap the button, then immediately scroll down a little and hold still.</b> After two
+    seconds a block expands above you.</div>
+  <div class="look">iOS has no scroll anchoring before Safari 27. On <code>/</code> the readiness verdict
+    appears above the plan — if that jumps under the thumb mid-tap, it's a real interaction bug.</div>
+  <div class="grow" id="grow">this block just expanded above your scroll position</div>
+  <button class="act" id="growbtn" style="width:100%">Expand a block in 2s</button>
+  <div class="verdict" data-for="ANCHOR"></div>
+</div>
+
+<!-- Q2 deferred -->
+<div class="card" style="border-style:dashed;opacity:.75">
+  <div class="qid">Q2 · cold-start transition <span class="tag">deferred</span></div>
+  <div class="q">Does <code>defaultViewTransition:true</code> animate the shell → first route?</div>
+  <div class="look">Not answerable from a static page — it needs a real TanStack Start build emitting
+    <code>/_shell.html</code>, with a service worker precaching it. It moves to the scaffold ticket, and
+    is recorded as such on #54 rather than guessed at here.</div>
+</div>
+
+<div class="bar">
+  <button class="act" id="copy">Copy results</button>
+  <button class="act" id="reset">Reset</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY='sendlab-devicetests-v1';
+  var store={};
+  try{ store=JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){ store={}; }
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){} }
+  function $(id){ return document.getElementById(id); }
+  function txt(id,s){ var el=$(id); if(el) el.textContent=s; }
+
+  /* ---------- verdict buttons + notes, per card ---------- */
+  var LABELS=[['yes','Yes'],['no','No'],['idk','Unclear']];
+  Array.prototype.forEach.call(document.querySelectorAll('.verdict'),function(box){
+    var q=box.getAttribute('data-for');
+    LABELS.forEach(function(pair){
+      var b=document.createElement('button');
+      b.type='button'; b.dataset.v=pair[0]; b.textContent=pair[1];
+      b.setAttribute('aria-pressed', String((store[q]||{}).v===pair[0]));
+      b.addEventListener('click',function(){
+        store[q]=store[q]||{}; store[q].v=pair[0]; save();
+        Array.prototype.forEach.call(box.children,function(c){
+          c.setAttribute('aria-pressed', String(c.dataset.v===pair[0]));
+        });
+      });
+      box.appendChild(b);
+    });
+    var ta=document.createElement('textarea');
+    ta.placeholder='what actually happened (optional)';
+    ta.value=(store[q]||{}).n||'';
+    ta.addEventListener('input',function(){ store[q]=store[q]||{}; store[q].n=ta.value; save(); });
+    box.parentNode.appendChild(ta);
+  });
+
+  /* ---------- context ---------- */
+  var standalone = (window.navigator.standalone===true) ||
+    (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  txt('ctx',
+    'installed (best guess): '+(standalone?'YES':'NO — open from the home-screen icon')+'\n'+
+    'screen: '+screen.width+'x'+screen.height+' @'+(window.devicePixelRatio||1)+'x\n'+
+    'viewport: '+innerWidth+'x'+innerHeight+'\n'+
+    'UA: '+navigator.userAgent);
+
+  txt('q7',
+    "matchMedia('(display-mode: standalone)') = "+
+      (window.matchMedia?matchMedia('(display-mode: standalone)').matches:'n/a')+'\n'+
+    "matchMedia('(display-mode: fullscreen)') = "+
+      (window.matchMedia?matchMedia('(display-mode: fullscreen)').matches:'n/a')+'\n'+
+    'navigator.standalone            = '+
+      (typeof navigator.standalone==='undefined'?'undefined (not iOS)':navigator.standalone)+'\n'+
+    'navigator.vibrate               = '+(typeof navigator.vibrate==='function')+'\n'+
+    'startViewTransition             = '+(typeof document.startViewTransition==='function'));
+
+  /* ---------- Q4 viewport units ---------- */
+  function units(){
+    var d=document.createElement('div');
+    d.style.cssText='position:absolute;top:-9999px;left:0;width:1px';
+    document.body.appendChild(d);
+    function h(u){ d.style.height='100'+u; return d.getBoundingClientRect().height; }
+    var s=h('svh'), l=h('lvh'), v=h('dvh'), vh=h('vh');
+    d.remove();
+    txt('q4','100svh = '+s.toFixed(1)+'\n100lvh = '+l.toFixed(1)+'\n100dvh = '+v.toFixed(1)+
+      '\n100vh  = '+vh.toFixed(1)+'\ninnerHeight = '+innerHeight+
+      '\n\nall equal: '+((s===l&&l===v)?'YES — dvh is enough':'NO — the three differ, they all matter'));
+  }
+  units();
+
+  /* ---------- Q8 safe areas ---------- */
+  var probe=document.createElement('div');
+  probe.style.cssText='position:fixed;top:0;left:0;width:0;height:0;'+
+    'padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);'+
+    'padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left)';
+  document.body.appendChild(probe);
+  function insets(){
+    var c=getComputedStyle(probe);
+    txt('q8','top    = '+c.paddingTop+'\nright  = '+c.paddingRight+
+      '\nbottom = '+c.paddingBottom+'\nleft   = '+c.paddingLeft+
+      '\n\nviewport '+innerWidth+'x'+innerHeight+
+      '\norientation '+(innerWidth>innerHeight?'landscape':'portrait'));
+  }
+  insets();
+  addEventListener('resize',function(){ insets(); units(); });
+  addEventListener('orientationchange',function(){ setTimeout(function(){insets();units();},350); });
+
+  /* ---------- Q1 pull to refresh (detect reload) ---------- */
+  var loads=0;
+  try{ loads=(parseInt(sessionStorage.getItem('loads')||'0',10)||0)+1;
+       sessionStorage.setItem('loads',String(loads)); }catch(e){}
+  var nav=(performance.getEntriesByType&&performance.getEntriesByType('navigation')[0])||null;
+  txt('q1','page loads this session: '+loads+
+    '\nnavigation type: '+(nav?nav.type:'unknown')+
+    '\n\nIf pulling down makes this counter go up, the reload gesture exists.'+
+    '\nIf it only bounces and the number holds, there is nothing to suppress.');
+
+  /* ---------- Q2b visualViewport ---------- */
+  var samples=[];
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize',function(){
+      var sync=visualViewport.offsetTop;
+      var h=visualViewport.height;
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){
+        var after=visualViewport.offsetTop;
+        samples.unshift({s:sync,a:after,h:Math.round(h)});
+        samples=samples.slice(0,8);
+        var bad=samples.some(function(x){ return x.s===0 && x.a!==0; });
+        txt('q2b', samples.map(function(x,i){
+          return String(i).padStart(2,' ')+'  sync='+String(x.s).padStart(6,' ')+
+                 '   raf²='+String(x.a).padStart(6,' ')+'   vv.height='+x.h+
+                 (x.s===0&&x.a!==0?'   <-- BUG':'');
+        }).join('\n') + '\n\n' + (bad
+          ? 'REPRODUCED — sync read 0 while raf² did not. Every keyboard handler needs a double rAF.'
+          : 'not seen yet — open and dismiss the keyboard a few more times'));
+      });});
+    });
+  } else {
+    txt('q2b','visualViewport is not available on this browser at all.');
+  }
+
+  /* ---------- Q3 view transition ---------- */
+  var paneN=0;
+  $('vtrun').addEventListener('click',function(){
+    var pane=$('vtpane');
+    var swap=function(){ paneN++; pane.textContent='Panel '+'ABCDEFGH'[paneN%8];
+      pane.style.background = (paneN%2)?'#1c1f26':'#15171c'; };
+    if(typeof document.startViewTransition!=='function'){
+      swap(); txt('q3','No View Transitions API here — nothing to test. Content swapped instantly.');
+      return;
+    }
+    var t=document.startViewTransition(swap);
+    t.ready.then(function(){ txt('q3','transition '+paneN+': started OK. Did the black bar flicker?'); })
+     .catch(function(err){ txt('q3','transition '+paneN+' skipped: '+err.name+
+        ' — expected if you tapped twice quickly.'); });
+  });
+
+  /* ---------- Q5b list of switches ---------- */
+  var list=$('swlist'), frag=document.createDocumentFragment();
+  for(var i=1;i<=14;i++){
+    var r=document.createElement('div'); r.className='row';
+    var s=document.createElement('span'); s.textContent='Task '+i+' — 3×5 @ 20mm edge';
+    var c=document.createElement('input'); c.type='checkbox'; c.setAttribute('switch','');
+    c.setAttribute('aria-label','task '+i);
+    r.appendChild(s); r.appendChild(c); frag.appendChild(r);
+  }
+  list.appendChild(frag);
+
+  /* ---------- Q5c overlaid ---------- */
+  $('sw3').addEventListener('change',function(){
+    $('fakebtn').textContent = this.checked ? 'Ticked — did it buzz?' : 'Tick this task';
+    txt('q5c','toggled via the overlaid switch: '+this.checked+
+      '\nIf that buzzed, a haptic can live on any control shape.');
+  });
+
+  /* ---------- edge swipe ---------- */
+  var pad=$('edge'), startX=null, best=null;
+  pad.addEventListener('touchstart',function(e){
+    startX=Math.round(e.touches[0].clientX);
+  },{passive:true});
+  pad.addEventListener('touchmove',function(e){
+    if(startX===null) return;
+    var dx=Math.round(e.touches[0].clientX)-startX;
+    if(dx>24){ best=startX;
+      txt('qedge','last drag that SURVIVED started at x = '+best+'px\n'+
+        'drag further left until the OS steals it; the smallest surviving x is the safe edge.'); }
+  },{passive:true});
+  pad.addEventListener('touchend',function(){ startX=null; },{passive:true});
+
+  /* ---------- scroll anchoring ---------- */
+  $('growbtn').addEventListener('click',function(){
+    var g=$('grow'); g.classList.remove('on');
+    setTimeout(function(){ g.classList.add('on'); },2000);
+  });
+
+  /* ---------- copy / reset ---------- */
+  var TITLES={};
+  Array.prototype.forEach.call(document.querySelectorAll('.card[data-q]'),function(c){
+    TITLES[c.getAttribute('data-q')] = c.querySelector('.q').textContent.trim();
+  });
+  $('copy').addEventListener('click',function(){
+    var out=['# Device tests — issue #54','',
+      '- UA: '+navigator.userAgent,
+      '- installed: '+(standalone?'yes':'no'),
+      '- viewport: '+innerWidth+'x'+innerHeight+' @'+(window.devicePixelRatio||1)+'x','',
+      '| # | question | verdict | notes |','|---|---|---|---|'];
+    Object.keys(TITLES).forEach(function(q){
+      var r=store[q]||{};
+      out.push('| '+q+' | '+TITLES[q]+' | '+(r.v||'—')+' | '+((r.n||'').replace(/\|/g,'/').replace(/\n/g,' '))+' |');
+    });
+    out.push('', '## Readouts', '```',
+      'Q7  '+($('q7').textContent||'').replace(/\n/g,'\n    '), '',
+      'Q4  '+($('q4').textContent||'').replace(/\n/g,'\n    '), '',
+      'Q8  '+($('q8').textContent||'').replace(/\n/g,'\n    '), '',
+      'Q1  '+($('q1').textContent||'').replace(/\n/g,'\n    '), '',
+      'Q2b '+($('q2b').textContent||'').replace(/\n/g,'\n    '), '```');
+    var s=out.join('\n');
+    function fallback(){
+      var ta=document.createElement('textarea'); ta.value=s;
+      ta.style.cssText='position:fixed;top:10px;left:10px;width:94%;height:60%;z-index:99';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); }catch(e){}
+      $('copy').textContent='Select all & copy';
+      setTimeout(function(){ ta.remove(); $('copy').textContent='Copy results'; },12000);
+    }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(s).then(function(){
+        $('copy').textContent='Copied ✓';
+        setTimeout(function(){ $('copy').textContent='Copy results'; },1800);
+      },fallback);
+    } else fallback();
+  });
+  $('reset').addEventListener('click',function(){
+    if(!confirm('Clear all recorded verdicts?')) return;
+    store={}; save(); location.reload();
+  });
+
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(function(){}); }
+})();
+</script>
+</body>
+</html>
