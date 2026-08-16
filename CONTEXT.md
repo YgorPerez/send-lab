@@ -218,7 +218,23 @@ How little a training week's daily loads vary. High monotony is a risk signal
 regardless of total load.
 _Avoid_: sameness, variability
 
+### Evidence
+
+**Claim**:
+A stated proposition behind something the app asserts — a protocol, a
+threshold, a progression rate — carrying how far it should be trusted and the
+studies that back it. Every number the athlete is shown resolves to one. A
+claim may honestly record that nothing backs it but the app's own reasoning.
+_Avoid_: fact, finding, assertion, rationale
+
+**Evidence grade**:
+How far a claim should be trusted, from strong published evidence down to the
+app's own reasoning. It belongs to the claim, not to the study — the same study
+can strongly support one claim and barely touch another.
+_Avoid_: confidence, quality, rating, score
+
 **Study**:
-A cited source behind a question, threshold, or prescription, so any number in
-the app can be traced to why it is that number.
+A cited source a claim rests on: a peer-reviewed publication, or a book or
+coaching resource cited for practical guidance rather than as primary evidence.
+Studies back claims; a study is never attached directly to a number.
 _Avoid_: reference, paper, citation
