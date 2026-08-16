@@ -1,7 +1,7 @@
 /* Throwaway service worker for the issue #54 device-test harness.
    Exists so the page is installable and runs from a precached shell, which is the
    state several of the tests are specifically about. Not a model for the real one. */
-var CACHE = 'sl-devicetests-v1';
+var CACHE = 'sl-devicetests-v2';
 var ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.png'];
 
 self.addEventListener('install', function (e) {
