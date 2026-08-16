@@ -6,9 +6,15 @@
 `evidence-grading.md` and is preserved here rather than lost. It has **not** been merged into that
 document's argument, and its claims have not been independently re-verified beyond what is noted.
 
-It covers ground the main document does not: `evidence-grading.md` mentions Cochrane and Examine but
-contains nothing on NIH ODS, NatMed Pro, Healthline, Harvard Nutrition Source, Labdoor, or Cochrane's
-Plain Language Summary guidance.
+**Overlap, checked against the final 1,682-line `evidence-grading.md` rather than assumed.** That
+document does reference NIH ODS, Healthline, Harvard, Examine and Harvey balls — but glancingly, one to
+three mentions each. It has **nothing at all** on NatMed Pro's two-scale-per-indication system, on
+Cochrane's Plain Language Summary guidance, or on Examine's shipped `grade_label` values.
+
+**The Examine.com material here is the only primary data on it.** The parent researcher recorded
+Examine as unfetchable behind a bot wall; this sub-agent got through with a full browser header set, so
+the rungs, the colour ramp, the paywall behaviour and the three parallel vocabularies below are
+first-hand and exist nowhere else in this effort.
 
 **Facts only — no recommendations.** Fetched August 2026.
 
@@ -405,9 +411,12 @@ score from unrelated outcomes. **Low provenance** — single page, unknown opera
 # Part B — presenting an evidence grade to a lay reader: the empirical literature
 
 **Provenance.** A second sub-agent of [#30](https://github.com/YgorPerez/send-lab/issues/30), whose
-hand-off to the parent researcher also failed. Preserved here for the same reason as Part A. The parent
-document contains Akl 2007 and Santesso, and **nothing** on Damman, Glenton, Carrasco-Labra, Rosenbaum,
-Büchter, Holst, Budescu, WCAG, Birch, robvis, Knapp, icon arrays, Harvey balls or numeracy.
+hand-off to the parent researcher also failed. Preserved here for the same reason as Part A. Preserved for the same reason as Part A.
+
+**Overlap, checked rather than assumed.** The final `evidence-grading.md` does cite Glenton, Budescu,
+WCAG and robvis — one to three mentions each. It contains **nothing** on Damman 2016 (the format-ranking
+trial), Carrasco-Labra, Rosenbaum, Büchter 2020, Holst 2025, Birch 2012, Knapp's medicines-labelling
+numbers, or the icon-array literature. Those are the load-bearing quantitative findings below.
 
 Its own confidence flags — **[UNVERIFIED]** and **[PARTIAL]** — are reproduced verbatim and must not be
 stripped. Several key numbers come from search indexing rather than a direct read of a paywalled source
