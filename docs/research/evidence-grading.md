@@ -384,6 +384,10 @@ neither an argument for nor against — it is the base rate.
 | **NHMRC** | **4** grades (A–D) from a **5-component × 4-rung matrix** | Combined | A recommendation | CBR and practice point, **outside the grades** |
 | **ACSM (NHLBI)** | **4** (A/B/C/D) | No | A recommendation in a position stand | Category D = panel consensus |
 | **Sports nutrition (2023)** | **6** tiers | Two bands (strong / optional) | A source type | Tier 6 = expert opinion |
+| **AHRQ EPC** | **4** (High / Moderate / Low / **Insufficient**) | No | body of evidence | **"Insufficient" = we have nothing** |
+| **UpToDate** | **6** (1A/1B/1C/2A/2B/2C) | Combined | A recommendation | 3 evidence tiers only — no "very low" |
+| **theNNT** | **4** colours (green/yellow/red/black) | Combined | A therapy | yellow = "not conclusive… yet" |
+| **NICE** | **0 badges** — 3 verbs (*must* / *offer* / *consider*) | — | A recommendation | encoded in wording |
 | **Send Lab today** | **2** (`kind: 'reference'` or not) | No | A document | n/a |
 
 Range of rung counts in routine clinical use: **3 to 10**, clustering at **4–5**.
@@ -405,14 +409,28 @@ This is the dimension on which the schemes genuinely differ, and the differences
 | **USPSTF** | US Preventive Services Task Force / AHRQ | US federal government work, 17 U.S.C. §105 — **public domain**. AHRQ permits reproduction and redistribution "provided that it is reproduced without any changes", but adds a restriction: the work "may not be reproduced, reprinted, or redistributed for a fee, nor may the work be sold for profit or incorporated into a profit-making venture" (<https://www.uspreventiveservicestaskforce.org/uspstf/recommendation-topics/copyright-notice>). Send Lab is a private single-athlete app with no commercial surface, so the fee restriction is not currently engaged — but it is a live term. |
 | **NHMRC** | Australian NHMRC | Published as a free PDF via MJA; licence not asserted on the document itself. **Unverified.** |
 | **ACC/AHA** | ACC / AHA | Journal-published (*Circulation*, *JACC*); paywalled, publisher copyright. |
+| **AHRQ EPC grades** | AHRQ (US federal) | Public domain, same terms as USPSTF. |
+| **Cochrane Handbook / PLS guidance** | Cochrane Collaboration | "© 2026 The Cochrane Collaboration". Short quotations free for non-commercial use; **reproducing tables/figures or quotations over 5 lines needs a permission form** (granted free with acknowledgement); **commercial reuse — "use in any product with a monetary fee or associated with a product/service" — goes through Wiley Global Permissions**. The PLS guidance PDF itself carries no licence line. |
+| **CONITEC pt-BR GRADE manual** | Brazilian Ministry of Health | **CC BY-ND 3.0** — attribution yes, **derivatives no**. Paraphrasing for a locale file is a derivative; quoting intact is not. |
+| **NICE manual / guidelines** | NICE (via NCBI Bookshelf deposit) | nice.org.uk 403s automated access; Bookshelf deposit is readable. Reuse terms not established. **Unverified.** |
 
-**The two facts most likely to matter to a bilingual app.** First, **OCEBM is CC BY 4.0 and GRADE's
+**The three facts most likely to matter to a bilingual app.** First, **OCEBM is CC BY 4.0 and GRADE's
 handbook text explicitly asks permission before translation** — and a pt-BR locale file containing a
 rendered Portuguese definition of each rung *is* a translation. Second, **the four GRADE rung
 *names* (high/moderate/low/very low certainty) are used freely, unlicensed, across the entire
 literature** including by third parties who never asked; what the handbook gates is reproducing or
 translating *the handbook*. Those are different objects and the practical exposure is small, but the
-sentence in the handbook is real and quoted above.
+sentence in the handbook is real and quoted above. Third, and cutting the other way: **there is no
+reuse policy, licence or trademark statement anywhere on `gradeworkinggroup.org` for the GRADE labels
+or the ⨁◯ symbols** — only a bare copyright line. Absence of a permission is not a permission, but it
+is not a prohibition either, and nobody appears to have been asked.
+
+**A public-domain or CC-BY option exists for every part of this.** The OCEBM table (CC BY 4.0), the
+AHRQ EPC grades and USPSTF grades (US public domain), and Meader's 30-item GRADE checklist (CC BY,
+§6.2) can all be reproduced *and translated* with attribution and no permission sought. The restrictive
+set is SORT (written permission required), the CONITEC pt-BR manual (**no derivatives**), Cochrane's
+tables and guidance (permission form; Wiley for anything commercial), and the GRADE handbook text (ask
+the editors).
 
 **On calling it GRADE.** The working group's criteria document (approved by the Guidance Group March
 2016) lists what must hold before you say you used GRADE. Abridged, verbatim:
@@ -729,6 +747,17 @@ still presupposes *an effect estimate from a body of evidence*. A claim with no 
 no GRADE rating at all, not a rating of Very low. **This is the single most important structural fact
 in this section for a scale that must be able to say "no evidence — our judgment".**
 
+**AHRQ solved this by renaming the bottom rung.** The Effective Health Care Program's strength-of-
+evidence grades (Berkman ND, Lohr KN, Ansari M, et al., *Grading the Strength of a Body of Evidence…:
+An Update*, AHRQ Methods Guide 2013, <https://www.ncbi.nlm.nih.gov/books/NBK174881/>) are **High /
+Moderate / Low / Insufficient** — not *Very low*. Verbatim: **Insufficient** — "Evidence either does
+not permit a conclusion or does not permit a conclusion about an effect. Further research is needed."
+Their other three are future-research-framed: High "Further research is very unlikely to change our
+confidence in the estimate of effect"; Moderate "Further research **may** change…"; Low "Further
+research is **likely** to change…". **This is the only surveyed scheme whose bottom rung means *we have
+nothing*, which is precisely the state #29 requires to be sayable.** It is a US federal government work
+and therefore public domain.
+
 **What GRADE does instead: expert *evidence* vs expert *opinion*.** Schünemann HJ, Zhang Y, Oxman AD,
 "Distinguishing opinion from evidence in guidelines", *BMJ* 2019;366:l4606, doi:10.1136/bmj.l4606
 (<https://www.ilcor.org/uploads/Tools-GRADE-guidelines-Expert-Opinion-vs-Guidelines.pdf>). The
@@ -941,11 +970,24 @@ i.e. a symbol that *encodes how much*, not a symbol that merely *labels a tier*.
 
 ### 7.2 GRADE's own answer is not a badge — it is the verb
 
-The GRADE Working Group's guidance on communicating certainty is **GRADE guidelines 26** (Santesso N,
-et al., *J Clin Epidemiol* 2020;119:126–135, <https://pubmed.ncbi.nlm.nih.gov/31711912/>). Its
-mechanism is **hedging the main verb of the sentence**, crossed with effect size. Reproduced from the
-AHRQ methods chapter that carries the templates
-(<https://www.ncbi.nlm.nih.gov/books/NBK563880/>):
+The GRADE Working Group's guidance on communicating certainty is **GRADE guidelines 26** — Santesso N,
+Glenton C, Dahm P, et al., "Informative statements to communicate the findings of systematic reviews of
+interventions", *J Clin Epidemiol* 2020;119:126–135, doi:10.1016/j.jclinepi.2019.10.014, PMID 31711912
+(<https://pubmed.ncbi.nlm.nih.gov/31711912/>; **full text 403 from every route — the matrix below comes
+from the Cochrane Handbook's and AHRQ's verbatim reproductions**). Its mechanism is **hedging the main
+verb of the sentence**, crossed with effect size.
+
+The paper's own method matters, because it tells you which rungs are fragile. From the abstract,
+verbatim: "We conducted workshops including 80 attendants and a survey of 110 producers and users of
+systematic reviews. We calculated acceptability of statements and **revised the wording of those that
+were unacceptable to ≥40% of participants**… **Statements for low, moderate and high certainty evidence
+were acceptable to >60%.**" The rungs that failed and had to be reworded were the **low and very low**
+ones — the same rungs that fail again in Portuguese (§8.3).
+
+The canonical freely-readable rendition is **Table 15.6.b, "Suggested narrative statements for phrasing
+conclusions"**, in Cochrane Handbook ch. 15
+(<https://www.cochrane.org/authors/handbooks-and-manuals/handbook/current/chapter-15>); AHRQ carries the
+same matrix (<https://www.ncbi.nlm.nih.gov/books/NBK563880/>):
 
 | Certainty | Large effect | Moderate effect | Small but important | Trivial / none |
 | --- | --- | --- | --- | --- |
@@ -963,7 +1005,17 @@ wording finding, arrived at by testing, that any bottom-rung label inherits.
 **NHMRC has the same idea in cruder form:** "Words such as 'must' or 'should' are used when the
 evidence underpinning the recommendation is strong, and words such as 'might' or 'could' are used when
 the evidence body is weaker" (§1.8). **USPSTF has it as a table column** — every grade ships with its
-"Suggestions for practice" sentence (§1.6).
+"Suggestions for practice" sentence (§1.6). **NICE goes furthest and drops the badge entirely** (§7.5).
+
+The same Handbook chapter carries a warning that bears directly on #29's honesty goal, verbatim:
+
+> "A common mistake is to confuse '**no evidence of an effect**' with '**evidence of no effect**'… One
+> way of avoiding errors such as these is to consider the results blinded; that is, consider how the
+> results would be presented and framed in the conclusions if the direction of the results was
+> reversed."
+
+That is the failure mode a "no evidence — our judgment" rung exists to prevent, named by the field, with
+a test attached.
 
 ### 7.3 Cochrane forbids its authors from showing the rung names to lay readers
 
@@ -1293,55 +1345,194 @@ sharpest form: English labels that are byte-identical to stable keys make an ent
 invisible in the base locale. A grade named `high` in code and rendered "High" in en-US is exactly
 that shape. This section reports which schemes' rung names have settled Portuguese and which do not.
 
-### 8.1 GRADE has settled, government-published pt-BR
+### 8.1 GRADE publishes no official translations, and says so
 
-Brazil's Ministry of Health / CONITEC publishes *Sistema GRADE — manual de graduação da qualidade da
-evidência e força de recomendação para tomada de decisão em saúde*
-(<https://www.gov.br/conitec/pt-br/midias/artigos_publicacoes/diretrizes/grade.pdf>). Its stated
-licence is **"Creative Commons Atribuição-SemDerivações 3.0 Não Adaptada"** — CC BY-**ND** 3.0. Note
-the **ND**: attribution is fine, *derivatives are not*. A locale file that paraphrases or shortens
-their definitions would be a derivative; quoting them intact with attribution would not.
+The working group's governing document — *Criteria for applying or using GRADE*
+(<https://www.gradeworkinggroup.org/docs/Criteria_for_using_GRADE_2016-04-05.pdf>) — explicitly hands
+the wording back to the implementer. Verbatim, with the permissive clauses emphasised:
 
-The terms, verbatim from a peer-reviewed Brazilian review (Lemos A. "GRADE: um sistema para graduar
-qualidade de evidência e força da recomendação e as implicações para a prática fisioterapêutica."
-*Fisioter Bras* 2017;18(5):657–66,
+> "3. The overall certainty in the evidence should be assessed for each important outcome using four
+> or three categories (**such as** high, moderate, low and/or very low)…
+> 6. The strength of recommendations should be assessed using two categories… and definitions for each
+> category **such as** strong and weak/conditional … (**although different terminology may be used**)."
+
+The Handbook adds: "GRADE acknowledges that alternative terms or expressions to what GRADE called
+quality of evidence are often appropriate… we interpret and will use the phrases quality of evidence,
+strength of evidence, certainty in evidence or confidence in estimates interchangeably."
+
+**Fact:** `gradeworkinggroup.org` has **no translations page and lists no language versions**, and
+carries no licence or terms of use beyond a bare "© 2004-2026 - The GRADE Working Group". Portuguese
+appears nowhere on it. So there is no canonical pt-BR to adopt — only national adaptations, and they
+disagree with each other. Which is the next three subsections.
+
+### 8.2 Brazil's official terms — and the gender problem inside one government document
+
+**The 2014 manual** (the one that made GRADE official in Brazil): *Diretrizes metodológicas: Sistema
+GRADE — Manual de graduação da qualidade da evidência e força de recomendação para tomada de decisão em
+saúde.* Ministério da Saúde / SCTIE / DECIT, Brasília 2014, 72 pp., ISBN 978-85-334-2186-8
+(<https://www.gov.br/conitec/pt-br/midias/artigos_publicacoes/diretrizes/sistema-grade.pdf>). Licence
+stated on the CONITEC record: **"Creative Commons Atribuição-SemDerivações 3.0 Não Adaptada"** — CC
+BY-**ND** 3.0. The **ND** matters: quoting intact with attribution is fine, paraphrasing or shortening
+for a locale file would be a derivative. Its head noun is **"qualidade da evidência"**, not *certeza*.
+Rungs (feminine, agreeing with *qualidade/evidência*): **Alta · Moderada · Baixa · Muito Baixa**.
+Strength: **Forte | Fraca (condicional)**. *(The PDF's ToUnicode CMap is broken; ~60% of its body text
+extracts as mojibake, so the full definitional table could not be recovered from the 2014 file
+itself.)*
+
+**The 2023 manual** (current): *Diretrizes metodológicas: elaboração de diretrizes clínicas*,
+MS/SECTICS/DGITS/CONITEC, Brasília 2023, 138 pp., ISBN 978-65-5993-480-5
+(<https://www.gov.br/conitec/pt-br/midias/artigos_publicacoes/diretrizes/diretrizes-metodologicas-elaboracao-de-diretrizes-clinicas-2020.pdf>).
+It heads the section **"Certeza da evidência"** but uses both nouns in the same paragraph, verbatim:
+"a **certeza da evidência** é definida como a confiança de que os resultados e as estimativas de efeito
+apresentados em estudos são adequados para dar suporte a uma recomendação clínica… O foco deste
+capítulo é a avaliação da **qualidade da evidência** em diretrizes clínicas."
+
+Its Quadro 10, "Níveis, definição e implicações da certeza da evidência" — note the rungs are
+**masculine** here, agreeing with *nível*:
+
+| Nível | Definição | Implicações |
+| --- | --- | --- |
+| **Alto** | "Há forte confiança de que o verdadeiro efeito esteja próximo do estimado." | "É improvável que trabalhos adicionais modificarão a confiança na estimativa do efeito." |
+| **Moderado** | "Há confiança moderada no efeito estimado." | "Trabalhos futuros poderão modificar a confiança na estimativa de efeito, podendo, inclusive, modificar a estimativa." |
+| **Baixo** | "A confiança no efeito é limitada." | "Trabalhos futuros provavelmente terão um impacto importante em nossa confiança na estimativa de efeito." |
+| **Muito baixo** | "A confiança na estimativa de efeito é bastante limitada." | "Qualquer estimativa de efeito é incerta." |
+
+**But Quadro 12 of the same document** heads its column `Qualidade da evidência` and uses **Alta /
+Moderada / Baixa / Muito baixa**; Quadro 14 (evidence-to-decision) heads `Certeza geral da evidência`
+and again uses the feminine forms.
+
+**This is the single most actionable translation fact in the document.** Both genders appear inside one
+official Ministry of Health manual, determined entirely by which noun the table happens to put in front
+of the adjective. **A rung label stored as a bare adjective string cannot survive that** — in pt-BR the
+rung name is not a name, it is an inflected modifier, and it must either agree with a noun the UI has
+fixed by design (always "certeza", always "nível", always "qualidade") or be stored per-context. English
+has no analogous constraint, so this is exactly the ADR-0003 shape: invisible in the base locale, only
+reproduces in `pt-BR`.
+
+Strength, verbatim, §5.2: "as recomendações de diretrizes podem ser classificadas como **fracas (também
+chamadas de condicionais) ou fortes** e **a favor ou contra** a intervenção." Neither *fraca* nor
+*condicional* ever appears unglossed.
+
+### 8.3 The one study that actually tested GRADE's plain language in Portuguese
+
+**Parahiba SM, Dorneles GP, Stein A, et al. "Informative statements to communicate the findings of
+systematic reviews of interventions: cross-cultural translation of GRADE plain language into Portuguese
+language."** *J Clin Epidemiol* 2025 Nov;187:111923, doi:10.1016/j.jclinepi.2025.111923, PMID 40816437.
+**Paywalled**; abstract verbatim:
+
+> "One of the main challenges was adjusting the terms related to the classification of low and moderate
+> certainty of evidence. **Experts suggested the adoption of 'average' instead 'moderate' for effect
+> size to avoid misleading in Portuguese, as it is also used for the classification of certainty of
+> evidence.** The group proposed to use the term 'average effect' as an alternative to 'moderate
+> effect'. **Low acceptability (< 50%) was found in for some statements of low certainty of evidence.**"
+
+The Portuguese-language conference abstract of the same project is free and sharper (Parahiba SM,
+Araújo CP, Dorneles GP, et al., *J Assist Farm Farmacoecon* 2024;9(s1):67,
+doi:10.22563/2525-7323.2024.v9.s1.p.67, <https://ojs.jaff.org.br/ojs/index.php/jaff/article/view/855>),
+verbatim:
+
+> "a tradução do termo 'may', usado para certeza da evidência baixa, **foi considerada pelos
+> especialistas como certeza moderada**."
+
+> "O sistema GRADE, **adotado oficialmente no Brasil desde 2014**, apresenta uma lacuna importante que
+> reside **na falta de um procedimento sistemático para a tradução e adaptação de seus termos**… Essa
+> ausência pode levar a interpretações divergentes em relação ao proposto originalmente pelo sistema."
+
+Method: two forward translations → synthesis → back-translation → 10 Brazilian GRADE experts →
+pre-test with 150 systematic-review producers and users. A second conference abstract reports the
+agreement statistics (*Epidemiol Serv Saude* 2025;34(suppl 1):210,
+<https://pmc.ncbi.nlm.nih.gov/articles/PMC12806702/>) — 30 phrases, 154 respondents, Gwet's AC1:
+"**moderada a alta concordância (>60%)** … para resultados de RS com **alta e moderada** certeza da
+evidência… Por outro lado, identificou-se **baixa concordância** … **na certeza da evidência baixa**",
+and the root cause: "**termos que são distintos em inglês, mas que compartilham uma tradução semelhante
+em português** quando realizada uma tradução literal."
+
+**Three documented failure modes, from an actual study, on exactly our language pair:**
+
+1. **"may" (the low-certainty hedge) is read as *moderate* certainty by Portuguese-speaking experts.**
+   The rung shifts a step when translated.
+2. **"moderate effect" collides with "moderate certainty"** — one Portuguese word, two orthogonal axes.
+   The proposed fix is **"efeito médio"** for effect size, reserving *moderada* for certainty.
+3. **The low-certainty rung failed to reach 50% acceptability even after formal cross-cultural
+   adaptation.** It is the rung that does not survive the crossing.
+
+Cochrane's own PLS guidance anticipates the general problem, verbatim: "the modifying terms suggested
+(such as 'probably' or 'may') **have different meanings to different people and… can be difficult to
+translate into other languages. For example, 'probably' does not have a unique translation in Chinese,
+and 'may' can be translated in at least 3 different ways in French.** … **If you use qualifiers other
+than 'probably' or 'may', you should use them consistently throughout your summary.**"
+
+### 8.4 "Indirectness" is the domain name with no Portuguese word
+
+The domain we need most (§4) is the one whose *label* does not cross. From a peer-reviewed Brazilian
+review (Lemos A. "GRADE: um sistema para graduar qualidade de evidência e força da recomendação e as
+implicações para a prática fisioterapêutica." *Fisioter Bras* 2017;18(5):657–66,
 <https://docs.bvsalud.org/biblioref/2018/07/908601/grade-um-sistema-para-graduar-qualidade-de-evidencia-e-forca-da_fezpaMt.pdf>):
 
-| Concept | en-US | pt-BR |
+| Domain | en-US | pt-BR |
 | --- | --- | --- |
-| Certainty rungs | High / Moderate / Low / Very low | **alta / moderada / baixa / muito baixa** |
-| Recommendation strength | Strong / Weak | **forte / fraca** |
 | Study limitations | risk of bias | **limitação do estudo** |
 | Inconsistency | inconsistency | **inconsistência** |
 | Imprecision | imprecision | **imprecisão** |
 | **Indirectness** | indirectness | **direcionamento** |
 | Publication bias | publication bias | **viés de publicação** |
 
-**Three of these translate cleanly and one does not.** The four rung names are ordinary Portuguese
-adjectives with no semantic loss — *alta*, *moderada*, *baixa*, *muito baixa* are what a Brazilian
-reader would say unprompted. **Indirectness is the problem.** The Portuguese literature renders it
-**"direcionamento"** — literally *directing* / *targeting* — which does not carry the "in-" negation
-at all, and the paper feels obliged to gloss it: it writes every domain as `direcionamento
-(indirectness)` with the English in parentheses, and then spends a paragraph on the semantics:
+*Direcionamento* means *directing* / *targeting* — it does not carry the "in-" negation at all. The
+paper writes every domain as `direcionamento (indirectness)`, English in parentheses, and then spends a
+paragraph justifying the semantics:
 
 > "É importante destacar a semântica dos termos utilizados. O uso do prefixo latino 'in, im',
 > indicando negação/sentido contrário, mostra que está sendo mensurado o grau de imperfeição dos
 > estudos. Confia-se, portanto, no estudo menos inconsistente, menos impreciso, menos indireto…"
 
-**Fact:** the domain we need most (§4) is the one whose name has no stable Portuguese equivalent, and
-Brazilian authors writing for Brazilian readers still parenthesise the English. Its *definition*
-translates fine — "refere à extensão na qual a população, intervenção e desfecho são similares aos de
-interesse" — it is the one-word label that does not.
+Its *definition* translates fine — "refere à extensão na qual a população, intervenção e desfecho são
+similares aos de interesse" — it is the one-word label that does not. Brazilian authors writing for
+Brazilian readers still parenthesise the English.
 
-### 8.2 Which naming styles are locale-proof, as a property
+### 8.5 What Cochrane's Portuguese corpus actually says
+
+`cochrane.org/pt/evidence/` carries roughly 1,167 Portuguese plain-language summaries and is fetchable.
+The dominant construction is **"evidência de alta / moderada / baixa qualidade"** — *qualidade*, not
+*certeza*. **The phrase "evidência de alta certeza" did not appear on any pt page fetched.** Examples,
+verbatim:
+
+> "há **evidência de alta qualidade** de que… o exercício reduz um pouco a dor… **É improvável que novos
+> estudos modifiquem esses resultados.**" / "**Evidência de baixa qualidade** indica que… **É possível
+> que novos estudos venham modificar esses resultados.**"
+> — *Exercícios para a osteoartrite de quadril*, <https://www.cochrane.org/pt/evidence/CD007912_exercise-effective-therapy-hip-osteoarthritis>
+
+> "**provavelmente reduzem ligeiramente**…" / "**podem ter pouco ou nenhum efeito**…" / "**Temos dúvidas
+> sobre os efeitos**…" / "**Há incertezas sobre** os efeitos…" — and, in the methods line, the doubled
+> noun: "para avaliar a **certeza (qualidade)** da evidência."
+> — *Corticosteroides… sepse*, <https://www.cochrane.org/pt/evidence/CD002243_what-are-benefits-and-harms-corticosteroids-treatment-children-and-adults-sepsis>
+
+The current template in Portuguese uses the confidence framing rather than rung names: "**classificamos
+nossa confiança nas evidências**", "**estamos muito incertos dos resultados**", "**Não estamos
+confiantes nas evidências** porque **não há estudos suficientes para ter certeza dos resultados**"
+(<https://www.cochrane.org/pt/evidence/CD013100_are-antipsychotic-medicines-safe-and-effective-treating-people-who-have-schizophrenia-spectrum>).
+Section headings are questions: `O que queríamos saber?` · `O que nós fizemos?` · `O que nós
+encontramos?` · `Quais são as limitações das evidências?` · `Até que ponto estas evidências estão
+atualizadas?`
+
+Two caveats. The translations are credited to **Cochrane Portugal's** Knowledge Translation Team — i.e.
+pt-PT-leaning translators supplying pt-tagged pages, not pt-BR. And no 2025-vintage pt page could be
+fetched to test whether *certeza* has since displaced *qualidade*.
+
+### 8.6 Which naming styles are locale-proof, as a property
 
 - **Pure ordinals and letters are locale-proof by construction.** OCEBM's "Level 1–5", SORT's "A/B/C",
   SIGN's "1++ … 4", ACC/AHA's "C-EO", NHMRC's "A–D" carry no translatable content in the label itself
   — only in the definition sitting behind it. CEBM even ships official French, Japanese and Polish
   versions of the table (<https://www.cebm.ox.ac.uk/resources/levels-of-evidence/ocebm-levels-of-evidence>),
   which is possible precisely because the numerals do not move.
-- **Adjectival rungs translate but must be translated.** GRADE's four are the easy case; they have a
-  government-published pt-BR rendering already.
+- **Adjectival rungs translate but must be *inflected*, not merely translated.** GRADE's four have a
+  government-published pt-BR rendering — two of them, disagreeing on gender (§8.2). In English a rung
+  name is a constant string; in Portuguese it is a modifier that agrees with whatever noun precedes it.
+  Any adjectival scale needs the head noun fixed by design, or the label stored per-context.
+- **Hedge-words in the prose carry the same risk as the rung names.** §8.3 documents "may" shifting a
+  whole rung in translation and "moderate" colliding with itself across two axes. A verb-hedging design
+  (§7.2) does not escape the translation problem — it relocates it from 4–6 label keys into every
+  claim's prose.
 - **Compound coined terms are the hard case.** "Mechanism-based reasoning", "patient-oriented
   evidence", "Good Practice Point", "practice point", "expert evidence" — none of these has a settled
   Portuguese form, and each would be a coinage we invent and then have to keep stable. SORT's POEM/DOE
@@ -1351,7 +1542,7 @@ interesse" — it is the one-word label that does not.
   locale. ADR-0003's rule points at keying on stable ids either way, so the choice is about what the
   reader sees, not about what is stored.
 
-### 8.3 Practical consequence for the catalogue
+### 8.7 Practical consequence for the catalogue
 
 #29 already flags that the rebuild's catalogues are 534 keys each and that 200 claims × (proposition +
 summary + rationale) × 2 locales "may not survive its own success". Grade rung names are the *cheap*
@@ -1450,15 +1641,41 @@ a proposition-shaped thing — a PICO question, a recommendation, an outcome —
 - **Whether the sub-evidence rungs should be rungs or a separate kind.** §5.2 observation 2 records
   that two schemes place them outside the ladder rather than at its bottom. Which is better for a
   reader on a phone is a design question this document does not answer.
-- **Examine.com's current scheme.** The closest consumer-facing commercial analogue. Its grades page
-  returned HTTP 429 on every attempt, so the current rung set, its calculation and its display are
-  unverified. What is confirmed from indexes: letter grades applied **per intervention–outcome pair**,
-  varying by study population — the per-outcome unit, in a consumer product.
-- **CMAJ 2003 full text.** The letters/numbers/symbols/words paper is the field's explicit treatment of
-  the presentation question and is behind a 403. §7.4 is assembled from its abstract and indexes.
-- **Whether a pt-BR readability metric exists.** §7.5 notes Cochrane's 6th–8th-grade target as a
-  mechanically checkable property. Whether an equivalent measure exists for Brazilian Portuguese, and
-  whether it is comparable, was not investigated.
+- **Consumer supplement/nutrition grading is a hole.** Examine.com is the closest commercial analogue
+  and is **unfetchable — HTTP 429 behind a Vercel JavaScript bot wall** to both WebFetch and curl with a
+  browser user-agent, on every attempt. Its current rung set, calculation and display are unverified;
+  all that is confirmed from indexes is letter grades applied **per intervention–outcome pair**, varying
+  by study population. NIH ODS, Evidently Cochrane, Healthline and Harvard's Nutrition Source were not
+  reached either. **This needs a re-run with browser automation, not plain fetch.**
+- **No known evidence-grading prior art in the training space.** MASS (Monthly Applications in Strength
+  Sport) and Stronger by Science publish research reviews and a meta-analysis master list
+  (<https://www.strongerbyscience.com/master-list/>) but no published per-claim grade or badge was
+  found. Record as "not found", not "confirmed absent".
+- **Icon and numeracy comprehension literature is partial.** Not reached: the Zikmund-Fisher /
+  Fagerlin / Peters icon-array work, health-literacy and numeracy prevalence data (NAAL, PIAAC),
+  star-rating comprehension studies, and Budescu-style tests of whether readers map calibrated
+  hedge-words (§7.9) to their intended probability ranges. §7 leans on Akl 2007 more heavily than is
+  comfortable.
+- **The GRADE-26 paper itself was never read.** 403 from `jclinepi.com`, ScienceDirect and the CDC's
+  restatement. Its wording matrix (§7.2) is reconstructed from the Cochrane Handbook's and the AHRQ
+  chapter's reproductions, both of which cite it as source.
+- **CMAJ 2003 full text.** The letters/numbers/symbols/words paper is behind a 403; §7.4 uses its
+  abstract plus the GRADE Handbook §6.3.2 passage that supersedes it.
+- **Whether Cochrane colours the certainty cell in a live Summary of Findings table.**
+  cochranelibrary.com 403s all automated access. Neither handbook prescribes colour; the working read is
+  monochrome symbol + word, unconfirmed.
+- **Whether NICE and BMJ show grades in their public-facing versions.** NICE "Information for the
+  public" pages and live UpToDate patient pages are 403 / JS-gated. The "no grades shown to patients"
+  finding in §7.6 is strongly indicated from third-party reprints, not confirmed against live pages.
+  BMJ Best Practice is geo-locked and was only readable in pt-BR.
+- **The fourth row of GRADE Handbook Table 6.4** (presumably "Strong against ↓↓ 1") was lost to a page
+  break in extraction.
+- **Whether a pt-BR readability metric exists.** §7.3 records Cochrane's 400–850 words / reading age 11
+  / 20-word-sentence targets as mechanically checkable. Whether an equivalent, comparable measure exists
+  for Brazilian Portuguese was not investigated.
+- **Whether *certeza* has displaced *qualidade* in recent pt Cochrane summaries.** No 2025-vintage pt
+  page could be fetched (§8.5), and the pt corpus is translated by Cochrane **Portugal**, so it is
+  pt-PT-leaning rather than pt-BR.
 - **Nothing in this document is a recommendation.** Where a fact points hard in one direction —
   OCEBM is CC BY and GRADE's handbook is not; bare numbers tested worst with lay readers; the
   climbing literature is eleven trials — that is the fact reported, not a conclusion drawn. The scale
