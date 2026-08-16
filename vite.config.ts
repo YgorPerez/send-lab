@@ -1,26 +1,47 @@
+import { fileURLToPath } from 'node:url';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
-import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
-import { useLocalInlangPlugins } from './scripts/inlang-local-plugins';
+import { serveInlangPluginsLocally } from './scripts/inlang-local-plugins.ts';
 
 // `paraglideVitePlugin` fetches the inlang plugins from a CDN on every dev/build
 // compile. Serve them from `node_modules` instead, so `pnpm dev` and `pnpm build`
 // need no network access and can't emit a stringless bundle when a host is blocked
 // (issue #9). Must run before the plugin below — it patches `fetch` for this
 // process. `pnpm paraglide` installs the same shim for the CLI path.
-useLocalInlangPlugins();
+serveInlangPluginsLocally();
 
 export default defineConfig({
+	resolve: {
+		// Vite does not read tsconfig `paths`, so the alias the domain modules were
+		// written against has to be declared here as well. Kept identical in
+		// `vitest.config.ts`, which cannot load this file (the Start plugin has no
+		// place in a jsdom test run).
+		alias: { $lib: fileURLToPath(new URL('./src/lib', import.meta.url)) },
+	},
 	plugins: [
 		tailwindcss(),
-		sveltekit(),
 		paraglideVitePlugin({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
-			// Pure client-side SPA: persist the user's choice, fall back to the
-			// browser language, then the base locale. No URL/cookie/server strategy.
+			// Client-only SPA (ADR 0006): persist the athlete's choice, fall back to
+			// the browser language, then the base locale. Locale never enters the URL
+			// — a precached shell must be user-independent, and a locale-prefixed
+			// route yields either two shells or a redirect on every cold start.
 			strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
 		}),
+		tanstackStart({
+			// ADR 0006: one `ssr: false` seam, at the root. The app tree never
+			// prerenders; the build emits a root-only, user-independent shell at a
+			// stable path, and that artefact is what the service worker precaches so
+			// an installed app cold-starts without the network.
+			spa: {
+				enabled: true,
+				prerender: { outputPath: '/_shell.html' },
+			},
+		}),
+		react(),
 	],
 });

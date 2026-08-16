@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
+import { test } from 'vitest';
 import * as schema from '../src/lib/server/db/schema';
 import {
 	oauthAccessToken,

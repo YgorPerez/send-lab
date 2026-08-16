@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { adherenceRatio, capByVerdict, pendingExercises } from '../src/lib/readinessPlan';
 
 // Real exercises with known params: maxhang = max-strength (hard), slopdens =

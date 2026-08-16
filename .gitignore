@@ -5,8 +5,8 @@ node_modules/
 .vercel
 .netlify
 .wrangler
-/.svelte-kit
-/build
+/dist
+/.tanstack
 
 # OS / editor
 .DS_Store
@@ -21,12 +21,10 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-.svelte-doctor/*
-# ...except the baseline, which IS versioned: it pins the three reviewed
-# security findings in src/lib/server/oauth.ts (see ADR-0004) so `pnpm doctor`
-# stays green without disabling the rules that found them. svelte-doctor's
-# gitignore sync deliberately preserves negations like this one.
-!.svelte-doctor/baseline.json
+
+# TanStack Router generated route tree. Versioned deliberately — `tsr generate`
+# reproduces it, but committing it keeps a fresh clone type-checking before the
+# first build, exactly as `.svelte-kit/tsconfig.json` used to be regenerated.
 
 # Paraglide JS generated output (reproducible from messages/ + project.inlang/)
 /src/lib/paraglide

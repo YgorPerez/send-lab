@@ -5,7 +5,7 @@
 // 1. Message compilation used to require network access. The plugins in
 //    `project.inlang/settings.json` are CDN URLs the SDK fetches on every compile,
 //    so an offline box, a CI runner without egress, or a filtering proxy broke the
-//    build. `useLocalInlangPlugins()` serves them from `node_modules` instead —
+//    build. `serveInlangPluginsLocally()` serves them from `node_modules` instead —
 //    see scripts/inlang-local-plugins.ts for why interception is the mechanism.
 //
 // 2. An empty compile used to pass silently. When a plugin fails to load,
@@ -27,7 +27,7 @@
 // process. `vite.config.ts` installs the same shim for the dev/build path.
 import { readdirSync, readFileSync } from 'node:fs';
 import { compile } from '@inlang/paraglide-js';
-import { useLocalInlangPlugins } from './inlang-local-plugins';
+import { serveInlangPluginsLocally } from './inlang-local-plugins';
 
 const PROJECT = './project.inlang';
 const OUTDIR = './src/lib/paraglide';
@@ -43,7 +43,7 @@ function fail(problem: string, explanation: string): never {
 	process.exit(1);
 }
 
-const served = useLocalInlangPlugins(`${PROJECT}/settings.json`);
+const served = serveInlangPluginsLocally(`${PROJECT}/settings.json`);
 for (const file of served) console.log(`i inlang plugin served locally: ${file}`);
 
 await compile({ project: PROJECT, outdir: OUTDIR });

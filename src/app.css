@@ -1,6 +1,15 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@plugin 'tailwindcss-motion';
+/* The families below are named in `--font-sans` / `--font-mono` but nothing ever
+   loaded them — SvelteKit's layout imported the fontsource CSS, and that layout
+   is gone. Imported here so the token layer and the actual webfonts stay
+   together. */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/roboto-mono';
+/* `tailwindcss-motion` was dropped by the redesign map (#42): unpublished since
+   2025-06-10 with its Tailwind-4 support issue still open. Enter/exit animation
+   is `tw-animate-css` (~0.3 kB); anything irreducibly JS goes through Motion,
+   inside a named component. */
 
 @custom-variant dark (&:is(.dark *));
 
@@ -97,6 +106,10 @@
 	body {
 		@apply bg-background text-foreground font-sans;
 		-webkit-font-smoothing: antialiased;
+		/* Measured on the athlete's Android device (#54): pull-to-refresh fires a
+		   *real reload* in the installed app, which throws away unsynced work.
+		   Suppressed here rather than per-screen, because every screen scrolls. */
+		overscroll-behavior-y: contain;
 	}
 	@media (prefers-reduced-motion: reduce) {
 		*,
@@ -105,6 +118,17 @@
 			animation-duration: 0.01ms !important;
 			transition-duration: 0.01ms !important;
 			scroll-behavior: auto !important;
+		}
+		/* The rule above looks compliant and is not — it reaches neither the
+		   view-transition pseudo-elements nor WAAPI-driven animations, both of
+		   which this app now uses. Recorded as a live defect by the animation
+		   research (#45); fixed here while view transitions were switched on.
+		   The pseudo-elements live on the root, outside the `*` selector's reach. */
+		::view-transition-group(*),
+		::view-transition-old(*),
+		::view-transition-new(*) {
+			animation-duration: 0.01ms !important;
+			animation-delay: 0s !important;
 		}
 	}
 }

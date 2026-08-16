@@ -1,30 +1,26 @@
 overrides:
-  # esrap 2.2.12 (Svelte's codegen printer) mis-emits TypeScript optional
-  # parameters: `(r?: T)` is printed as an invalid `(r?)`, which crashes
-  # `vite build` with a parse error. Pin to 2.2.11 until the regression is fixed.
-  esrap: 2.2.11
-  # Force every transitive esbuild (incl. the old 0.18.20 inside drizzle-kit's
-  # deprecated @esbuild-kit chain) up to a patched release — clears the
-  # GHSA-67mh-4wv8-2f99 dev-server advisory.
+  # Force every transitive esbuild up to a patched release — clears the
+  # GHSA-67mh-4wv8-2f99 dev-server advisory. Still reached through Vite and
+  # drizzle-kit's deprecated @esbuild-kit chain.
   esbuild: 0.25.12
-  # SvelteKit pins cookie 0.6 (GHSA-pxg6-pf52-xh8x). 0.7.x is API-compatible
-  # (adds stricter character validation) and clears the advisory; staying on
-  # 0.7 rather than 1.x avoids breaking changes on the auth-cookie path.
-  cookie: ^0.7.2
-  # adapter-vercel pulls tar in through @vercel/nft > @mapbox/node-pre-gyp.
-  # Three advisories land on it — GHSA-23hp-3jrh-7fpw (critical, decompression
-  # DoS), plus an infinite loop on negative entry sizes and a parse DoS. 7.5.21
-  # clears all three. Build-time only; no tar on the request path.
-  tar: ^7.5.21
-  # Same @vercel/nft chain, via glob > minimatch. GHSA-3jxr-9vmj-r5cp: quadratic
-  # expansion of consecutive non-expanding `{}` groups. Patched in 5.0.8.
-  brace-expansion: ^5.0.8
   # Reached through the Tailwind/Vite toolchain. 8.5.18 clears the advisory and
   # is a patch bump within postcss 8 — no plugin API change.
   postcss: ^8.5.18
+  #
+  # Four overrides were dropped when SvelteKit left (issue #21, re-derived rather
+  # than carried forward — dead overrides are how they become permanent):
+  #   esrap            patched Svelte's codegen printer; no Svelte here now.
+  #   cookie           lifted SvelteKit's cookie 0.6 pin (GHSA-pxg6-pf52-xh8x).
+  #   tar              @vercel/nft > @mapbox/node-pre-gyp, via adapter-vercel.
+  #   brace-expansion  the same @vercel/nft chain, via glob > minimatch.
+  # If any advisory resurfaces under the new dependency tree, re-add it here with
+  # the chain that reaches it, not because it used to be listed.
+
 allowBuilds:
-  esbuild: true
+  # Still reached through drizzle-kit's toolchain, not by the app at runtime.
   better-sqlite3: true
+  esbuild: true
+
 minimumReleaseAgeExclude:
   - '@fallow-cli/darwin-arm64@2.101.0'
   - '@fallow-cli/darwin-x64@2.101.0'

@@ -1,9 +1,12 @@
 // A partial readiness check, persisted locally per day so navigating away or
 // reloading mid-answer doesn't lose it; it resets automatically on a new day.
-import { browser } from '$app/environment';
 import type { Answers } from '$lib/content';
 import { isoToday } from '$lib/dates';
-import { today } from '$lib/state.svelte';
+import { today } from '$lib/displayDate';
+
+/** The app is client-only (ADR 0006), but the shell prerenders, so guard the
+ *  `localStorage` reads rather than assuming a browser. */
+const browser = typeof window !== 'undefined';
 
 const KEY = 'sendlab:readinessDraft';
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { acwr, probeReadiness, readinessInsights, weekLoad } from '../src/lib/stats';
 
 const DAY = 86_400_000;

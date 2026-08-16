@@ -15,7 +15,7 @@ import type {
 	ProgramDayCfg,
 	ProgramPhase,
 	ProgramTarget,
-} from './state.svelte';
+} from './types';
 
 // Weekday preference per goal — earlier weekdays are kept as training first.
 // Sunday is always the rest day.

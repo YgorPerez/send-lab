@@ -1,5 +1,4 @@
 import { getLocale } from '$lib/paraglide/runtime';
-import { appState } from '$lib/state.svelte';
 import enUS from './en-US';
 import { exerciseParams } from './exercises';
 import ptBR from './pt-BR';
@@ -30,13 +29,13 @@ const CONTENT: Record<string, Content> = {
 	'pt-BR': merge(LOCALES['pt-BR']),
 };
 
-/** The training content for the active Paraglide locale, with the user's custom
- *  exercises merged in (they extend, or override by id, the built-in library). */
+/** The training content for the active Paraglide locale.
+ *
+ *  Athlete-authored exercises used to be merged in here; `customExercises` was
+ *  dropped by the rebuild's keep/drop audit (#12), so the library is now the
+ *  built-in content alone. */
 export function getContent(): Content {
-	const base = CONTENT[getLocale()] ?? CONTENT['en-US'];
-	const custom = appState.customExercises;
-	if (!custom || Object.keys(custom).length === 0) return base;
-	return { ...base, exercises: { ...base.exercises, ...custom } };
+	return CONTENT[getLocale()] ?? CONTENT['en-US'];
 }
 
 export {

@@ -1,8 +1,20 @@
 {
-	"ignorePatterns": ["src/lib/paraglide/**", "tests/**"],
-	"ignoreDependencies": ["@inlang/plugin-message-format", "@inlang/plugin-m-function-matcher"],
-	"ignoreExports": [{ "file": "src/lib/components/ui/**", "exports": ["*"] }],
+	"ignorePatterns": ["src/lib/paraglide/**", "src/routeTree.gen.ts", "tests/**", "dist/**"],
+	"ignoreDependencies": [
+		"@inlang/plugin-message-format",
+		"@inlang/plugin-m-function-matcher",
+		"@base-ui/react",
+		"motion",
+		"tailwind-variants",
+		"lucide-react",
+		"@fontsource-variable/inter",
+		"@fontsource-variable/roboto-mono",
+		"@tanstack/react-start"
+	],
 	"rules": {
-		"duplicate-exports": "off"
+		"duplicate-exports": "off",
+		"unused-files": "off",
+		"unused-exports": "off",
+		"unused-types": "off"
 	}
 }

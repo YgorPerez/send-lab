@@ -5,7 +5,7 @@
 import { getLocale } from '$lib/paraglide/runtime';
 import { exerciseParams } from './content/exercises';
 import { isoDay } from './dates';
-import type { ProbeEntry, ReadinessEntry, WorkoutEntry } from './state.svelte';
+import type { ProbeEntry, ReadinessEntry, WorkoutEntry } from './types';
 
 export type NumField = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe';
 

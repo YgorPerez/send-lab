@@ -3,7 +3,7 @@
 // strength; pairing isometric finger work with near-max hangs roughly doubles
 // the tissue effect (Baar's ~3% → ~6%). Stronger climbers sit nearer their
 // ceiling, so gains compound more slowly. Citations map to ids on the Studies tab.
-import type { Level } from './state.svelte';
+import type { Level } from './types';
 
 /** Base weekly load gain (%) per exercise, with the study that informs it. */
 const PROGRESSION: Record<string, { weeklyPct: number; study: string }> = {

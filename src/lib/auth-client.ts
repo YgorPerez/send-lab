@@ -1,4 +1,7 @@
-import { createAuthClient } from 'better-auth/svelte';
+import { createAuthClient } from 'better-auth/react';
 
-// No baseURL → uses the current origin (works in dev and production).
+/** The browser-side auth client. Same-origin, so no `baseURL` is needed — the
+ *  app is client-only (ADR 0006) and talks to its own `/api/auth/*` routes. */
 export const authClient = createAuthClient();
+
+export const { signIn, signUp, signOut, useSession } = authClient;

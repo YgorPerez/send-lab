@@ -8,15 +8,15 @@
 	"files": {
 		"includes": [
 			"**",
-			"!**/.svelte-kit",
-			"!**/build",
+			"!**/dist",
+			"!**/.output",
+			"!**/.tanstack",
 			"!**/node_modules",
 			"!**/pnpm-lock.yaml",
 			"!**/*.svg",
 			"!**/app.css",
 			"!src/lib/paraglide",
-			"!src/lib/components/ui",
-			"!.svelte-doctor"
+			"!src/routeTree.gen.ts"
 		]
 	},
 	"formatter": {
@@ -33,6 +33,9 @@
 	},
 	"linter": {
 		"enabled": true,
+		"domains": {
+			"react": "recommended"
+		},
 		"rules": {
 			"preset": "recommended",
 			"complexity": {
@@ -47,22 +50,5 @@
 		"formatter": {
 			"quoteStyle": "single"
 		}
-	},
-	"overrides": [
-		{
-			"includes": ["**/*.svelte"],
-			"linter": {
-				"rules": {
-					"correctness": {
-						"noUnusedVariables": "off",
-						"noUnusedImports": "off",
-						"noUnusedFunctionParameters": "off"
-					},
-					"style": {
-						"useImportType": "off"
-					}
-				}
-			}
-		}
-	]
+	}
 }

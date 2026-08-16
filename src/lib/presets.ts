@@ -3,7 +3,7 @@
 // can be applied in one click. Names/descriptions are localized by id.
 import type { Content } from './content/types';
 import { generateProgram } from './programGen';
-import type { Assessment, Focus, Goal, Level, Program } from './state.svelte';
+import type { Assessment, Focus, Goal, Level, Program } from './types';
 
 interface Preset {
 	id: string;

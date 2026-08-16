@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { migrateState } from '../src/lib/migrate';
 
 /** A state document as it arrives from storage: untyped by nature. */

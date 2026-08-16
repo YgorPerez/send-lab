@@ -4,7 +4,7 @@
 import enUS from '$lib/content/en-US';
 import { exerciseParams } from '$lib/content/exercises';
 import { isPlainObject as isObj } from '$lib/objects';
-import type { Program, ProgramTarget } from '$lib/state.svelte';
+import type { Program, ProgramTarget } from '$lib/types';
 
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** Valid day-type ids — what a template's dayKey references (ADR-0002). Read from

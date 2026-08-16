@@ -1,20 +1,10 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { dev } from '$app/environment';
-import { getRequestEvent } from '$app/server';
-import { env } from '$env/dynamic/private';
+import { tanstackStartCookies } from 'better-auth/tanstack-start';
 import { getOrCreateToken } from '$lib/server/apiToken';
 import { db } from '$lib/server/db';
 import * as schema from '$lib/server/db/schema';
-
-// Without a stable secret, better-auth signs session tokens with a generated one
-// that differs per serverless instance / cold start — so every return visit fails
-// validation and bounces to /login. Fail loudly in production instead of silently
-// logging everyone out.
-if (!env.BETTER_AUTH_SECRET && !dev) {
-	throw new Error('BETTER_AUTH_SECRET must be set in production');
-}
+import { env } from '$lib/server/env';
 
 // Tolerate a trailing slash in the configured URL — better-auth wants the bare origin.
 const baseURL = env.BETTER_AUTH_URL?.replace(/\/+$/, '');
@@ -44,5 +34,8 @@ export const auth = betterAuth({
 		'http://localhost:3000',
 		'http://127.0.0.1:3000',
 	],
-	plugins: [sveltekitCookies(getRequestEvent)],
+	// The cookie plugin MUST stay last — better-auth warns at runtime otherwise,
+	// because anything registered after it can mutate a response whose Set-Cookie
+	// header has already been written.
+	plugins: [tanstackStartCookies()],
 });

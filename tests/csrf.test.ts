@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { isAllowedMcpOrigin, isForbiddenCrossSiteForm } from '../src/lib/server/csrf';
 
 const ORIGIN = 'https://send-lab-sable.vercel.app';

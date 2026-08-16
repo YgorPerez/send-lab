@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { isoDay, isoDayOf, isoToday } from '../src/lib/dates';
 
 test('isoDay reads local calendar parts, not UTC', () => {

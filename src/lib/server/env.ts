@@ -1,0 +1,34 @@
+// Typed, validated server environment.
+//
+// SvelteKit gave us `$env/static/private`, which failed the build on a missing
+// variable. TanStack Start has no equivalent, and a dynamic `import.meta.env`
+// lookup silently escapes inlining rather than failing — so nothing catches a
+// misconfiguration for us any more. This module is that check, and
+// `pnpm check:env` runs `.env.example` through it so a renamed or dropped
+// variable fails the gate rather than production.
+import { createEnv } from '@t3-oss/env-core';
+import { z } from 'zod';
+
+export const env = createEnv({
+	server: {
+		// Without a stable secret, better-auth signs session tokens with a generated
+		// one that differs per serverless instance / cold start — so every return
+		// visit fails validation and bounces to /login. Required in production;
+		// optional in dev, where better-auth's generated secret is harmless.
+		BETTER_AUTH_SECRET: z.string().min(1).optional(),
+		// The trusted origin for auth cookies. Must match the real origin.
+		BETTER_AUTH_URL: z.url().optional(),
+		// Turso (libSQL). Both unset locally → `file:local.db`.
+		TURSO_DATABASE_URL: z.string().optional(),
+		TURSO_AUTH_TOKEN: z.string().optional(),
+	},
+	runtimeEnv: process.env,
+	emptyStringAsUndefined: true,
+});
+
+/** True in `vite dev` / `vitest`, false in a production build. */
+export const dev = process.env.NODE_ENV !== 'production';
+
+if (!env.BETTER_AUTH_SECRET && !dev) {
+	throw new Error('BETTER_AUTH_SECRET must be set in production');
+}

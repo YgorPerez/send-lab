@@ -1,6 +1,6 @@
 import { createClient } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
-import { env } from '$env/dynamic/private';
+import { env } from '$lib/server/env';
 import * as schema from './schema';
 
 // libSQL (Turso) — SQLite-compatible. Locally falls back to a file DB; in

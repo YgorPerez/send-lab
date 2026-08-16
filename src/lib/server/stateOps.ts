@@ -2,7 +2,6 @@
 // lets a user's own AI read and rewrite any part of their account, so every write
 // is run through sanitizeState() — mirroring the client's sanitize()/normalizeProgram()
 // — to guarantee the persisted blob always has the right shape and can't crash the app.
-import { sanitizeCustomExercises } from '$lib/customExercise';
 import { isPlainObject } from '$lib/objects';
 import { defaultProgram } from '$lib/server/programOps';
 
@@ -36,11 +35,14 @@ function defaultState(): Record<string, unknown> {
 		log: [],
 		workouts: [],
 		assessment: null,
-		prefs: { weight: 'kg', length: 'mm', notify: false },
+		// `locale` is account data, not a cookie (ADR 0006): /mcp authenticates by
+		// bearer token and never reads cookies, so localized MCP output cannot come
+		// from anything the browser sets. It is also what carries the athlete's
+		// choice to a second device. Null = follow the device.
+		prefs: { weight: 'kg', length: 'mm', notify: false, locale: null },
 		program: defaultProgram(),
 		savedPrograms: [],
 		rehab: null,
-		customExercises: {},
 		deepLog: [],
 		readinessLog: [],
 		probeLog: [],
@@ -77,7 +79,6 @@ export function sanitizeState(raw: unknown): Record<string, unknown> {
 	out.program = normalizeProgram(raw.program);
 	if (Array.isArray(raw.savedPrograms)) out.savedPrograms = raw.savedPrograms;
 	if (raw.rehab === null || isPlainObject(raw.rehab)) out.rehab = raw.rehab;
-	out.customExercises = sanitizeCustomExercises(raw.customExercises);
 	if (Array.isArray(raw.deepLog)) out.deepLog = raw.deepLog;
 	if (Array.isArray(raw.readinessLog)) out.readinessLog = raw.readinessLog;
 	if (Array.isArray(raw.probeLog)) out.probeLog = raw.probeLog;

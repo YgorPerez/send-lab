@@ -4,10 +4,9 @@
 // Deliberately cautious — not medical advice; the user tunes it in the editor.
 import { type Content, REST_DAY_TYPE } from './content/types';
 import * as m from './paraglide/messages';
-import type { Program, ProgramDayCfg, ProgramTarget } from './state.svelte';
+import type { Program, ProgramDayCfg, ProgramTarget, RehabArea, RehabStage } from './types';
 
-export type RehabArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
-export type RehabStage = 'acute' | 'subacute' | 'returning';
+export type { RehabArea, RehabStage } from './types';
 export const REHAB_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'];
 export const REHAB_STAGES = ['acute', 'subacute', 'returning'];
 

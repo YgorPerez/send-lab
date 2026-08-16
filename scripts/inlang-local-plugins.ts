@@ -84,7 +84,7 @@ function localFileFor(url: string): string {
  * compilation needs no network access. Idempotent, and safe to call from both the
  * compile script and `vite.config.ts` — only the first call patches `fetch`.
  */
-export function useLocalInlangPlugins(settingsPath = 'project.inlang/settings.json'): string[] {
+export function serveInlangPluginsLocally(settingsPath = 'project.inlang/settings.json'): string[] {
 	const settings: Settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
 	const urls = (settings.modules ?? []).filter((m) => m.startsWith('http'));
 
