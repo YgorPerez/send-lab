@@ -5,22 +5,11 @@
 import { isPlainObject } from '$lib/objects';
 import { defaultProgram } from '$lib/server/programOps';
 
-export const METRIC_IDS = [
-	'rfd',
-	'contact',
-	'cf',
-	'pinch',
-	'pull',
-	'maxhang',
-	'density',
-	'boulder',
-	'route',
-	'bodyweight',
-];
-
-function emptyMetrics(): Record<string, unknown[]> {
-	return Object.fromEntries(METRIC_IDS.map((id) => [id, []]));
-}
+// Markers — the athlete's tested performance numbers — are dropped by the
+// rebuild's keep/drop audit (#12), so the ten series that used to live under
+// `metrics` are gone. **Bodyweight is the exception**: it is not a test, nothing
+// is expended taking it, and it is read as the divisor other numbers are
+// expressed against. It survives as its own series (see CONTEXT.md).
 
 /** A complete, valid skeleton — every field the client expects to exist. */
 function defaultState(): Record<string, unknown> {
@@ -31,7 +20,7 @@ function defaultState(): Record<string, unknown> {
 		daySwaps: {},
 		dayExercises: {},
 		taskDone: {},
-		metrics: emptyMetrics(),
+		bodyweight: [],
 		log: [],
 		workouts: [],
 		assessment: null,
@@ -70,7 +59,7 @@ export function sanitizeState(raw: unknown): Record<string, unknown> {
 	for (const k of ['swaps', 'dayPlan', 'daySwaps', 'dayExercises', 'taskDone']) {
 		if (isPlainObject(raw[k])) out[k] = raw[k];
 	}
-	out.metrics = { ...emptyMetrics(), ...(isPlainObject(raw.metrics) ? raw.metrics : {}) };
+	if (Array.isArray(raw.bodyweight)) out.bodyweight = raw.bodyweight;
 	if (Array.isArray(raw.log)) out.log = raw.log;
 	if (Array.isArray(raw.workouts)) out.workouts = raw.workouts;
 	if (raw.assessment === null || isPlainObject(raw.assessment)) out.assessment = raw.assessment;
