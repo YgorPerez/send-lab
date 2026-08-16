@@ -70,9 +70,17 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
   cited, evidence-graded claim. It **supplies** the rebuild map rather than duplicating it: this map
   specifies the model, grades, workflows and page design; the rebuild map builds the pages. Resolve it
   with `/wayfinder https://github.com/YgorPerez/send-lab/issues/29`.
+- **Map: Redesign — a visual identity and a phone-native shell** —
+  [#42](https://github.com/YgorPerez/send-lab/issues/42), with tickets #43–#53 as sub-issues. Charted
+  2026-08-16. The app *"looks generic / unfinished"* and *"is not really a phone app"*; this map decides
+  the visual identity, the navigation architecture for phone and desktop, and the component vocabulary.
+  Like the evidence map it **supplies** the rebuild map: it decides, #11 builds. It closed
+  [#19](https://github.com/YgorPerez/send-lab/issues/19) as superseded and it owns the design of all nine
+  pages, sharing `/studies` with #37 by concern. Resolve it with
+  `/wayfinder https://github.com/YgorPerez/send-lab/issues/42`.
 
-Both maps express blocking as native dependencies, so each frontier is visible in GitHub's own UI without
-opening the map. They are worked independently and may be edited by concurrent sessions.
+All three maps express blocking as native dependencies, so each frontier is visible in GitHub's own UI
+without opening the map. They are worked independently and may be edited by concurrent sessions.
 
 This map was charted as local markdown under `.scratch/` before the repo was configured, and has since been
 migrated. **`.scratch/` is no longer in use as a tracker** — don't reintroduce it, or the two copies will
