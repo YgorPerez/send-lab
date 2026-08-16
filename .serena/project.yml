@@ -149,17 +149,32 @@ added_modes:
 # This points at the repo's own curated docs rather than restating them. Serena's memories are
 # deliberately not versioned here (see .gitignore) so these files stay the single source of truth.
 initial_prompt: |
-  Send Lab: a SvelteKit + TypeScript training console for one climbing athlete. It decides what to
-  train today from how the athlete reports feeling, prescribes the work, records what was actually
-  done, and lets the prescription drift with the evidence. Read these before changing behaviour:
+  Send Lab: a TypeScript training console for one climbing athlete. It decides what to train today
+  from how the athlete reports feeling, prescribes the work, records what was actually done, and lets
+  the prescription drift with the evidence.
+
+  **Check which branch you are on before anything else — the two differ by framework.**
+    - `development`  TanStack Start + React 19. The rebuild. All new work happens here.
+    - `main`         SvelteKit. Still serves production, untouched until the cutover ticket.
+  Anything below marked (main) describes the old app only.
+
+  Read these before changing behaviour:
 
     - CONTEXT.md   the domain glossary, grouped as athlete/account, prescribing, training and
-                   recording, readiness, measuring. It is opinionated about which words to avoid
-                   (an "athlete" is never a user, client or patient), so use its terms exactly.
-    - docs/adr/    three accepted decisions, each recording the trap that produced it:
-                     0001 per-task completion is the source of truth
-                     0002 day types have identity independent of weekdays
+                   recording, readiness, measuring, evidence. It is opinionated about which words to
+                   avoid (an "athlete" is never a user, client or patient; the authenticated identity
+                   is an *account*), so use its terms exactly. Terms carry `_Leaving_` / `_Changing_`
+                   markers where the rebuild drops or alters them — read those before assuming a
+                   concept still exists.
+    - docs/adr/    nine accepted decisions, each recording the trap that produced it. The three that
+                   bite most often:
                      0003 identity is never a display string
+                     0006 the app is client-only, with one server seam and no locale in the URL
+                     0008 offline writes are a queue, not a sync
+                   0005 chose TanStack Start over Next.js; anything written before 2026-08-15 saying
+                   "Next.js" is stale phrasing, not a live decision.
+    - docs/rebuild-reference.md   what the scaffold deleted, what survived, and where to find the
+                   rest (`git show main:<path>`). Also lists the standing gate exceptions to narrow.
 
   The habit those decisions add up to, and the one most likely to bite: the app is bilingual, so a
   user-facing label is locale-dependent and must never be an identifier. Records key on stable ids
@@ -168,20 +183,26 @@ initial_prompt: |
   whole class of bug is invisible in the base locale and only reproduces in `pt-BR`. If you touch
   anything that stores or matches a label, check it in pt-BR.
 
-  Layout and tooling:
-    - src/routes (SvelteKit routes), src/lib (components + logic), src/lib/server (server-only)
+  Layout and tooling (development):
+    - src/routes (TanStack Router file routes, incl. server routes), src/lib (logic),
+      src/lib/server (server-only). `src/routeTree.gen.ts` is generated — run `pnpm routes`.
     - i18n via Paraglide: messages/ + project.inlang are the sources; src/lib/paraglide is GENERATED
-      and gitignored — run `pnpm paraglide` rather than editing it
-    - Drizzle ORM over SQLite; `pnpm db:push` applies schema, local.db is local dev data
-    - `pnpm check` (svelte-check + sync), `pnpm lint` / `lint:fix` (biome), `pnpm doctor`
-      (svelte-doctor), `pnpm fallow` (dead-code sweep)
+      and gitignored — run `pnpm paraglide` rather than editing it. Localized *training content*
+      lives in src/lib/content/{en-US,pt-BR}.ts, which is a separate store from messages/ — both are
+      parity-checked by `pnpm check:i18n`.
+    - Drizzle ORM over libSQL/Turso. Editing schema.ts changes nothing live; there is no migration
+      step in the build, so apply DDL separately or code and database silently diverge.
+    - Server code constructs nothing at module scope: `getAuth()` and `db` are lazy because the build
+      prerenders the shell by executing the server bundle with no credentials. Don't "simplify" them.
+    - `pnpm verify` = lint, lint:hooks, check, check:env, check:i18n, check:routes, doctor, fallow,
+      test. Run `pnpm exec biome check --write .` first — Serena's editors write CRLF on Windows and
+      the repo pins eol=lf, so an edit otherwise fails lint on formatting alone.
 
   Two limits of semantic search here, both measured on this workspace (see README.md):
     - find_referencing_symbols on a symbol exported from a .ts module answers with every file
       importing ANYTHING from that module, not just that symbol — 19 files for one real caller.
       Nothing is missed, so use it as a candidate set to narrow, never as a usage count.
-      References within a single file are exact.
-    - a .svelte component has no referenceable symbol (its only file-level symbol is a File),
+    - (main) a .svelte component has no referenceable symbol (its only file-level symbol is a File),
       so find_referencing_symbols cannot answer "who renders this component" — search the text
       for `<ComponentName` or the import path instead.
 
