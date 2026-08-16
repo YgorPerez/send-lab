@@ -8,8 +8,9 @@
 // That is why `pnpm check:routes` asserts every exported method of every server
 // route goes through this function, and why the gate fails if one does not.
 import { userIdFromBearer } from './apiToken';
-import { auth } from './auth';
+import { getAuth } from './auth';
 import { isForbiddenCrossSiteForm } from './csrf';
+import { assertRuntimeEnv } from './env';
 
 /** The signed-in athlete. Identity is the stable account id, never a display
  *  string (ADR 0003). */
@@ -38,12 +39,17 @@ type AthleteHandler = (ctx: HandlerContext & { athlete: Athlete }) => Response |
  */
 export function withAthlete(handler: AthleteHandler) {
 	return async ({ request }: HandlerContext): Promise<Response> => {
+		// Serving a request is the first moment a missing production secret is a
+		// real problem — asserting at module load would make the prerendered shell
+		// unbuildable without credentials.
+		assertRuntimeEnv();
+
 		const url = new URL(request.url);
 		if (isForbiddenCrossSiteForm(request, url.origin, url.pathname)) {
 			return new Response('Forbidden', { status: 403 });
 		}
 
-		const session = await auth.api.getSession({ headers: request.headers });
+		const session = await getAuth().api.getSession({ headers: request.headers });
 		const userId = session?.user?.id ?? (await userIdFromBearer(request));
 		if (!userId) {
 			return new Response('Unauthorized', { status: 401 });
