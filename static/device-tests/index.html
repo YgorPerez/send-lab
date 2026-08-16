@@ -346,19 +346,52 @@
     'navigator.vibrate               = '+(typeof navigator.vibrate==='function')+'\n'+
     'startViewTransition             = '+(typeof document.startViewTransition==='function'));
 
-  /* ---------- Q4 viewport units ---------- */
-  function units(){
+  /* ---------- Q4 viewport units ----------
+     Measured at load and NEVER overwritten, because a keyboard-open resize would
+     otherwise freeze a misleading snapshot into the exported results. Later
+     measurements are kept separately as a range. */
+  var u0=null, uRange=null;
+  function measure(){
     var d=document.createElement('div');
     d.style.cssText='position:absolute;top:-9999px;left:0;width:1px';
     document.body.appendChild(d);
-    function h(u){ d.style.height='100'+u; return d.getBoundingClientRect().height; }
-    var s=h('svh'), l=h('lvh'), v=h('dvh'), vh=h('vh');
-    d.remove();
-    txt('q4','100svh = '+s.toFixed(1)+'\n100lvh = '+l.toFixed(1)+'\n100dvh = '+v.toFixed(1)+
-      '\n100vh  = '+vh.toFixed(1)+'\ninnerHeight = '+innerHeight+
-      '\n\nall equal: '+((s===l&&l===v)?'YES — dvh is enough':'NO — the three differ, they all matter'));
+    function h(u){ d.style.height='100'+u; return +d.getBoundingClientRect().height.toFixed(1); }
+    var r={s:h('svh'),l:h('lvh'),v:h('dvh'),vh:h('vh'),ih:innerHeight,
+           kb:!!(window.visualViewport && visualViewport.height < innerHeight-80)};
+    d.remove(); return r;
   }
-  units();
+  function renderUnits(){
+    var eq = (u0.s===u0.l && u0.l===u0.v);
+    var lines=[
+      'AT LOAD — keyboard closed, untouched'+(u0.kb?'  (!! keyboard looked open)':''),
+      '  100svh = '+u0.s,
+      '  100lvh = '+u0.l,
+      '  100dvh = '+u0.v,
+      '  100vh  = '+u0.vh,
+      '  innerHeight = '+u0.ih,
+      '',
+      '  all equal: '+(eq?'YES — dvh alone is enough':'NO — they differ by '+
+        (Math.max(u0.s,u0.l,u0.v)-Math.min(u0.s,u0.l,u0.v)).toFixed(1)+'px')
+    ];
+    if(uRange){
+      lines.push('','SINCE LOAD — range seen across '+uRange.n+' resizes',
+        '  svh '+uRange.smin+'–'+uRange.smax+
+        '   lvh '+uRange.lmin+'–'+uRange.lmax+
+        '   dvh '+uRange.vmin+'–'+uRange.vmax,
+        '  (a keyboard opening moves these; the AT LOAD block is the answer)');
+    }
+    txt('q4', lines.join('\n'));
+  }
+  u0=measure(); renderUnits();
+  function trackUnits(){
+    var r=measure();
+    if(!uRange) uRange={n:0,smin:r.s,smax:r.s,lmin:r.l,lmax:r.l,vmin:r.v,vmax:r.v};
+    uRange.n++;
+    uRange.smin=Math.min(uRange.smin,r.s); uRange.smax=Math.max(uRange.smax,r.s);
+    uRange.lmin=Math.min(uRange.lmin,r.l); uRange.lmax=Math.max(uRange.lmax,r.l);
+    uRange.vmin=Math.min(uRange.vmin,r.v); uRange.vmax=Math.max(uRange.vmax,r.v);
+    renderUnits();
+  }
 
   /* ---------- Q8 safe areas ---------- */
   var probe=document.createElement('div');
@@ -374,8 +407,8 @@
       '\norientation '+(innerWidth>innerHeight?'landscape':'portrait'));
   }
   insets();
-  addEventListener('resize',function(){ insets(); units(); });
-  addEventListener('orientationchange',function(){ setTimeout(function(){insets();units();},350); });
+  addEventListener('resize',function(){ insets(); trackUnits(); });
+  addEventListener('orientationchange',function(){ setTimeout(function(){insets();trackUnits();},350); });
 
   /* ---------- Q1 pull to refresh (detect reload) ---------- */
   var loads=0;
