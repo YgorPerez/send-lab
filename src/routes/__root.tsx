@@ -1,6 +1,8 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import appCss from '../app.css?url';
+import { type AppLocale, AppShell } from '../components/AppShell';
+import { getLocale } from '../lib/paraglide/runtime';
 import { installViewTransitionGuards } from '../lib/viewTransition';
 
 export const Route = createRootRoute({
@@ -68,7 +70,31 @@ function RootComponent() {
 		void navigator.serviceWorker.register('/sw.js');
 	}, []);
 
-	return <Outlet />;
+	// The active locale is held here, at the top of the app tree, for one
+	// reason: switching it has to re-render *everything*. Paraglide's `m.*()`
+	// calls read the locale at call time, so a component that does not re-render
+	// keeps rendering the old language. Re-keying the subtree on the locale
+	// forces a remount and makes the switch total rather than partial — and this
+	// prototype is judged in both locales on the same device, so the switch has
+	// to be a control on the screen, not a build flag.
+	//
+	// Read lazily and guarded: the shell is prerendered, and `getLocale()` reads
+	// `localStorage` first under the configured strategy.
+	const [locale, setLocaleState] = useState<AppLocale>(() => {
+		try {
+			return getLocale() as AppLocale;
+		} catch {
+			return 'en-US';
+		}
+	});
+
+	return (
+		<AppShell locale={locale} onLocaleChange={setLocaleState}>
+			<div key={locale}>
+				<Outlet />
+			</div>
+		</AppShell>
+	);
 }
 
 /** Shown while the client-only tree resolves. Deliberately content-free: it is
