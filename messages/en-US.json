@@ -491,7 +491,7 @@
 	"deep_start_rehab": "Start rehab plan",
 	"deep_save": "Save result",
 	"deep_saved": "Self-check saved",
-	"deep_based_on": "Based on {source} — a self-check, not a diagnosis.",
+	"deep_based_on": "{source} — a self-check, not a diagnosis.",
 	"deep_source_link": "View source",
 	"deep_last": "Last: {score}/100 · {date}",
 	"ce_new": "New exercise",

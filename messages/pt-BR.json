@@ -491,7 +491,7 @@
 	"deep_start_rehab": "Iniciar plano de reab.",
 	"deep_save": "Salvar resultado",
 	"deep_saved": "Autoavaliação salva",
-	"deep_based_on": "Baseado em {source} — uma autoavaliação, não um diagnóstico.",
+	"deep_based_on": "{source} — uma autoavaliação, não um diagnóstico.",
 	"deep_source_link": "Ver fonte",
 	"deep_last": "Última: {score}/100 · {date}",
 	"ce_new": "Novo exercício",
