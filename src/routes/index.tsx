@@ -493,6 +493,9 @@ function Today() {
 						</span>
 						<ChevronRight size={15} className="shrink-0 text-ink-faint" />
 					</button>
+					{/* "Based on Modelled on VISA-C…" — pre-existing content bug (the message
+					    prepends "Based on"; the source string already starts with "Modelled
+					    on"). Not this branch's to fix; see the note in InjurySection.tsx. */}
 					<p className="border-t border-line-soft px-3 py-2 text-[10.5px] leading-snug text-ink-faint">
 						{m.deep_based_on({ source: t.deep.assessment.source })}{' '}
 						<a

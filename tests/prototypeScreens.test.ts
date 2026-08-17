@@ -56,5 +56,20 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		// Log: 14 checks + 28 sessions + 8 activity rows.
 		expect(log).toContain(locale === 'en-US' ? 'Green light' : 'Sinal verde');
 		expect(log).toContain(locale === 'en-US' ? 'Max / Tissue' : 'Máx / Tecido');
+
+		// The training library writes emphasis as inline `<b>` — 37 occurrences,
+		// across verdict text, flag advice, prescription cues and the exercise
+		// rationale. The rebuild has nothing that renders them, so a screen that
+		// interpolates one of those strings directly shows the athlete a literal
+		// `<b>` and looks broken for a reason that has nothing to do with design.
+		//
+		// `Prose` tokenises instead of injecting (never `dangerouslySetInnerHTML`
+		// on localized strings). These two assertions are the ones that matter:
+		// nowhere escapes a tag, and somewhere produces a real <b> element.
+		for (const html of [today, train, log]) {
+			expect(html).not.toContain('&lt;b&gt;');
+			expect(html).not.toContain('&lt;/b&gt;');
+		}
+		expect(today).toContain(locale === 'en-US' ? '>7/3 repeaters</b>' : '>repeaters 7/3</b>');
 	});
 }

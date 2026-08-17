@@ -156,6 +156,11 @@ export function DeepCheckSheet({
 							</div>
 						) : null}
 
+						{/* Reads "Based on Modelled on VISA-C…" in both locales. Pre-existing
+						    content bug, not a layout one: `deep_based_on` prepends "Based on"
+						    and `assessment.source` already begins "Modelled on". Left alone
+						    deliberately — the fix belongs in the shared content library that
+						    all four direction branches read, not on one of them. Flagged on #47. */}
 						<p className="mt-3 text-[11px] leading-snug text-ink-faint">
 							{m.deep_based_on({ source: assessment.source })}{' '}
 							<a
