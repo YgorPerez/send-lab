@@ -29,12 +29,16 @@ const fitsVerdict = (exId: string, verdict: VerdictId): boolean =>
 
 /** Split a day's exercise ids into those that fit the verdict and those it holds
  *  back (deferred — they resurface as a catch-up the next training day). */
-export function capByVerdict(
-	exIds: string[],
+// Generic over the id type so a branded `ExerciseId[]` comes back branded. This
+// only ever partitions what it was handed — it never mints an id — so widening
+// the result to `string[]` would force every caller to re-mint identities the
+// function was already holding (`lib/ids.ts`).
+export function capByVerdict<Id extends string>(
+	exIds: readonly Id[],
 	verdict: VerdictId,
-): { keep: string[]; held: string[] } {
-	const keep: string[] = [];
-	const held: string[] = [];
+): { keep: Id[]; held: Id[] } {
+	const keep: Id[] = [];
+	const held: Id[] = [];
 	for (const id of exIds) (fitsVerdict(id, verdict) ? keep : held).push(id);
 	return { keep, held };
 }

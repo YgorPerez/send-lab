@@ -36,11 +36,16 @@ describe('the shared prototype dataset', () => {
 		const pt = withLocale('pt-BR', () => getPrototypeFixtures(NOW));
 
 		// Same app, same data: identities, counts and numbers match exactly.
-		expect(pt.today.tasks.map((t) => t.exId)).toEqual(en.today.tasks.map((t) => t.exId));
+		expect(pt.today.tasks.map((t) => t.key)).toEqual(en.today.tasks.map((t) => t.key));
+		expect(pt.today.tasks.map((t) => t.exerciseId)).toEqual(
+			en.today.tasks.map((t) => t.exerciseId),
+		);
 		expect(pt.today.score).toBe(en.today.score);
 		expect(pt.today.verdictId).toBe(en.today.verdictId);
 		expect(pt.log.sessions.length).toBe(en.log.sessions.length);
-		expect(pt.train.items.map((i) => i.exId)).toEqual(en.train.items.map((i) => i.exId));
+		expect(pt.train.items.map((i) => i.exerciseId)).toEqual(
+			en.train.items.map((i) => i.exerciseId),
+		);
 
 		// …and every visible string actually differs, which is the half that
 		// silently regresses: a missing pt-BR key falls back to English and

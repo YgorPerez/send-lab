@@ -1,6 +1,8 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import appCss from '../app.css?url';
+import { type AppLocale, AppShell } from '../components/AppShell';
+import { getLocale } from '../lib/paraglide/runtime';
 import { installViewTransitionGuards } from '../lib/viewTransition';
 
 export const Route = createRootRoute({
@@ -14,7 +16,10 @@ export const Route = createRootRoute({
 				name: 'viewport',
 				content: 'width=device-width, initial-scale=1, viewport-fit=cover',
 			},
-			{ name: 'theme-color', content: '#0c0d10' },
+			// Matches `--bg` in `app.css`. The two have to move together: this is
+			// what Android paints behind the status bar of the installed app, and a
+			// stale value shows as a seam above the top strip.
+			{ name: 'theme-color', content: '#07080a' },
 			{ title: 'Send Lab' },
 		],
 		links: [
@@ -68,7 +73,29 @@ function RootComponent() {
 		void navigator.serviceWorker.register('/sw.js');
 	}, []);
 
-	return <Outlet />;
+	// The active locale is held here, at the top of the app tree, for one reason:
+	// switching it has to re-render *everything*. Paraglide's `m.*()` calls read
+	// the locale at call time, so a component that does not re-render keeps
+	// rendering the old language. Re-keying the subtree on the locale forces a
+	// remount and makes the switch total rather than partial.
+	//
+	// Read lazily and guarded: the shell prerenders, and `getLocale()` reads
+	// `localStorage` first under the configured strategy.
+	const [locale, setLocale] = useState<AppLocale>(() => {
+		try {
+			return getLocale() as AppLocale;
+		} catch {
+			return 'en-US';
+		}
+	});
+
+	return (
+		<AppShell locale={locale} onLocaleChange={setLocale}>
+			<div key={locale}>
+				<Outlet />
+			</div>
+		</AppShell>
+	);
 }
 
 /** Shown while the client-only tree resolves. Deliberately content-free: it is

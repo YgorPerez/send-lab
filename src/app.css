@@ -13,43 +13,105 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* =========================================================================
+   THE TOKEN LAYER — Direction A, "dense and calm" (#47, picked on #51)
+   =========================================================================
+   #42 reopened the palette; these values are a deliberate revision of the
+   inherited climbing theme, not a fresh start. What changed and why:
+
+   1. THE GROUND IS NEUTRAL NOW. The inherited `--bg: #0c0d10` / `--panel:
+      #15171c` are blue-cast. Under the amount of text this direction puts on
+      one screen, a blue ground tints every neutral grey and makes the teal
+      read as "part of the background" rather than as a signal. The new ramp is
+      hue-free, so the four accents are the only chroma on the screen.
+
+   2. THE PANEL RAMP IS TIGHTER AND HAS ONE MORE STEP. Density needs grouping
+      without a border on every box. `--panel` / `--panel-2` / `--panel-3` are
+      close enough to read as one calm surface and far enough apart to separate
+      a card from an input from a table stripe.
+
+   3. COLOUR IS SEMANTIC, NOT DECORATIVE. `--ok` / `--warn` / `--stop` alias
+      teal / gold / vermilion. Colour only ever reports *state*: kept vs held,
+      in-range vs not, info vs warn vs stop. Nothing is coloured to look nice,
+      and vermilion — the app's signature — is spent only on "at the limit" and
+      on the one primary action per screen.
+
+   The four accent *names* (`--flag`, `--teal`, `--gold`, `--violet`) are
+   load-bearing and kept: the training content stores `var(--flag)` in day and
+   verdict colours and `--violet` in `catVar`, so renaming them would silently
+   blank the day accents (ADR-0003, the same "identity is not a display string"
+   trap one level down).
+   ========================================================================= */
+
 :root {
 	color-scheme: dark;
-	--radius: 0.75rem;
+	/* Tighter than the inherited 0.75rem. At this information density a 12px
+	   corner reads as a bubble; 10px reads as a panel. */
+	--radius: 0.625rem;
 
-	/* ---- climbing palette (raw values) ---- */
-	--bg: #0c0d10;
-	--panel: #15171c;
-	--panel-2: #1c1f26;
-	--line: #2a2e38;
-	--ink: #eef1f5;
-	--ink-dim: #9aa3b0;
-	/* Lifted from #5d6470, which measured 3.26:1 on the ground and 3.01:1 on a
-	   panel — below the WCAG AA floor, and this token carries the small uppercase
-	   labels, which is the least forgiving place to be under it. Found by
-	   `pnpm check:contrast` and reported independently by the athlete as "muito
-	   pouco contraste nas labels".
+	/* ---- neutral ground ----
+	   Revised after the athlete read the prototype: "muito pouco contraste nas
+	   caixas, nas labels". Both halves were true and both are measurable.
 
-	   Only the lightness moved; the hue is untouched. This is a defect fix, not a
-	   design decision: #42 keeps the palette open, and whichever direction wins
-	   brings its own ramp. What it must not do is bring one that fails again. */
-	--ink-faint: #8a919d;
-	--chalk: #e8e4d8; /* climbing chalk */
-	--flag: #ff5a2c; /* signature vermilion — limit/effort */
+	   THE LABELS were the worse half. `--ink-faint` carries every eyebrow and
+	   microlabel on every screen at 9–10px, and it measured **3.73:1** on a
+	   panel — under the 4.5:1 floor, at the size where the floor matters most.
+	   It is now **5.42:1**, and `--ink-dim` came up with it so the two stay a
+	   legible step apart. Every text colour on a panel now clears 4.5:1,
+	   including the vermilion accent, which was itself borderline at 4.2:1.
+
+	   THE BOXES were worse than they looked. A card sat at **1.07:1** against
+	   the ground — a surface you infer from its border rather than see — with
+	   the border only 1.28:1 against the card it drew. The ramp now opens the
+	   card to **1.32:1** and the border to **1.75:1**. Those still read as small
+	   numbers because the contrast formula compresses hard at this end of the
+	   scale; what actually changed is the luminance *difference*, which is about
+	   four times what it was. That is the part the eye sees.
+
+	   Half the fix is not in this file: many of the boxes were deleted outright
+	   rather than made louder (see `Bare` in `components/ui.tsx`), so the ones
+	   that remain are carrying real grouping and can afford to be visible.
+
+	   The floor is not a convention held by hand — `pnpm check:contrast` drives a
+	   browser over the built app in both locales and fails under WCAG AA. */
+	--bg: #07080a;
+	--panel: #232629;
+	--panel-2: #2b2f32;
+	--panel-3: #33373b;
+	--line: #474c51;
+	/* Hairline for rules *inside* a panel, where `--line` is already too loud. */
+	--line-soft: #34383c;
+	--ink: #f1f2f2;
+	--ink-dim: #b6bbc0;
+	--ink-faint: #959ba1;
+	--chalk: #e9e6dc; /* climbing chalk */
+
+	/* ---- accents (names fixed by the content data) ---- */
+	--flag: #ff5a2c; /* signature vermilion — limit / effort / stop */
 	--flag-deep: #c93b14;
 	--teal: #3fd0c9; /* recovery / tissue */
-	--gold: #f4c04e; /* endurance / metabolic */
+	--gold: #e9b445; /* endurance / metabolic */
 	--violet: #9b8cff; /* pull / power */
+
+	/* ---- what the accents *mean* ---- */
+	--ok: var(--teal);
+	--warn: var(--gold);
+	--stop: var(--flag);
 
 	/* ---- shadcn semantic tokens, mapped to the dark climbing theme ---- */
 	--background: var(--bg);
 	--foreground: var(--ink);
 	--card: var(--panel);
 	--card-foreground: var(--ink);
-	--popover: var(--panel-2);
+	--popover: var(--panel-3);
 	--popover-foreground: var(--ink);
 	--primary: var(--flag);
-	--primary-foreground: #ffffff;
+	/* Deliberately the ground, not white. White on `--flag` measures **3.11:1** —
+	   a saturated warm accent bright enough to be a signature is too bright to
+	   carry white text, and the ground gives 6.44:1 and reads as more emphatic
+	   rather than less. Kept here so an ingested shadcn component inherits the
+	   measured answer instead of the default one. */
+	--primary-foreground: var(--bg);
 	--secondary: var(--panel-2);
 	--secondary-foreground: var(--ink);
 	--muted: var(--panel-2);
@@ -93,7 +155,9 @@
 	--color-bg: var(--bg);
 	--color-panel: var(--panel);
 	--color-panel-2: var(--panel-2);
+	--color-panel-3: var(--panel-3);
 	--color-line: var(--line);
+	--color-line-soft: var(--line-soft);
 	--color-ink: var(--ink);
 	--color-ink-dim: var(--ink-dim);
 	--color-ink-faint: var(--ink-faint);
@@ -103,6 +167,9 @@
 	--color-teal: var(--teal);
 	--color-gold: var(--gold);
 	--color-violet: var(--violet);
+	--color-ok: var(--ok);
+	--color-warn: var(--warn);
+	--color-stop: var(--stop);
 
 	--font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 	--font-mono: 'Roboto Mono Variable', 'Roboto Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
@@ -112,32 +179,213 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+	/* Pull-to-refresh fires a *real reload* in the installed app (#54), which
+	   throws away unsynced work.
+
+	   On `html`, not on `body`. It was on `body` and did nothing: the property
+	   propagates to the viewport from the root element only, so a rule on `body`
+	   never reaches the document scroller. Confirmed on the athlete's phone,
+	   which reloaded on a pull with the suppression apparently already in place —
+	   a mechanism present and inert, which is the worst of both.
+
+	   The athlete's own call is that a reload here is not a problem, and today it
+	   is not: nothing on these screens writes. It stops being free once the
+	   offline write queue lands (#24), where a reload mid-session is precisely
+	   the unsynced work that queue exists to protect. */
+	html {
+		overscroll-behavior-y: contain;
+	}
 	body {
 		@apply bg-background text-foreground font-sans;
 		-webkit-font-smoothing: antialiased;
-		/* Measured on the athlete's Android device (#54): pull-to-refresh fires a
-		   *real reload* in the installed app, which throws away unsynced work.
-		   Suppressed here rather than per-screen, because every screen scrolls. */
-		overscroll-behavior-y: contain;
 	}
-	@media (prefers-reduced-motion: reduce) {
-		*,
-		::before,
-		::after {
-			animation-duration: 0.01ms !important;
-			transition-duration: 0.01ms !important;
-			scroll-behavior: auto !important;
-		}
-		/* The rule above looks compliant and is not — it reaches neither the
-		   view-transition pseudo-elements nor WAAPI-driven animations, both of
-		   which this app now uses. Recorded as a live defect by the animation
-		   research (#45); fixed here while view transitions were switched on.
-		   The pseudo-elements live on the root, outside the `*` selector's reach. */
-		::view-transition-group(*),
-		::view-transition-old(*),
-		::view-transition-new(*) {
-			animation-duration: 0.01ms !important;
-			animation-delay: 0s !important;
-		}
+
+	/* ---- numbers ----
+	   Every reading is set in mono and tabular. A column of numbers that jitters
+	   horizontally as the digits change is the fastest way to make a dense screen
+	   feel unquiet, and this app is mostly numbers. */
+	.num {
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: 'tnum' 1;
 	}
+
+	/* ---- the type scale ----
+	   Three ranks, not one. The first pass had a single 10px eyebrow doing both
+	   "this is a section of the screen" and "this labels the field below it", so
+	   every heading on Today weighed the same and the screen read as one long
+	   list — the athlete's "a hierarquia ficou confusa". The ranks differ on
+	   three axes at once (size, weight, colour), because at this density any one
+	   of them alone is too quiet to register.
+
+	   h1  — the screen. 21px, sans, one per screen.
+	   h2  — a section. 11.5px mono caps, semibold, `--ink-dim`.
+	   eyebrow — furniture: a field label, a unit, a meta reading. 10px, faint.
+
+	   They are classes rather than variants because they are typography, not
+	   components: three of the four screens set a rank on a plain `<h1>` or a
+	   `<span>` that has no other reason to exist. */
+	.h-screen-title {
+		font-size: 21px;
+		line-height: 1.15;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: var(--ink);
+	}
+	.h-section {
+		font-family: var(--font-mono);
+		font-size: 11.5px;
+		line-height: 1.2;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink-dim);
+	}
+	.eyebrow {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		line-height: 1.2;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--ink-faint);
+	}
+	/* The eyebrow, one step smaller and tighter, for labels that sit above a
+	   field in a four-column grid. Measured, not chosen: at `.eyebrow`'s 10px /
+	   0.14em, "DESCANSO (S)" and "RÉGUA (MM)" both clip in a 73px column, which
+	   is what a 360px screen leaves after four gutters. */
+	.microlabel {
+		font-family: var(--font-mono);
+		font-size: 9px;
+		line-height: 1.2;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--ink-faint);
+	}
+	/* Inline <b> emphasis inside training prose. Paired with `<Prose>`, which
+	   tokenises the tag rather than injecting it. */
+	.prose-inline b {
+		color: var(--chalk);
+		font-weight: 600;
+	}
+}
+
+/* =========================================================================
+   MOTION
+   =========================================================================
+   Three mechanisms animate this app, and only one of them is reached by the
+   rule everybody writes. What each is, and what "reduced" means for it, is
+   settled here rather than per screen (#53, obligation 8) — this file is the
+   only place that sees all three at once.
+
+   1. CSS TRANSITIONS AND KEYFRAMES, including everything `tw-animate-css`
+      emits and every `transition-*` utility in a component variant.
+   2. THE VIEW TRANSITION PSEUDO-ELEMENTS, which animate every navigation
+      (`defaultViewTransition: true`, #46). They live on the root, *outside*
+      the `*` selector's reach, and the spec does not honour
+      `prefers-reduced-motion` for them (csswg #10267, still open).
+   3. WAAPI, which is what Motion drives. Motion also defaults to
+      `reducedMotion: "never"` — it opts *out* unless told otherwise.
+      Nothing in this app enters Motion today, and `tests/motion.test.ts`
+      keeps it that way until someone routes it through a provider that sets
+      `reducedMotion="user"`. CSS cannot reach a WAAPI animation, so this is
+      the one of the three that a stylesheet cannot fix.
+
+   WHAT "REDUCED" MEANS HERE: every animation and transition finishes inside
+   one frame. Not "movement removed but cross-fades kept" — the tempting
+   version, and the wrong one at this scale. The only animations in the app are
+   a 190ms screen replacement and a 190ms accordion height; a cross-fade
+   shortened to the point of being safe is a hard cut with extra steps, and the
+   distinction buys the athlete nothing while giving the check something
+   ambiguous to measure. `pnpm check:motion` drives a browser with
+   `prefers-reduced-motion: reduce` emulated and asserts nothing outlives its
+   frame — including across a real navigation, which is the only way to catch
+   mechanism 2.
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	::before,
+	::after {
+		animation-duration: 0.01ms !important;
+		animation-delay: 0s !important;
+		/* An infinite animation is not shortened by a short duration — it is made
+		   *faster*. Anything that loops has to be stopped after one pass. */
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		transition-delay: 0s !important;
+		scroll-behavior: auto !important;
+	}
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation-duration: 0.01ms !important;
+		animation-delay: 0s !important;
+	}
+}
+
+/* -------------------------------------------------------------------------
+   Navigation transition.
+
+   `defaultViewTransition: true` animates every navigation (#46). The chrome
+   must not move: measured on the device (#54), a fixed bar survives a view
+   transition intact, so the top strip and the tab bar are lifted out of the
+   root snapshot by name and told to hold still. Only the screen crossfades and
+   rises 6px — small on purpose. A dense screen sliding a long way reads as a
+   page turn; this wants the tab bar to feel like it stayed put and the content
+   under it to have been replaced.
+
+   The corner flicker on the transitioning panel is a known device artefact,
+   not something to design around.
+   ------------------------------------------------------------------------- */
+::view-transition-group(topbar),
+::view-transition-group(tabbar) {
+	animation: none;
+}
+
+::view-transition-old(screen) {
+	animation: 110ms cubic-bezier(0.4, 0, 1, 1) both a-fade-out;
+}
+::view-transition-new(screen) {
+	animation: 190ms cubic-bezier(0, 0, 0.2, 1) both a-rise-in;
+}
+
+@keyframes a-fade-out {
+	to {
+		opacity: 0;
+	}
+}
+@keyframes a-rise-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+}
+
+/* -------------------------------------------------------------------------
+   The accordion panel.
+
+   Owned here rather than taken from `tw-animate-css` (#53, obligation 7).
+   Its accordion animations resolve the panel height from `--radix-`, `--bits-`,
+   `--reka-`, `--kb-` or `--ngp-`, falling back to `auto` — and there is no Base
+   UI variable among them (verified in
+   `node_modules/tw-animate-css/dist/tw-animate-prefix.css`). `auto` does not
+   animate, so the library's accordion classes would open every row with a jump.
+
+   Base UI publishes the panel's natural height as `--accordion-panel-height`,
+   which makes this a plain height transition: no measure-then-animate pass in
+   JS, and nothing to keep in sync when the content inside changes size with the
+   locale — which it does, since pt-BR runs 1.4–2× longer.
+
+   `overflow: hidden` is on the same element as the height, deliberately: on the
+   inner wrapper it would clip nothing during the transition, which is the whole
+   point of having it.
+   ------------------------------------------------------------------------- */
+.a-panel {
+	height: var(--accordion-panel-height);
+	overflow: hidden;
+	transition: height 190ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.a-panel[data-starting-style],
+.a-panel[data-ending-style] {
+	height: 0;
 }

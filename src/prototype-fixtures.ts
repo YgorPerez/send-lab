@@ -57,6 +57,17 @@ import {
 import type { Content, Variant, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
+import {
+	asExerciseId,
+	asWeekdayKey,
+	asWeekId,
+	type ExerciseId,
+	type TaskKey,
+	taskKey,
+	type WeekdayKey,
+	type WeekId,
+	weekdayKeyOf,
+} from '$lib/ids';
 import { getLocale } from '$lib/paraglide/runtime';
 import { capByVerdict } from '$lib/readinessPlan';
 import {
@@ -85,8 +96,9 @@ import { FIXTURE_PROSE } from './prototype-prose';
  *  thin best case. The weekday is fixed rather than read from the clock: a
  *  prototype opened on a Sunday would otherwise render a rest day with nothing
  *  on it, and four directions judged on different days would not compare. */
-const TODAY_WEEKDAY = 'Thu';
+const TODAY_WEEKDAY = asWeekdayKey('Thu');
 const CURRENT_WEEK = 5;
+const CURRENT_WEEK_ID = asWeekId(CURRENT_WEEK);
 const BLOCK_WEEKS = 8;
 
 /** Today's readiness answers. Values are the option values from `content.quiz`,
@@ -145,7 +157,11 @@ export type SetField = 'weight' | 'edge' | 'time' | 'reps' | 'grip' | 'rest' | '
 
 /** One exercise as it appears in today's slot — the unit the athlete ticks off. */
 export interface TaskFixture {
-	exId: string;
+	/** What completion is recorded against (ADR-0001). Unique across slots, which
+	 *  an exercise id alone is not: the same exercise appears in several weekdays
+	 *  of a block, and keying a tick by exercise would tick all of them. */
+	key: TaskKey;
+	exerciseId: ExerciseId;
 	label: string;
 	done: boolean;
 	/** Held back because the verdict caps intensity below what it demands. Held,
@@ -185,8 +201,9 @@ export interface TodayFixture {
 	/** ISO calendar date. The identity; `dateLabel` is for display only. */
 	iso: string;
 	dateLabel: string;
-	weekdayKey: string;
+	weekdayKey: WeekdayKey;
 	weekdayLabel: string;
+	weekId: WeekId;
 	week: number;
 	blockWeeks: number;
 	/** The block phase week 5 falls in, localized. */
@@ -225,7 +242,12 @@ export interface TodayFixture {
 		promptToday: boolean;
 	};
 	/** Yesterday's training day went untrained — offer it again today. */
-	missed: { weekdayKey: string; weekdayLabel: string; exIds: string[]; labels: string[] } | null;
+	missed: {
+		weekdayKey: WeekdayKey;
+		weekdayLabel: string;
+		exerciseIds: ExerciseId[];
+		labels: string[];
+	} | null;
 	/** No rehab block is running; the entry point is still on the screen. */
 	rehab: null;
 	/** The injury self-check reachable from the finger flag, and its last result. */
@@ -237,7 +259,8 @@ export interface TodayFixture {
 }
 
 export interface TrainItemFixture {
-	exId: string;
+	key: TaskKey;
+	exerciseId: ExerciseId;
 	exName: string;
 	cat: string;
 	/** CSS custom-property name driving this exercise's accent, e.g. `--violet`.
@@ -274,12 +297,13 @@ export interface TimerFixture {
 }
 
 export interface TrainFixture {
-	weekdayKey: string;
+	weekdayKey: WeekdayKey;
 	weekdayLabel: string;
+	weekId: WeekId;
 	timer: TimerFixture | null;
 	items: TrainItemFixture[];
 	/** Library exercises not in today's slot, for the add-exercise picker. */
-	available: { exId: string; name: string; cat: string }[];
+	available: { exerciseId: ExerciseId; name: string; cat: string }[];
 	note: string;
 	durationMin: number | null;
 	/** Something is already logged today, so "repeat last session" is spent. */
@@ -303,10 +327,10 @@ export interface LoggedReadinessFixture {
 export interface LoggedSessionFixture {
 	iso: string;
 	dateLabel: string;
-	weekdayKey: string;
+	weekdayKey: WeekdayKey;
 	weekdayLabel: string;
 	dayType: string;
-	exercises: { exId: string; name: string; fields: SetField[]; sets: WorkoutSet[] }[];
+	exercises: { exerciseId: ExerciseId; name: string; fields: SetField[]; sets: WorkoutSet[] }[];
 	note: string;
 	durationMin: number | null;
 	setCount: number;
@@ -336,14 +360,8 @@ export interface PrototypeFixtures {
 // ----------------------------------------------------------------- date helpers
 
 const DAY_MS = 86_400_000;
-const WEEKDAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const isoDaysAgo = (now: number, n: number): string => isoDayOf(now - n * DAY_MS);
-
-const weekdayKeyOf = (iso: string): string => {
-	const [y, m, d] = iso.split('-').map(Number);
-	return WEEKDAY_KEYS[new Date(y, m - 1, d).getDay()];
-};
 
 const timeLabel = (at: number): string =>
 	new Date(at).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
@@ -393,16 +411,22 @@ function loggedSet(spec: Variant, seed: number): WorkoutSet {
 
 /** The day type a weekday runs. Throws rather than falling back: a fixture that
  *  silently rendered an empty day would look like a design decision. */
-function dayOf(content: Content, weekdayKey: string): Content['days'][number] {
+function dayOf(content: Content, weekdayKey: WeekdayKey): Content['days'][number] {
 	const day = content.days.find((d) => d.k === weekdayKey);
 	if (!day) throw new Error(`prototype-fixtures: no day type for weekday ${weekdayKey}`);
 	return day;
 }
 
-/** The exercise ids a day type prescribes, minus the rest placeholder. */
-function exerciseIdsFor(content: Content, weekdayKey: string): string[] {
+/** The exercise ids a day type prescribes, minus the rest placeholder.
+ *
+ *  One of the two places an `ExerciseId` is minted: the day type's `ex` list is
+ *  the exercise library talking about itself, and `content.exercises[id]` is the
+ *  check — an id with no entry never leaves this function. */
+function exerciseIdsFor(content: Content, weekdayKey: WeekdayKey): ExerciseId[] {
 	const day = content.days.find((d) => d.k === weekdayKey);
-	return (day?.ex ?? []).filter((id) => id !== 'rest' && content.exercises[id]);
+	return (day?.ex ?? [])
+		.filter((id) => id !== 'rest' && content.exercises[id])
+		.map((id) => asExerciseId(id));
 }
 
 // ------------------------------------------------------------- account state
@@ -413,11 +437,11 @@ function exerciseIdsFor(content: Content, weekdayKey: string): string[] {
 function resolveMissed(
 	content: Content,
 	now: number,
-): { daysAgo: number; weekdayKey: string; exIds: string[] } {
+): { daysAgo: number; weekdayKey: WeekdayKey; exerciseIds: ExerciseId[] } {
 	for (const daysAgo of [1, 2]) {
 		const weekdayKey = weekdayKeyOf(isoDaysAgo(now, daysAgo));
-		const exIds = exerciseIdsFor(content, weekdayKey);
-		if (exIds.length > 0) return { daysAgo, weekdayKey, exIds };
+		const exerciseIds = exerciseIdsFor(content, weekdayKey);
+		if (exerciseIds.length > 0) return { daysAgo, weekdayKey, exerciseIds };
 	}
 	throw new Error('prototype-fixtures: no untrained day to carry forward');
 }
@@ -471,10 +495,10 @@ function buildHistory(content: Content, now: number, missedDaysAgo: number): Wor
 function buildTodaySession(
 	content: Content,
 	iso: string,
-	exIds: string[],
-	focusExId: string | undefined,
+	exerciseIds: ExerciseId[],
+	focusExId: ExerciseId | undefined,
 ): WorkoutEntry {
-	const exercises = exIds.map((exId) => {
+	const exercises = exerciseIds.map((exId) => {
 		const ex = content.exercises[exId];
 		const spec = ex.variants[0];
 		const sets =
@@ -578,10 +602,10 @@ function buildDeepLog(now: number): DeepEntry[] {
  *  that decides which work today's session is allowed to contain. */
 interface TodayContext {
 	iso: string;
-	exIds: string[];
+	exerciseIds: ExerciseId[];
 	readiness: ReturnType<typeof computeReadiness>;
 	insights: ReturnType<typeof readinessInsights>;
-	missed: { daysAgo: number; weekdayKey: string; exIds: string[] };
+	missed: { daysAgo: number; weekdayKey: WeekdayKey; exerciseIds: ExerciseId[] };
 }
 
 function buildToday(
@@ -589,20 +613,21 @@ function buildToday(
 	state: PrototypeFixtures['state'],
 	ctx: TodayContext,
 ): TodayFixture {
-	const { iso, exIds, readiness, insights } = ctx;
+	const { iso, exerciseIds, readiness, insights } = ctx;
 	const day = dayOf(content, TODAY_WEEKDAY);
-	const heldSet = new Set(capByVerdict(exIds, readiness.verdict).held);
+	const heldSet = new Set(capByVerdict(exerciseIds, readiness.verdict).held);
 
 	const todaySession = state.workouts.find((w) => w.at === iso);
 	const doneIds = new Set(
 		(todaySession?.exercises ?? []).filter((e) => e.sets.some((s) => s.done)).map((e) => e.exId),
 	);
 
-	const tasks: TaskFixture[] = exIds.map((exId) => ({
-		exId,
-		label: content.exercises[exId].name,
-		done: doneIds.has(exId),
-		held: heldSet.has(exId),
+	const tasks: TaskFixture[] = exerciseIds.map((exerciseId) => ({
+		key: taskKey(CURRENT_WEEK_ID, TODAY_WEEKDAY, exerciseId),
+		exerciseId,
+		label: content.exercises[exerciseId].name,
+		done: doneIds.has(exerciseId),
+		held: heldSet.has(exerciseId),
 	}));
 
 	const questions: QuizFixture[] = visibleQuestionsOrdered(TODAY_ANSWERS).map(({ id, sub }) => {
@@ -625,6 +650,7 @@ function buildToday(
 		dateLabel: displayDate(iso),
 		weekdayKey: TODAY_WEEKDAY,
 		weekdayLabel: day.label,
+		weekId: CURRENT_WEEK_ID,
 		week: CURRENT_WEEK,
 		blockWeeks: BLOCK_WEEKS,
 		phase: content.phases[phaseId(CURRENT_WEEK, BLOCK_WEEKS)],
@@ -673,8 +699,8 @@ function buildToday(
 		missed: {
 			weekdayKey: ctx.missed.weekdayKey,
 			weekdayLabel: dayOf(content, ctx.missed.weekdayKey).label,
-			exIds: ctx.missed.exIds,
-			labels: ctx.missed.exIds.map((id) => content.exercises[id].name),
+			exerciseIds: ctx.missed.exerciseIds,
+			labels: ctx.missed.exerciseIds.map((id) => content.exercises[id].name),
 		},
 		rehab: null,
 		deep: {
@@ -689,15 +715,16 @@ function buildTrain(
 	content: Content,
 	state: PrototypeFixtures['state'],
 	iso: string,
-	exIds: string[],
+	exerciseIds: ExerciseId[],
 ): TrainFixture {
 	const session = state.workouts.find((w) => w.at === iso);
 
-	const items: TrainItemFixture[] = exIds.map((exId) => {
-		const ex = content.exercises[exId];
+	const items: TrainItemFixture[] = exerciseIds.map((exerciseId) => {
+		const ex = content.exercises[exerciseId];
 		const spec = ex.variants[0];
 		return {
-			exId,
+			key: taskKey(CURRENT_WEEK_ID, TODAY_WEEKDAY, exerciseId),
+			exerciseId,
 			exName: ex.name,
 			cat: ex.cat,
 			catVar: ex.catVar,
@@ -710,7 +737,7 @@ function buildTrain(
 			})),
 			spec,
 			fields: fieldsFor(spec),
-			sets: session?.exercises.find((e) => e.exId === exId)?.sets ?? [prefilledSet(spec)],
+			sets: session?.exercises.find((e) => e.exId === exerciseId)?.sets ?? [prefilledSet(spec)],
 			timed: spec.workSec != null,
 		};
 	});
@@ -726,7 +753,7 @@ function buildTrain(
 				const setRestSec = mid(s.setRestSec) ?? 0;
 				const prepareSec = s.prepareSec ?? 10;
 				return {
-					key: `${timed.exId}:0`,
+					key: `${timed.exerciseId}:0`,
 					label: timed.exName,
 					prepareSec,
 					workSec,
@@ -743,11 +770,14 @@ function buildTrain(
 	return {
 		weekdayKey: TODAY_WEEKDAY,
 		weekdayLabel: dayOf(content, TODAY_WEEKDAY).label,
+		weekId: CURRENT_WEEK_ID,
 		timer,
 		items,
+		// The second mint point, and the same warrant as `exerciseIdsFor`: these
+		// keys come out of the library itself.
 		available: Object.entries(content.exercises)
-			.filter(([id]) => id !== 'rest' && !exIds.includes(id))
-			.map(([exId, ex]) => ({ exId, name: ex.name, cat: ex.cat })),
+			.filter(([id]) => id !== 'rest' && !exerciseIds.includes(asExerciseId(id)))
+			.map(([id, ex]) => ({ exerciseId: asExerciseId(id), name: ex.name, cat: ex.cat })),
 		note: session?.note ?? '',
 		durationMin: session?.durationMin ?? null,
 		canRepeatLast: false,
@@ -774,15 +804,20 @@ function buildLog(content: Content, state: PrototypeFixtures['state']): LogFixtu
 	}));
 
 	const sessions: LoggedSessionFixture[] = state.workouts.map((w) => {
-		const day = content.days.find((d) => d.k === w.day);
+		// `WorkoutEntry` is still the unbranded entity type from the SvelteKit app
+		// (`lib/types.ts`), so the identities are re-minted on the way out. That
+		// gap closes when #18 rebuilds the store on TanStack DB collections and the
+		// entities can carry branded ids of their own.
+		const weekdayKey = asWeekdayKey(w.day);
+		const day = content.days.find((d) => d.k === weekdayKey);
 		return {
 			iso: w.at,
 			dateLabel: displayDate(w.at),
-			weekdayKey: w.day,
-			weekdayLabel: day?.label ?? w.day,
+			weekdayKey,
+			weekdayLabel: day?.label ?? weekdayKey,
 			dayType: day?.type ?? '',
 			exercises: w.exercises.map((ex) => ({
-				exId: ex.exId,
+				exerciseId: asExerciseId(ex.exId),
 				name: ex.name,
 				fields: fieldsFor(content.exercises[ex.exId]?.variants[0] ?? {}),
 				sets: ex.sets,
@@ -811,7 +846,7 @@ function buildLog(content: Content, state: PrototypeFixtures['state']): LogFixtu
 export function getPrototypeFixtures(now: number = Date.now()): PrototypeFixtures {
 	const content = getContent();
 	const iso = isoDayOf(now);
-	const exIds = exerciseIdsFor(content, TODAY_WEEKDAY);
+	const exerciseIds = exerciseIdsFor(content, TODAY_WEEKDAY);
 	const missed = resolveMissed(content, now);
 
 	// Order matters. The history produces the load signals and the personal
@@ -828,10 +863,10 @@ export function getPrototypeFixtures(now: number = Date.now()): PrototypeFixture
 		monotony: weekLoad(history, now)?.status === 'monotonous' ? ('high' as const) : null,
 	};
 	const readiness = computeReadiness(TODAY_ANSWERS, load, insights);
-	const { keep } = capByVerdict(exIds, readiness.verdict);
+	const { keep } = capByVerdict(exerciseIds, readiness.verdict);
 
 	const state: PrototypeFixtures['state'] = {
-		workouts: [buildTodaySession(content, iso, exIds, keep[0]), ...history],
+		workouts: [buildTodaySession(content, iso, exerciseIds, keep[0]), ...history],
 		readinessLog,
 		bodyweight: buildBodyweight(now),
 		activity: buildActivity(content, now),
@@ -839,8 +874,8 @@ export function getPrototypeFixtures(now: number = Date.now()): PrototypeFixture
 	};
 
 	return {
-		today: buildToday(content, state, { iso, exIds, readiness, insights, missed }),
-		train: buildTrain(content, state, iso, exIds),
+		today: buildToday(content, state, { iso, exerciseIds, readiness, insights, missed }),
+		train: buildTrain(content, state, iso, exerciseIds),
 		log: buildLog(content, state),
 		state,
 	};
