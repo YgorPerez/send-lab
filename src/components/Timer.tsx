@@ -8,7 +8,8 @@
 // It sticks to the top of the Train screen under the app bar, so it stays
 // visible while the athlete scrolls to the set they are logging. That is the
 // whole reason Train needs its own persistent element and Today does not.
-import { ChevronDown, Pause, Play, RotateCcw } from 'lucide-react';
+import { Dialog } from '@base-ui/react/dialog';
+import { ChevronDown, Maximize2, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
 import { cn } from '$lib/utils';
@@ -56,6 +57,233 @@ const FIELDS: { key: keyof Config; label: () => string }[] = [
 
 const totalOf = (c: Config) =>
 	c.prepare + c.sets * c.rounds * (c.work + c.rest) + Math.max(0, c.sets - 1) * c.setRest;
+
+/** How long the phase currently running lasts, for the ring. Idle and done have
+ *  no phase of their own, so they read as a full ring rather than an empty one. */
+const phaseLengthOf = (phase: Phase, c: Config): number => {
+	switch (phase) {
+		case 'prepare':
+			return c.prepare;
+		case 'work':
+			return c.work;
+		case 'rest':
+			return c.rest;
+		case 'setRest':
+			return c.setRest;
+		default:
+			return 0;
+	}
+};
+
+/** The clock face itself: seconds under a minute, `m:ss` over it.
+ *
+ *  A hang is 7–10s and a set rest is 180s, and both are read from across the
+ *  room. Three raw digits of "180" is a worse read at that distance than "3:00",
+ *  and a leading "0:07" is a worse read than "7". */
+function Face({ seconds, className }: { seconds: number; className?: string }) {
+	if (seconds >= 60) return <span className={className}>{clock(seconds)}</span>;
+	return (
+		<span className={className}>
+			{seconds}
+			<span className="text-[0.38em] text-ink-faint">s</span>
+		</span>
+	);
+}
+
+/**
+ * The full-screen clock.
+ *
+ * Asked for directly by the athlete, against Timer Plus: while a hang is
+ * running, the phone is on the floor or clipped to the board and the only thing
+ * that matters is the number. Everything else on Train — the sets, the targets,
+ * the note — is for before and after, so it goes away entirely rather than
+ * shrinking.
+ *
+ * It is a Dialog rather than a `position: fixed` div because the timer lives
+ * inside Train's sticky header, and that header carries `backdrop-blur`: a
+ * `backdrop-filter` ancestor becomes the containing block for fixed descendants,
+ * so a plain overlay would have been trapped inside a 120px-tall strip. The
+ * portal also brings the focus trap and Escape handling for free.
+ */
+function FullScreenClock({
+	open,
+	onOpenChange,
+	label,
+	phase,
+	shown,
+	phaseLength,
+	accent,
+	round,
+	rounds,
+	set,
+	sets,
+	left,
+	running,
+	onToggle,
+	onReset,
+}: {
+	open: boolean;
+	onOpenChange: (v: boolean) => void;
+	label: string | null;
+	phase: Phase;
+	shown: number;
+	phaseLength: number;
+	accent: string;
+	round: number;
+	rounds: number;
+	set: number;
+	sets: number;
+	left: number;
+	running: boolean;
+	onToggle: () => void;
+	onReset: () => void;
+}) {
+	// Keep the screen on while the clock is up and counting. A giant clock that
+	// blanks 30 seconds into a hang is worse than no clock, and this is the one
+	// screen in the app where the athlete is deliberately not touching the phone.
+	// Released on close, on pause, and whenever the tab goes to the background —
+	// the lock is dropped by the browser on visibility change either way, so it
+	// is re-requested when the page comes back.
+	useEffect(() => {
+		if (!open || !running) return;
+		const nav = navigator as Navigator & {
+			wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
+		};
+		if (!nav.wakeLock) return;
+		let sentinel: { release: () => Promise<void> } | null = null;
+		let cancelled = false;
+		const acquire = () => {
+			nav.wakeLock
+				?.request('screen')
+				.then((s) => {
+					if (cancelled) void s.release();
+					else sentinel = s;
+				})
+				// Denied or unsupported. Nothing to do and nothing worth telling the
+				// athlete: the clock still runs, the screen just times out as usual.
+				.catch(() => {});
+		};
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') acquire();
+		};
+		acquire();
+		document.addEventListener('visibilitychange', onVisible);
+		return () => {
+			cancelled = true;
+			document.removeEventListener('visibilitychange', onVisible);
+			void sentinel?.release();
+		};
+	}, [open, running]);
+
+	const phaseLabel = PHASE_LABEL[phase]();
+	// The ring reports the phase you are in, not the whole session: mid-hang the
+	// useful question is "how much of *this* is left", and the session total is
+	// already on the line underneath.
+	const R = 46;
+	const CIRC = 2 * Math.PI * R;
+
+	return (
+		<Dialog.Root open={open} onOpenChange={onOpenChange}>
+			<Dialog.Portal>
+				<Dialog.Popup
+					aria-label={phaseLabel}
+					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
+				>
+					<div className="flex items-start gap-2 px-4 pt-4">
+						<div className="min-w-0 flex-1">
+							<Dialog.Title
+								className="num text-[13px] tracking-wider uppercase"
+								style={{ color: accent }}
+							>
+								{phaseLabel}
+							</Dialog.Title>
+							{label ? <p className="eyebrow mt-1 truncate">{label}</p> : null}
+						</div>
+						<Dialog.Close
+							aria-label={m.btn_close()}
+							className={button({ kind: 'quiet', size: 'md', class: 'size-11 shrink-0 px-0' })}
+						>
+							<X size={18} />
+						</Dialog.Close>
+					</div>
+
+					{/* The clock. Tapping it starts and pauses — the whole point is not
+					    having to find a control with chalky hands — and the buttons
+					    underneath are the tappable equivalent for anyone who does not
+					    discover that, since a gesture is never the only way in. */}
+					<button
+						type="button"
+						onClick={onToggle}
+						aria-label={running ? m.btn_pause() : m.btn_start()}
+						className="relative flex flex-1 flex-col items-center justify-center gap-4 px-4"
+					>
+						<span className="relative flex items-center justify-center">
+							<svg
+								viewBox="0 0 100 100"
+								aria-hidden="true"
+								className="size-[min(78vw,58dvh)] -rotate-90"
+							>
+								<circle cx="50" cy="50" r={R} fill="none" stroke="var(--panel-2)" strokeWidth="3" />
+								<circle
+									cx="50"
+									cy="50"
+									r={R}
+									fill="none"
+									stroke={accent}
+									strokeWidth="3"
+									strokeLinecap="round"
+									strokeDasharray={CIRC}
+									strokeDashoffset={
+										phaseLength > 0 ? CIRC * (1 - Math.max(0, shown) / phaseLength) : 0
+									}
+									style={{ transition: 'stroke-dashoffset 1s linear' }}
+								/>
+							</svg>
+							<Face
+								seconds={shown}
+								className="num absolute text-[min(30vw,22dvh)] leading-none font-bold tabular-nums"
+							/>
+						</span>
+
+						<span className="num flex items-center gap-3 text-[15px] text-ink-dim">
+							<span>{m.timer_round({ n: round, total: rounds })}</span>
+							<span className="text-ink-faint">·</span>
+							<span>
+								{m.timer_sets()} {set}/{sets}
+							</span>
+						</span>
+						<span className="num text-[13px] text-ink-faint">
+							{m.timer_left()} {clock(left)}
+						</span>
+					</button>
+
+					<div className="flex gap-2 px-4 pb-6">
+						<button
+							type="button"
+							onClick={onToggle}
+							className={button({
+								kind: running ? 'quiet' : 'primary',
+								size: 'lg',
+								class: 'h-14 flex-1 text-[17px]',
+							})}
+						>
+							{running ? <Pause size={20} /> : <Play size={20} />}
+							{running ? m.btn_pause() : m.btn_start()}
+						</button>
+						<button
+							type="button"
+							aria-label={m.btn_reset()}
+							onClick={onReset}
+							className={button({ size: 'lg', class: 'h-14 w-14 px-0' })}
+						>
+							<RotateCcw size={20} />
+						</button>
+					</div>
+				</Dialog.Popup>
+			</Dialog.Portal>
+		</Dialog.Root>
+	);
+}
 
 /** Where the session currently is. One object rather than four `useState`s so
  *  the tick is a single pure transition — see `step`. */
@@ -106,6 +334,7 @@ export function Timer({ seed }: { seed: TimerFixture | null }) {
 	const [run, setRun] = useState<Run>(IDLE);
 	const [running, setRunning] = useState(false);
 	const [setupOpen, setSetupOpen] = useState(false);
+	const [fullOpen, setFullOpen] = useState(false);
 	const { phase, remaining, round, set } = run;
 
 	// Re-created when the configuration changes, so a field edited mid-session
@@ -153,9 +382,28 @@ export function Timer({ seed }: { seed: TimerFixture | null }) {
 	const left = Math.max(0, total - elapsed);
 	const shown = phase === 'idle' ? (cfg.prepare > 0 ? cfg.prepare : cfg.work) : remaining;
 	const accent = PHASE_COLOR[phase];
+	const toggle = () => (running ? setRunning(false) : start());
 
 	return (
 		<div className="rounded-lg border border-line bg-panel">
+			<FullScreenClock
+				open={fullOpen}
+				onOpenChange={setFullOpen}
+				label={seed?.label ?? null}
+				phase={phase}
+				shown={shown}
+				phaseLength={phaseLengthOf(phase, cfg)}
+				accent={accent}
+				round={round}
+				rounds={cfg.rounds}
+				set={set}
+				sets={cfg.sets}
+				left={left}
+				running={running}
+				onToggle={toggle}
+				onReset={reset}
+			/>
+
 			<div className="flex items-baseline justify-between gap-2 px-3 pt-2.5">
 				<Eyebrow className="min-w-0 truncate">
 					{m.timer_title()}
@@ -173,10 +421,21 @@ export function Timer({ seed }: { seed: TimerFixture | null }) {
 			</div>
 
 			<div className="flex items-center gap-3 px-3 py-1.5">
-				<div className="num text-[46px] leading-none font-bold" style={{ color: accent }}>
-					{shown}
-					<span className="text-[18px] text-ink-faint">s</span>
-				</div>
+				{/* The inline number is also the way into the full-screen clock. It is
+				    the biggest target on the strip and the thing the athlete is already
+				    looking at, so it does not need a separate control — but the icon
+				    next to it is what makes the affordance discoverable, since a tap
+				    target that looks like text does not read as one. */}
+				<button
+					type="button"
+					onClick={() => setFullOpen(true)}
+					aria-label={m.timer_fullscreen()}
+					className="flex items-center gap-1.5"
+					style={{ color: accent }}
+				>
+					<Face seconds={shown} className="num text-[46px] leading-none font-bold" />
+					<Maximize2 size={13} className="shrink-0 text-ink-faint" />
+				</button>
 				<div className="flex min-w-0 flex-1 flex-col gap-1">
 					<div className="num flex justify-between text-[10px] text-ink-faint">
 						<span>
