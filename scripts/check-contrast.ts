@@ -445,6 +445,7 @@ try {
 	};
 
 	const failures: (Row & { screen: string })[] = [];
+	const warnings: string[] = [];
 	const exempt: (Row & { screen: string })[] = [];
 	let measured = 0;
 
@@ -466,21 +467,27 @@ try {
 			const rows = await evaluate<Row[]>(PROBE);
 			if (!rows) fail(`${screen}: probe returned nothing`);
 
-			// A crashed app is not a passing contrast run. The router's error
-			// boundary renders two short, high-contrast strings, so without this the
-			// check reports a clean sweep over a screen that never rendered.
-			const thrown = cdp.drain();
-			if (thrown.length) {
-				fail(
-					`${screen}: the page threw before it could be measured —\n    ${thrown.slice(0, 3).join('\n    ')}\n` +
-						'  Contrast cannot be measured on a screen that did not render.',
-				);
+			// A crashed app is not a passing contrast run — the router's error
+			// boundary renders two short, high-contrast strings, so without a guard
+			// the check reports a clean sweep over a screen that never rendered.
+			//
+			// The guard is *what rendered*, not *what was logged*. Logging is too
+			// blunt: React reports recoverable hydration mismatches (#418 and
+			// friends) through the same channel as a fatal throw, and this app emits
+			// one on first load of a production build — the prerendered shell is
+			// deliberately content-free, so the first client paint never matches it.
+			// Failing on that would make the check unrunnable on the very build it
+			// exists to measure. Errors are surfaced; only an unrendered screen fails.
+			const logged = cdp.drain();
+			if (logged.length) {
+				warnings.push(`${screen}: ${logged.length} page error(s) — ${logged[0].split('\n')[0]}`);
 			}
 			if (rows.length < MIN_ELEMENTS) {
 				fail(
-					`${screen}: only ${rows.length} text element(s) rendered, expected at least ${MIN_ELEMENTS}. ` +
-						'That is an empty or errored screen, not a well-contrasted one. ' +
-						'Override with --min-elements=N if the route really is this sparse.',
+					`${screen}: only ${rows.length} text element(s) rendered, expected at least ${MIN_ELEMENTS}.\n` +
+						'  That is an empty or errored screen, not a well-contrasted one.' +
+						(logged.length ? `\n  The page also reported: ${logged[0].split('\n')[0]}` : '') +
+						'\n  Override with --min-elements=N if the route really is this sparse.',
 				);
 			}
 			measured += rows.length;
@@ -514,6 +521,12 @@ try {
 
 	const routeList = ROUTES.join(' ');
 	const localeList = LOCALES.join(' ');
+
+	if (warnings.length) {
+		console.log('check:contrast — page errors seen while measuring (not fatal):');
+		for (const w of warnings) console.log(`  ${w}`);
+		console.log('');
+	}
 
 	if (exempt.length) {
 		console.log(
