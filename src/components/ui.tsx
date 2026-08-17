@@ -73,7 +73,14 @@ export const button = tv({
 	base: 'inline-flex items-center justify-center gap-1.5 rounded-md border text-center text-[13px] leading-tight font-medium transition-colors select-none disabled:border-line-soft disabled:bg-transparent disabled:text-ink-faint',
 	variants: {
 		kind: {
-			primary: 'border-flag bg-flag text-white active:bg-flag-deep',
+			// Dark ink on the vermilion, not white. White measured **3.11:1** on
+			// `--flag` — the signature colour is bright enough that white sits under
+			// the floor on it, which is the trap with any saturated warm accent. The
+			// ground colour gives 6.44:1 and, at these sizes, reads as more emphatic
+			// rather than less. Missed entirely by the first version of
+			// `check:contrast`, which resolved a filled button's backdrop from its
+			// parent instead of from the button itself.
+			primary: 'border-flag bg-flag text-bg active:bg-flag-deep',
 			quiet: 'border-line bg-panel-2 text-ink-dim active:bg-panel-3 active:text-ink',
 			bare: 'border-transparent bg-transparent text-ink-faint active:text-ink',
 		},

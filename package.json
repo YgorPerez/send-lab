@@ -23,6 +23,7 @@
 		"check:i18n": "tsx scripts/check-locale-parity.ts",
 		"check:routes": "tsx scripts/check-auth-wrapper.ts",
 		"check:sw": "tsx scripts/check-service-worker.ts",
+		"check:contrast": "tsx scripts/check-contrast.ts",
 		"doctor": "react-doctor --no-telemetry",
 		"fallow": "fallow dead-code",
 		"fallow:health": "fallow health",
