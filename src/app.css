@@ -13,26 +13,68 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIRECTION D — PHYSICAL
+
+   The palette moved, deliberately (#42 reopened it). Four changes, each with a
+   job:
+
+   1. The ground warms and lifts (#0c0d10 → #0e0f11) and the panels warm with
+      it. Blue-black under a saturated orange vibrates; a neutral-warm graphite
+      does not, and this direction leans on orange harder than the prior art did.
+   2. Accents go to full chroma (#ff5a2c → #ff4d17, teal and gold likewise). The
+      screen is read at arm's length, mid-set, in a bright gym. A control's state
+      has to be legible before it is read.
+   3. Every surface gets a **light source**. `--lip` is the 1px highlight along a
+      surface's top edge, `--shade` the hard edge under it. That pair is the whole
+      direction: it is what makes a control look like it protrudes, and what makes
+      pressing it look like it sank.
+   4. Radius up (0.75rem → 1.125rem). Equipment is moulded, not cut.
+
+   `--edge-guard` is not a colour and is the most important token here. See
+   `src/components/Latch.tsx`: it is the horizontal strip along each screen edge
+   that Android's gesture navigation claims for its back gesture, and nothing
+   this app makes draggable may *begin* inside it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
 	color-scheme: dark;
-	--radius: 0.75rem;
+	--radius: 1.125rem;
 
-	/* ---- climbing palette (raw values) ---- */
-	--bg: #0c0d10;
-	--panel: #15171c;
-	--panel-2: #1c1f26;
-	--line: #2a2e38;
-	--ink: #eef1f5;
-	--ink-dim: #9aa3b0;
-	--ink-faint: #5d6470;
-	--chalk: #e8e4d8; /* climbing chalk */
-	--flag: #ff5a2c; /* signature vermilion — limit/effort */
-	--flag-deep: #c93b14;
-	--teal: #3fd0c9; /* recovery / tissue */
-	--gold: #f4c04e; /* endurance / metabolic */
-	--violet: #9b8cff; /* pull / power */
+	/* ---- ground & surfaces ---- */
+	--bg: #0e0f11;
+	--panel: #191b1f;
+	--panel-2: #23262c;
+	--panel-3: #2f333b;
+	--line: #383c45;
+	--ink: #f2f4f7;
+	--ink-dim: #a4adba;
+	--ink-faint: #6b7280;
+	--chalk: #efe9da;
 
-	/* ---- shadcn semantic tokens, mapped to the dark climbing theme ---- */
+	/* ---- accents (full chroma) ---- */
+	--flag: #ff4d17; /* signature vermilion — limit / effort */
+	--flag-deep: #b83208;
+	--teal: #00e0c6; /* recovery / tissue */
+	--gold: #ffc21a; /* endurance / metabolic */
+	--violet: #ab90ff; /* pull / power */
+
+	/* ---- the light source ---- */
+	--lip: rgba(255, 255, 255, 0.11);
+	--lip-strong: rgba(255, 255, 255, 0.2);
+	--shade: rgba(0, 0, 0, 0.62);
+	--cast: rgba(0, 0, 0, 0.55);
+
+	/* ---- the Android gesture-navigation edge strip ----
+	   Android's back gesture is claimed from BOTH screen edges. The system inset
+	   is 20dp at the narrowest sensitivity setting and grows past 40dp at the
+	   widest; the web has no API to read it and no API to opt out
+	   (`systemGestureExclusionRects` is native-only). 44px is the widest
+	   documented setting plus a finger's slop, and it is a *hard floor*: a drag
+	   that starts inside it belongs to the OS, not to this app. */
+	--edge-guard: 44px;
+
+	/* ---- shadcn semantic tokens, mapped to the physical theme ---- */
 	--background: var(--bg);
 	--foreground: var(--ink);
 	--card: var(--panel);
@@ -55,10 +97,10 @@
 }
 
 @theme inline {
-	--radius-sm: calc(var(--radius) - 4px);
-	--radius-md: calc(var(--radius) - 2px);
+	--radius-sm: calc(var(--radius) - 8px);
+	--radius-md: calc(var(--radius) - 4px);
 	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) + 4px);
+	--radius-xl: calc(var(--radius) + 6px);
 
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -84,6 +126,7 @@
 	--color-bg: var(--bg);
 	--color-panel: var(--panel);
 	--color-panel-2: var(--panel-2);
+	--color-panel-3: var(--panel-3);
 	--color-line: var(--line);
 	--color-ink: var(--ink);
 	--color-ink-dim: var(--ink-dim);
@@ -94,6 +137,8 @@
 	--color-teal: var(--teal);
 	--color-gold: var(--gold);
 	--color-violet: var(--violet);
+
+	--spacing-guard: var(--edge-guard);
 
 	--font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 	--font-mono: 'Roboto Mono Variable', 'Roboto Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
@@ -108,8 +153,22 @@
 		-webkit-font-smoothing: antialiased;
 		/* Measured on the athlete's Android device (#54): pull-to-refresh fires a
 		   *real reload* in the installed app, which throws away unsynced work.
-		   Suppressed here rather than per-screen, because every screen scrolls. */
+		   Suppressed here rather than per-screen, because every screen scrolls.
+		   This direction needs it twice over: a sheet dragged down from a scroll
+		   container at rest is exactly the gesture that triggers it. */
 		overscroll-behavior-y: contain;
+	}
+	/* Nothing in this app is text the athlete selects, and a long-press
+	   text-selection on a draggable control fights the drag. Inputs opt back in. */
+	body {
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-tap-highlight-color: transparent;
+	}
+	input,
+	textarea {
+		-webkit-user-select: text;
+		user-select: text;
 	}
 	@media (prefers-reduced-motion: reduce) {
 		*,
@@ -130,5 +189,161 @@
 			animation-duration: 0.01ms !important;
 			animation-delay: 0s !important;
 		}
+	}
+}
+
+/* These are `@utility`, not plain classes in `@layer components`, and the
+   difference is load-bearing. Tailwind only generates variants for utilities it
+   knows about, so a bare `.slab-press` class produces **nothing** when written as
+   `active:slab-press` — the press travel silently does not happen, which on this
+   direction is most of the direction. Registering them as utilities is what makes
+   `active:`, `data-selected:` and friends work on them. */
+
+/* A surface that protrudes. Top lip catches the light, bottom edge is a hard
+   1-2px shade, and a soft cast shadow puts it above the ground. */
+@utility slab {
+	background: linear-gradient(178deg, var(--panel-2) 0%, var(--panel) 62%, var(--panel) 100%);
+	box-shadow:
+		inset 0 1px 0 var(--lip),
+		inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+		0 2px 0 var(--shade),
+		0 10px 22px -12px var(--cast);
+}
+
+/* The same surface, sunk. Used for anything the athlete is meant to put a
+   finger *into* rather than *on*: drag tracks, input wells, the timer face. */
+@utility well {
+	background: linear-gradient(178deg, #0a0b0d 0%, #131519 100%);
+	box-shadow:
+		inset 0 3px 7px rgba(0, 0, 0, 0.75),
+		inset 0 -1px 0 var(--lip);
+}
+
+/* Pressed state for a slab. The travel is real: 2px down, lip off, cast gone. */
+@utility slab-press {
+	transform: translateY(2px);
+	box-shadow:
+		inset 0 2px 6px rgba(0, 0, 0, 0.65),
+		0 0 0 var(--shade);
+}
+
+/* Knurling. On real equipment it marks the part you are meant to grip, and
+   that is the only place it appears here: drag knobs and sheet handles. */
+@utility knurl {
+	background-image: repeating-linear-gradient(
+		66deg,
+		rgba(0, 0, 0, 0.32) 0px,
+		rgba(0, 0, 0, 0.32) 1px,
+		rgba(255, 255, 255, 0.08) 1px,
+		rgba(255, 255, 255, 0.08) 3px
+	);
+}
+
+/* ---- the sheet ----
+   Base UI's Drawer drives the drag through CSS custom properties rather than
+   inline transforms, so the transform below is the component's contract, not
+   decoration: `--drawer-swipe-movement-y` is the live finger offset and
+   `--drawer-swipe-strength` scales the release duration by throw velocity.
+   Written as plain CSS because it is ~30 declarations of pure mechanism.
+
+   A sheet is *never* opened by a swipe up from the bottom edge in this
+   direction. That gesture is Android's home/back gesture, and it wins. It opens
+   from a tap on a 60px control and closes by dragging its own handle down —
+   which starts near the middle of the screen, where nothing is contested. */
+.sheet-backdrop {
+	position: fixed;
+	inset: 0;
+	min-height: 100dvh;
+	z-index: 60;
+	background-color: #000;
+	opacity: calc(0.74 * (1 - var(--drawer-swipe-progress)));
+	transition: opacity 450ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-backdrop[data-starting-style],
+.sheet-backdrop[data-ending-style] {
+	opacity: 0;
+}
+.sheet-backdrop[data-swiping] {
+	transition-duration: 0ms;
+}
+.sheet-backdrop[data-ending-style] {
+	transition-duration: calc(var(--drawer-swipe-strength) * 400ms);
+}
+
+.sheet-viewport {
+	position: fixed;
+	inset: 0;
+	z-index: 61;
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+}
+
+.sheet-popup {
+	--bleed: 3rem;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 34rem;
+	max-height: calc(88dvh + var(--bleed));
+	margin-bottom: calc(-1 * var(--bleed));
+	padding-bottom: var(--bleed);
+	border-top: 1px solid var(--lip-strong);
+	border-top-left-radius: 26px;
+	border-top-right-radius: 26px;
+	background: linear-gradient(180deg, var(--panel-2) 0%, var(--panel) 30%, var(--panel) 100%);
+	color: var(--ink);
+	outline: 0;
+	box-shadow: 0 -14px 40px -10px rgba(0, 0, 0, 0.85);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	transition: transform 450ms cubic-bezier(0.32, 0.72, 0, 1);
+	will-change: transform;
+	transform: translateY(var(--drawer-swipe-movement-y));
+}
+.sheet-popup[data-starting-style],
+.sheet-popup[data-ending-style] {
+	transform: translateY(calc(100% - var(--bleed) + 2px));
+}
+.sheet-popup[data-ending-style] {
+	transition-duration: calc(var(--drawer-swipe-strength) * 400ms);
+}
+.sheet-popup[data-swiping] {
+	user-select: none;
+}
+
+/* ---- view transitions ----
+   The rail is named separately so it is captured as its own group and does not
+   cross-fade with the screen behind it. Measured on the device (#54): a fixed
+   bar survives a transition intact, but the transitioning panel flickers at its
+   corners. That artefact is noted, not designed around. */
+.vt-screen {
+	view-transition-name: screen;
+}
+.vt-rail {
+	view-transition-name: rail;
+}
+
+::view-transition-old(screen) {
+	animation: d-screen-out 180ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+::view-transition-new(screen) {
+	animation: d-screen-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+::view-transition-old(rail),
+::view-transition-new(rail) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+
+@keyframes d-screen-out {
+	to {
+		opacity: 0;
+		transform: scale(0.97) translateY(8px);
+	}
+}
+@keyframes d-screen-in {
+	from {
+		opacity: 0;
+		transform: scale(1.02) translateY(-10px);
 	}
 }

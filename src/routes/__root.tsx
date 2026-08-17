@@ -1,6 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import appCss from '../app.css?url';
+import { AppFrame } from '../components/AppFrame';
 import { installViewTransitionGuards } from '../lib/viewTransition';
 
 export const Route = createRootRoute({
@@ -68,7 +69,16 @@ function RootComponent() {
 		void navigator.serviceWorker.register('/sw.js');
 	}, []);
 
-	return <Outlet />;
+	// The rail is mounted here rather than per screen so it survives navigation:
+	// its indicator springs between tabs instead of re-entering, and it is a
+	// genuinely fixed bar, which #54 measured as the one thing a view transition
+	// leaves alone. It reads the route and the locale and nothing else — no
+	// account data, per ADR 0006.
+	return (
+		<AppFrame>
+			<Outlet />
+		</AppFrame>
+	);
 }
 
 /** Shown while the client-only tree resolves. Deliberately content-free: it is
