@@ -32,7 +32,21 @@ const { count, size, warnings } = await generateSW({
 	runtimeCaching: [],
 	cleanupOutdatedCaches: true,
 	clientsClaim: true,
-	skipWaiting: false,
+	// A new worker activates immediately instead of waiting for every window of
+	// this origin to close.
+	//
+	// `false` is the safer default, and it is why this was set that way: swapping
+	// assets under a running page can 404 a lazily-loaded chunk from the build
+	// that page started on. But on a phone an installed app is backgrounded, not
+	// closed, so "wait until every client goes away" means "never" — and the
+	// athlete judged this prototype on a build three pushes old, seeing none of
+	// the fixes that had been deployed for them. A prototype that cannot reach
+	// the person judging it is worth less than a rare chunk miss.
+	//
+	// A prototype-phase choice, not the update strategy. #27 owns that, and the
+	// answer there is a prompt — "a new version is ready, reload" — which updates
+	// deliberately rather than at either extreme.
+	skipWaiting: true,
 	sourcemap: false,
 });
 
