@@ -20,7 +20,7 @@ import type { WorkoutSet } from '$lib/types';
 import { ExerciseCard, type TrainItemState } from '../components/ExerciseCard';
 import { Picker } from '../components/Picker';
 import { Timer } from '../components/Timer';
-import { button, card, Eyebrow, input, Section } from '../components/ui';
+import { button, Eyebrow, input, Section } from '../components/ui';
 import { getPrototypeFixtures, type SetField } from '../prototype-fixtures';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -146,9 +146,9 @@ function Train() {
 	const doneSets = items.reduce((n, it) => n + it.sets.filter((s) => s.done).length, 0);
 
 	return (
-		<div className="flex flex-col gap-4">
-			<header className="flex items-baseline justify-between gap-2 pt-1">
-				<h1 className="text-[17px] leading-tight font-semibold text-ink">
+		<div className="flex flex-col gap-6">
+			<header className="flex items-baseline justify-between gap-2 pt-1.5">
+				<h1 className="h-screen-title min-w-0">
 					{m.sec_train()} · {fx.train.weekdayLabel}
 				</h1>
 				<span className="num shrink-0 text-[11px] text-ink-faint">
@@ -213,8 +213,13 @@ function Train() {
 				</button>
 			</div>
 
+			{/* The autosave line moved here from under the timer. It reports that the
+			    *session* is saved as it is typed, so it belongs with the session's
+			    own fields — under the timer it read as though it described the
+			    interval configuration, and it was one of the things making the
+			    sticky block taller than the thing it sits above. */}
 			<Section label={m.train_note()}>
-				<div className={card({ pad: 'sm', class: 'flex flex-col gap-2' })}>
+				<div className="flex flex-col gap-2">
 					<input
 						id="session-note"
 						className={input({ align: 'left', class: 'text-[14px]' })}

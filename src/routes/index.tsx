@@ -37,7 +37,18 @@ import { OUTCOME_LABEL, WELLNESS_LABEL } from '../components/format';
 import { DeepCheckSheet, RehabStarter } from '../components/InjurySection';
 import { ReadinessCheck } from '../components/ReadinessCheck';
 import { Sparkline } from '../components/Sparkline';
-import { button, card, chip, Eyebrow, input, Meter, Prose, Section, Stat } from '../components/ui';
+import {
+	Bare,
+	button,
+	card,
+	chip,
+	Eyebrow,
+	input,
+	Meter,
+	Prose,
+	Section,
+	Stat,
+} from '../components/ui';
 import { getPrototypeFixtures, type QuizFixture } from '../prototype-fixtures';
 
 export const Route = createFileRoute('/')({ component: Today });
@@ -122,14 +133,18 @@ function Today() {
 	const bwDelta = bwSeries.length > 1 ? t.bodyweight.latestKg - bwSeries[0].v : 0;
 
 	return (
-		<div className="flex flex-col gap-4">
+		// `gap-7` between sections, not `gap-4`. The screen carries the same eight
+		// things it always did; what changed is that the space between them is now
+		// bigger than the space inside them, which is what makes them read as eight
+		// things rather than as one column of rows.
+		<div className="flex flex-col gap-7">
 			{/* ---- day header. Two lines, no card: the frame for everything below. */}
-			<header className="flex items-baseline justify-between gap-2 pt-1">
+			<header className="flex items-baseline justify-between gap-2 pt-1.5">
 				<div className="min-w-0">
-					<h1 className="text-[17px] leading-tight font-semibold text-ink">
+					<h1 className="h-screen-title">
 						{m.td_today_label()} · {t.weekdayLabel}
 					</h1>
-					<p className="num mt-0.5 truncate text-[11px] text-ink-faint">{t.dateLabel}</p>
+					<p className="num mt-1 truncate text-[11px] text-ink-faint">{t.dateLabel}</p>
 				</div>
 				<span className="num shrink-0 text-[11px] text-ink-faint">
 					{m.week_label({ n: t.week })}
@@ -180,39 +195,43 @@ function Today() {
 					<p className="mt-1.5 text-[10.5px] leading-snug text-ink-faint italic">
 						{t.scoreNote === 'tuned' ? m.rd_note_tuned() : m.rd_note_heuristic()}
 					</p>
-				</div>
-
-				{nextTask ? (
-					<div className="border-t border-line-soft px-3.5 py-2.5 text-[12px] text-ink-faint">
-						{m.td_applies()} <b className="font-semibold text-chalk">{nextTask.label}</b>
-					</div>
-				) : null}
-
-				{/* Post-session outcome: the input that turns the heuristic weighting
-				    into a personal one. */}
-				<div className="border-t border-line-soft px-3.5 py-3">
-					<Eyebrow>{m.rd_outcome_q()}</Eyebrow>
-					<div className="mt-1.5 grid grid-cols-4 gap-1">
-						{[3, 2, 1, 0].map((v) => (
-							<button
-								key={v}
-								type="button"
-								aria-pressed={outcome === v}
-								onClick={() => setOutcome(v)}
-								className={button({
-									kind: 'quiet',
-									class: cn('px-1 text-[12px]', outcome === v && 'border-teal/50 text-teal'),
-								})}
-							>
-								{OUTCOME_LABEL[v]()}
-							</button>
-						))}
-					</div>
-					{outcome != null ? (
-						<p className="mt-1.5 text-[11px] text-teal">{m.rd_outcome_saved()}</p>
+					{/* Was its own rule-separated strip. It is a footnote on the read, so
+					    it now sits inside the read rather than under another hairline. */}
+					{nextTask ? (
+						<p className="mt-2 text-[12px] text-ink-faint">
+							{m.td_applies()} <b className="font-semibold text-chalk">{nextTask.label}</b>
+						</p>
 					) : null}
 				</div>
 			</div>
+
+			{/* Post-session outcome: the input that turns the heuristic weighting into
+			    a personal one.
+
+			    Lifted out of the read card. It was the fifth rule-separated block
+			    inside it, and it is the one thing on this screen that is answered
+			    *after* training — sitting inside the morning's read, under its own
+			    hairline, it read as another part of the verdict. Its own section, its
+			    own heading, no box: the heading is the question. */}
+			<Section label={m.rd_outcome_q()}>
+				<div className="grid grid-cols-4 gap-1">
+					{[3, 2, 1, 0].map((v) => (
+						<button
+							key={v}
+							type="button"
+							aria-pressed={outcome === v}
+							onClick={() => setOutcome(v)}
+							className={button({
+								kind: 'quiet',
+								class: cn('px-1 text-[12px]', outcome === v && 'border-teal/50 text-teal'),
+							})}
+						>
+							{OUTCOME_LABEL[v]()}
+						</button>
+					))}
+				</div>
+				{outcome != null ? <p className="text-[11px] text-teal">{m.rd_outcome_saved()}</p> : null}
+			</Section>
 
 			{/* ---- the plan. */}
 			<Section
@@ -306,12 +325,15 @@ function Today() {
 				</div>
 			</Section>
 
-			{/* ---- counters. One card, three readings, divider-separated. */}
-			<div className={card({ pad: 'sm', class: 'flex divide-x divide-line-soft' })}>
+			{/* ---- counters. Three integers need no box: a rule above them and the
+			     section spacing around them group them perfectly well, and three
+			     bordered boxes for three numbers was the densest-looking and least
+			     dense thing on the screen. */}
+			<Bare className="flex divide-x divide-line-soft">
 				<Stat accent value={t.stats.streak} label={m.stat_streak()} />
 				<Stat value={t.stats.last7} suffix="/7" label={m.stat_week_sessions()} />
 				<Stat value={t.stats.total} label={m.stat_total()} />
-			</div>
+			</Bare>
 
 			{/* ---- the trend. The one chart the rebuild still has data for. */}
 			<Section
@@ -323,7 +345,7 @@ function Today() {
 					</span>
 				}
 			>
-				<div className={card({ pad: 'sm' })}>
+				<div>
 					<Sparkline
 						points={t.trendPoints}
 						baseline={insights.baseline}
@@ -393,7 +415,7 @@ function Today() {
 					</button>
 				}
 			>
-				<div className={card({ pad: 'sm' })}>
+				<div>
 					<div className="flex items-baseline justify-between gap-2 text-[12px] text-ink-faint">
 						<span className="num">
 							{answered}/{questions.length}
@@ -420,7 +442,7 @@ function Today() {
 
 			{/* ---- bodyweight. A nudge, one row, with the series it feeds. */}
 			<Section label={m.field_bodyweight()}>
-				<div className={card({ pad: 'sm' })}>
+				<div>
 					<div className="flex items-center gap-2">
 						<div className="min-w-0 flex-1">
 							<div className="num text-[18px] leading-none font-bold text-chalk">

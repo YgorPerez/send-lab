@@ -49,17 +49,38 @@
 	   corner reads as a bubble; 10px reads as a panel. */
 	--radius: 0.625rem;
 
-	/* ---- neutral ground ---- */
-	--bg: #0d0e0f;
-	--panel: #151617;
-	--panel-2: #1b1d1f;
-	--panel-3: #212325;
-	--line: #292b2e;
+	/* ---- neutral ground ----
+	   Revised after the athlete read the prototype: "muito pouco contraste nas
+	   caixas, nas labels". Both halves were true and both are measurable.
+
+	   THE LABELS were the worse half. `--ink-faint` carries every eyebrow and
+	   microlabel on every screen at 9–10px, and it measured **3.73:1** on a
+	   panel — under the 4.5:1 floor, at the size where the floor matters most.
+	   It is now **5.42:1**, and `--ink-dim` came up with it so the two stay a
+	   legible step apart. Every text colour on a panel now clears 4.5:1,
+	   including the vermilion accent, which was itself borderline at 4.2:1.
+
+	   THE BOXES were worse than they looked. A card sat at **1.07:1** against
+	   the ground — a surface you infer from its border rather than see — with
+	   the border only 1.28:1 against the card it drew. The ramp now opens the
+	   card to **1.32:1** and the border to **1.75:1**. Those still read as small
+	   numbers because the contrast formula compresses hard at this end of the
+	   scale; what actually changed is the luminance *difference*, which is about
+	   four times what it was. That is the part the eye sees.
+
+	   Half the fix is not in this file: many of the boxes were deleted outright
+	   rather than made louder (see `Bare` in `components/ui.tsx`), so the ones
+	   that remain are carrying real grouping and can afford to be visible. */
+	--bg: #07080a;
+	--panel: #232629;
+	--panel-2: #2b2f32;
+	--panel-3: #33373b;
+	--line: #474c51;
 	/* Hairline for rules *inside* a panel, where `--line` is already too loud. */
-	--line-soft: #1f2123;
+	--line-soft: #34383c;
 	--ink: #f1f2f2;
-	--ink-dim: #a2a6aa;
-	--ink-faint: #6d7276;
+	--ink-dim: #b6bbc0;
+	--ink-faint: #959ba1;
 	--chalk: #e9e6dc; /* climbing chalk */
 
 	/* ---- accents (names fixed by the content data) ---- */
@@ -166,9 +187,33 @@
 		font-variant-numeric: tabular-nums;
 		font-feature-settings: 'tnum' 1;
 	}
-	/* Section eyebrow: the one repeated typographic device holding the density
-	   together. Small, faint, uppercase, wide — it reads as furniture, not as
-	   content competing with the numbers. */
+	/* ---- the type scale ----
+	   Three ranks, not one. The first pass had a single 10px eyebrow doing both
+	   "this is a section of the screen" and "this labels the field below it", so
+	   every heading on Today weighed the same and the screen read as one long
+	   list — the athlete's "a hierarquia ficou confusa". The ranks now differ on
+	   three axes at once (size, weight, colour), because at this density any one
+	   of them alone is too quiet to register.
+
+	   h1  — the screen. 21px, sans, one per screen.
+	   h2  — a section. 11.5px mono caps, semibold, `--ink-dim`.
+	   eyebrow — furniture: a field label, a unit, a meta reading. 10px, faint. */
+	.h-screen-title {
+		font-size: 21px;
+		line-height: 1.15;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: var(--ink);
+	}
+	.h-section {
+		font-family: var(--font-mono);
+		font-size: 11.5px;
+		line-height: 1.2;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink-dim);
+	}
 	.eyebrow {
 		font-family: var(--font-mono);
 		font-size: 10px;

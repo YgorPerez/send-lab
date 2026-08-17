@@ -105,7 +105,12 @@ export function Eyebrow({
 	return <div className={cn('eyebrow', className)}>{children}</div>;
 }
 
-/** A screen section: eyebrow, optional right-hand meta, body. */
+/** A screen section: heading, optional right-hand meta, body.
+ *
+ *  The heading is `h-section`, a rank above the eyebrows inside it. The gap
+ *  under it is deliberately larger than the gaps within the body: the athlete
+ *  asked for the hierarchy to be carried by *space* as well as by type, and a
+ *  heading sitting 6px off its content reads as a caption, not as a heading. */
 export function Section({
 	label,
 	meta,
@@ -118,14 +123,26 @@ export function Section({
 	className?: string;
 }) {
 	return (
-		<section className={cn('flex flex-col gap-2', className)}>
+		<section className={cn('flex flex-col gap-2.5', className)}>
 			<header className="flex items-baseline justify-between gap-2">
-				<Eyebrow>{label}</Eyebrow>
+				<h2 className="h-section min-w-0">{label}</h2>
 				{meta ? <div className="eyebrow shrink-0 normal-case">{meta}</div> : null}
 			</header>
 			{children}
 		</section>
 	);
+}
+
+/** A group with no box around it — a rule above, and space.
+ *
+ *  Half the sections on Today were a bordered card holding a handful of rows,
+ *  which is what made the screen read as boxes-inside-boxes ("tirar as coisas
+ *  de caixa, dar mais espaçamento"). A card now has to earn itself: it carries
+ *  state colour, or it holds a list whose rows need a shared edge. Everything
+ *  else groups by a hairline and whitespace, which costs nothing and reads
+ *  quieter at this density. */
+export function Bare({ children, className }: { children: React.ReactNode; className?: string }) {
+	return <div className={cn('border-t border-line-soft pt-3', className)}>{children}</div>;
 }
 
 /** Training prose carries inline `<b>` emphasis. Parsed rather than injected —

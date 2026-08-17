@@ -37,9 +37,9 @@ function Log() {
 	const { readiness, sessions, activity } = fx.log;
 
 	return (
-		<div className="flex flex-col gap-4">
-			<header className="flex items-baseline justify-between gap-2 pt-1">
-				<h1 className="text-[17px] leading-tight font-semibold text-ink">{m.sec_log()}</h1>
+		<div className="flex flex-col gap-7">
+			<header className="flex items-baseline justify-between gap-2 pt-1.5">
+				<h1 className="h-screen-title">{m.sec_log()}</h1>
 				<span className="num shrink-0 text-[11px] text-ink-faint">
 					{sessions.length} · {readiness.length}
 				</span>

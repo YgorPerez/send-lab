@@ -282,6 +282,7 @@
 	"timer_setrest": "Set rest",
 	"timer_done": "Done",
 	"timer_ready": "Ready",
+	"timer_setup": "Setup",
 	"timer_round": "Round {n}/{total}",
 	"timer_prepare_s": "Prepare (s)",
 	"timer_work_s": "Work (s)",

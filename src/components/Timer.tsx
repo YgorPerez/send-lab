@@ -8,7 +8,7 @@
 // It sticks to the top of the Train screen under the app bar, so it stays
 // visible while the athlete scrolls to the set they are logging. That is the
 // whole reason Train needs its own persistent element and Today does not.
-import { Pause, Play, RotateCcw } from 'lucide-react';
+import { ChevronDown, Pause, Play, RotateCcw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
 import { cn } from '$lib/utils';
@@ -105,6 +105,7 @@ export function Timer({ seed }: { seed: TimerFixture | null }) {
 	}));
 	const [run, setRun] = useState<Run>(IDLE);
 	const [running, setRunning] = useState(false);
+	const [setupOpen, setSetupOpen] = useState(false);
 	const { phase, remaining, round, set } = run;
 
 	// Re-created when the configuration changes, so a field edited mid-session
@@ -212,28 +213,59 @@ export function Timer({ seed }: { seed: TimerFixture | null }) {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-3 gap-1.5 border-t border-line-soft px-3 py-2">
-				{FIELDS.map((f) => (
-					<label key={f.key} className="flex min-w-0 flex-col gap-0.5" htmlFor={`t-${f.key}`}>
-						<span className="microlabel truncate">{f.label()}</span>
-						<input
-							id={`t-${f.key}`}
-							className={input({ class: 'h-8 py-0' })}
-							type="number"
-							inputMode="numeric"
-							min={0}
-							value={cfg[f.key]}
-							onChange={(e) =>
-								setCfg((prev) => ({
-									...prev,
-									[f.key]: Math.max(0, Number.parseInt(e.currentTarget.value, 10) || 0),
-								}))
-							}
-						/>
-					</label>
-				))}
+			{/* The six configuration fields are collapsed by default.
+
+			    They were always visible, which put a 3×2 grid of number inputs
+			    between the clock and the sets — the thing the athlete is actually
+			    touching all session. The protocol comes prescribed, so these are
+			    edited once, if at all: "você vai provavelmente tá a maior parte do
+			    tempo adicionando métricas". Collapsed, the sticky block loses ~72px
+			    and the first exercise card comes up the screen by that much.
+
+			    A summary line replaces them, so the configuration is still *read*
+			    at a glance while it is no longer *editable* at a glance. */}
+			<div className="flex items-center gap-2 border-t border-line-soft px-3 py-1.5">
+				<span className="num min-w-0 flex-1 truncate text-[10.5px] text-ink-faint">
+					{cfg.work}s · {cfg.rest}s · {cfg.rounds}×{cfg.sets} · {clock(total)}
+				</span>
+				<button
+					type="button"
+					onClick={() => setSetupOpen((v) => !v)}
+					aria-expanded={setupOpen}
+					aria-controls="timer-setup"
+					className={button({ kind: 'bare', class: 'gap-1 px-1 text-[11px]' })}
+				>
+					{m.timer_setup()}
+					<ChevronDown
+						size={13}
+						className={cn('transition-transform', setupOpen && 'rotate-180')}
+					/>
+				</button>
 			</div>
-			<p className={cn('eyebrow px-3 pb-2', running && 'text-ink-dim')}>{m.train_autosave()}</p>
+
+			{setupOpen ? (
+				<div id="timer-setup" className="grid grid-cols-3 gap-1.5 px-3 pb-2">
+					{FIELDS.map((f) => (
+						<label key={f.key} className="flex min-w-0 flex-col gap-0.5" htmlFor={`t-${f.key}`}>
+							<span className="microlabel truncate">{f.label()}</span>
+							<input
+								id={`t-${f.key}`}
+								className={input({ class: 'h-8 py-0' })}
+								type="number"
+								inputMode="numeric"
+								min={0}
+								value={cfg[f.key]}
+								onChange={(e) =>
+									setCfg((prev) => ({
+										...prev,
+										[f.key]: Math.max(0, Number.parseInt(e.currentTarget.value, 10) || 0),
+									}))
+								}
+							/>
+						</label>
+					))}
+				</div>
+			) : null}
 		</div>
 	);
 }
