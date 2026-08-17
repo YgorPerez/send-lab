@@ -426,15 +426,15 @@ export function Timer({ seed }: { seed: TimerFixture | null }) {
 				    looking at, so it does not need a separate control — but the icon
 				    next to it is what makes the affordance discoverable, since a tap
 				    target that looks like text does not read as one. */}
+				{/* The number stays tappable — it is the biggest target on the strip and
+				    costs nothing to keep — but it is no longer the *only* way in. */}
 				<button
 					type="button"
 					onClick={() => setFullOpen(true)}
 					aria-label={m.timer_fullscreen()}
-					className="flex items-center gap-1.5"
 					style={{ color: accent }}
 				>
 					<Face seconds={shown} className="num text-[46px] leading-none font-bold" />
-					<Maximize2 size={13} className="shrink-0 text-ink-faint" />
 				</button>
 				<div className="flex min-w-0 flex-1 flex-col gap-1">
 					<div className="num flex justify-between text-[10px] text-ink-faint">
@@ -467,6 +467,21 @@ export function Timer({ seed }: { seed: TimerFixture | null }) {
 							className={button({ class: 'w-9 px-0' })}
 						>
 							<RotateCcw size={14} />
+						</button>
+						{/* Full screen sits with the other controls, not beside the number.
+						    It was a 13px icon next to a 46px digit and the athlete could not
+						    find it — which is the answer to "where does it open?": a tap
+						    target that small, next to something that large, reads as
+						    decoration on the number rather than as a button of its own.
+						    Here it is the same size and shape as Reset, in the row the
+						    thumb is already in. */}
+						<button
+							type="button"
+							aria-label={m.timer_fullscreen()}
+							onClick={() => setFullOpen(true)}
+							className={button({ class: 'w-9 px-0' })}
+						>
+							<Maximize2 size={14} />
 						</button>
 					</div>
 				</div>

@@ -171,13 +171,26 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+	/* Pull-to-refresh fires a *real reload* in the installed app (#54), which
+	   throws away unsynced work.
+
+	   On `html`, not on `body`. It was on `body` and did nothing: the property
+	   propagates to the viewport from the root element only, so a rule on `body`
+	   never reaches the document scroller. Confirmed on the athlete's phone,
+	   which reloaded on a pull with the suppression apparently already in place —
+	   a mechanism present and inert, which is the worst of both.
+
+	   The athlete's own call is that a reload here is not a problem, and today it
+	   is not: nothing on these screens writes. It stops being free once the
+	   offline write queue lands (#24), where a reload mid-session is precisely
+	   the unsynced work that queue exists to protect. Fixed rather than dropped
+	   for that reason, and it is one line to revert if it gets in the way. */
+	html {
+		overscroll-behavior-y: contain;
+	}
 	body {
 		@apply bg-background text-foreground font-sans;
 		-webkit-font-smoothing: antialiased;
-		/* Measured on the athlete's Android device (#54): pull-to-refresh fires a
-		   *real reload* in the installed app, which throws away unsynced work.
-		   Suppressed here rather than per-screen, because every screen scrolls. */
-		overscroll-behavior-y: contain;
 	}
 	/* Every number in this direction is set in mono and tabular. A column of
 	   readings that jitters horizontally is the fastest way to make a dense
