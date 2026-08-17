@@ -51,7 +51,14 @@ function Hello() {
 		<main className="min-h-dvh bg-background px-5 py-10 text-foreground">
 			<h1 className="font-mono text-[11px] tracking-wider text-ink-faint uppercase">Send Lab</h1>
 
-			{session ? (
+			{/* `session?.user`, not `session`. A session object that arrives without a
+			    user — a malformed or non-JSON response to `get-session`, which is
+			    exactly what an offline navigation served the app shell would produce —
+			    used to reach `session.user.name` and take the whole page down to the
+			    router's error boundary. Found by `pnpm check:contrast`, which could
+			    not measure a screen that never rendered. Falling back to the signed-out
+			    view is the honest answer: no user means not signed in. */}
+			{session?.user ? (
 				<section className="mt-6">
 					<p className="text-[15px]">
 						Signed in as <strong>{session.user.name || session.user.email}</strong>

@@ -24,7 +24,16 @@
 	--line: #2a2e38;
 	--ink: #eef1f5;
 	--ink-dim: #9aa3b0;
-	--ink-faint: #5d6470;
+	/* Lifted from #5d6470, which measured 3.26:1 on the ground and 3.01:1 on a
+	   panel — below the WCAG AA floor, and this token carries the small uppercase
+	   labels, which is the least forgiving place to be under it. Found by
+	   `pnpm check:contrast` and reported independently by the athlete as "muito
+	   pouco contraste nas labels".
+
+	   Only the lightness moved; the hue is untouched. This is a defect fix, not a
+	   design decision: #42 keeps the palette open, and whichever direction wins
+	   brings its own ramp. What it must not do is bring one that fails again. */
+	--ink-faint: #8a919d;
 	--chalk: #e8e4d8; /* climbing chalk */
 	--flag: #ff5a2c; /* signature vermilion — limit/effort */
 	--flag-deep: #c93b14;
