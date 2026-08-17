@@ -10,7 +10,7 @@
 // weekday labels are byte-identical to the stable keys, so a label-as-identifier
 // bug is invisible in en-US and only shows up here.
 //
-// Two stores, checked separately because they fail differently:
+// Three stores, checked separately because they fail differently:
 //
 //   1. `messages/*.json` — UI chrome, compiled by Paraglide.
 //   2. `src/lib/content/{en-US,pt-BR}.ts` — the training library: exercise prose,
@@ -19,10 +19,15 @@
 //      would render as a missing verdict for a pt-BR athlete and pass every
 //      check. The redesign is judged on a phone in both locales, so this half
 //      matters at least as much as the first.
+//   3. `src/prototype-prose.ts` — the athlete-typed text in the redesign
+//      prototypes' shared dataset (#42). Small, but read by all four direction
+//      branches at once, and the whole point of those branches is that they are
+//      judged in pt-BR, where a dense layout breaks first.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import enContent from '../src/lib/content/en-US.ts';
 import ptContent from '../src/lib/content/pt-BR.ts';
+import { FIXTURE_PROSE } from '../src/prototype-prose.ts';
 
 const BASE = 'en-US';
 const TARGET = 'pt-BR';
@@ -84,6 +89,16 @@ report(
 	[...contentTarget].filter((k) => !contentBase.has(k)),
 );
 
+// ---- 3. Prototype fixture prose (flat, per locale) ----
+const fxBase = new Set(Object.keys(FIXTURE_PROSE[BASE] ?? {}));
+const fxTarget = new Set(Object.keys(FIXTURE_PROSE[TARGET] ?? {}));
+
+report(
+	'fixtures',
+	[...fxBase].filter((k) => !fxTarget.has(k)),
+	[...fxTarget].filter((k) => !fxBase.has(k)),
+);
+
 if (failures.length) {
 	console.error('check:i18n — locale parity broken:\n');
 	for (const line of failures) console.error(`  ${line}`);
@@ -91,5 +106,5 @@ if (failures.length) {
 }
 
 console.log(
-	`check:i18n — ok (${msgBase.size} message keys, ${contentBase.size} content keys, ${BASE} ↔ ${TARGET} in parity)`,
+	`check:i18n — ok (${msgBase.size} message keys, ${contentBase.size} content keys, ${fxBase.size} fixture keys, ${BASE} ↔ ${TARGET} in parity)`,
 );
