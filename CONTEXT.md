@@ -32,7 +32,7 @@ _Avoid_: assessment, profile, onboarding, survey
 The reusable design of the athlete's training: a weekday template, periodization
 phases, and prescription overrides. One is active; others can be saved and
 switched.
-_Avoid_: plan, routine, schedule, split
+_Avoid_: plan, routine, schedule, split, protocol
 
 **Block**:
 The run of weeks the active program spans. Its length is the sum of its phases.
@@ -46,6 +46,12 @@ _Avoid_: stage, period
 **Training week**:
 One iteration of the program's template, numbered from 1 within the block.
 _Avoid_: microcycle, week
+
+**Weekday**:
+A calendar position within a training week, identified by the stable key `Mon`
+through `Sun`. Never the localized label, and never a day type — a weekday says
+*when*, a day type says *what*.
+_Avoid_: day, day key
 
 **Slot**:
 One weekday of one training week — the addressable cell of a block. Slots are
@@ -85,6 +91,13 @@ overrides, weekly progression, and phase scaling are all resolved. What the
 athlete is asked to do.
 _Avoid_: target, spec, params, dose
 
+**Protocol**:
+The shape of an effort — how work and rest alternate and how many times, as in
+the 6 × (7s on / 3s off) repeater protocol. A named method, which is why the
+studies and the rest timer both use the word; never a program, a day type or a
+session.
+_Avoid_: interval scheme, routine
+
 **Override**:
 A stored deviation from a built-in target, set by the athlete. Feeds into the
 prescription; anything not overridden falls back to the built-in value.
@@ -110,6 +123,12 @@ _Avoid_: item, entry, todo
 One logged effort within a session: load, edge, time, reps, rest, effort, grip,
 and whether it was completed.
 _Avoid_: rep, attempt, effort
+
+**Round**:
+One repetition of the work interval inside a set — what the rest timer counts
+down. A 6 × (7s on / 3s off) set runs six rounds, and the athlete logs the set
+rather than each round.
+_Avoid_: cycle, interval, rep
 
 **Trained**:
 A slot is trained once at least one of its tasks is marked complete — including

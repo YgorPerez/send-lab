@@ -274,8 +274,13 @@ export interface TrainItemFixture {
 	variantName: string;
 	/** Every swappable option, for the variant picker. */
 	variants: { name: string; tool?: string; speed?: string }[];
-	/** The resolved prescription — what the athlete is asked to do. */
-	spec: Variant;
+	/** What the athlete is asked to do.
+	 *
+	 *  A **prescription** is resolved after swaps, overrides, progression and
+	 *  phase scaling (`CONTEXT.md`). This fixture applies none of them — it hands
+	 *  over the variant's built-in targets, which is the same value while nothing
+	 *  overrides them. The store (#18) is what makes it a resolved one. */
+	prescription: Variant;
 	/** Which per-set fields this exercise logs, in column order. */
 	fields: SetField[];
 	sets: WorkoutSet[];
@@ -735,7 +740,7 @@ function buildTrain(
 				...(v.tool ? { tool: v.tool } : {}),
 				...(v.speed ? { speed: v.speed } : {}),
 			})),
-			spec,
+			prescription: spec,
 			fields: fieldsFor(spec),
 			sets: session?.exercises.find((e) => e.exId === exerciseId)?.sets ?? [prefilledSet(spec)],
 			timed: spec.workSec != null,
@@ -745,7 +750,7 @@ function buildTrain(
 	const timed = items.find((it) => it.timed);
 	const timer: TimerFixture | null = timed
 		? (() => {
-				const s = timed.spec;
+				const s = timed.prescription;
 				const workSec = mid(s.workSec) ?? 10;
 				const restSec = mid(s.restSec) ?? 0;
 				const rounds = mid(s.rounds) ?? 1;

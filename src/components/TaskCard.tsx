@@ -37,19 +37,29 @@ import { button, chip } from './ui/variants';
  * Mono values, uppercase micro-labels: it has to be scannable without being
  * read. Not exported — it is only ever the middle band of this card, and a
  * prescription outside a task has nothing to be a prescription *for*.
+ *
+ * `CONTEXT.md` defines a **prescription** as the targets *after* swaps,
+ * overrides, weekly progression and phase scaling are all resolved. This
+ * component renders one and does not resolve it. Today the fixture hands it
+ * `ex.variants[0]` — the variant's built-in targets — because nothing overrides
+ * them yet; when the store lands (#18) the resolution happens on the way in and
+ * nothing here changes. That is the seam, and it is named rather than implied:
+ * the prop used to be called `spec`, which quietly claimed nothing.
  */
-function Prescription({ spec }: { spec: Variant }) {
+function Prescription({ prescription }: { prescription: Variant }) {
 	const pairs: [string, string][] = [];
-	if (spec.sets) pairs.push([m.presc_sets(), formatRange(spec.sets)]);
-	if (spec.reps) pairs.push([m.presc_reps(), formatRange(spec.reps)]);
-	if (spec.workSec) pairs.push([m.presc_work(), formatSecondsRange(spec.workSec)]);
-	if (spec.restSec) pairs.push([m.presc_rest(), formatSecondsRange(spec.restSec)]);
-	if (spec.rounds) pairs.push([m.presc_rounds(), `×${formatRange(spec.rounds)}`]);
-	if (spec.setRestSec) pairs.push([m.presc_setrest(), formatSecondsRange(spec.setRestSec)]);
-	if (spec.loadKg) pairs.push([m.presc_load(), formatLoad(spec.loadKg)]);
-	if (spec.edgeMm) pairs.push([m.presc_edge(), formatEdge(spec.edgeMm)]);
-	if (spec.intensityPct) pairs.push([m.presc_intensity(), `${formatRange(spec.intensityPct)}%`]);
-	if (spec.rpe) pairs.push([m.presc_rpe(), formatRange(spec.rpe)]);
+	if (prescription.sets) pairs.push([m.presc_sets(), formatRange(prescription.sets)]);
+	if (prescription.reps) pairs.push([m.presc_reps(), formatRange(prescription.reps)]);
+	if (prescription.workSec) pairs.push([m.presc_work(), formatSecondsRange(prescription.workSec)]);
+	if (prescription.restSec) pairs.push([m.presc_rest(), formatSecondsRange(prescription.restSec)]);
+	if (prescription.rounds) pairs.push([m.presc_rounds(), `×${formatRange(prescription.rounds)}`]);
+	if (prescription.setRestSec)
+		pairs.push([m.presc_setrest(), formatSecondsRange(prescription.setRestSec)]);
+	if (prescription.loadKg) pairs.push([m.presc_load(), formatLoad(prescription.loadKg)]);
+	if (prescription.edgeMm) pairs.push([m.presc_edge(), formatEdge(prescription.edgeMm)]);
+	if (prescription.intensityPct)
+		pairs.push([m.presc_intensity(), `${formatRange(prescription.intensityPct)}%`]);
+	if (prescription.rpe) pairs.push([m.presc_rpe(), formatRange(prescription.rpe)]);
 
 	return (
 		<div>
@@ -61,24 +71,24 @@ function Prescription({ spec }: { spec: Variant }) {
 					</span>
 				))}
 			</div>
-			{spec.grip || spec.toFailure || spec.cnsCost ? (
+			{prescription.grip || prescription.toFailure || prescription.cnsCost ? (
 				<div className="mt-1.5 flex flex-wrap gap-1">
-					{spec.grip ? (
-						<span className={chip({ tone: 'ghost' })}>{gripLabel(spec.grip)}</span>
+					{prescription.grip ? (
+						<span className={chip({ tone: 'ghost' })}>{gripLabel(prescription.grip)}</span>
 					) : null}
-					{spec.toFailure ? (
+					{prescription.toFailure ? (
 						<span className={chip({ tone: 'stop' })}>{m.presc_failure()}</span>
 					) : null}
-					{spec.cnsCost ? (
+					{prescription.cnsCost ? (
 						<span className={chip({ tone: 'ghost' })}>
-							{m.presc_cns()} {costLabel(spec.cnsCost)}
+							{m.presc_cns()} {costLabel(prescription.cnsCost)}
 						</span>
 					) : null}
 				</div>
 			) : null}
-			{spec.note ? (
+			{prescription.note ? (
 				<p className="prose-inline mt-1.5 text-[11.5px] leading-snug text-ink-faint">
-					<Prose value={spec.note} />
+					<Prose value={prescription.note} />
 				</p>
 			) : null}
 		</div>
@@ -95,7 +105,7 @@ export interface TaskState {
 	catVar: string;
 	variantIndex: number;
 	variants: { name: string; tool?: string; speed?: string }[];
-	spec: Variant;
+	prescription: Variant;
 	fields: SetField[];
 	sets: WorkoutSet[];
 	/** Has interval timings the rest timer can run. */
@@ -200,7 +210,7 @@ export function TaskCard({
 
 			<div className="border-t border-line-soft px-3 py-2">
 				<Eyebrow className="mb-1">{m.train_target()}</Eyebrow>
-				<Prescription spec={task.spec} />
+				<Prescription prescription={task.prescription} />
 			</div>
 
 			<div className="flex flex-col gap-1.5 border-t border-line-soft px-3 py-2">

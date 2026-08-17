@@ -119,7 +119,7 @@ describe('Train', () => {
 		for (const item of f.train.items) {
 			expect(item.fields).toContain('weight');
 			expect(item.fields).toContain('rpe');
-			expect(item.fields.includes('grip')).toBe(item.spec.grip != null);
+			expect(item.fields.includes('grip')).toBe(item.prescription.grip != null);
 		}
 	});
 });

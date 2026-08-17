@@ -53,7 +53,7 @@ function prefilledSet(spec: Variant): WorkoutSet {
 /** The protocol the timer runs for a task, or `null` if it has no timings. */
 function protocolOf(task: TaskState): TimerProtocol | null {
 	if (!task.timed) return null;
-	const s = task.spec;
+	const s = task.prescription;
 	return {
 		label: task.exName,
 		prepare: s.prepareSec ?? 10,
@@ -86,7 +86,7 @@ function taskFromLibrary(content: Content, exerciseId: ExerciseId, key: TaskKey)
 			...(v.tool ? { tool: v.tool } : {}),
 			...(v.speed ? { speed: v.speed } : {}),
 		})),
-		spec,
+		prescription: spec,
 		fields: fieldsFor(spec),
 		sets: [prefilledSet(spec)],
 		timed: spec.workSec != null,
@@ -106,7 +106,7 @@ function Train() {
 			catVar: it.catVar,
 			variantIndex: it.variantIndex,
 			variants: [...it.variants],
-			spec: it.spec,
+			prescription: it.prescription,
 			fields: it.fields,
 			sets: it.sets.map((s) => ({ ...s })),
 			timed: it.timed,
@@ -141,8 +141,8 @@ function Train() {
 	const selectVariant = (key: TaskKey, index: number) =>
 		update(key, (t) => {
 			const ex = content.exercises[t.exerciseId];
-			const spec = ex?.variants[index] ?? t.spec;
-			return { ...t, variantIndex: index, spec, fields: fieldsFor(spec) };
+			const next = ex?.variants[index] ?? t.prescription;
+			return { ...t, variantIndex: index, prescription: next, fields: fieldsFor(next) };
 		});
 
 	const addExercise = (raw: string) => {
@@ -217,7 +217,7 @@ function Train() {
 									...x.sets,
 									x.sets.length
 										? { ...x.sets[x.sets.length - 1], done: false }
-										: prefilledSet(x.spec),
+										: prefilledSet(x.prescription),
 								],
 							}))
 						}

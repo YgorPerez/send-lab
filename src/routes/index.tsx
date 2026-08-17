@@ -443,7 +443,7 @@ function PlanCard({
 			label={`${day.type} · ${day.load}`}
 			meta={
 				<Link to="/train" className="text-ink-dim">
-					{m.btn_view_protocol()}
+					{m.btn_view_session()}
 				</Link>
 			}
 		>
