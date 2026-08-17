@@ -36,24 +36,13 @@
 //   pnpm check:contrast --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:contrast --routes=/,/train --locales=pt-BR --width=320
 //
-// Set `CHROME_PATH` if Chrome is somewhere unusual.
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { createServer } from 'node:http';
-import { tmpdir } from 'node:os';
-import { extname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { clientOutputDir } from './output-dir.ts';
-
-const root = fileURLToPath(new URL('..', import.meta.url));
+// Set `CHROME_PATH` if Chrome is somewhere unusual. Chrome, the static server
+// and the CDP client are `scripts/browser.ts`, shared with `check:motion`.
+import { discoverLocales, discoverRoutes, fail, open, parseArgs } from './browser.ts';
 
 // ---------------------------------------------------------------- arguments
 
-const args = new Map<string, string>();
-for (const a of process.argv.slice(2)) {
-	const m = /^--([^=]+)(?:=(.*))?$/.exec(a);
-	if (m) args.set(m[1], m[2] ?? '');
-}
+const args = parseArgs();
 const WIDTH = Number(args.get('width') ?? 360);
 const HEIGHT = Number(args.get('height') ?? 800);
 /** Below this, a screen did not render rather than rendered well.
@@ -64,210 +53,8 @@ const HEIGHT = Number(args.get('height') ?? 800);
  *  enough to reject the router's error boundary, which renders two. */
 const MIN_ELEMENTS = Number(args.get('min-elements') ?? 3);
 
-/** The routes to visit, derived from the file-based route tree rather than
- *  listed here — a page added without a line in this script would otherwise be a
- *  page nobody ever measures. */
-function discoverRoutes(): string[] {
-	const dir = join(root, 'src', 'routes');
-	if (!existsSync(dir)) return ['/'];
-	const out: string[] = [];
-	for (const name of readdirSync(dir, { withFileTypes: true })) {
-		// `api/` is server routes, `__root` is the shell, `-`-prefixed files are
-		// TanStack's non-route convention.
-		if (name.isDirectory() || !name.name.endsWith('.tsx')) continue;
-		if (name.name.startsWith('__') || name.name.startsWith('-')) continue;
-		const base = name.name.replace(/\.tsx$/, '');
-		out.push(base === 'index' ? '/' : `/${base}`);
-	}
-	return out.length ? out.sort() : ['/'];
-}
-
-/** The locales the project ships, from the inlang settings. */
-function discoverLocales(): string[] {
-	try {
-		const settings = JSON.parse(
-			readFileSync(join(root, 'project.inlang', 'settings.json'), 'utf8'),
-		) as { locales?: string[] };
-		return settings.locales?.length ? settings.locales : ['en-US'];
-	} catch {
-		return ['en-US'];
-	}
-}
-
 const ROUTES = (args.get('routes') ?? discoverRoutes().join(',')).split(',').filter(Boolean);
 const LOCALES = (args.get('locales') ?? discoverLocales().join(',')).split(',').filter(Boolean);
-
-/** Where Paraglide persists the athlete's choice. Matches the `localStorage`
- *  strategy declared in `scripts/paraglide-strategy.ts`. */
-const LOCALE_KEY = 'PARAGLIDE_LOCALE';
-
-function fail(message: string): never {
-	console.error(`check:contrast — ${message}`);
-	process.exit(1);
-}
-
-// ------------------------------------------------------------------- chrome
-
-function findChrome(): string {
-	const fromEnv = process.env.CHROME_PATH;
-	if (fromEnv) {
-		if (!existsSync(fromEnv)) fail(`CHROME_PATH is set to ${fromEnv}, which does not exist`);
-		return fromEnv;
-	}
-	const candidates = [
-		'C:/Program Files/Google/Chrome/Application/chrome.exe',
-		'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-		'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-		'/usr/bin/google-chrome',
-		'/usr/bin/chromium',
-		'/usr/bin/chromium-browser',
-	];
-	const found = candidates.find((p) => existsSync(p));
-	if (!found) {
-		fail(
-			'no Chrome found. Set CHROME_PATH to a Chrome or Chromium binary.\n' +
-				'  This check deliberately does not skip when it cannot run: a contrast\n' +
-				'  gate that silently passes is worse than no gate.',
-		);
-	}
-	return found;
-}
-
-// ------------------------------------------------------------ static server
-
-const MIME: Record<string, string> = {
-	'.html': 'text/html; charset=utf-8',
-	'.js': 'text/javascript; charset=utf-8',
-	'.css': 'text/css; charset=utf-8',
-	'.json': 'application/json; charset=utf-8',
-	'.svg': 'image/svg+xml',
-	'.png': 'image/png',
-	'.webmanifest': 'application/manifest+json',
-	'.woff2': 'font/woff2',
-};
-
-/** Serve the built client with an SPA fallback.
- *
- *  Deliberately not `vite preview`: the preview server keeps a handle on the
- *  native `@libsql` binary inside `.output`, and the next `pnpm build` then dies
- *  with an EPERM unlink that reads like a permissions problem rather than a
- *  still-running server. This reads files and holds nothing. */
-function serve(dir: string): Promise<{ origin: string; close: () => Promise<void> }> {
-	const shell = ['index.html', '_shell.html'].map((f) => join(dir, f)).find((p) => existsSync(p));
-	if (!shell) fail(`no index.html or _shell.html in ${dir} — run \`pnpm build\` first`);
-
-	const server = createServer((req, res) => {
-		const url = new URL(req.url ?? '/', 'http://localhost');
-		const asFile = join(dir, decodeURIComponent(url.pathname));
-		const path = existsSync(asFile) && extname(asFile) ? asFile : shell;
-		try {
-			const body = readFileSync(path);
-			res.writeHead(200, {
-				'content-type': MIME[extname(path)] ?? 'application/octet-stream',
-				'cache-control': 'no-store',
-			});
-			res.end(body);
-		} catch {
-			res.writeHead(404).end('not found');
-		}
-	});
-	return new Promise((resolve) => {
-		server.listen(0, '127.0.0.1', () => {
-			const addr = server.address();
-			const port = typeof addr === 'object' && addr ? addr.port : 0;
-			resolve({
-				origin: `http://127.0.0.1:${port}`,
-				close: () => new Promise<void>((done) => server.close(() => done())),
-			});
-		});
-	});
-}
-
-// ---------------------------------------------------------------- cdp client
-
-interface Cdp {
-	send: (method: string, params?: Record<string, unknown>) => Promise<Record<string, unknown>>;
-	/** Uncaught exceptions and console errors seen since the last `drain()`. */
-	drain: () => string[];
-	close: () => void;
-}
-
-async function connect(port: number): Promise<Cdp> {
-	let pages: { type: string; webSocketDebuggerUrl: string }[] = [];
-	for (let i = 0; i < 40 && pages.length === 0; i++) {
-		try {
-			const r = await fetch(`http://127.0.0.1:${port}/json/list`);
-			pages = ((await r.json()) as typeof pages).filter((t) => t.type === 'page');
-		} catch {
-			await new Promise((r) => setTimeout(r, 400));
-		}
-	}
-	if (!pages.length) fail('Chrome started but exposed no page to drive');
-
-	const ws = new WebSocket(pages[0].webSocketDebuggerUrl);
-	await new Promise<void>((resolve, reject) => {
-		ws.addEventListener('open', () => resolve());
-		ws.addEventListener('error', () => reject(new Error('CDP socket failed')));
-	});
-
-	let nextId = 1;
-	const pending = new Map<
-		number,
-		{ resolve: (v: Record<string, unknown>) => void; reject: (e: Error) => void }
-	>();
-	// Anything the page threw. Without this the check happily measures a router
-	// error boundary and reports "ok" — which it did, on its first run, on a page
-	// whose only two text nodes were "Something went wrong!" and "Show Error".
-	let problems: string[] = [];
-
-	ws.addEventListener('message', (e) => {
-		const msg = JSON.parse(String(e.data)) as {
-			id?: number;
-			method?: string;
-			params?: Record<string, unknown>;
-			result?: Record<string, unknown>;
-			error?: unknown;
-		};
-
-		if (msg.id == null) {
-			if (msg.method === 'Runtime.exceptionThrown') {
-				const d = (msg.params?.exceptionDetails ?? {}) as {
-					text?: string;
-					exception?: { description?: string };
-				};
-				problems.push(d.exception?.description ?? d.text ?? 'uncaught exception');
-			}
-			if (msg.method === 'Runtime.consoleAPICalled' && msg.params?.type === 'error') {
-				const argv = (msg.params.args ?? []) as { value?: unknown; description?: string }[];
-				problems.push(
-					argv.map((a) => String(a.description ?? a.value ?? '')).join(' ') || 'console.error',
-				);
-			}
-			return;
-		}
-
-		const slot = pending.get(msg.id);
-		if (!slot) return;
-		pending.delete(msg.id);
-		if (msg.error) slot.reject(new Error(JSON.stringify(msg.error)));
-		else slot.resolve(msg.result ?? {});
-	});
-
-	return {
-		send: (method, params = {}) =>
-			new Promise((resolve, reject) => {
-				const id = nextId++;
-				pending.set(id, { resolve, reject });
-				ws.send(JSON.stringify({ id, method, params }));
-			}),
-		drain: () => {
-			const seen = problems;
-			problems = [];
-			return seen;
-		},
-		close: () => ws.close(),
-	};
-}
 
 // ------------------------------------------------------------- the measurement
 
@@ -387,73 +174,23 @@ const SETTLE = `(async () => {
 
 // -------------------------------------------------------------------- run it
 
-const chromePath = findChrome();
-const base = args.get('url');
-const server = base ? null : await serve(clientOutputDir());
-const origin = base ?? server?.origin ?? fail('no origin to test');
-
-const profile = mkdtempSync(join(tmpdir(), 'send-lab-contrast-'));
-// A private debug port, not the default 9222: agents and sessions run in
-// parallel here, and on the shared port one run attaches to another's browser.
-const debugPort = 9200 + Math.floor(Math.random() * 500);
-const chrome = spawn(chromePath, [
-	`--remote-debugging-port=${debugPort}`,
-	'--headless=new',
-	'--disable-gpu',
-	'--no-first-run',
-	'--no-default-browser-check',
-	`--user-data-dir=${profile}`,
-	`--window-size=${WIDTH},${HEIGHT}`,
-	'about:blank',
-]);
-chrome.on('error', () => fail(`could not start Chrome at ${chromePath}`));
-
-const cleanup = async () => {
-	chrome.kill();
-	await server?.close();
-	try {
-		rmSync(profile, { recursive: true, force: true });
-	} catch {
-		// A locked profile directory is not worth failing the run over.
-	}
-};
+const session = await open({
+	tool: 'check:contrast',
+	width: WIDTH,
+	height: HEIGHT,
+	...(args.has('url') ? { url: args.get('url') as string } : {}),
+});
+const { cdp, origin, evaluate, goto } = session;
 
 let exitCode = 0;
 try {
-	const cdp = await connect(debugPort);
-	await cdp.send('Page.enable');
-	await cdp.send('Runtime.enable');
-	await cdp.send('Log.enable');
-	await cdp.send('Emulation.setDeviceMetricsOverride', {
-		width: WIDTH,
-		height: HEIGHT,
-		deviceScaleFactor: 2,
-		mobile: true,
-	});
-
-	const evaluate = async <T>(expression: string): Promise<T> => {
-		const r = (await cdp.send('Runtime.evaluate', {
-			expression,
-			returnByValue: true,
-			awaitPromise: true,
-		})) as { result?: { value?: T } };
-		return r.result?.value as T;
-	};
-	const goto = async (url: string) => {
-		await cdp.send('Page.navigate', { url });
-		await new Promise((r) => setTimeout(r, 1200));
-	};
-
 	const failures: (Row & { screen: string })[] = [];
 	const warnings: string[] = [];
 	const exempt: (Row & { screen: string })[] = [];
 	let measured = 0;
 
 	for (const locale of LOCALES) {
-		await goto(`${origin}/`);
-		await evaluate(
-			`localStorage.setItem(${JSON.stringify(LOCALE_KEY)}, ${JSON.stringify(locale)})`,
-		);
+		await session.setLocale(locale);
 		for (const route of ROUTES) {
 			const screen = `${locale} ${route}`;
 			await goto(`${origin}${route}`);
@@ -560,10 +297,8 @@ try {
 			`check:contrast — ok (${measured} text elements over ${ROUTES.length} route(s) [${routeList}] × ${LOCALES.length} locale(s) [${localeList}], all at or above WCAG AA)`,
 		);
 	}
-
-	cdp.close();
 } finally {
-	await cleanup();
+	await session.close();
 }
 
 process.exit(exitCode);

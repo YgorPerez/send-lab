@@ -24,6 +24,7 @@
 		"check:routes": "tsx scripts/check-auth-wrapper.ts",
 		"check:sw": "tsx scripts/check-service-worker.ts",
 		"check:contrast": "tsx scripts/check-contrast.ts",
+		"check:motion": "tsx scripts/check-motion.ts",
 		"doctor": "react-doctor --no-telemetry",
 		"fallow": "fallow dead-code",
 		"fallow:health": "fallow health",
