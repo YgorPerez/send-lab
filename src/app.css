@@ -13,26 +13,62 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIRECTION B — THE INSTRUMENT (#48)
+
+   The app is a measuring device, so it is drawn as bench equipment: a black
+   bezel, hairline rules, a labelled panel legend over every band, monospace
+   wherever a number or a label lives, and colour used only as signal.
+
+   What changed from the prior palette (#42 reopened it):
+
+   1. `--radius: 0`. A rounded corner is the single loudest "consumer app" tell.
+      Nothing in this direction is rounded — not an input, not a tag, not the
+      tick control. The radius token stays defined because shadcn's semantic
+      layer references it; it just resolves to zero everywhere.
+   2. The ground is darker and the ink is brighter — ~20:1 rather than the prior
+      ~16:1. An instrument reads at arm's length in bad gym light, and contrast
+      is the cheapest legibility there is.
+   3. `--line` is split in two: a hairline for rows *inside* a band, and a
+      heavier rule under the band legend. With no cards, the rules are the only
+      thing carrying structure, and one weight was not enough to say both
+      "these rows belong together" and "that group is a different group".
+   4. The four accents survive by name — the fixture hands out `var(--violet)`
+      and friends as data (`day.color`, `verdict.color`, `catVar`), and a
+      direction that renamed them would be redesigning the domain rather than
+      the surface. What changed is *where they may appear*: never as the colour
+      of a paragraph, never as a wash behind one. They appear as 3px channel
+      bars, meter segments, and single glyphs. Colour is signal, not decor.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
 	color-scheme: dark;
-	--radius: 0.75rem;
+	/* Sharp corners, everywhere, permanently. */
+	--radius: 0rem;
 
-	/* ---- climbing palette (raw values) ---- */
-	--bg: #0c0d10;
-	--panel: #15171c;
-	--panel-2: #1c1f26;
-	--line: #2a2e38;
-	--ink: #eef1f5;
-	--ink-dim: #9aa3b0;
-	--ink-faint: #5d6470;
+	/* ---- ground: bezel → panel → well ---- */
+	--bg: #06070a;
+	--panel: #0c0e12;
+	--panel-2: #141821;
+	/* hairline, between rows of one band */
+	--line: #1d222b;
+	/* structural rule, under a band legend */
+	--line-2: #333b47;
+
+	/* ---- ink ---- */
+	--ink: #f6f8fa;
+	--ink-dim: #9aa5b3;
+	--ink-faint: #667180;
 	--chalk: #e8e4d8; /* climbing chalk */
-	--flag: #ff5a2c; /* signature vermilion — limit/effort */
-	--flag-deep: #c93b14;
-	--teal: #3fd0c9; /* recovery / tissue */
-	--gold: #f4c04e; /* endurance / metabolic */
-	--violet: #9b8cff; /* pull / power */
 
-	/* ---- shadcn semantic tokens, mapped to the dark climbing theme ---- */
+	/* ---- signal ---- */
+	--flag: #ff5a2c; /* signature vermilion — limit / effort / alarm */
+	--flag-deep: #c93b14;
+	--teal: #35d4c4; /* recovery / tissue / in range */
+	--gold: #ffc043; /* endurance / metabolic / caution */
+	--violet: #a898ff; /* pull / power */
+
+	/* ---- shadcn semantic tokens, mapped to the instrument ---- */
 	--background: var(--bg);
 	--foreground: var(--ink);
 	--card: var(--panel);
@@ -55,10 +91,11 @@
 }
 
 @theme inline {
-	--radius-sm: calc(var(--radius) - 4px);
-	--radius-md: calc(var(--radius) - 2px);
+	/* All four resolve to 0. Kept so a lifted shadcn class name still compiles. */
+	--radius-sm: var(--radius);
+	--radius-md: var(--radius);
 	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) + 4px);
+	--radius-xl: var(--radius);
 
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -85,6 +122,7 @@
 	--color-panel: var(--panel);
 	--color-panel-2: var(--panel-2);
 	--color-line: var(--line);
+	--color-line-2: var(--line-2);
 	--color-ink: var(--ink);
 	--color-ink-dim: var(--ink-dim);
 	--color-ink-faint: var(--ink-faint);
@@ -111,6 +149,82 @@
 		   Suppressed here rather than per-screen, because every screen scrolls. */
 		overscroll-behavior-y: contain;
 	}
+	/* Every number here is a reading, and readings get compared down a column.
+	   Tabular figures are structural, not a nicety. */
+	.font-mono {
+		font-variant-numeric: tabular-nums;
+	}
+	/* Chrome's number spinners drop a rounded widget inside a square field and
+	   steal ~16px from a 48px-wide column in the set table. */
+	input[type='number']::-webkit-outer-spin-button,
+	input[type='number']::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	input[type='number'] {
+		-moz-appearance: textfield;
+	}
+}
+
+@layer components {
+	/* The panel legend. Small-caps mono, wide tracking — the one typographic
+	   detail the old app already had, promoted here into the load-bearing device
+	   that replaces the card. 11px, not the old 10: see the ticket's legibility
+	   question, and the finding on the issue. */
+	.inst-label {
+		@apply font-mono text-[11px] leading-[1.35] font-medium tracking-[0.16em] text-ink-dim uppercase;
+	}
+	/* The tertiary tier — column heads in a set table, units, captions. The floor:
+	   nothing in this direction is set smaller than 10px. */
+	.inst-label-xs {
+		@apply font-mono text-[10px] leading-[1.3] tracking-[0.1em] text-ink-faint uppercase;
+	}
+	/* Graph paper behind a primary readout. A texture, never a grid you could
+	   read a value off. */
+	.inst-grid {
+		background-image:
+			repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px 13px),
+			repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 13px);
+		background-position: center;
+		opacity: 0.4;
+	}
+}
+
+@layer base {
+	/* ── Navigation ──────────────────────────────────────────────────────────
+	   `defaultViewTransition: true` animates every navigation. The chrome — the
+	   top readout strip and the bottom function strip — carries its own
+	   `view-transition-name`, which lifts it out of the `root` snapshot, so the
+	   panel holds still and only the readings behind it change. That is the
+	   point of the transition here: an instrument does not redraw its bezel when
+	   you switch channels.
+
+	   Measured (#54): view transitions leave a fixed bar alone but flicker at the
+	   transitioning panel's corners. Noted, not designed around. */
+	::view-transition-old(root) {
+		animation: inst-fade-out 90ms linear both;
+	}
+	::view-transition-new(root) {
+		animation: inst-sweep-in 190ms cubic-bezier(0.16, 0.84, 0.34, 1) both;
+	}
+	@keyframes inst-fade-out {
+		to {
+			opacity: 0;
+		}
+	}
+	@keyframes inst-sweep-in {
+		from {
+			opacity: 0;
+			transform: translateY(10px);
+		}
+	}
+	/* The two chrome elements, matched by name across navigations so they hold
+	   position instead of cross-fading with the content behind them. */
+	::view-transition-group(inst-header),
+	::view-transition-group(inst-footer) {
+		animation-duration: 190ms;
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		*,
 		::before,
