@@ -19,11 +19,13 @@ workspace file this is not a monorepo.
 ```
 /
 ├── CONTEXT.md
-├── docs/adr/
-│   ├── 0001-per-task-completion-is-the-source-of-truth.md
-│   ├── 0002-day-types-have-identity-independent-of-weekdays.md
-│   ├── 0003-identity-is-never-a-display-string.md
-│   └── 0004-permissive-cors-and-redirect-handling-on-the-oauth-endpoints.md
+├── docs/
+│   ├── adr/                        one file per accepted decision — read the
+│   │                               directory, it is not listed here because a
+│   │                               list of filenames in prose goes stale
+│   ├── component-vocabulary.md     the named components the pages compose from,
+│   │                               and the React idiom for writing one (#53)
+│   └── rebuild-reference.md
 └── src/
 ```
 
