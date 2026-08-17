@@ -64,7 +64,13 @@ export const button = tv({
 	// "Concluir e registrar treino" are 1.4–2× their English labels, and a fixed
 	// height with nowrap turns every one of them into horizontal overflow. Labels
 	// wrap and the button grows.
-	base: 'inline-flex items-center justify-center gap-1.5 rounded-md border text-center text-[13px] leading-tight font-medium transition-colors select-none disabled:opacity-40',
+	// A disabled button drops its fill and its border rather than fading out.
+	// `opacity-40` put "Repeat last session" at 2.46:1 and a disabled primary at
+	// 3.75:1. WCAG exempts inactive controls, so neither was a violation — but at
+	// 2.46:1 a control reads as *broken* rather than as unavailable, which is a
+	// worse outcome than the rule was protecting against. Losing the fill says
+	// "not now" just as clearly and keeps the label readable at 7.14:1.
+	base: 'inline-flex items-center justify-center gap-1.5 rounded-md border text-center text-[13px] leading-tight font-medium transition-colors select-none disabled:border-line-soft disabled:bg-transparent disabled:text-ink-faint',
 	variants: {
 		kind: {
 			primary: 'border-flag bg-flag text-white active:bg-flag-deep',

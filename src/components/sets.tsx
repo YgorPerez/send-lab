@@ -70,8 +70,19 @@ export function SetEditor({
 	return (
 		<div
 			className={cn(
-				'rounded-md border border-line-soft bg-panel-2/50 p-2 transition-opacity',
-				set.done && 'opacity-55',
+				// A finished set is marked by colour, not by fading it out.
+				//
+				// It used to be `opacity-55`, which looked fine on the 16px values and
+				// destroyed everything small around them: the 9px column labels went
+				// 5.13:1 → 2.57:1, the grip value 7.45 → 3.33, the "done" tick 7.60 →
+				// 3.31. Twenty of the twenty-four contrast failures measured on this
+				// branch were this one line. Opacity dims the *text*, and at 9–11px
+				// there is no room between "de-emphasised" and "unreadable".
+				//
+				// Direction B hit the same wall independently and wrote it down, which
+				// is a good sign the rule belongs in the vocabulary (#53), not here.
+				'rounded-md border p-2 transition-colors',
+				set.done ? 'border-teal/30 bg-teal/[0.06]' : 'border-line-soft bg-panel-2/50',
 			)}
 		>
 			<div className="grid grid-cols-4 gap-1.5">
