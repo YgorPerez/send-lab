@@ -527,5 +527,17 @@
 	"ce_delete_confirm": "Excluir este exercício personalizado? Ele será removido de qualquer dia que o use.",
 	"sync_saving": "Salvando…",
 	"sync_saved": "Sincronizado",
-	"sync_offline": "Offline"
+	"sync_offline": "Offline",
+	"sec_breakdown": "Composição",
+	"sec_tasks": "Tarefas",
+	"sec_check": "Check de prontidão",
+	"sec_counters": "Contadores",
+	"sec_carry": "Pendências",
+	"sec_prescription": "Prescrição",
+	"sec_session": "Sessão",
+	"lbl_baseline": "Base pessoal",
+	"lbl_stale": "Respostas mudaram — leitura desatualizada",
+	"trend_up": "subindo",
+	"trend_down": "caindo",
+	"trend_flat": "estável"
 }

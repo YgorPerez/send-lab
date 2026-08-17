@@ -13,26 +13,56 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DIRECTION B — "the instrument" (#48)
+
+   Send *Lab*: the app is bench equipment that takes a reading and prescribes
+   from it. The palette below replaces the shadcn-flavoured climbing theme that
+   shipped on `development` (#42 reopened the palette). What changed and why:
+
+   - **Radius is 0, everywhere.** A rounded corner is the single strongest
+     "consumer app" tell. Nothing here is a card, so nothing needs a corner.
+   - **Contrast is up, not down.** The old `--ink-dim` (#9aa3b0) on `--panel`
+     (#15171c) is ~6:1 — fine at a desk, thin at arm's length under gym light.
+     Ground went darker, ink went brighter, and `--ink-faint` is now reserved
+     for rules and index numerals: **nothing an athlete must read is faint**.
+   - **Three greys, not two.** `--line` is the within-group hairline, `--rule`
+     the between-group rule. Card-less grouping is carried by the difference
+     between those two weights plus a 26px index rail, so they have to be
+     visibly different.
+   - **The four hues survive as coding, not as decoration.** Vermilion is the
+     only saturated hue used for a *reading* (the verdict, the alarm). Teal /
+     gold / violet appear only as 3px category swatches and 2px accent rules —
+     the fixture's `catVar` is grouping information, so it had to survive even
+     though the surface is monochrome.
+   - **`--grid` is the graticule**: a 4px ruled fill behind held/inactive
+     regions. Ruled paper is how bench equipment says "this block is one thing"
+     without drawing a box around it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
 	color-scheme: dark;
-	--radius: 0.75rem;
+	/* Not a mistake and not a leftover: this direction has no rounded corners. */
+	--radius: 0px;
 
-	/* ---- climbing palette (raw values) ---- */
-	--bg: #0c0d10;
-	--panel: #15171c;
-	--panel-2: #1c1f26;
-	--line: #2a2e38;
-	--ink: #eef1f5;
-	--ink-dim: #9aa3b0;
-	--ink-faint: #5d6470;
-	--chalk: #e8e4d8; /* climbing chalk */
-	--flag: #ff5a2c; /* signature vermilion — limit/effort */
+	/* ---- instrument palette (raw values) ---- */
+	--bg: #08090a; /* case */
+	--panel: #0e1012; /* readout ground */
+	--panel-2: #14171a; /* pressed / selected ground */
+	--line: #22262a; /* hairline — inside a group */
+	--rule: #3a4046; /* rule — between groups */
+	--ink: #f3f6f7;
+	--ink-dim: #a9b1b7; /* still readable at arm's length */
+	--ink-faint: #6d757b; /* rules, index numerals, units — never body text */
+	--chalk: #e8e4d8;
+	--flag: #ff5a2c; /* signature vermilion — the alarm channel */
 	--flag-deep: #c93b14;
-	--teal: #3fd0c9; /* recovery / tissue */
-	--gold: #f4c04e; /* endurance / metabolic */
-	--violet: #9b8cff; /* pull / power */
+	--teal: #46d6ce; /* recovery / tissue */
+	--gold: #f5c451; /* endurance / metabolic */
+	--violet: #a396ff; /* pull / power */
+	--grid: rgba(243, 246, 247, 0.035);
 
-	/* ---- shadcn semantic tokens, mapped to the dark climbing theme ---- */
+	/* ---- shadcn semantic tokens, kept mapped so lifted components still work ---- */
 	--background: var(--bg);
 	--foreground: var(--ink);
 	--card: var(--panel);
@@ -40,7 +70,7 @@
 	--popover: var(--panel-2);
 	--popover-foreground: var(--ink);
 	--primary: var(--flag);
-	--primary-foreground: #ffffff;
+	--primary-foreground: #08090a;
 	--secondary: var(--panel-2);
 	--secondary-foreground: var(--ink);
 	--muted: var(--panel-2);
@@ -55,10 +85,11 @@
 }
 
 @theme inline {
-	--radius-sm: calc(var(--radius) - 4px);
-	--radius-md: calc(var(--radius) - 2px);
-	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) + 4px);
+	/* Every radius collapses to 0. A lifted component cannot smuggle a corner in. */
+	--radius-sm: 0px;
+	--radius-md: 0px;
+	--radius-lg: 0px;
+	--radius-xl: 0px;
 
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -80,11 +111,12 @@
 	--color-input: var(--input);
 	--color-ring: var(--ring);
 
-	/* climbing accents exposed as Tailwind color utilities */
+	/* instrument surfaces exposed as Tailwind color utilities */
 	--color-bg: var(--bg);
 	--color-panel: var(--panel);
 	--color-panel-2: var(--panel-2);
 	--color-line: var(--line);
+	--color-rule: var(--rule);
 	--color-ink: var(--ink);
 	--color-ink-dim: var(--ink-dim);
 	--color-ink-faint: var(--ink-faint);
@@ -104,12 +136,23 @@
 		@apply border-border outline-ring/50;
 	}
 	body {
-		@apply bg-background text-foreground font-sans;
+		/* Mono is the default here, not the exception. Sans is opt-in, via
+		   `.prose`, and only for multi-sentence copy — see the note there. */
+		@apply bg-background text-foreground font-mono;
 		-webkit-font-smoothing: antialiased;
 		/* Measured on the athlete's Android device (#54): pull-to-refresh fires a
 		   *real reload* in the installed app, which throws away unsynced work.
 		   Suppressed here rather than per-screen, because every screen scrolls. */
 		overscroll-behavior-y: contain;
+	}
+	/* Numbers are readings. Tabular figures everywhere so a column of them lines
+	   up on the decimal without a table. */
+	input,
+	button,
+	select,
+	textarea {
+		font: inherit;
+		font-variant-numeric: tabular-nums;
 	}
 	@media (prefers-reduced-motion: reduce) {
 		*,
@@ -131,4 +174,168 @@
 			animation-delay: 0s !important;
 		}
 	}
+}
+
+@layer components {
+	/* ---------------------------------------------------------------- labels */
+
+	/* The direction's signature: small-caps mono at 10px with wide tracking.
+	   It is also the direction's biggest legibility liability, so it is defined
+	   once, here, and every relaxation of it below is deliberate. */
+	.lbl {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		line-height: 1.25;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--ink-dim);
+	}
+	/* pt-BR relaxation. "RECOMENDADOR DA SESSÃO" is 22 characters against
+	   "SESSION RECOMMENDER"'s 19, and 0.16em of tracking on 22 mono characters
+	   overruns 360px. Tracking is the first thing to give — it is decoration;
+	   the letters are information. Applied by `<Frame>` on the root element. */
+	:root[data-locale='pt-BR'] .lbl {
+		letter-spacing: 0.09em;
+	}
+	/* A label that has to survive whatever the locale throws at it. */
+	.lbl-tight {
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	/* Prose is the *only* place this direction leaves mono. Two-sentence
+	   rationale set in 10px small-caps mono is unreadable at arm's length, and
+	   pt-BR makes it worse; the instrument reads the numbers, the athlete reads
+	   the sentences. 14px/1.5 Inter, never uppercased. */
+	.prose {
+		font-family: var(--font-sans);
+		font-size: 14px;
+		line-height: 1.5;
+		letter-spacing: 0;
+		text-transform: none;
+		color: var(--ink-dim);
+	}
+	.prose b {
+		color: var(--ink);
+		font-weight: 600;
+	}
+
+	/* ------------------------------------------------------------- readouts */
+
+	.num {
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+		letter-spacing: -0.02em;
+	}
+
+	/* ------------------------------------------------------------ graticule */
+
+	/* Ruled paper. Carries "this region is one block, and it is inactive" with
+	   no border and no card — the held-work rows and the spent controls use it. */
+	.graticule {
+		background-image: repeating-linear-gradient(
+			-45deg,
+			var(--grid) 0px,
+			var(--grid) 1px,
+			transparent 1px,
+			transparent 5px
+		);
+	}
+	/* A flatter version for live-but-secondary regions (the readout ground). */
+	.ruled {
+		background-image: repeating-linear-gradient(
+			to bottom,
+			var(--grid) 0px,
+			var(--grid) 1px,
+			transparent 1px,
+			transparent 4px
+		);
+	}
+
+	/* ---------------------------------------------------------------- input */
+
+	/* Bench inputs: no box, one baseline rule, the value sitting on it. 16px is
+	   the iOS zoom guard (#54 — iOS is best-effort, but the guard is free). */
+	.bench-input {
+		width: 100%;
+		min-width: 0;
+		background: transparent;
+		border: 0;
+		border-bottom: 1px solid var(--line);
+		padding: 2px 0;
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+		font-size: 16px;
+		line-height: 1.2;
+		color: var(--ink);
+	}
+	.bench-input::placeholder {
+		color: var(--ink-faint);
+	}
+	.bench-input:focus {
+		outline: none;
+		border-bottom-color: var(--flag);
+	}
+	.bench-input:focus-visible {
+		outline: none;
+	}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VIEW TRANSITIONS — the channel sweep
+
+   `defaultViewTransition: true` animates every navigation. A cross-fade reads
+   as a consumer app; a plotter does not fade, it *sweeps*. So the incoming
+   panel is revealed under a moving clip edge while the outgoing panel holds
+   still, and the direction of the sweep follows the channel index — forward to
+   a higher channel, back to a lower one. `data-dir` is stamped on <html> by
+   `ChannelBar` before it navigates.
+
+   The two fixed rails carry their own names so they are not snapshotted with
+   the panel. Measured on the athlete's device (#54): a fixed bar survives the
+   transition intact but the transitioning panel flickers at its corners. It
+   does here too. Noted, not designed around.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+::view-transition-old(panel),
+::view-transition-new(panel) {
+	animation-duration: 0.24s;
+	animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+	mix-blend-mode: normal;
+}
+
+/* The outgoing panel holds. Only the clip edge moves. */
+@keyframes vt-hold {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 1;
+	}
+}
+@keyframes vt-sweep-from-right {
+	from {
+		clip-path: inset(0 0 0 100%);
+	}
+	to {
+		clip-path: inset(0 0 0 0);
+	}
+}
+@keyframes vt-sweep-from-left {
+	from {
+		clip-path: inset(0 100% 0 0);
+	}
+	to {
+		clip-path: inset(0 0 0 0);
+	}
+}
+
+::view-transition-old(panel) {
+	animation-name: vt-hold;
+}
+:root[data-dir='fwd']::view-transition-new(panel) {
+	animation-name: vt-sweep-from-right;
+}
+:root[data-dir='back']::view-transition-new(panel) {
+	animation-name: vt-sweep-from-left;
 }

@@ -527,5 +527,17 @@
 	"ce_delete_confirm": "Delete this custom exercise? It will be removed from any day that uses it.",
 	"sync_saving": "Saving…",
 	"sync_saved": "Synced",
-	"sync_offline": "Offline"
+	"sync_offline": "Offline",
+	"sec_breakdown": "Breakdown",
+	"sec_tasks": "Tasks",
+	"sec_check": "Readiness check",
+	"sec_counters": "Counters",
+	"sec_carry": "Carry-forward",
+	"sec_prescription": "Prescription",
+	"sec_session": "Session",
+	"lbl_baseline": "Baseline",
+	"lbl_stale": "Answers changed — reading is stale",
+	"trend_up": "rising",
+	"trend_down": "falling",
+	"trend_flat": "flat"
 }
