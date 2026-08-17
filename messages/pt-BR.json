@@ -527,5 +527,19 @@
 	"ce_delete_confirm": "Excluir este exercício personalizado? Ele será removido de qualquer dia que o use.",
 	"sync_saving": "Salvando…",
 	"sync_saved": "Sincronizado",
-	"sync_offline": "Offline"
+	"sync_offline": "Offline",
+	"c_ch_verdict": "O veredito",
+	"c_ch_plan": "O plano",
+	"c_ch_check": "O check",
+	"c_ch_record": "O histórico",
+	"c_ch_body": "O corpo",
+	"c_ch_wrap": "Fechamento",
+	"c_chapters": "Capítulos",
+	"c_step": "{n} de {total}",
+	"c_why": "Por que perguntamos",
+	"c_options": "As opções",
+	"c_set_n": "Série {n}",
+	"c_details": "Detalhes",
+	"c_baseline": "Seu normal é {n}",
+	"c_next_up": "A seguir"
 }

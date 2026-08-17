@@ -1,128 +1,54 @@
+// Today — Direction C.
+//
+// The ticket's hard question: `/` carries five things at once — the readiness
+// check, the plan, the stat cards, the bodyweight nudge and the rehab section —
+// and a one-thing-at-a-time direction has to say what happens to the other four.
+//
+// The answer here is **a sequence, not a cut**. All five are still on `/`, in the
+// same order of importance the athlete described, and every one of them is one
+// tap away in the rail. What changed is that only one occupies the screen at a
+// time. The information architecture is untouched: nothing moved to another
+// route, nothing was merged, nothing was dropped.
+//
+// The bodyweight nudge did move *within* the page — it used to sit above the plan
+// and ask for a number before the athlete had been told what to do. It is now the
+// tail of chapter IV, next to the series it writes to.
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
-import { authClient, signIn, signOut } from '../lib/auth-client';
+import { useMemo } from 'react';
+import * as m from '$lib/paraglide/messages';
+import { type ChapterDef, Screen } from '../components/Editorial';
+import { Body } from '../components/today/Body';
+import { Check } from '../components/today/Check';
+import { Plan } from '../components/today/Plan';
+import { Record } from '../components/today/Record';
+import { Verdict } from '../components/today/Verdict';
+import { getPrototypeFixtures } from '../prototype-fixtures';
 
 export const Route = createFileRoute('/')({
-	component: Hello,
+	component: Today,
 });
 
-interface Me {
-	name: string | null;
-	email: string | null;
-	stateUpdatedAt: string | null;
-}
+function Today() {
+	// One call per render, per the fixture module's contract. The tree remounts on
+	// a locale switch (see `__root.tsx`), so an empty dependency list is correct:
+	// the memo cannot outlive the locale it was resolved against.
+	const { today } = useMemo(() => getPrototypeFixtures(), []);
 
-/**
- * The scaffold's hello page. Not a design — the redesign map (#42) owns that,
- * and the four direction prototypes replace this. It exists to prove the three
- * things #21 asks for: the app boots client-only, an athlete can sign in, and an
- * authenticated read reaches Turso.
- */
-function Hello() {
-	const { data: session, isPending } = authClient.useSession();
-	const [me, setMe] = useState<Me | null>(null);
-	const [error, setError] = useState<string | null>(null);
-
-	// Fetched in an effect rather than through a route loader, deliberately:
-	// ADR 0006 excludes route loaders for account data, because loader caching is
-	// what re-introduces back/forward reuse of one athlete's data.
-	useEffect(() => {
-		if (!session) {
-			setMe(null);
-			return;
-		}
-		let cancelled = false;
-		fetch('/api/me')
-			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-			.then((data: Me) => {
-				if (!cancelled) setMe(data);
-			})
-			.catch((e: Error) => {
-				if (!cancelled) setError(e.message);
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, [session]);
-
-	if (isPending) return <main className="min-h-dvh bg-background" />;
+	const chapters: ChapterDef[] = [
+		{ id: 'verdict', label: m.c_ch_verdict() },
+		{ id: 'plan', label: m.c_ch_plan() },
+		{ id: 'check', label: m.c_ch_check() },
+		{ id: 'record', label: m.c_ch_record() },
+		{ id: 'body', label: m.c_ch_body() },
+	];
 
 	return (
-		<main className="min-h-dvh bg-background px-5 py-10 text-foreground">
-			<h1 className="font-mono text-[11px] tracking-wider text-ink-faint uppercase">Send Lab</h1>
-
-			{session ? (
-				<section className="mt-6">
-					<p className="text-[15px]">
-						Signed in as <strong>{session.user.name || session.user.email}</strong>
-					</p>
-					<p className="mt-2 font-mono text-[13px] text-ink-dim">
-						{me
-							? `database reachable · state ${me.stateUpdatedAt ? `last written ${me.stateUpdatedAt}` : 'not yet written'}`
-							: error
-								? `database read failed: ${error}`
-								: 'reading…'}
-					</p>
-					<button
-						type="button"
-						className="mt-6 rounded-xl border border-line px-4 py-2 text-sm"
-						onClick={() => void signOut()}
-					>
-						Sign out
-					</button>
-				</section>
-			) : (
-				<SignInForm />
-			)}
-		</main>
-	);
-}
-
-function SignInForm() {
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [error, setError] = useState<string | null>(null);
-
-	async function submit(e: React.FormEvent<HTMLFormElement>) {
-		e.preventDefault();
-		setError(null);
-		const r = await signIn.email({ email, password });
-		if (r.error) setError(r.error.message ?? 'Sign-in failed');
-	}
-
-	// Inputs carry a real <label>, not a placeholder: a placeholder disappears on
-	// focus and is not an accessible name. The 16px base size is also deliberate —
-	// anything smaller makes iOS zoom the viewport on focus.
-	return (
-		<form className="mt-6 flex max-w-sm flex-col gap-3" onSubmit={submit}>
-			<label className="flex flex-col gap-1" htmlFor="email">
-				<span className="font-mono text-[11px] tracking-wider text-ink-faint uppercase">Email</span>
-				<input
-					id="email"
-					className="rounded-xl border border-line bg-panel-2 px-3 py-2 text-base"
-					type="email"
-					autoComplete="email"
-					value={email}
-					onChange={(e) => setEmail(e.target.value)}
-				/>
-			</label>
-			<label className="flex flex-col gap-1" htmlFor="password">
-				<span className="font-mono text-[11px] tracking-wider text-ink-faint uppercase">
-					Password
-				</span>
-				<input
-					id="password"
-					className="rounded-xl border border-line bg-panel-2 px-3 py-2 text-base"
-					type="password"
-					autoComplete="current-password"
-					value={password}
-					onChange={(e) => setPassword(e.target.value)}
-				/>
-			</label>
-			<button type="submit" className="rounded-xl bg-flag px-4 py-2 text-sm text-bg">
-				Sign in
-			</button>
-			{error ? <p className="text-[13px] text-flag">{error}</p> : null}
-		</form>
+		<Screen title={m.nav_today()} chapters={chapters}>
+			<Verdict today={today} index={0} />
+			<Plan today={today} index={1} />
+			<Check today={today} index={2} />
+			<Record today={today} index={3} />
+			<Body today={today} index={4} />
+		</Screen>
 	);
 }

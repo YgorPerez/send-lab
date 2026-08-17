@@ -527,5 +527,19 @@
 	"ce_delete_confirm": "Delete this custom exercise? It will be removed from any day that uses it.",
 	"sync_saving": "Saving…",
 	"sync_saved": "Synced",
-	"sync_offline": "Offline"
+	"sync_offline": "Offline",
+	"c_ch_verdict": "The verdict",
+	"c_ch_plan": "The plan",
+	"c_ch_check": "The check",
+	"c_ch_record": "The record",
+	"c_ch_body": "The body",
+	"c_ch_wrap": "Wrap up",
+	"c_chapters": "Chapters",
+	"c_step": "{n} of {total}",
+	"c_why": "Why we ask",
+	"c_options": "The options",
+	"c_set_n": "Set {n}",
+	"c_details": "Details",
+	"c_baseline": "Your usual is {n}",
+	"c_next_up": "Next up"
 }

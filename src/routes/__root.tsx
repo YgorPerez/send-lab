@@ -1,6 +1,10 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Locale } from '$lib/paraglide/runtime';
+import { baseLocale, getLocale, setLocale } from '$lib/paraglide/runtime';
 import appCss from '../app.css?url';
+import { LocaleContext } from '../components/Locale';
+import { ReadingBar } from '../components/ReadingBar';
 import { installViewTransitionGuards } from '../lib/viewTransition';
 
 export const Route = createRootRoute({
@@ -14,7 +18,10 @@ export const Route = createRootRoute({
 				name: 'viewport',
 				content: 'width=device-width, initial-scale=1, viewport-fit=cover',
 			},
-			{ name: 'theme-color', content: '#0c0d10' },
+			// Direction C's ground is paper, not the dark climbing panel; an
+			// installed app whose system chrome stays near-black around an ivory
+			// page reads as a bug.
+			{ name: 'theme-color', content: '#f4f1ea' },
 			{ title: 'Send Lab' },
 		],
 		links: [
@@ -68,7 +75,38 @@ function RootComponent() {
 		void navigator.serviceWorker.register('/sw.js');
 	}, []);
 
-	return <Outlet />;
+	// The athlete's locale. Held here, above the Outlet, for two reasons: the
+	// reading bar and every screen have to agree on it, and switching it has to
+	// re-render the whole tree — `m.*()` and `getContent()` resolve the locale at
+	// call time, so nothing updates until something re-renders. Keying the Outlet
+	// remounts the screens, which also clears the per-screen `useState` held over
+	// the fixture; that is the honest behaviour, since a half-answered check in
+	// one language is not a half-answered check in the other.
+	const [locale, setLocaleState] = useState<Locale>(() => {
+		try {
+			return getLocale();
+		} catch {
+			return baseLocale;
+		}
+	});
+
+	const switchLocale = useCallback((next: Locale) => {
+		// `{ reload: false }`: Paraglide's default is a full page reload, which
+		// would throw away the state this prototype exists to demonstrate.
+		setLocale(next, { reload: false });
+		setLocaleState(next);
+	}, []);
+
+	const control = useMemo(() => ({ locale, setLocale: switchLocale }), [locale, switchLocale]);
+
+	return (
+		<LocaleContext value={control}>
+			<div key={locale}>
+				<Outlet />
+			</div>
+			<ReadingBar />
+		</LocaleContext>
+	);
 }
 
 /** Shown while the client-only tree resolves. Deliberately content-free: it is
