@@ -9,6 +9,13 @@ import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { getPrototypeFixtures } from '../src/prototype-fixtures.ts';
 import { FIXTURE_PROSE } from '../src/prototype-prose.ts';
 
+// Pin the locale before anything reads content. Paraglide's real strategy is
+// `localStorage` first (ADR 0006), and jsdom under Vitest has no usable
+// `localStorage`, so an un-overridden `getLocale()` throws at *collection* time —
+// these suites resolve fixtures in their describe bodies. Overriding here rather
+// than in a hook is what makes that safe.
+overwriteGetLocale(() => 'en-US');
+
 /** A fixed Thursday, so the assertions do not move with the wall clock. */
 const NOW = new Date('2026-08-13T09:30:00').getTime();
 

@@ -28,6 +28,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { compile } from '@inlang/paraglide-js';
 import { serveInlangPluginsLocally } from './inlang-local-plugins';
+import { PARAGLIDE_STRATEGY } from './paraglide-strategy';
 
 const PROJECT = './project.inlang';
 const OUTDIR = './src/lib/paraglide';
@@ -46,7 +47,9 @@ function fail(problem: string, explanation: string): never {
 const served = serveInlangPluginsLocally(`${PROJECT}/settings.json`);
 for (const file of served) console.log(`i inlang plugin served locally: ${file}`);
 
-await compile({ project: PROJECT, outdir: OUTDIR });
+// The strategy has to be passed here too, not just in `vite.config.ts` — this
+// compiler overwrites the same generated runtime. See `paraglide-strategy.ts`.
+await compile({ project: PROJECT, outdir: OUTDIR, strategy: [...PARAGLIDE_STRATEGY] });
 
 const settings: Settings = JSON.parse(readFileSync(`${PROJECT}/settings.json`, 'utf8'));
 const pathPattern = settings['plugin.inlang.messageFormat']?.pathPattern;

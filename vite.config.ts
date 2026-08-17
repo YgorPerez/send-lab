@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 import { serveInlangPluginsLocally } from './scripts/inlang-local-plugins.ts';
+import { PARAGLIDE_STRATEGY } from './scripts/paraglide-strategy.ts';
 
 // `paraglideVitePlugin` fetches the inlang plugins from a CDN on every dev/build
 // compile. Serve them from `node_modules` instead, so `pnpm dev` and `pnpm build`
@@ -27,11 +28,10 @@ export default defineConfig({
 		paraglideVitePlugin({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
-			// Client-only SPA (ADR 0006): persist the athlete's choice, fall back to
-			// the browser language, then the base locale. Locale never enters the URL
-			// — a precached shell must be user-independent, and a locale-prefixed
-			// route yields either two shells or a redirect on every cold start.
-			strategy: ['localStorage', 'preferredLanguage', 'baseLocale'],
+			// Shared with `scripts/compile-messages.ts`, which compiles the same
+			// output inside `pnpm check`. Both compilers must agree or whichever ran
+			// last decides how the athlete's locale is resolved.
+			strategy: [...PARAGLIDE_STRATEGY],
 		}),
 		tanstackStart({
 			// ADR 0006: one `ssr: false` seam, at the root. The app tree never
