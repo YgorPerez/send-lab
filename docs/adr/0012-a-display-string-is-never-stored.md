@@ -39,7 +39,10 @@ happened despite an explicit comment forbidding them, and a per-row
 
 - The persisted shape is fixed before #56 defines collections over it. Adding a
   cached label later is a migration, not an edit.
-- One field remains in violation and is tracked: `LoggedExercise.name` stores a
-  localized exercise name, so a session logged in English shows English names
-  after a switch to pt-BR. Removing it needs `exerciseLabel` from the unported
-  resolver; #69 owns it, and there is a `TODO(#69)` on the field.
+- No field remains in violation. `LoggedExercise.name` was the last one — a
+  localized exercise name, so a session logged in English showed English names
+  after a switch to pt-BR. #69 removed it and replaced it with `variant`, an index
+  into the exercise's variants, and `exerciseLabel(exercise, variant)` produces
+  the label at render. An index rather than a re-resolution of the *current*
+  program swap: the athlete swapping a variant must not relabel the sessions that
+  used the old one, so what is stored is what was done.

@@ -5,7 +5,9 @@
 // this dataset; if it drifts, or if it renders differently under pt-BR, the
 // prototypes stop being a design comparison and #51 has nothing to judge.
 import { afterEach, describe, expect, it } from 'vitest';
+import { getContent } from '../src/lib/content/index.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
+import { effectiveVariant, resolveSwapIndex, variantOf } from '../src/lib/prescription.ts';
 import { getPrototypeFixtures } from '../src/prototype-fixtures.ts';
 import { FIXTURE_PROSE } from '../src/prototype-prose.ts';
 
@@ -151,5 +153,63 @@ describe('determinism', () => {
 		expect(JSON.stringify(getPrototypeFixtures(NOW))).toBe(
 			JSON.stringify(getPrototypeFixtures(NOW)),
 		);
+	});
+});
+
+// The fixtures used to fabricate already-resolved prescriptions, which is why
+// nobody noticed the resolver had never been ported (#69): three screens rendered
+// resolved values that nothing computed. These assert that the numbers now come
+// out of `prescription.ts`, because a resolver that is correct and unwired looks
+// exactly like no resolver at all.
+describe('the dataset is resolved, not fabricated', () => {
+	it('never logs a session on a rest day', () => {
+		const f = getPrototypeFixtures(NOW);
+		const rested = f.state.workouts.filter((w) => w.weekday === 'Sun');
+		// Sunday is the built-in rest day. `rest` is a real entry in the exercise
+		// library, so any filter that keeps 'everything the library knows' keeps it
+		// and turns every rest day into a logged session — which inflates the streak,
+		// the session count and the weekly load, all plausibly.
+		expect(rested).toEqual([]);
+	});
+
+	it("prescribes what the resolver prescribes, not the variant's raw defaults", () => {
+		const f = getPrototypeFixtures(NOW);
+		const state = f.resolverState;
+		expect(f.train.items.length).toBeGreaterThan(0);
+		for (const item of f.train.items) {
+			const variantIndex = resolveSwapIndex(
+				state,
+				state.currentWeek,
+				f.today.weekdayKey,
+				item.exerciseId,
+			);
+			const exercise = getContent().exercises[item.exerciseId];
+			expect(item.variantIndex).toBe(variantIndex);
+			expect(item.prescription).toEqual(
+				effectiveVariant(
+					getContent(),
+					state,
+					variantOf(exercise, variantIndex),
+					state.currentWeek,
+					f.today.weekdayKey,
+					item.exerciseId,
+				),
+			);
+		}
+	});
+
+	it('scales the prescribed load for the week it is in', () => {
+		// Week 5 of the block with auto-progression on, so the load has climbed off
+		// the library default. If these matched, nothing would be progressing.
+		const f = getPrototypeFixtures(NOW);
+		const progressed = f.train.items.filter((item) => {
+			const raw = getContent().exercises[item.exerciseId].variants[item.variantIndex];
+			return raw?.loadKg && item.prescription.loadKg;
+		});
+		expect(progressed.length).toBeGreaterThan(0);
+		for (const item of progressed) {
+			const raw = getContent().exercises[item.exerciseId].variants[item.variantIndex];
+			expect(item.prescription.loadKg?.min).toBeGreaterThan(raw.loadKg?.min ?? 0);
+		}
 	});
 });

@@ -16,8 +16,8 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { ExternalLink, X } from 'lucide-react';
 import { useState } from 'react';
-import { type FlagArea, type SelfCheckBand, scoreSelfCheck } from '$lib/content';
-import type { Content } from '$lib/content/types';
+import { type BodyArea, type SelfCheckBand, scoreSelfCheck } from '$lib/content';
+import type { SelfCheckInstrument } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
 import * as m from '$lib/paraglide/messages';
@@ -65,8 +65,8 @@ export function SelfCheckSheet({
 	open,
 	onOpenChange,
 }: {
-	area: FlagArea;
-	instrument: Content['selfChecks'][string];
+	area: BodyArea;
+	instrument: SelfCheckInstrument;
 	last: SelfCheck | undefined;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;

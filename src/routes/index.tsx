@@ -33,8 +33,8 @@ import { Check, ChevronRight, ExternalLink } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
 	type Answers,
+	type BodyArea,
 	computeReadiness,
-	type FlagArea,
 	getContent,
 	visibleQuestionsOrdered,
 } from '$lib/content';
@@ -317,7 +317,7 @@ function Today() {
 			<InjuryEntry selfCheck={t.selfCheck} onSelfCheck={() => setSelfCheckOpen(true)} />
 
 			<SelfCheckSheet
-				area={t.selfCheck.area as FlagArea}
+				area={t.selfCheck.area}
 				instrument={t.selfCheck.instrument}
 				last={t.selfCheck.last}
 				open={selfCheckOpen}
@@ -541,7 +541,7 @@ function WatchOuts({
 	content,
 	onSelfCheck,
 }: {
-	flags: { id: string; severity: 'stop' | 'warn' | 'info'; area?: FlagArea }[];
+	flags: { id: string; severity: 'stop' | 'warn' | 'info'; area?: BodyArea }[];
 	content: Content;
 	onSelfCheck: () => void;
 }) {

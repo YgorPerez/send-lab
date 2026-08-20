@@ -5,17 +5,19 @@
 import { type Content, REST_DAY_TYPE } from './content/types';
 import { asExerciseId, asWeekdayKey, overrideKey } from './ids';
 import * as m from './paraglide/messages';
-import type { Override, Program, RehabArea, RehabStage, WeekdayTemplate } from './types';
+import type { BodyArea, Override, Program, RehabStage, WeekdayTemplate } from './types';
 
-export type { RehabArea, RehabStage } from './types';
-export const REHAB_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'];
-export const REHAB_STAGES = ['acute', 'subacute', 'returning'];
+// Typed against the closed sets rather than as `string[]`, so a member that is
+// not a body area or a rehab stage is a compile error here rather than a picker
+// offering an option nothing routes (ADR 0013).
+export const REHAB_AREAS: BodyArea[] = ['fingers', 'elbow', 'shoulder', 'wrist'];
+export const REHAB_STAGES: RehabStage[] = ['acute', 'subacute', 'returning'];
 
 // Rehab-friendly base pool (low-load tissue / prehab work).
 const POOL = ['antag', 'density', 'slopdens', 'abra', 'wrist', 'repeaters'];
 
 // Exercises to drop per injured area (load that would aggravate it).
-const AVOID: Record<RehabArea, string[]> = {
+const AVOID: Record<BodyArea, string[]> = {
 	fingers: ['recruit', 'limitboulder', 'maxhang', 'perform', 'pinch', 'repeaters'],
 	elbow: ['pull', 'recruit', 'limitboulder', 'perform'],
 	shoulder: ['pull', 'perform', 'limitboulder', 'recruit'],
@@ -35,16 +37,12 @@ const STAGE: Record<
 const PRIORITY = ['Tue', 'Thu', 'Mon', 'Fri', 'Wed', 'Sat'];
 
 /** The low-load rehab exercise pool for an area (≤3, present in the content). */
-export function rehabExercises(content: Content, area: RehabArea): string[] {
+export function rehabExercises(content: Content, area: BodyArea): string[] {
 	const allowed = POOL.filter((id) => !AVOID[area].includes(id) && content.exercises[id]);
 	return (allowed.length ? allowed : ['antag']).slice(0, 3);
 }
 
-export function generateRehabProgram(
-	content: Content,
-	area: RehabArea,
-	stage: RehabStage,
-): Program {
+export function generateRehabProgram(content: Content, area: BodyArea, stage: RehabStage): Program {
 	const s = STAGE[stage];
 	const dayEx = rehabExercises(content, area);
 	const keep = new Set(PRIORITY.slice(0, s.days));

@@ -48,15 +48,16 @@
 //   last moment, for display only.
 import {
 	type Answers,
+	type BodyArea,
 	computeReadiness,
-	type FlagArea,
 	getContent,
 	phaseId,
 	visibleQuestionsOrdered,
 } from '$lib/content';
-import type { Content, Variant, VerdictId } from '$lib/content/types';
+import type { Content, SelfCheckInstrument, Variant, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
+import { exerciseLabel, weekdayLabel } from '$lib/format';
 import {
 	asExerciseId,
 	asWeekdayKey,
@@ -69,6 +70,13 @@ import {
 	weekdayKeyOf,
 } from '$lib/ids';
 import { getLocale } from '$lib/paraglide/runtime';
+import {
+	effectiveVariant,
+	type ResolverState,
+	resolveSwapIndex,
+	trainableExerciseIds,
+	variantOf,
+} from '$lib/prescription';
 import { capByVerdict } from '$lib/readinessPlan';
 import {
 	acwr,
@@ -79,6 +87,7 @@ import {
 	weekLoad,
 } from '$lib/stats';
 import type {
+	Baseline,
 	BodyweightReading,
 	LoggedReadinessCheck,
 	LoggedSet,
@@ -185,7 +194,7 @@ export interface QuizFixture {
 export interface FlagFixture {
 	id: string;
 	severity: string;
-	area?: FlagArea;
+	area?: BodyArea;
 	title: string;
 	text: string;
 	focus: string[];
@@ -251,8 +260,8 @@ export interface TodayFixture {
 	rehab: null;
 	/** The injury self-check reachable from the finger flag, and its last result. */
 	selfCheck: {
-		area: FlagArea;
-		instrument: Content['selfChecks'][string];
+		area: BodyArea;
+		instrument: SelfCheckInstrument;
 		last: SelfCheck;
 	};
 }
@@ -357,6 +366,10 @@ export interface PrototypeFixtures {
 		bodyweight: BodyweightReading[];
 		selfCheckLog: SelfCheck[];
 	};
+	/** The same scenario as the resolver's own input, so a screen can call
+	 *  `prescription.ts` over it rather than read a pre-resolved number off a
+	 *  fixture field. It is what #56's collections have to satisfy. */
+	resolverState: ResolverState;
 }
 
 // ----------------------------------------------------------------- date helpers
@@ -419,16 +432,96 @@ function dayOf(content: Content, weekdayKey: WeekdayKey): Content['days'][number
 	return day;
 }
 
+/** The self-check instrument for a body area. Throws rather than rendering an
+ *  empty check: only three of the four areas have one (there is no wrist
+ *  instrument), and `content.selfChecks` is `Partial` so a caller has to say
+ *  what it wants done about the gap. */
+function selfCheckFor(content: Content, area: BodyArea): SelfCheckInstrument {
+	const instrument = content.selfChecks[area];
+	if (!instrument) throw new Error(`prototype-fixtures: no self-check instrument for ${area}`);
+	return instrument;
+}
+
 /** The exercise ids a day type prescribes, minus the rest placeholder.
  *
  *  One of the two places an `ExerciseId` is minted: the day type's `ex` list is
  *  the exercise library talking about itself, and `content.exercises[id]` is the
  *  check — an id with no entry never leaves this function. */
 function exerciseIdsFor(content: Content, weekdayKey: WeekdayKey): ExerciseId[] {
-	const day = content.days.find((d) => d.k === weekdayKey);
-	return (day?.ex ?? [])
-		.filter((id) => id !== 'restSec' && content.exercises[id])
-		.map((id) => asExerciseId(id));
+	// The resolver answers this, and used not to: this function filtered
+	// `id !== 'restSec'` — the name of a *set field* — where it meant the `rest`
+	// placeholder. `rest` is a real entry in the exercise library, so it survived
+	// the filter, every Sunday resolved as trainable work, and five rest days were
+	// logged as sessions (#69). Nothing per-slot is customized in this scenario, so
+	// the week is not what decides the answer here; the resolver reads it anyway.
+	return trainableExerciseIds(content, planOnlyState(), CURRENT_WEEK_ID, weekdayKey);
+}
+
+// --------------------------------------------------------- the scenario as state
+
+/** The athlete behind the scenario. Only `level` is read by the resolver, and it
+ *  is what scales how fast the prescribed load climbs (progression.ts). */
+const SCENARIO_BASELINE: Baseline = {
+	goal: 'all',
+	focus: 'fingers',
+	level: 'advanced',
+	daysPerWeek: 6,
+	bodyweight: BODYWEIGHT_KG[0],
+	equipment: ['hangboard', 'board', 'rings', 'weights'],
+	boulderGrade: 'V8',
+	routeGrade: '7c',
+	niggle: false,
+	synovitis: false,
+	birthDate: null,
+	sessionMinutes: 75,
+	completedAt: '2026-07-01',
+};
+
+/** The scenario as `ResolverState`: an eight-week block with auto-progression on
+ *  and nothing customized, so what the screens show is the *built-in* program
+ *  progressed to week 5 rather than a set of hand-picked numbers. */
+function buildResolverState(
+	sessions: readonly Session[],
+	taskDone: Record<TaskKey, boolean>,
+): ResolverState {
+	return {
+		currentWeek: CURRENT_WEEK_ID,
+		program: {
+			weeks: BLOCK_WEEKS,
+			template: {},
+			targets: {},
+			phases: [],
+			autoProgress: true,
+		},
+		swaps: {},
+		dayPlan: {},
+		dayExercises: {},
+		daySwaps: {},
+		taskDone,
+		sessions,
+		baseline: SCENARIO_BASELINE,
+	};
+}
+
+/** Enough state to resolve *what* a slot runs, before any history exists. The
+ *  plan half of the state decides that on its own — no sessions, no ticks. */
+function planOnlyState(): ResolverState {
+	return buildResolverState([], {});
+}
+
+/** Today's ticks, keyed the way ADR-0001 says completion is keyed.
+ *
+ *  Derived from today's own session, so the tasks on `/` and the adherence the
+ *  resolver reads cannot disagree about what was trained. Earlier weeks are left
+ *  unticked deliberately: `adherenceRatio` scores an untracked week as **1**, so
+ *  they carry full progression credit rather than reading as four missed weeks. */
+function buildTaskDone(todaySession: Session): Record<TaskKey, boolean> {
+	const done: Record<TaskKey, boolean> = {};
+	for (const logged of todaySession.exercises) {
+		if (!logged.sets.some((set) => set.done)) continue;
+		done[taskKey(CURRENT_WEEK_ID, TODAY_WEEKDAY, logged.exercise)] = true;
+	}
+	return done;
 }
 
 // ------------------------------------------------------------- account state
@@ -470,7 +563,9 @@ function buildHistory(content: Content, now: number, missedDaysAgo: number): Ses
 			const planned = Math.min(4, Math.max(1, spec.sets?.min ?? 3));
 			return {
 				exercise: exId,
-				name: ex.name,
+				// The history logs each exercise's default variant. The label is derived
+				// at render from this index (ADR 0012) — nothing here stores a name.
+				variant: 0,
 				sets: Array.from({ length: planned }, (_, k) => loggedSet(spec, ago + i + k)),
 			};
 		});
@@ -508,7 +603,7 @@ function buildTodaySession(
 			sets[0].done = true;
 			sets[0].rpe = sets[0].rpe ?? 7;
 		}
-		return { exercise: exId, name: ex.name, sets };
+		return { exercise: exId, variant: 0, sets };
 	});
 	return {
 		at: iso,
@@ -631,7 +726,7 @@ function buildToday(
 		iso,
 		dateLabel: displayDate(iso),
 		weekdayKey: TODAY_WEEKDAY,
-		weekdayLabel: day.label,
+		weekdayLabel: weekdayLabel(content, TODAY_WEEKDAY),
 		weekId: CURRENT_WEEK_ID,
 		week: CURRENT_WEEK,
 		blockWeeks: BLOCK_WEEKS,
@@ -680,14 +775,14 @@ function buildToday(
 		},
 		missed: {
 			weekdayKey: ctx.missed.weekdayKey,
-			weekdayLabel: dayOf(content, ctx.missed.weekdayKey).label,
+			weekdayLabel: weekdayLabel(content, ctx.missed.weekdayKey),
 			exerciseIds: ctx.missed.exerciseIds,
 			labels: ctx.missed.exerciseIds.map((id) => content.exercises[id].name),
 		},
 		rehab: null,
 		selfCheck: {
 			area: 'fingers',
-			instrument: content.selfChecks.fingers,
+			instrument: selfCheckFor(content, 'fingers'),
 			last: state.selfCheckLog[0],
 		},
 	};
@@ -696,6 +791,7 @@ function buildToday(
 function buildTrain(
 	content: Content,
 	state: PrototypeFixtures['state'],
+	resolver: ResolverState,
 	iso: string,
 	exerciseIds: ExerciseId[],
 ): TrainFixture {
@@ -703,15 +799,28 @@ function buildTrain(
 
 	const items: TrainItemFixture[] = exerciseIds.map((exerciseId) => {
 		const ex = content.exercises[exerciseId];
-		const spec = ex.variants[0];
+		// The prescription is *resolved*, not fabricated. This used to hand back
+		// `ex.variants[0]` and call the variant index 0, which is why the resolver
+		// being unported went unnoticed for three screens: the numbers on screen
+		// looked prescribed and nothing had prescribed them (#69).
+		const variantIndex = resolveSwapIndex(resolver, CURRENT_WEEK_ID, TODAY_WEEKDAY, exerciseId);
+		const variant = variantOf(ex, variantIndex);
+		const spec = effectiveVariant(
+			content,
+			resolver,
+			variant,
+			CURRENT_WEEK_ID,
+			TODAY_WEEKDAY,
+			exerciseId,
+		);
 		return {
 			key: taskKey(CURRENT_WEEK_ID, TODAY_WEEKDAY, exerciseId),
 			exerciseId,
 			exName: ex.name,
 			cat: ex.cat,
 			catVar: ex.catVar,
-			variantIndex: 0,
-			variantName: spec.name,
+			variantIndex,
+			variantName: variant.name,
 			variants: ex.variants.map((v) => ({
 				name: v.name,
 				...(v.tool ? { tool: v.tool } : {}),
@@ -751,7 +860,7 @@ function buildTrain(
 
 	return {
 		weekdayKey: TODAY_WEEKDAY,
-		weekdayLabel: dayOf(content, TODAY_WEEKDAY).label,
+		weekdayLabel: weekdayLabel(content, TODAY_WEEKDAY),
 		weekId: CURRENT_WEEK_ID,
 		timer,
 		items,
@@ -794,14 +903,25 @@ function buildLog(content: Content, state: PrototypeFixtures['state']): LogFixtu
 			iso: w.at,
 			dateLabel: displayDate(w.at),
 			weekdayKey,
-			weekdayLabel: day?.label ?? weekdayKey,
+			weekdayLabel: weekdayLabel(content, weekdayKey),
 			dayType: day?.type ?? '',
-			exercises: w.exercises.map((ex) => ({
-				exerciseId: asExerciseId(ex.exercise),
-				name: ex.name,
-				fields: fieldsFor(content.exercises[ex.exercise]?.variants[0] ?? {}),
-				sets: ex.sets,
-			})),
+			exercises: w.exercises.map((ex) => {
+				const exercise = content.exercises[ex.exercise];
+				// The session stores an exercise id and a variant index; both the label
+				// and which fields to show are derived from them here, at render. Before
+				// #69 the label was read off a stored `name` and the fields were always
+				// variant 0's, so a session that logged a swapped variant showed the
+				// wrong columns.
+				if (!exercise) {
+					throw new Error(`prototype-fixtures: session logged unknown exercise ${ex.exercise}`);
+				}
+				return {
+					exerciseId: asExerciseId(ex.exercise),
+					name: exerciseLabel(exercise, ex.variant),
+					fields: fieldsFor(variantOf(exercise, ex.variant)),
+					sets: ex.sets,
+				};
+			}),
 			note: w.note,
 			durationMin: w.durationMin ?? null,
 			setCount: w.exercises.reduce((n, ex) => n + ex.sets.length, 0),
@@ -845,17 +965,22 @@ export function getPrototypeFixtures(now: number = Date.now()): PrototypeFixture
 	const readiness = computeReadiness(TODAY_ANSWERS, load, insights);
 	const { keep } = capByVerdict(exerciseIds, readiness.verdict);
 
+	const todaySession = buildTodaySession(content, iso, exerciseIds, keep[0]);
 	const state: PrototypeFixtures['state'] = {
-		workouts: [buildTodaySession(content, iso, exerciseIds, keep[0]), ...history],
+		workouts: [todaySession, ...history],
 		readinessLog,
 		bodyweight: buildBodyweight(now),
 		selfCheckLog: buildSelfCheckLog(now),
 	};
+	// Built last, because the resolver reads the history and the ticks: the
+	// prescribed load climbs only as far as the athlete actually trained.
+	const resolver = buildResolverState(state.workouts, buildTaskDone(todaySession));
 
 	return {
 		today: buildToday(content, state, { iso, exerciseIds, readiness, insights, missed }),
-		train: buildTrain(content, state, iso, exerciseIds),
+		train: buildTrain(content, state, resolver, iso, exerciseIds),
 		log: buildLog(content, state),
 		state,
+		resolverState: resolver,
 	};
 }

@@ -42,6 +42,30 @@ export type Region = 'fingers' | 'wrist' | 'pull' | 'antagonist';
 /** Relative systemic / skin / joint cost. */
 export type Cost = 'low' | 'mod' | 'high';
 
+/**
+ * A body area that can be hurt — the axis injury runs along.
+ *
+ * Declared here, a layer below the app, because it is used in two roles on two
+ * sides of a boundary the dependency only crosses one way: content keys its
+ * per-area `selfChecks` by it and a readiness flag routes to it, while the app
+ * stores it on a `SelfCheck` and on the `Rehab` mode. It was declared twice —
+ * `FlagArea` here and `RehabArea` in `lib/types.ts`, byte-identical — and
+ * deduplicating it by importing *upward* inverts the layering, since
+ * `lib/types.ts` already depends on this module. So it moved down instead (#69),
+ * following the direction `SelfCheckBand` set. A body area is a body area
+ * whether a flag surfaced it or a rehab block targets it, which is why neither
+ * old name survived: both named the role rather than the thing.
+ *
+ * Not `Region`, above: that is which body region an *exercise loads*, an axis of
+ * training rather than of injury, and its members differ (`pull`, `antagonist`).
+ */
+export type BodyArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
+
+/** How far along a rehab block is — it gates which work is allowed. Declared
+ *  beside `BodyArea` and for the same reason: the content library routes a
+ *  self-check band to a stage, and the app stores the stage it routed to. */
+export type RehabStage = 'acute' | 'subacute' | 'returning';
+
 /** Language-neutral, fully-parametrized targets + metadata for one variant.
  *  Targets are ranges in canonical units: counts, **seconds**, kg, mm, % and
  *  RPE (0–10). Only the fields that apply are set. */
@@ -203,7 +227,7 @@ interface Flag {
 	focus: string[];
 }
 
-/** One deep-assessment question; each option scores 0–10, where 10 = healthy. */
+/** One self-check question; each option scores 0–10, where 10 = healthy. */
 interface SelfCheckQuestion {
 	id: string;
 	q: string;
@@ -212,7 +236,7 @@ interface SelfCheckQuestion {
 
 /** A per-area injury self-check, modelled on a validated instrument (its domains
  *  + 0–100 scoring) — attributed via `source`/`url`, not a diagnosis. */
-interface SelfCheckInstrument {
+export interface SelfCheckInstrument {
 	title: string;
 	intro: string;
 	/** Instrument it's based on, e.g. "VISA-C (climbing finger/wrist)". */
@@ -230,8 +254,15 @@ export interface LocaleContent {
 	verdicts: Record<VerdictId, Verdict>;
 	/** Per-problem recommendations keyed by flag id (see logic.ts `dailyFlags`). */
 	flags: Record<string, Flag>;
-	/** Per-area injury self-checks, keyed by FlagArea (fingers/elbow/shoulder/wrist). */
-	selfChecks: Record<string, SelfCheckInstrument>;
+	/** Per-area injury self-checks, keyed by `BodyArea`.
+	 *
+	 *  `Partial`, because it is: both locales carry fingers, elbow and shoulder,
+	 *  and **no wrist instrument exists**. The key was `string` until #69 branded
+	 *  it, and the comment here claimed all four areas — which is how a gap in the
+	 *  content library read as complete. Nothing hits it yet (the only lookup is a
+	 *  hard-coded `.fingers`), so this is a missing instrument rather than a live
+	 *  crash; the type is what will stop it becoming one. */
+	selfChecks: Partial<Record<BodyArea, SelfCheckInstrument>>;
 	phases: Record<PhaseId, Phase>;
 	/** Jargon/acronym → plain-language definition, surfaced as tooltips in prose. */
 	glossary: Record<string, string>;

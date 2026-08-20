@@ -15,8 +15,10 @@
 //
 // ADR-0003 applies: these produce *display strings*. Nothing here is ever
 // matched on, stored, or used as a key.
-import type { Cost, Grip, Range } from '$lib/content/types';
+import type { Content, Cost, Exercise, Grip, Quality, Range, Region } from '$lib/content/types';
+import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
+import { variantOf } from '$lib/prescription';
 
 /** "4" for a fixed value, "4–6" for a range. */
 export function formatRange(r: Range): string {
@@ -44,6 +46,20 @@ export function formatLoad(r: Range): string {
 /** Edge depth: "18–22mm". */
 export function formatEdge(r: Range): string {
 	return `${formatRange(r)}mm`;
+}
+
+/**
+ * The localized name of a weekday, from the content library's built-in week.
+ *
+ * The last label helper still living in `main`'s `plan.ts` (#69). It exists
+ * because the resolver deliberately does *not* return one: `missedYesterday`
+ * hands back a `WeekdayKey` and the caller labels it here, where `main` returned
+ * the label beside the ids and sent a display string travelling as data
+ * (ADR-0003). Falls back to the key, which is wrong in pt-BR and visible — better
+ * than an empty cell that looks intentional.
+ */
+export function weekdayLabel(content: Content, weekday: WeekdayKey): string {
+	return content.days.find((d) => d.k === weekday)?.label ?? weekday;
 }
 
 const GRIP_LABEL: Record<Grip, () => string> = {
@@ -79,6 +95,51 @@ const COST_LABEL: Record<Cost, () => string> = {
 
 export function costLabel(c: Cost): string {
 	return COST_LABEL[c]?.() ?? c;
+}
+
+const REGION_LABEL: Record<Region, () => string> = {
+	fingers: m.region_fingers,
+	wrist: m.region_wrist,
+	pull: m.region_pull,
+	antagonist: m.region_antagonist,
+};
+
+/** Localized label for a body region — which part of the body an exercise loads.
+ *  Not a body area, which is the axis *injury* runs along (ADR 0013). */
+export function regionLabel(r: string): string {
+	return REGION_LABEL[r as Region]?.() ?? r;
+}
+
+const QUALITY_LABEL: Record<Quality, () => string> = {
+	'max-strength': m.qual_max_strength,
+	rfd: m.qual_rfd,
+	'strength-endurance': m.qual_strength_endurance,
+	hypertrophy: m.qual_hypertrophy,
+	tissue: m.qual_tissue,
+	power: m.qual_power,
+	aerobic: m.qual_aerobic,
+	skill: m.qual_skill,
+};
+
+/** Localized label for a training quality — the adaptation an exercise trains. */
+export function qualityLabel(q: string): string {
+	return QUALITY_LABEL[q as Quality]?.() ?? q;
+}
+
+/**
+ * The display label for an exercise at a swap index.
+ *
+ * Here rather than in `prescription.ts` because it is a label: the resolver
+ * decides *which* variant, this says what to call it. It leans on `variantOf` for
+ * the index fallback rather than re-deriving it, so a stored index that outlived
+ * its variant reads the same in both places.
+ *
+ * ADR 0012's replacement for the `LoggedExercise.name` that used to be persisted:
+ * a session stores an exercise id and a variant index, and this produces the name
+ * in whatever language is active at render.
+ */
+export function exerciseLabel(exercise: Exercise, index: number): string {
+	return variantOf(exercise, index).name;
 }
 
 /** mm:ss for a countdown. */

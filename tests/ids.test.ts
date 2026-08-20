@@ -15,9 +15,11 @@ import {
 	asWeekdayKey,
 	asWeekId,
 	parseAthleteId,
+	parseSlotKey,
 	parseTaskKey,
 	parseWeekdayKey,
 	parseWeekId,
+	slotKey,
 	taskKey,
 	WEEKDAY_KEYS,
 	weekdayKeyOf,
@@ -65,6 +67,40 @@ describe('week ids', () => {
 		expect(parseWeekId('w0')).toBeNull();
 		expect(parseWeekId('1')).toBeNull();
 		expect(parseWeekId('week1')).toBeNull();
+	});
+});
+
+describe('slot keys', () => {
+	const week = asWeekId(1);
+	const weekday = asWeekdayKey('Thu');
+
+	test('builds the shape the per-slot customizations key by', () => {
+		expect(slotKey(week, weekday)).toBe('w1-Thu');
+	});
+
+	test('round-trips back to its two identities', () => {
+		expect(parseSlotKey(slotKey(asWeekId(12), asWeekdayKey('Sun')))).toEqual({
+			week: 'w12',
+			weekday: 'Sun',
+		});
+	});
+
+	// A slot key is a task key with the exercise taken off, so the two shapes are
+	// one `:exercise` apart — which is why they carry distinct brands, and why
+	// each parser has to refuse the other's output.
+	test('refuses a task key, and a task key refuses a slot key', () => {
+		expect(parseSlotKey(taskKey(week, weekday, asExerciseId('pinch')))).toBeNull();
+		expect(parseTaskKey(slotKey(week, weekday))).toBeNull();
+	});
+
+	test('rejects a key that is not one', () => {
+		// The pt-BR label for Thursday. It reaches here only through a hand-built
+		// key, which is the thing the constructor exists to replace.
+		expect(parseSlotKey('w1-Qui')).toBeNull();
+		expect(parseSlotKey('1-Thu')).toBeNull();
+		expect(parseSlotKey('w0-Thu')).toBeNull();
+		expect(parseSlotKey('Thu')).toBeNull();
+		expect(parseSlotKey(undefined)).toBeNull();
 	});
 });
 
@@ -135,7 +171,18 @@ describe('the constructors are the only door', () => {
 		return out;
 	}
 
-	const BRANDS = ['AthleteId', 'WeekId', 'WeekdayKey', 'ExerciseId', 'TaskKey'].join('|');
+	// `OverrideKey` was minted by #55 and never added here, so the one brand
+	// introduced *because* a hand-built composite went wrong was the one brand the
+	// scan did not cover. `SlotKey` joins it, for the same reason.
+	const BRANDS = [
+		'AthleteId',
+		'WeekId',
+		'WeekdayKey',
+		'ExerciseId',
+		'TaskKey',
+		'OverrideKey',
+		'SlotKey',
+	].join('|');
 	// `as WeekdayKey` and `as unknown as TaskKey`.
 	//
 	// The angle-bracket cast (`<ExerciseId>raw`) is deliberately **not** matched.
@@ -178,6 +225,8 @@ describe('the constructors are the only door', () => {
 			'const a = id as AthleteId;',
 			'const w = s as WeekId;',
 			'const list = raw as ExerciseId[];',
+			'const o = joined as unknown as OverrideKey;',
+			'const s = raw as SlotKey;',
 		]) {
 			expect(asserted).toMatch(new RegExp(ASSERTION.source));
 		}

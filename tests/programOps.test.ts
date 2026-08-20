@@ -41,8 +41,10 @@ test('applyEditDay validates weekday + exercise ids and accepts custom ids', () 
 	const Mon = asWeekdayKey('Mon');
 	const Wed = asWeekdayKey('Wed');
 	applyEditDay(p, 'Mon', 'pinch-wrist', [id]);
-	assert.equal(p.template[Mon].dayType, 'pinch-wrist');
-	assert.deepEqual(p.template[Mon].exercises, [id]);
+	const mon = p.template[Mon];
+	assert.ok(mon, 'editing a weekday materializes its template entry');
+	assert.equal(mon.dayType, 'pinch-wrist');
+	assert.deepEqual(mon.exercises, [id]);
 
 	assert.throws(() => applyEditDay(p, 'Funday'));
 	assert.throws(() => applyEditDay(p, 'Mon', undefined, ['nope_not_real']));
@@ -51,9 +53,11 @@ test('applyEditDay validates weekday + exercise ids and accepts custom ids', () 
 
 	// a custom id is accepted when passed via extraIds
 	applyEditDay(p, 'Wed', undefined, ['my_custom'], ['my_custom']);
-	assert.deepEqual(p.template[Wed].exercises, ['my_custom']);
+	const wed = p.template[Wed];
+	assert.ok(wed, 'editing a weekday materializes its template entry');
+	assert.deepEqual(wed.exercises, ['my_custom']);
 	// defaults to the day type that weekday runs in the built-in week
-	assert.equal(p.template[Wed].dayType, 'endurance');
+	assert.equal(wed.dayType, 'endurance');
 });
 
 test('DAY_TYPE_IDS are day types, not weekdays', () => {
@@ -70,12 +74,15 @@ test('applySetTarget sets, clears a field, and removes empty targets', () => {
 	const id = EXERCISE_IDS[0];
 	const key = overrideKey(asWeekdayKey('Mon'), asExerciseId(id));
 	applySetTarget(p, 'Mon', id, { loadKg: 30, sets: 4 });
-	assert.equal(p.targets[key].loadKg, 30);
-	assert.equal(p.targets[key].sets, 4);
+	assert.equal(p.targets[key]?.loadKg, 30);
+	assert.equal(p.targets[key]?.sets, 4);
 
 	applySetTarget(p, 'Mon', id, { loadKg: null }); // null clears just that field
-	assert.equal(p.targets[key].loadKg, undefined);
-	assert.equal(p.targets[key].sets, 4);
+	// The `sets` assertion below is what proves the key survived — clearing one
+	// field must not drop the override, and both reads would be `undefined` if it
+	// had.
+	assert.equal(p.targets[key]?.loadKg, undefined);
+	assert.equal(p.targets[key]?.sets, 4);
 
 	applySetTarget(p, 'Mon', id, { sets: null }); // clearing the last field drops the key
 	assert.equal(p.targets[key], undefined);

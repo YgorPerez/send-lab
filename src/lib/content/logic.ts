@@ -1,7 +1,6 @@
-import type { PhaseId, VerdictId } from './types';
+import type { BodyArea, PhaseId, RehabStage, VerdictId } from './types';
 
 export type Answers = Record<string, number>;
-export type FlagArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
 /** Acute:chronic workload ratio band (see stats.ts `acwr`). */
 type AcwrStatus = 'low' | 'optimal' | 'high' | 'spike';
 type FlagSeverity = 'stop' | 'warn' | 'info';
@@ -22,7 +21,7 @@ export interface LoadSignals {
 export interface DailyFlag {
 	id: string;
 	severity: FlagSeverity;
-	area?: FlagArea;
+	area?: BodyArea;
 }
 
 // ---------------- adaptive questionnaire ----------------
@@ -32,9 +31,9 @@ export interface DailyFlag {
 const CORE_QUESTIONS = ['sleep', 'fatigue', 'soreness', 'body', 'illness', 'time'];
 
 // The `body` answer encodes the worst-affected area (0 = nothing bothering you).
-const BODY_AREA: (FlagArea | null)[] = [null, 'fingers', 'elbow', 'shoulder', 'wrist'];
+const BODY_AREA: (BodyArea | null)[] = [null, 'fingers', 'elbow', 'shoulder', 'wrist'];
 /** The injured area chosen in the `body` question, or null. */
-function bodyArea(answers: Answers): FlagArea | null {
+function bodyArea(answers: Answers): BodyArea | null {
 	return BODY_AREA[answers.body ?? 0] ?? null;
 }
 
@@ -158,14 +157,14 @@ export interface Readiness {
 	/** Session recommendation (maps to content.verdicts). */
 	verdict: VerdictId;
 	/** Injured area, if any (for area-specific advice + rehab routing). */
-	area: FlagArea | null;
+	area: BodyArea | null;
 	/** Surfaced problems/notes (render via content.flags + DailyFlags). */
 	flags: DailyFlag[];
 	/** Question ids currently in play (core + revealed follow-ups). */
 	asked: string[];
 }
 
-function areaFlag(area: FlagArea, severe: boolean): DailyFlag {
+function areaFlag(area: BodyArea, severe: boolean): DailyFlag {
 	if (area === 'fingers')
 		return severe
 			? { id: 'finger_pain', severity: 'stop', area }
@@ -258,11 +257,6 @@ export function computeReadiness(
 // ---------------- injury self-checks ----------------
 
 export type SelfCheckBand = 'manageable' | 'moderate' | 'significant';
-/** The stage a band routes to. Declared here rather than imported from
- *  `$lib/types`, deliberately: `lib/types.ts` depends on `content/types.ts`, so
- *  content importing app types would invert the layering. It is byte-identical to
- *  `RehabStage`, which is a duplication worth resolving — see the note on #55. */
-type RehabStage = 'acute' | 'subacute' | 'returning';
 
 export interface SelfCheckResult {
 	/** 0–100, where 100 = no symptoms (normalized like VISA-C). */

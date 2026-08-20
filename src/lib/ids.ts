@@ -33,8 +33,8 @@
 // `lib/content/types.ts`. A brand called `DayKey` sitting beside it reads as
 // "the key of a day type" and reopens the overload at the type level, so the
 // weekday key is named for what it is. `CONTEXT.md` calls the pairing of a
-// weekday with a training week a **slot**; a weekday alone is calendar position
-// and has no glossary term of its own.
+// weekday with a training week a **slot**, which is `SlotKey` below; a weekday
+// alone is calendar position and has no glossary term of its own.
 
 declare const IDENTITY: unique symbol;
 
@@ -59,6 +59,17 @@ export type ExerciseId = Identity<'ExerciseId'>;
  * whether a slot was trained. Shaped `w1-Tue:pinch`.
  */
 export type TaskKey = Identity<'TaskKey'>;
+
+/**
+ * One weekday of one training week — `CONTEXT.md`'s **slot**, and the addressable
+ * cell of a block. Shaped `w1-Thu`.
+ *
+ * It is what the per-slot customizations key by: the day type this slot runs
+ * instead of its weekday's default, and the exercise list this slot runs instead
+ * of the day type's. A `TaskKey` is this plus an exercise, which is why the two
+ * are `:exercise` apart and each brand refuses the other.
+ */
+export type SlotKey = Identity<'SlotKey'>;
 
 /**
  * The key of one prescription override: this exercise, on this weekday of the
@@ -192,6 +203,38 @@ export function parseTaskKey(value: unknown): TaskParts | null {
 	const week = parseWeekId(slot.slice(0, dash));
 	const weekday = parseWeekdayKey(slot.slice(dash + 1));
 	return week && weekday ? { week, weekday, exercise } : null;
+}
+
+// -------------------------------------------------------------------- slot
+
+/**
+ * The key of one slot: this weekday, of this training week.
+ *
+ * Built rather than concatenated at the call site, for the same reason `taskKey`
+ * is — and with more at stake, because the resolver reads this key three times
+ * per slot (day type, exercise list, and once per task) and a key that matched
+ * nothing would read as "not customized" rather than as an error.
+ */
+export function slotKey(week: WeekId, weekday: WeekdayKey): SlotKey {
+	return `${week}-${weekday}` as SlotKey;
+}
+
+export interface SlotParts {
+	week: WeekId;
+	weekday: WeekdayKey;
+}
+
+/** The two identities inside a slot key, or `null` if it is not one. */
+export function parseSlotKey(value: unknown): SlotParts | null {
+	// A task key would otherwise reach the split below and be refused only by
+	// accident — its exercise half happens never to spell a weekday. Refusing the
+	// separator outright makes that structural instead.
+	if (typeof value !== 'string' || value.includes(':')) return null;
+	const dash = value.lastIndexOf('-');
+	if (dash < 0) return null;
+	const week = parseWeekId(value.slice(0, dash));
+	const weekday = parseWeekdayKey(value.slice(dash + 1));
+	return week && weekday ? { week, weekday } : null;
 }
 
 // ---------------------------------------------------------------- override

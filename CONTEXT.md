@@ -235,6 +235,13 @@ Distinct from a flag's severity, which is how urgently to act, and from soreness
 which is one of the daily wellness answers.
 _Avoid_: severity, soreness, pain score
 
+**Body area**:
+A part of the body that can be hurt: fingers, elbow, shoulder or wrist. One
+concept in two roles — a readiness flag surfaces one, an injury self-check scores
+one, and a rehab block targets one. Not a region, which is what an *exercise*
+loads and is an axis of training rather than of injury.
+_Avoid_: region, joint, body part, injury site
+
 **Rehab**:
 The mode where the program is replaced by a conservative plan for one injured
 area. The prior program is restored when rehab ends.

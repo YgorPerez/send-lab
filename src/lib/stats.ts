@@ -18,7 +18,7 @@ const params = (exId: string) => exerciseParams[exId]?.variants[0];
 const CNS_WEIGHT: Record<string, number> = { low: 1, mod: 2, high: 3 };
 
 /** Chronological (oldest→newest) workouts. */
-function chronological(workouts: Session[]): Session[] {
+function chronological(workouts: readonly Session[]): Session[] {
 	return [...workouts].reverse();
 }
 
@@ -32,7 +32,7 @@ export function loggedExerciseIds(workouts: Session[]): string[] {
 }
 
 /** Best (max) value of a field for an exercise, per session, oldest→newest. */
-export function progression(workouts: Session[], exId: string, field: NumField): Point[] {
+export function progression(workouts: readonly Session[], exId: string, field: NumField): Point[] {
 	const pts: Point[] = [];
 	for (const w of chronological(workouts)) {
 		const ex = w.exercises.find((e) => e.exercise === exId);

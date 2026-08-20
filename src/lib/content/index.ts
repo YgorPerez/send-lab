@@ -42,7 +42,6 @@ export {
 	type Answers,
 	computeReadiness,
 	type DailyFlag,
-	type FlagArea,
 	phaseId,
 	type SelfCheckBand,
 	type SelfCheckResult,
@@ -50,4 +49,4 @@ export {
 	visibleQuestions,
 	visibleQuestionsOrdered,
 } from './logic';
-export type { Day, MetricId } from './types';
+export type { BodyArea, Day, MetricId, RehabStage } from './types';

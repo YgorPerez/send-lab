@@ -15,7 +15,7 @@ const w = (daysAgo: number, sets: number, rpe: number) => ({
 	exercises: [
 		{
 			exercise: asExerciseId('x'),
-			name: 'x',
+			variant: 0,
 			sets: Array.from({ length: sets }, () => ({
 				loadKg: null,
 				edgeMm: null,

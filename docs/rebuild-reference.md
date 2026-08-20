@@ -17,13 +17,13 @@ runs.
 
 | Module on `main` | Lines | Store coupling | Re-authored by |
 |---|---:|---|---|
-| `src/lib/plan.ts` | 700 | 82 `appState` reads | the state-model ticket |
+| `src/lib/plan.ts` | 700 | 82 `appState` reads | **its pure half is ported** — `src/lib/prescription.ts` ([#69](https://github.com/YgorPerez/send-lab/issues/69)); the mutations belong to [#57](https://github.com/YgorPerez/send-lab/issues/57) |
 | `src/lib/stats.ts` | — | *(none — survived, see below)* | — |
 | `src/lib/units.ts` | 74 | 12 (`prefs.weight` / `prefs.length`) | the state-model ticket |
 | `src/lib/assessment.ts` | 101 | 9 | the state-model ticket |
 | `src/lib/dayLog.ts` | 101 | 6 | the state-model ticket |
 | `src/lib/backup.ts` | 103 | 3 | the state-model ticket |
-| `src/lib/programStats.ts` | — | via `plan.ts` (6 functions) | the Program page |
+| `src/lib/programStats.ts` | — | via `plan.ts` (6 functions) | the Program page (its `plan.ts` half is ported) |
 | `src/lib/trainColumns.ts` | — | via `units.ts` (`edgeLabel`, `weightLabel`) | the Train page |
 | `src/lib/state.svelte.ts` | 563 | *is* the store | ADR 0007 / ADR 0008 |
 | `src/lib/timerStore.svelte.ts` | — | Svelte runes | the Train page |

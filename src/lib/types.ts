@@ -43,8 +43,17 @@
 // that mints one, so a localized label reaching a key is a compile error rather
 // than a screen that renders correctly in English.
 import type { SelfCheckBand } from '$lib/content/logic';
-import type { DayTypeId, Grip, VerdictId } from '$lib/content/types';
+import type { BodyArea, DayTypeId, Grip, RehabStage, VerdictId } from '$lib/content/types';
 import type { ExerciseId, OverrideKey, WeekdayKey } from '$lib/ids';
+
+/** `BodyArea` and `RehabStage` are declared a layer down, in `content/types.ts`,
+ *  and re-exported here so the entities below and their app-side consumers read
+ *  from one place. They used to be declared twice — `FlagArea` in
+ *  `content/logic.ts` and `RehabArea` here — and #69 moved the canonical copy
+ *  *down* rather than importing *up*, which would have inverted the layering
+ *  this module's own imports establish. See the note on `BodyArea` for why
+ *  neither old name survived. */
+export type { BodyArea, RehabStage };
 
 /** A bodyweight reading. Not a marker — nothing is tested and no effort is
  *  expended, and it is read as the divisor other numbers are expressed against
@@ -80,11 +89,17 @@ export interface LoggedSet {
  *  movement it instantiates is `exercise`; everything else is history. */
 export interface LoggedExercise {
 	exercise: ExerciseId;
-	/** Localized exercise name as written. Display only, never matched on.
-	 *  TODO(#69): derive from `exercise` plus the variant index at render. That
-	 *  needs the resolver's `exerciseLabel`, which is not ported yet — until it
-	 *  is, a session logged in one language shows that language's names. */
-	name: string;
+	/** Which variant of that exercise was trained, as an index into its
+	 *  `variants`. The label is `exerciseLabel(exercise, variant)` at render.
+	 *
+	 *  This replaced a stored localized `name` (#69), which was ADR 0012's last
+	 *  standing violation: a session logged in English showed English names after
+	 *  a switch to pt-BR, because the stored half was frozen in whatever wrote it.
+	 *  An index is not a display string, so it records what was actually done —
+	 *  which the alternative, resolving the *current* program swap at render,
+	 *  would not: swapping a variant would relabel every past session that used
+	 *  the old one. */
+	variant: number;
 	sets: LoggedSet[];
 }
 
@@ -107,7 +122,7 @@ export interface Session {
 export interface SelfCheck {
 	/** Epoch ms when the check was completed. */
 	at: number;
-	area: RehabArea;
+	area: BodyArea;
 	/** 0–100, from the area's validated instrument. */
 	score: number;
 	/** Which band the score fell in — the same closed set the content library
@@ -210,9 +225,16 @@ export interface Program {
 	/** The block: the run of weeks this program spans. Independent of the phases
 	 *  below, which may span fewer — the last is then held for the remainder. */
 	weeks: number;
-	template: Record<WeekdayKey, WeekdayTemplate>;
-	/** Prescription overrides, keyed by `overrideKey(weekday, exercise)`. */
-	targets: Record<OverrideKey, Override>;
+	/** The weekday template. `Partial`, because it is: a weekday with no entry
+	 *  runs its built-in day type, and every read of it is a fallback chain over
+	 *  that absence (`prescription.ts`). A total `Record` typed the miss away
+	 *  while `{}` stayed assignable, so the fallbacks were trusted rather than
+	 *  checked. */
+	template: Partial<Record<WeekdayKey, WeekdayTemplate>>;
+	/** Prescription overrides, keyed by `overrideKey(weekday, exercise)`. Sparse
+	 *  by nature and `Partial` for the same reason as `template`: an exercise with
+	 *  no override runs the variant's built-in target. */
+	targets: Partial<Record<OverrideKey, Override>>;
 	phases: Phase[];
 	/** Auto-progress working loads each week at study-backed, level-scaled rates. */
 	autoProgress: boolean;
@@ -223,15 +245,10 @@ export interface SavedProgram {
 	program: Program;
 }
 
-/** The injured area a rehab block targets. */
-export type RehabArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
-/** How far along that rehab block is — it gates which work is allowed. */
-export type RehabStage = 'acute' | 'subacute' | 'returning';
-
 /** The mode where the program is replaced by a conservative plan for one injured
  *  area. Stashes the program that was active before, so it can be restored. */
 export interface Rehab {
-	area: RehabArea;
+	area: BodyArea;
 	stage: RehabStage;
 	startedAt: string;
 	previous: Program;

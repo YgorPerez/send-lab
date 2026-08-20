@@ -6,7 +6,7 @@ import { exerciseParams } from '$lib/content/exercises';
 import type { DayTypeId } from '$lib/content/types';
 import { asExerciseId, asWeekdayKey, overrideKey } from '$lib/ids';
 import { isPlainObject as isObj } from '$lib/objects';
-import type { Override, Program } from '$lib/types';
+import type { Override, Program, WeekdayTemplate } from '$lib/types';
 
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** Valid day-type ids — what a template's `dayType` references (ADR-0002). Read
@@ -65,13 +65,19 @@ export function applyEditDay(
 	// Validated against the closed set above, so this is the one place the brand
 	// is minted for this op — the template is keyed by `WeekdayKey`, not `string`.
 	const key = asWeekdayKey(weekday);
-	const entry = { ...program.template[key] };
+	// A weekday with no entry runs its built-in day type, so materializing one
+	// has to name that default rather than leave the field absent: an entry
+	// without a `dayType` is not a `WeekdayTemplate`, and the template is now
+	// typed sparsely enough to say so.
+	const existing = program.template[key];
+	const entry: WeekdayTemplate = {
+		...existing,
+		dayType: existing?.dayType ?? (BUILT_IN_DAY_TYPE[weekday] as DayTypeId),
+	};
 	if (dayType !== undefined) {
 		if (typeof dayType !== 'string' || !DAY_TYPE_IDS.includes(dayType))
 			throw new Error(`dayType must be one of ${DAY_TYPE_IDS.join(', ')}`);
 		entry.dayType = dayType as DayTypeId;
-	} else {
-		entry.dayType ??= BUILT_IN_DAY_TYPE[weekday] as DayTypeId;
 	}
 	if (ex !== undefined) {
 		if (!Array.isArray(ex) || ex.some((id) => !isKnown(id, extraIds)))
