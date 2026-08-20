@@ -60,6 +60,18 @@ export type ExerciseId = Identity<'ExerciseId'>;
  */
 export type TaskKey = Identity<'TaskKey'>;
 
+/**
+ * The key of one prescription override: this exercise, on this weekday of the
+ * program template. Shaped `Tue:pinch`.
+ *
+ * Deliberately *not* a `TaskKey`. An override applies to a weekday across every
+ * week of the block, so it carries no `WeekId` — week-addressing it would make
+ * overrides per-week, which is a product change and not a typing one. The two
+ * shapes are one `w1-` prefix apart, which is exactly why they need distinct
+ * brands: nothing else would stop one being passed where the other is expected.
+ */
+export type OverrideKey = Identity<'OverrideKey'>;
+
 /** The seven weekday keys, in ISO week order. */
 export const WEEKDAY_KEYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
@@ -180,6 +192,36 @@ export function parseTaskKey(value: unknown): TaskParts | null {
 	const week = parseWeekId(slot.slice(0, dash));
 	const weekday = parseWeekdayKey(slot.slice(dash + 1));
 	return week && weekday ? { week, weekday, exercise } : null;
+}
+
+// ---------------------------------------------------------------- override
+
+/**
+ * The key of one prescription override: this exercise, on this weekday.
+ *
+ * Built rather than concatenated at the call site, for the same reason
+ * `taskKey` is. Before this existed the shape was assembled inline at three
+ * places — `programGen.ts`, `rehab.ts` and `programOps.ts` — each of which
+ * interpolated a weekday it had taken on trust, so a localized label reaching
+ * one of them produced a key that silently matched nothing.
+ */
+export function overrideKey(weekday: WeekdayKey, exercise: ExerciseId): OverrideKey {
+	return `${weekday}:${exercise}` as OverrideKey;
+}
+
+export interface OverrideParts {
+	weekday: WeekdayKey;
+	exercise: ExerciseId;
+}
+
+/** The two identities inside an override key, or `null` if it is not one. */
+export function parseOverrideKey(value: unknown): OverrideParts | null {
+	if (typeof value !== 'string') return null;
+	const separator = value.indexOf(':');
+	if (separator < 0) return null;
+	const weekday = parseWeekdayKey(value.slice(0, separator));
+	const exercise = parseExerciseId(value.slice(separator + 1));
+	return weekday && exercise ? { weekday, exercise } : null;
 }
 
 // ------------------------------------------------------------------ athlete

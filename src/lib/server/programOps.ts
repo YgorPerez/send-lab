@@ -3,12 +3,14 @@
 // that into a tool error). Mirrors the client editor's semantics.
 import enUS from '$lib/content/en-US';
 import { exerciseParams } from '$lib/content/exercises';
+import type { DayTypeId } from '$lib/content/types';
+import { asExerciseId, asWeekdayKey, overrideKey } from '$lib/ids';
 import { isPlainObject as isObj } from '$lib/objects';
-import type { Program, ProgramTarget } from '$lib/types';
+import type { Override, Program } from '$lib/types';
 
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-/** Valid day-type ids — what a template's dayKey references (ADR-0002). Read from
- *  the base locale's day list; the ids are language-neutral. */
+/** Valid day-type ids — what a template's `dayType` references (ADR-0002). Read
+ *  from the base locale's day list; the ids are language-neutral. */
 export const DAY_TYPE_IDS: string[] = enUS.days.map((d) => d.id);
 /** Weekday key → the day type it runs in the built-in week. */
 const BUILT_IN_DAY_TYPE: Record<string, string> = Object.fromEntries(
@@ -54,26 +56,29 @@ const isKnown = (id: string, extraIds: string[]) =>
 export function applyEditDay(
 	program: Program,
 	weekday: unknown,
-	dayKey?: unknown,
+	dayType?: unknown,
 	ex?: unknown,
 	extraIds: string[] = [],
 ): void {
 	if (typeof weekday !== 'string' || !WEEKDAYS.includes(weekday))
 		throw new Error(`weekday must be one of ${WEEKDAYS.join(', ')}`);
-	const entry = { ...program.template[weekday] };
-	if (dayKey !== undefined) {
-		if (typeof dayKey !== 'string' || !DAY_TYPE_IDS.includes(dayKey))
-			throw new Error(`dayKey must be one of ${DAY_TYPE_IDS.join(', ')}`);
-		entry.dayKey = dayKey;
+	// Validated against the closed set above, so this is the one place the brand
+	// is minted for this op — the template is keyed by `WeekdayKey`, not `string`.
+	const key = asWeekdayKey(weekday);
+	const entry = { ...program.template[key] };
+	if (dayType !== undefined) {
+		if (typeof dayType !== 'string' || !DAY_TYPE_IDS.includes(dayType))
+			throw new Error(`dayType must be one of ${DAY_TYPE_IDS.join(', ')}`);
+		entry.dayType = dayType as DayTypeId;
 	} else {
-		entry.dayKey ??= BUILT_IN_DAY_TYPE[weekday];
+		entry.dayType ??= BUILT_IN_DAY_TYPE[weekday] as DayTypeId;
 	}
 	if (ex !== undefined) {
 		if (!Array.isArray(ex) || ex.some((id) => !isKnown(id, extraIds)))
 			throw new Error('exercises must be an array of known exercise ids (see list_exercises)');
-		entry.ex = ex as string[];
+		entry.exercises = (ex as string[]).map(asExerciseId);
 	}
-	program.template[weekday] = entry;
+	program.template[key] = entry;
 }
 
 /** Set/clear a per-exercise target override for a weekday. */
@@ -89,13 +94,13 @@ export function applySetTarget(
 	if (typeof exercise !== 'string' || !isKnown(exercise, extraIds))
 		throw new Error('exercise must be a known exercise id (see list_exercises)');
 	if (!isObj(patch)) throw new Error('target fields must be an object');
-	const key = `${weekday}:${exercise}`;
-	const next: ProgramTarget = { ...program.targets[key] };
+	const key = overrideKey(asWeekdayKey(weekday), asExerciseId(exercise));
+	const next: Override = { ...program.targets[key] };
 	for (const f of TARGET_FIELDS) {
 		if (!(f in patch)) continue;
 		const v = patch[f];
-		if (v === null) delete next[f as keyof ProgramTarget];
-		else next[f as keyof ProgramTarget] = Math.round(Number(v));
+		if (v === null) delete next[f as keyof Override];
+		else next[f as keyof Override] = Math.round(Number(v));
 	}
 	if (Object.keys(next).length) program.targets[key] = next;
 	else delete program.targets[key];

@@ -7,6 +7,15 @@
 // documents. Legacy and current values are always drawn from disjoint sets so a
 // step can tell them apart (weekday keys vs day-type ids, localized labels vs
 // weekday keys).
+//
+// TODO(#55): this whole module may be dead in the rebuild, and is certainly stale.
+// It upgrades *legacy* documents, and #11's Out of scope rules that no accounts or
+// training history are ported — the rebuild starts clean — which is the same
+// reasoning that deleted the `date`/`today()` fallbacks in #55. It is also now
+// out of step with the entity types: `migrateProgramTemplate` writes `entry.dayKey`,
+// and the field is `dayType`, so nothing reads what it produces. Decide whether it
+// is deleted outright or rewritten against the current shapes; do not assume the
+// tests passing means it still does anything.
 import enUS from './content/en-US';
 import ptBR from './content/pt-BR';
 import type { DayTypeId } from './content/types';

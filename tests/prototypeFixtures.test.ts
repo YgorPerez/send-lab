@@ -117,7 +117,7 @@ describe('Train', () => {
 
 	it('shows only the per-set fields an exercise actually logs', () => {
 		for (const item of f.train.items) {
-			expect(item.fields).toContain('weight');
+			expect(item.fields).toContain('loadKg');
 			expect(item.fields).toContain('rpe');
 			expect(item.fields.includes('grip')).toBe(item.prescription.grip != null);
 		}
@@ -131,7 +131,6 @@ describe('Log', () => {
 		expect(f.log.sessions.length).toBeGreaterThanOrEqual(20);
 		expect(f.log.sessions.reduce((n, s) => n + s.setCount, 0)).toBeGreaterThan(100);
 		expect(f.log.readiness).toHaveLength(14);
-		expect(f.log.activity.length).toBeGreaterThan(0);
 	});
 
 	it('shows a past readiness check as it was answered, not as a bare score', () => {

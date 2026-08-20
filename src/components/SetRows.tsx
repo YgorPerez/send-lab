@@ -25,7 +25,7 @@ import { Check } from 'lucide-react';
 import { GRIPS, gripLabel } from '$lib/format';
 import type { ExerciseId } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
-import type { WorkoutSet } from '$lib/types';
+import type { LoggedSet } from '$lib/types';
 import { cn } from '$lib/utils';
 import type { SetField } from '../prototype-fixtures';
 import { Picker } from './ui/Picker';
@@ -37,27 +37,27 @@ import { input } from './ui/variants';
 const strip = (s: string) => s.replace(/\s*\(s\)\s*$/i, '');
 
 const FIELD_LABEL: Record<SetField, () => string> = {
-	weight: () => `${m.field_weight()} kg`,
-	edge: () => `${m.field_edge()} mm`,
-	time: () => `${strip(m.field_time())} s`,
+	loadKg: () => `${m.field_weight()} kg`,
+	edgeMm: () => `${m.field_edge()} mm`,
+	workSec: () => `${strip(m.field_time())} s`,
 	reps: m.field_reps,
 	grip: m.field_grip,
-	rest: () => strip(m.field_rest()),
+	restSec: () => strip(m.field_rest()),
 	rpe: m.field_rpe,
 };
 
 /** Compact label for the read-only table: the unit is in the value there. */
 const FIELD_ABBR: Record<SetField, () => string> = {
-	weight: m.field_weight,
-	edge: m.field_edge,
-	time: m.field_time,
+	loadKg: m.field_weight,
+	edgeMm: m.field_edge,
+	workSec: m.field_time,
 	reps: m.field_reps,
 	grip: m.field_grip,
-	rest: m.field_rest,
+	restSec: m.field_rest,
 	rpe: m.field_rpe,
 };
 
-const NUMERIC: SetField[] = ['weight', 'edge', 'time', 'reps', 'rest', 'rpe'];
+const NUMERIC: SetField[] = ['loadKg', 'edgeMm', 'workSec', 'reps', 'restSec', 'rpe'];
 
 /** 44px: the touch floor for anything typed into mid-set. */
 const CELL = 'h-11';
@@ -77,9 +77,9 @@ export function SetEditor({
 }: {
 	exerciseId: ExerciseId;
 	index: number;
-	set: WorkoutSet;
+	set: LoggedSet;
 	fields: SetField[];
-	onChange: (next: WorkoutSet) => void;
+	onChange: (next: LoggedSet) => void;
 }) {
 	return (
 		<div
@@ -111,7 +111,7 @@ export function SetEditor({
 									ariaLabel={m.field_grip()}
 									placeholder="—"
 									options={GRIPS.map((g) => ({ value: g, label: gripLabel(g) }))}
-									onChange={(v) => onChange({ ...set, grip: v })}
+									onChange={(v) => onChange({ ...set, grip: GRIPS.find((g) => g === v) ?? null })}
 									className={cn(CELL, 'px-1.5 text-[12px]')}
 								/>
 							) : (
@@ -156,11 +156,11 @@ export function SetEditor({
 }
 
 /** Past sets: one header row per exercise, then one line per set. */
-export function SetTable({ fields, sets }: { fields: SetField[]; sets: WorkoutSet[] }) {
+export function SetTable({ fields, sets }: { fields: SetField[]; sets: LoggedSet[] }) {
 	// Only the columns this exercise actually recorded something in. A past
 	// session is fixed data, so an all-null column is pure noise.
 	const cols = fields.filter((f) =>
-		sets.some((s) => (f === 'grip' ? s.grip != null : s[f as keyof WorkoutSet] != null)),
+		sets.some((s) => (f === 'grip' ? s.grip != null : s[f as keyof LoggedSet] != null)),
 	);
 	if (cols.length === 0) return null;
 
@@ -188,7 +188,7 @@ export function SetTable({ fields, sets }: { fields: SetField[]; sets: WorkoutSe
 										? s.grip
 											? gripLabel(s.grip)
 											: '—'
-										: (s[f as keyof WorkoutSet] ?? '—')}
+										: (s[f as keyof LoggedSet] ?? '—')}
 								</td>
 							))}
 						</tr>

@@ -3,7 +3,7 @@
 // can be applied in one click. Names/descriptions are localized by id.
 import type { Content } from './content/types';
 import { generateProgram } from './programGen';
-import type { Assessment, Focus, Goal, Level, Program } from './types';
+import type { Baseline, Focus, Goal, Level, Program } from './types';
 
 interface Preset {
 	id: string;
@@ -21,7 +21,7 @@ export const PRESETS: Preset[] = [
 	{ id: 'all-round', goal: 'all', focus: 'power', level: 'advanced', days: 5 },
 ];
 
-function assessmentFor(p: Preset): Assessment {
+function assessmentFor(p: Preset): Baseline {
 	return {
 		goal: p.goal,
 		focus: p.focus,

@@ -79,12 +79,11 @@ import {
 	weekLoad,
 } from '$lib/stats';
 import type {
-	DeepEntry,
-	LogEntry,
-	MetricEntry,
-	ReadinessEntry,
-	WorkoutEntry,
-	WorkoutSet,
+	BodyweightReading,
+	LoggedReadinessCheck,
+	LoggedSet,
+	SelfCheck,
+	Session,
 } from '$lib/types';
 import { FIXTURE_PROSE } from './prototype-prose';
 
@@ -153,7 +152,7 @@ function prose(key: string): string {
 
 // ------------------------------------------------------------------ the shapes
 
-export type SetField = 'weight' | 'edge' | 'time' | 'reps' | 'grip' | 'rest' | 'rpe';
+export type SetField = 'loadKg' | 'edgeMm' | 'workSec' | 'reps' | 'grip' | 'restSec' | 'rpe';
 
 /** One exercise as it appears in today's slot — the unit the athlete ticks off. */
 export interface TaskFixture {
@@ -235,7 +234,7 @@ export interface TodayFixture {
 	trendPoints: TrendPoint[];
 	stats: { streak: number; last7: number; total: number };
 	bodyweight: {
-		series: MetricEntry[];
+		series: BodyweightReading[];
 		latestKg: number;
 		/** Nothing logged today, so the nudge is showing. ADR 0009: this writes to
 		 *  the `bodyweight` series, which survived the marker cull. */
@@ -254,7 +253,7 @@ export interface TodayFixture {
 	deep: {
 		area: FlagArea;
 		assessment: Content['deep'][string];
-		last: DeepEntry;
+		last: SelfCheck;
 	};
 }
 
@@ -283,7 +282,7 @@ export interface TrainItemFixture {
 	prescription: Variant;
 	/** Which per-set fields this exercise logs, in column order. */
 	fields: SetField[];
-	sets: WorkoutSet[];
+	sets: LoggedSet[];
 	/** Has interval timings the rest timer can run. */
 	timed: boolean;
 }
@@ -335,7 +334,7 @@ export interface LoggedSessionFixture {
 	weekdayKey: WeekdayKey;
 	weekdayLabel: string;
 	dayType: string;
-	exercises: { exerciseId: ExerciseId; name: string; fields: SetField[]; sets: WorkoutSet[] }[];
+	exercises: { exerciseId: ExerciseId; name: string; fields: SetField[]; sets: LoggedSet[] }[];
 	note: string;
 	durationMin: number | null;
 	setCount: number;
@@ -344,7 +343,6 @@ export interface LoggedSessionFixture {
 export interface LogFixture {
 	readiness: LoggedReadinessFixture[];
 	sessions: LoggedSessionFixture[];
-	activity: LogEntry[];
 }
 
 export interface PrototypeFixtures {
@@ -354,11 +352,10 @@ export interface PrototypeFixtures {
 	/** The raw account state behind all three screens, for anything a direction
 	 *  wants to present differently. Read-only. */
 	state: {
-		workouts: WorkoutEntry[];
-		readinessLog: ReadinessEntry[];
-		bodyweight: MetricEntry[];
-		activity: LogEntry[];
-		deepLog: DeepEntry[];
+		workouts: Session[];
+		readinessLog: LoggedReadinessCheck[];
+		bodyweight: BodyweightReading[];
+		deepLog: SelfCheck[];
 	};
 }
 
@@ -380,20 +377,20 @@ const mid = (r?: { min: number; max: number }): number | null =>
  *  load or a different edge can be added to anything — grip appears when the
  *  exercise loads one. Mirrors `trainColumns.colsFor` on `main`. */
 function fieldsFor(spec: Variant | undefined): SetField[] {
-	const f: SetField[] = ['weight', 'edge', 'time', 'reps'];
+	const f: SetField[] = ['loadKg', 'edgeMm', 'workSec', 'reps'];
 	if (spec?.grip) f.push('grip');
-	f.push('rest', 'rpe');
+	f.push('restSec', 'rpe');
 	return f;
 }
 
 /** A set pre-filled from the prescription's range midpoints. */
-function prefilledSet(spec: Variant): WorkoutSet {
+function prefilledSet(spec: Variant): LoggedSet {
 	return {
-		weight: mid(spec.loadKg),
-		edge: mid(spec.edgeMm),
-		time: mid(spec.workSec),
+		loadKg: mid(spec.loadKg),
+		edgeMm: mid(spec.edgeMm),
+		workSec: mid(spec.workSec),
 		reps: mid(spec.reps),
-		rest: mid(spec.restSec ?? spec.setRestSec),
+		restSec: mid(spec.restSec ?? spec.setRestSec),
 		rpe: mid(spec.rpe),
 		grip: spec.grip ?? null,
 		done: false,
@@ -405,9 +402,9 @@ function prefilledSet(spec: Variant): WorkoutSet {
  *  No `Math.random()`: a fixture that shifts between renders cannot be compared. */
 const jitter = (seed: number, spread: number): number => ((seed * 37) % (spread * 2 + 1)) - spread;
 
-function loggedSet(spec: Variant, seed: number): WorkoutSet {
+function loggedSet(spec: Variant, seed: number): LoggedSet {
 	const s = prefilledSet(spec);
-	if (s.weight != null) s.weight = Math.max(0, s.weight + jitter(seed, 2));
+	if (s.loadKg != null) s.loadKg = Math.max(0, s.loadKg + jitter(seed, 2));
 	if (s.reps != null) s.reps = Math.max(1, s.reps + jitter(seed, 1));
 	if (s.rpe != null) s.rpe = Math.min(10, Math.max(4, s.rpe + jitter(seed + 1, 1)));
 	s.done = true;
@@ -430,7 +427,7 @@ function dayOf(content: Content, weekdayKey: WeekdayKey): Content['days'][number
 function exerciseIdsFor(content: Content, weekdayKey: WeekdayKey): ExerciseId[] {
 	const day = content.days.find((d) => d.k === weekdayKey);
 	return (day?.ex ?? [])
-		.filter((id) => id !== 'rest' && content.exercises[id])
+		.filter((id) => id !== 'restSec' && content.exercises[id])
 		.map((id) => asExerciseId(id));
 }
 
@@ -455,8 +452,8 @@ function resolveMissed(
  *  ratio read the wall clock, so a history shifted off it would report a broken
  *  streak and an empty week. Each past day runs whatever day type its own
  *  weekday prescribes — only *today* is pinned to the scenario's Pull day. */
-function buildHistory(content: Content, now: number, missedDaysAgo: number): WorkoutEntry[] {
-	const out: WorkoutEntry[] = [];
+function buildHistory(content: Content, now: number, missedDaysAgo: number): Session[] {
+	const out: Session[] = [];
 	const noteKeys = ['note_strong', 'note_skin', 'note_short', 'note_elbow'];
 	let logged = 0;
 
@@ -472,16 +469,15 @@ function buildHistory(content: Content, now: number, missedDaysAgo: number): Wor
 			const spec = ex.variants[0];
 			const planned = Math.min(4, Math.max(1, spec.sets?.min ?? 3));
 			return {
-				exId,
+				exercise: exId,
 				name: ex.name,
 				sets: Array.from({ length: planned }, (_, k) => loggedSet(spec, ago + i + k)),
 			};
 		});
 
 		out.push({
-			date: displayDate(iso),
 			at: iso,
-			day: weekdayKey,
+			weekday: weekdayKey,
 			exercises,
 			// Roughly one session in four carries a note the athlete typed.
 			note: logged % 4 === 1 ? prose(noteKeys[logged % noteKeys.length]) : '',
@@ -502,7 +498,7 @@ function buildTodaySession(
 	iso: string,
 	exerciseIds: ExerciseId[],
 	focusExId: ExerciseId | undefined,
-): WorkoutEntry {
+): Session {
 	const exercises = exerciseIds.map((exId) => {
 		const ex = content.exercises[exId];
 		const spec = ex.variants[0];
@@ -512,19 +508,18 @@ function buildTodaySession(
 			sets[0].done = true;
 			sets[0].rpe = sets[0].rpe ?? 7;
 		}
-		return { exId, name: ex.name, sets };
+		return { exercise: exId, name: ex.name, sets };
 	});
 	return {
-		date: displayDate(iso),
 		at: iso,
-		day: TODAY_WEEKDAY,
+		weekday: TODAY_WEEKDAY,
 		exercises,
 		note: '',
 		durationMin: 22,
 	};
 }
 
-function buildReadinessLog(now: number): ReadinessEntry[] {
+function buildReadinessLog(now: number): LoggedReadinessCheck[] {
 	const answersFor = (score: number): Answers => {
 		// Reconstruct a plausible set of answers for a recorded score, so the log
 		// can show what was actually reported rather than a bare number.
@@ -546,7 +541,6 @@ function buildReadinessLog(now: number): ReadinessEntry[] {
 		const readiness = computeReadiness(answers);
 		const outcome = HISTORY_OUTCOMES[i];
 		return {
-			date: displayDate(iso),
 			// 07:40-ish, before training. Epoch ms, never a formatted string.
 			at: new Date(`${iso}T07:40:00`).getTime() + (i % 5) * 6 * 60_000,
 			verdict: readiness.verdict,
@@ -558,46 +552,27 @@ function buildReadinessLog(now: number): ReadinessEntry[] {
 				...(f.area ? { area: f.area } : {}),
 			})),
 			...(outcome != null ? { outcome } : {}),
-		} satisfies ReadinessEntry;
+		} satisfies LoggedReadinessCheck;
 	});
 }
 
-function buildBodyweight(now: number): MetricEntry[] {
-	return BODYWEIGHT_KG.map((v, i) => {
+function buildBodyweight(now: number): BodyweightReading[] {
+	return BODYWEIGHT_KG.map((kg, i) => {
 		// Roughly weekly, and deliberately not today — the nudge only shows when
 		// today has no reading.
 		const ago = (BODYWEIGHT_KG.length - i) * 5;
 		const iso = isoDaysAgo(now, ago);
-		return { date: displayDate(iso), v, at: new Date(`${iso}T08:00:00`).getTime() };
+		return { kg, at: new Date(`${iso}T08:00:00`).getTime() };
 	});
 }
 
-function buildActivity(content: Content, now: number): LogEntry[] {
-	const rows: { ago: number; type: LogEntry['type']; note: string }[] = [
-		{ ago: 0, type: 'day', note: '' },
-		{ ago: 2, type: 'day', note: '' },
-		{ ago: 3, type: 'rec', note: prose('activity_note_check') },
-		{ ago: 5, type: 'day', note: '' },
-		{ ago: 6, type: 'day', note: '' },
-		{ ago: 8, type: 'test', note: '' },
-		{ ago: 12, type: 'day', note: '' },
-		{ ago: 16, type: 'rec', note: prose('activity_note_deload') },
-	];
-	return rows.map((r) => {
-		const iso = isoDaysAgo(now, r.ago);
-		// Today's row is the scenario's Pull day; older rows name the day type
-		// their own date actually ran.
-		const key = r.ago === 0 ? TODAY_WEEKDAY : weekdayKeyOf(iso);
-		const d = dayOf(content, key);
-		return { date: displayDate(iso), type: r.type, label: d.type, color: d.color, note: r.note };
-	});
-}
-
-function buildDeepLog(now: number): DeepEntry[] {
+function buildDeepLog(now: number): SelfCheck[] {
 	const iso = isoDaysAgo(now, 11);
 	// Banded by `scoreDeep`: 74 falls in the middle band, which routes rehab to
 	// the subacute stage rather than to a full stop.
-	return [{ date: displayDate(iso), area: 'fingers', score: 74, band: 'moderate' }];
+	return [
+		{ at: new Date(`${iso}T09:00:00`).getTime(), area: 'fingers', score: 74, band: 'moderate' },
+	];
 }
 
 // ---------------------------------------------------------------- the screens
@@ -624,7 +599,9 @@ function buildToday(
 
 	const todaySession = state.workouts.find((w) => w.at === iso);
 	const doneIds = new Set(
-		(todaySession?.exercises ?? []).filter((e) => e.sets.some((s) => s.done)).map((e) => e.exId),
+		(todaySession?.exercises ?? [])
+			.filter((e) => e.sets.some((s) => s.done))
+			.map((e) => e.exercise),
 	);
 
 	const tasks: TaskFixture[] = exerciseIds.map((exerciseId) => ({
@@ -742,7 +719,7 @@ function buildTrain(
 			})),
 			prescription: spec,
 			fields: fieldsFor(spec),
-			sets: session?.exercises.find((e) => e.exId === exerciseId)?.sets ?? [prefilledSet(spec)],
+			sets: session?.exercises.find((e) => e.exercise === exerciseId)?.sets ?? [prefilledSet(spec)],
 			timed: spec.workSec != null,
 		};
 	});
@@ -781,7 +758,7 @@ function buildTrain(
 		// The second mint point, and the same warrant as `exerciseIdsFor`: these
 		// keys come out of the library itself.
 		available: Object.entries(content.exercises)
-			.filter(([id]) => id !== 'rest' && !exerciseIds.includes(asExerciseId(id)))
+			.filter(([id]) => id !== 'restSec' && !exerciseIds.includes(asExerciseId(id)))
 			.map(([id, ex]) => ({ exerciseId: asExerciseId(id), name: ex.name, cat: ex.cat })),
 		note: session?.note ?? '',
 		durationMin: session?.durationMin ?? null,
@@ -794,7 +771,7 @@ function buildLog(content: Content, state: PrototypeFixtures['state']): LogFixtu
 
 	const readiness: LoggedReadinessFixture[] = [...state.readinessLog].reverse().map((r) => ({
 		iso: isoDayOf(r.at),
-		dateLabel: r.date,
+		dateLabel: displayDate(isoDayOf(r.at)),
 		timeLabel: timeLabel(r.at),
 		score: r.score,
 		verdictId: r.verdict as VerdictId,
@@ -809,11 +786,9 @@ function buildLog(content: Content, state: PrototypeFixtures['state']): LogFixtu
 	}));
 
 	const sessions: LoggedSessionFixture[] = state.workouts.map((w) => {
-		// `WorkoutEntry` is still the unbranded entity type from the SvelteKit app
-		// (`lib/types.ts`), so the identities are re-minted on the way out. That
-		// gap closes when #18 rebuilds the store on TanStack DB collections and the
-		// entities can carry branded ids of their own.
-		const weekdayKey = asWeekdayKey(w.day);
+		// `Session.weekday` is branded on the entity now (#55), so nothing has to
+		// be re-minted on the way out.
+		const weekdayKey = w.weekday;
 		const day = content.days.find((d) => d.k === weekdayKey);
 		return {
 			iso: w.at,
@@ -822,9 +797,9 @@ function buildLog(content: Content, state: PrototypeFixtures['state']): LogFixtu
 			weekdayLabel: day?.label ?? weekdayKey,
 			dayType: day?.type ?? '',
 			exercises: w.exercises.map((ex) => ({
-				exerciseId: asExerciseId(ex.exId),
+				exerciseId: asExerciseId(ex.exercise),
 				name: ex.name,
-				fields: fieldsFor(content.exercises[ex.exId]?.variants[0] ?? {}),
+				fields: fieldsFor(content.exercises[ex.exercise]?.variants[0] ?? {}),
 				sets: ex.sets,
 			})),
 			note: w.note,
@@ -833,7 +808,7 @@ function buildLog(content: Content, state: PrototypeFixtures['state']): LogFixtu
 		};
 	});
 
-	return { readiness, sessions, activity: state.activity };
+	return { readiness, sessions };
 }
 
 // ------------------------------------------------------------------ the module
@@ -874,7 +849,6 @@ export function getPrototypeFixtures(now: number = Date.now()): PrototypeFixture
 		workouts: [buildTodaySession(content, iso, exerciseIds, keep[0]), ...history],
 		readinessLog,
 		bodyweight: buildBodyweight(now),
-		activity: buildActivity(content, now),
 		deepLog: buildDeepLog(now),
 	};
 

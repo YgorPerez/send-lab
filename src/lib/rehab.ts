@@ -3,8 +3,9 @@
 // capped by stage, fewer training days, low-load isometrics + antagonists kept.
 // Deliberately cautious — not medical advice; the user tunes it in the editor.
 import { type Content, REST_DAY_TYPE } from './content/types';
+import { asExerciseId, asWeekdayKey, overrideKey } from './ids';
 import * as m from './paraglide/messages';
-import type { Program, ProgramDayCfg, ProgramTarget, RehabArea, RehabStage } from './types';
+import type { Override, Program, RehabArea, RehabStage, WeekdayTemplate } from './types';
 
 export type { RehabArea, RehabStage } from './types';
 export const REHAB_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'];
@@ -48,16 +49,21 @@ export function generateRehabProgram(
 	const dayEx = rehabExercises(content, area);
 	const keep = new Set(PRIORITY.slice(0, s.days));
 
-	const template: Record<string, ProgramDayCfg> = {};
-	const targets: Record<string, ProgramTarget> = {};
+	const template: Record<string, WeekdayTemplate> = {};
+	const targets: Record<string, Override> = {};
 	for (const d of content.days) {
 		if (d.id === REST_DAY_TYPE) continue;
 		if (!keep.has(d.k)) {
-			template[d.k] = { dayKey: REST_DAY_TYPE };
+			template[d.k] = { dayType: REST_DAY_TYPE };
 			continue;
 		}
-		template[d.k] = { dayKey: d.id, ex: [...dayEx], name: m.rehab_label() };
-		for (const exId of dayEx) targets[`${d.k}:${exId}`] = { rpe: s.rpe };
+		template[d.k] = {
+			dayType: d.id,
+			exercises: dayEx.map(asExerciseId),
+			name: m.rehab_label(),
+		};
+		for (const exId of dayEx)
+			targets[overrideKey(asWeekdayKey(d.k), asExerciseId(exId))] = { rpe: s.rpe };
 	}
 
 	return {

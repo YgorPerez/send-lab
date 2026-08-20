@@ -18,7 +18,7 @@ import { getContent } from '$lib/content';
 import type { Content, Range, Variant } from '$lib/content/types';
 import { asExerciseId, type ExerciseId, type TaskKey, taskKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
-import type { WorkoutSet } from '$lib/types';
+import type { LoggedSet } from '$lib/types';
 import { TaskCard, type TaskState } from '../components/TaskCard';
 import { Timer, type TimerProtocol } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
@@ -31,19 +31,19 @@ export const Route = createFileRoute('/train')({ component: Train });
 const mid = (r?: Range): number | null => (r ? Math.round((r.min + r.max) / 2) : null);
 
 function fieldsFor(spec: Variant | undefined): SetField[] {
-	const f: SetField[] = ['weight', 'edge', 'time', 'reps'];
+	const f: SetField[] = ['loadKg', 'edgeMm', 'workSec', 'reps'];
 	if (spec?.grip) f.push('grip');
-	f.push('rest', 'rpe');
+	f.push('restSec', 'rpe');
 	return f;
 }
 
-function prefilledSet(spec: Variant): WorkoutSet {
+function prefilledSet(spec: Variant): LoggedSet {
 	return {
-		weight: mid(spec.loadKg),
-		edge: mid(spec.edgeMm),
-		time: mid(spec.workSec),
+		loadKg: mid(spec.loadKg),
+		edgeMm: mid(spec.edgeMm),
+		workSec: mid(spec.workSec),
 		reps: mid(spec.reps),
-		rest: mid(spec.restSec ?? spec.setRestSec),
+		restSec: mid(spec.restSec ?? spec.setRestSec),
 		rpe: mid(spec.rpe),
 		grip: spec.grip ?? null,
 		done: false,

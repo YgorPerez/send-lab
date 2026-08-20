@@ -3,97 +3,132 @@
 // Extracted from the SvelteKit app's `state.svelte.ts` during the TanStack Start
 // scaffold (issue #21) so the framework-agnostic domain modules survive the port
 // untouched. This module holds *entities*, never the store that contains them:
-// what holds the interactive state is ADR 0007's question, and `AppState`
+// what holds the interactive state is ADR 0007's answer, and `AppState`
 // deliberately did not come across.
 //
-// Nothing here is locale-dependent. Every identity is a stable id or an ISO date
-// (ADR-0003) — a display string is never matched on, because the English weekday
-// labels are byte-identical to the stable keys and the whole bug class is
-// invisible outside pt-BR.
+// RECONCILED WITH THE GLOSSARY — #55
+// ----------------------------------
+// Every type here is a bare `CONTEXT.md` noun. Three exceptions, each because
+// the bare noun is already taken by something else:
+//
+//   `LoggedSet`             — `Set` shadows JavaScript's `Set` in any module
+//                             that imports it, and `ReadonlySet` is in use.
+//   `LoggedExercise`        — `Exercise` is the glossary's *library* movement.
+//                             This is one instance of one, not a synonym.
+//   `LoggedReadinessCheck`  — `ReadinessCheck` is the component that asks the
+//                             nine questions (`docs/component-vocabulary.md`,
+//                             ADR 0010). This is the record one leaves behind.
+//
+// The rule in all three: the entity yields when something else already holds the
+// bare noun, and `Logged` says what distinguishes it — these are history.
+//
+// Three names were deleted rather than renamed: `MetricEntry` (Marker is
+// *Leaving*; bodyweight survives on its own as ADR 0009's divisor), `LogEntry`
+// (`log[]` was dropped by #12 — two of its three kinds died with `metrics[]`,
+// `'rec'` was written nowhere, and the survivor was a drifting copy of
+// `taskDone`), and `WeekdayTemplate.dayKey`, which was named for a weekday and
+// held a day type: the exact overload ADR-0002 closed.
+//
+// NO ENTITY STORES A FORMATTED DATE
+// ---------------------------------
+// ADR-0003: a display string is never an identity. Every entity below carries an
+// ISO calendar date or an epoch timestamp and nothing else; the localized label
+// is derived at render by `displayDate(iso)`. Five entities used to carry a
+// `date` string as well, and two code paths compared it against a freshly
+// formatted `today()` — a comparison that cannot match once the athlete switches
+// language, because the stored half is frozen in whatever wrote it. The field and
+// both comparisons went together (#55).
+//
+// Identity is branded, key-side only (#20). `src/lib/ids.ts` is the only module
+// that mints one, so a localized label reaching a key is a compile error rather
+// than a screen that renders correctly in English.
+import type { DayTypeId, Grip, VerdictId } from '$lib/content/types';
+import type { ExerciseId, OverrideKey, WeekdayKey } from '$lib/ids';
 
-/** A marker reading in a tracked series (finger strength, pull max, bodyweight). */
-export interface MetricEntry {
-	/** Localized day label for display (e.g. "Jun 24"). */
-	date: string;
-	v: number;
-	/** Epoch ms when logged — the precise timestamp behind the day label. */
-	at?: number;
-	/** Edge depth / block width (mm) for size-dependent markers (maxhang, pinch). */
-	mm?: number;
-	/** Bodyweight (kg) at test time, so the %BW strength index stays accurate. */
-	bw?: number;
+/** A bodyweight reading. Not a marker — nothing is tested and no effort is
+ *  expended, and it is read as the divisor other numbers are expressed against
+ *  rather than as progress in its own right (ADR 0009). */
+export interface BodyweightReading {
+	/** Epoch ms when logged. The day is `isoDayOf(at)`; there is no stored label. */
+	at: number;
+	/** Kilograms. Storage is always canonical; `prefs.weight` is display only. */
+	kg: number;
 }
 
-export interface LogEntry {
-	date: string;
-	type: 'rec' | 'day' | 'test';
-	label: string;
-	color: string;
-	note: string;
-}
-
-/** One logged set within a workout (all fields optional — log what applies). */
-export interface WorkoutSet {
-	weight: number | null;
-	edge: number | null;
-	time: number | null;
+/** One logged effort within a session. Every field is nullable in practice — the
+ *  athlete logs what applies to the exercise in front of them. */
+export interface LoggedSet {
+	/** Added load in kg. Named to match `Override.loadKg`, and deliberately not
+	 *  `weight` — the glossary keeps that word away from Bodyweight. */
+	loadKg: number | null;
+	/** Edge depth or block width in mm. */
+	edgeMm: number | null;
+	/** Work duration in seconds. */
+	workSec: number | null;
 	reps: number | null;
-	rest: number | null;
+	/** Rest taken after the set, in seconds. */
+	restSec: number | null;
 	/** Rated effort, RPE 0–10. */
 	rpe: number | null;
-	/** Grip used (a Grip id, or null). */
-	grip: string | null;
-	/** Whether the set has been completed. */
+	grip: Grip | null;
+	/** Whether the set was completed. */
 	done: boolean;
 }
 
-export interface WorkoutLogExercise {
-	exId: string;
+/** One exercise inside a session, with the sets logged against it. The library
+ *  movement it instantiates is `exercise`; everything else is history. */
+export interface LoggedExercise {
+	exercise: ExerciseId;
+	/** Localized exercise name as written. Display only, never matched on.
+	 *  TODO(#69): derive from `exercise` plus the variant index at render. That
+	 *  needs the resolver's `exerciseLabel`, which is not ported yet — until it
+	 *  is, a session logged in one language shows that language's names. */
 	name: string;
-	sets: WorkoutSet[];
+	sets: LoggedSet[];
 }
 
-export interface WorkoutEntry {
-	/** Localized display date (e.g. "Jun 21"). Display only — never matched on. */
-	date: string;
+/** The training actually done in one slot on one calendar date. A slot is a
+ *  plan; a session is the history. */
+export interface Session {
 	/** ISO calendar date (YYYY-MM-DD, local). Identifies the session's day, and
-	 *  drives ordering / streaks / weekly buckets. */
+	 *  drives ordering, streaks and weekly buckets. */
 	at: string;
-	/** Stable weekday key (Mon..Sun) for the slot trained. Never a localized label
-	 *  — a language switch used to orphan the session (ADR-0003). */
-	day: string;
-	exercises: WorkoutLogExercise[];
+	/** The weekday slot trained. Never a localized label (ADR-0003). */
+	weekday: WeekdayKey;
+	exercises: LoggedExercise[];
 	note: string;
-	/** Session length in minutes — the duration term of sRPE internal load
-	 *  (sRPE = session-RPE × minutes; Foster). Optional; estimated from logged
-	 *  work + rest when absent. */
+	/** Session length in minutes — the duration term of internal load
+	 *  (effort × minutes; Foster). Estimated from logged work + rest when absent. */
 	durationMin?: number;
 }
 
-/** A logged injury self-check result (deep assessment), newest last. */
-export interface DeepEntry {
-	date: string;
-	area: string;
+/** A logged injury self-check. Informs training, never diagnoses. */
+export interface SelfCheck {
+	/** Epoch ms when the check was completed. */
+	at: number;
+	area: RehabArea;
+	/** 0–100, from the area's validated instrument. */
 	score: number;
+	/** The band the score fell in. Not a closed union anywhere yet. */
 	band: string;
 }
 
 /** A daily readiness check recorded for the trend over time. */
-export interface ReadinessEntry {
-	date: string;
-	/** Epoch ms when the check was first completed (drives the logged time-of-day). */
+export interface LoggedReadinessCheck {
+	/** Epoch ms when the check was first completed — drives the logged
+	 *  time-of-day, and the day is `isoDayOf(at)`. */
 	at: number;
-	/** The recommended session type (VerdictId). */
-	verdict: string;
-	/** Overall readiness score 0–100 (higher = fresher). */
+	/** The ceiling set on today's session. */
+	verdict: VerdictId;
+	/** Readiness score 0–100, higher meaning fresher. */
 	score: number;
-	/** The full set of answers given (question id → chosen value), so the history
-	 *  can show exactly what was reported. */
+	/** Every answer given (question id → chosen value), so the history can show
+	 *  exactly what was reported. */
 	answers?: Record<string, number>;
-	/** The surfaced flags at the time (the conclusion's warnings). */
+	/** The flags surfaced at the time. */
 	flags?: { id: string; severity: string; area?: string }[];
-	/** Post-session outcome, set after training: 0 bailed · 1 flat · 2 as-expected
-	 *  · 3 strong. Feeds the personal calibration of future scores. */
+	/** Post-session outcome, set after training: 0 bailed · 1 flat · 2
+	 *  as-expected · 3 strong. Feeds the athlete's calibration. */
 	outcome?: number;
 }
 
@@ -102,43 +137,47 @@ export type Focus = 'fingers' | 'power' | 'endurance' | 'tissue';
 export type Level = 'intermediate' | 'advanced' | 'elite';
 export type Equipment = 'hangboard' | 'board' | 'rings' | 'weights';
 
-/** Baseline assessment captured at onboarding (goals + context). */
-export interface Assessment {
+/** The one-off intake taken at onboarding. Shapes the generated program and its
+ *  progression rate. */
+export interface Baseline {
 	goal: Goal;
 	focus: Focus;
 	level: Level;
 	daysPerWeek: number;
+	/** Kilograms, or null if not given. */
 	bodyweight: number | null;
 	/** Gear on hand — filters which exercises the generated program can use. */
 	equipment: Equipment[];
-	/** Hardest grades, free text (e.g. "V8", "7c"); informational + calibration. */
+	/** Hardest grades, free text (e.g. "V8", "7c"). Informational + calibration. */
 	boulderGrade: string | null;
 	routeGrade: string | null;
-	/** A current finger/tendon niggle → the program caps finger intensity. */
+	/** A current finger/tendon niggle, which caps finger intensity. */
 	niggle: boolean;
-	/** Finger-joint pain/swelling from the fist-hook synovitis self-check. */
+	/** Finger-joint pain or swelling, from the fist-hook self-check. */
 	synovitis: boolean;
-	/** Birth date (ISO YYYY-MM-DD), informational. Replaces the old free-text age. */
+	/** ISO YYYY-MM-DD. Informational. */
 	birthDate: string | null;
-	/** Typical session length (min) → caps exercises per day. */
+	/** Typical session length (min), which caps exercises per day. */
 	sessionMinutes: number | null;
 	completedAt: string;
 }
 
-/** A per-weekday slot in the program template. */
-export interface ProgramDayCfg {
-	/** Day-type id (category / load / color / default exercises) this weekday runs. */
-	dayKey: string;
-	/** Ordered exercise ids (primary first); absent = the day-type's defaults. */
-	ex?: string[];
-	/** Custom focus name shown instead of the day-type label. */
+/** One weekday's entry in the program's weekday template: the day type it runs,
+ *  and any customization of it. */
+export interface WeekdayTemplate {
+	/** The day type this weekday runs. A weekday says *when*, a day type says
+	 *  *what* (ADR-0002), which is why this is not called `dayKey`. */
+	dayType: DayTypeId;
+	/** Ordered exercises, primary first. Absent = the day type's defaults. */
+	exercises?: ExerciseId[];
+	/** Custom focus name shown instead of the day type's label. */
 	name?: string;
 }
 
-/** Per-exercise prescription override in the program (canonical kg / mm / seconds).
- *  Any field left undefined falls back to the variant's built-in target. */
-export interface ProgramTarget {
-	/** Chosen variant index for this exercise in the program. */
+/** A stored deviation from a built-in target, set by the athlete. Anything left
+ *  undefined falls back to the variant's built-in value. Canonical units. */
+export interface Override {
+	/** Chosen variant index for this exercise. */
 	variant?: number;
 	sets?: number;
 	reps?: number;
@@ -149,24 +188,30 @@ export interface ProgramTarget {
 	rpe?: number;
 }
 
-/** A periodization phase spanning a run of weeks. */
-export interface ProgramPhase {
+/** A stretch of consecutive weeks inside a block, carrying its own intensity and
+ *  volume multipliers. A deload is a phase, not a separate concept. */
+export interface Phase {
+	/** Athlete-authored, so localized free text. Not a `PhaseId` — that is the
+	 *  content library's own three archetypes, and a different concept. */
 	name: string;
 	weeks: number;
-	/** Load multiplier, percent of baseline (100 = unchanged). */
+	/** Percent of baseline (100 = unchanged). */
 	intensity: number;
-	/** Volume multiplier (sets / rounds), percent of baseline. */
+	/** Percent of baseline, for sets and rounds. */
 	volume: number;
 	deload: boolean;
 }
 
+/** The reusable design of the athlete's training. One is active; others can be
+ *  saved and switched. */
 export interface Program {
+	/** The block: the run of weeks this program spans. Independent of the phases
+	 *  below, which may span fewer — the last is then held for the remainder. */
 	weeks: number;
-	template: Record<string, ProgramDayCfg>;
-	/** Prescription overrides keyed `${weekday}:${exId}`. */
-	targets: Record<string, ProgramTarget>;
-	/** Ordered phases; their weeks need not sum to `weeks` (the tail repeats). */
-	phases: ProgramPhase[];
+	template: Record<WeekdayKey, WeekdayTemplate>;
+	/** Prescription overrides, keyed by `overrideKey(weekday, exercise)`. */
+	targets: Record<OverrideKey, Override>;
+	phases: Phase[];
 	/** Auto-progress working loads each week at study-backed, level-scaled rates. */
 	autoProgress: boolean;
 }
@@ -181,9 +226,9 @@ export type RehabArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
 /** How far along that rehab block is — it gates which work is allowed. */
 export type RehabStage = 'acute' | 'subacute' | 'returning';
 
-/** Active injury rehab. Stashes the program that was active before rehab so it
- *  can be restored when rehab ends. */
-export interface RehabState {
+/** The mode where the program is replaced by a conservative plan for one injured
+ *  area. Stashes the program that was active before, so it can be restored. */
+export interface Rehab {
 	area: RehabArea;
 	stage: RehabStage;
 	startedAt: string;

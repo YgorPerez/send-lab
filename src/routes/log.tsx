@@ -1,6 +1,6 @@
 // LOG.
 //
-// Fourteen readiness checks, twenty-eight sessions and eight activity entries.
+// Fourteen readiness checks and twenty-eight sessions.
 // The screen that punishes low density, and the one where this direction has the
 // clearest answer: a history is a *list*, and a list earns its keep by having a
 // stable row shape you can run your eye down.
@@ -21,20 +21,14 @@ import * as m from '$lib/paraglide/messages';
 import { SetTable } from '../components/SetRows';
 import { Eyebrow, Section } from '../components/ui/primitives';
 import { Row, RowGroup } from '../components/ui/Rows';
-import { card, chip } from '../components/ui/variants';
+import { chip } from '../components/ui/variants';
 import { getPrototypeFixtures } from '../prototype-fixtures';
 
 export const Route = createFileRoute('/log')({ component: Log });
 
-const TYPE_LABEL: Record<string, () => string> = {
-	rec: m.log_type_rec,
-	day: m.log_type_day,
-	test: m.log_type_test,
-};
-
 function Log() {
 	const fx = useMemo(() => getPrototypeFixtures(), []);
-	const { readiness, sessions, activity } = fx.log;
+	const { readiness, sessions } = fx.log;
 
 	return (
 		<div className="flex flex-col gap-7">
@@ -144,35 +138,6 @@ function Log() {
 						</Row>
 					))}
 				</RowGroup>
-			</Section>
-
-			<Section label={m.log_activity()} meta={<span className="num">{activity.length}</span>}>
-				<div className={card({ pad: 'none' })}>
-					{activity.map((e, i) => (
-						<div
-							// biome-ignore lint/suspicious/noArrayIndexKey: an activity entry has no id; date + type repeat
-							key={`${e.date}-${e.type}-${i}`}
-							className="flex items-baseline gap-2 border-b border-line-soft px-2.5 py-2 last:border-b-0"
-						>
-							<span className="num w-[62px] shrink-0 text-[10px] whitespace-nowrap text-ink-faint">
-								{e.date}
-							</span>
-							<span
-								className="num w-[30px] shrink-0 rounded px-1 py-px text-center text-[10px] font-bold uppercase"
-								style={{
-									color: e.color,
-									background: `color-mix(in srgb, ${e.color} 14%, transparent)`,
-								}}
-							>
-								{TYPE_LABEL[e.type]?.() ?? e.type}
-							</span>
-							<span className="min-w-0 flex-1 text-[12.5px] text-ink">
-								{e.label}
-								{e.note ? <span className="text-ink-faint"> · {e.note}</span> : null}
-							</span>
-						</div>
-					))}
-				</div>
 			</Section>
 		</div>
 	);

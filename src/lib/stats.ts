@@ -5,9 +5,9 @@
 import { getLocale } from '$lib/paraglide/runtime';
 import { exerciseParams } from './content/exercises';
 import { isoDay } from './dates';
-import type { ReadinessEntry, WorkoutEntry } from './types';
+import type { LoggedReadinessCheck, Session } from './types';
 
-export type NumField = 'weight' | 'edge' | 'time' | 'reps' | 'rest' | 'rpe';
+export type NumField = 'loadKg' | 'edgeMm' | 'workSec' | 'reps' | 'restSec' | 'rpe';
 
 export interface Point {
 	label: string;
@@ -18,40 +18,41 @@ const params = (exId: string) => exerciseParams[exId]?.variants[0];
 const CNS_WEIGHT: Record<string, number> = { low: 1, mod: 2, high: 3 };
 
 /** Chronological (oldest→newest) workouts. */
-function chronological(workouts: WorkoutEntry[]): WorkoutEntry[] {
+function chronological(workouts: Session[]): Session[] {
 	return [...workouts].reverse();
 }
 
 /** Exercise ids that appear in any logged workout, most-used first. */
-export function loggedExerciseIds(workouts: WorkoutEntry[]): string[] {
+export function loggedExerciseIds(workouts: Session[]): string[] {
 	const counts = new Map<string, number>();
 	for (const w of workouts)
-		for (const ex of w.exercises) counts.set(ex.exId, (counts.get(ex.exId) ?? 0) + ex.sets.length);
+		for (const ex of w.exercises)
+			counts.set(ex.exercise, (counts.get(ex.exercise) ?? 0) + ex.sets.length);
 	return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
 }
 
 /** Best (max) value of a field for an exercise, per session, oldest→newest. */
-export function progression(workouts: WorkoutEntry[], exId: string, field: NumField): Point[] {
+export function progression(workouts: Session[], exId: string, field: NumField): Point[] {
 	const pts: Point[] = [];
 	for (const w of chronological(workouts)) {
-		const ex = w.exercises.find((e) => e.exId === exId);
+		const ex = w.exercises.find((e) => e.exercise === exId);
 		if (!ex) continue;
 		const vals = ex.sets.map((s) => s[field]).filter((v): v is number => v != null);
-		if (vals.length) pts.push({ label: w.date, value: Math.max(...vals) });
+		if (vals.length) pts.push({ label: w.at, value: Math.max(...vals) });
 	}
 	return pts;
 }
 
 /** Which numeric field an exercise has logged most (for a sensible default). */
-export function dominantField(workouts: WorkoutEntry[], exId: string): NumField {
-	const fields: NumField[] = ['weight', 'edge', 'time', 'reps'];
+export function dominantField(workouts: Session[], exId: string): NumField {
+	const fields: NumField[] = ['loadKg', 'edgeMm', 'workSec', 'reps'];
 	const counts = new Map<NumField, number>();
 	for (const w of workouts)
 		for (const ex of w.exercises)
-			if (ex.exId === exId)
+			if (ex.exercise === exId)
 				for (const s of ex.sets)
 					for (const f of fields) if (s[f] != null) counts.set(f, (counts.get(f) ?? 0) + 1);
-	let best: NumField = 'weight';
+	let best: NumField = 'loadKg';
 	let max = -1;
 	for (const f of fields) {
 		const c = counts.get(f) ?? 0;
@@ -69,18 +70,18 @@ export interface VolumeBar {
 }
 
 /** Logged sets grouped by a variant tag (region or quality), sorted desc. */
-function volumeBy(workouts: WorkoutEntry[], tag: 'region' | 'qualities'): VolumeBar[] {
+function volumeBy(workouts: Session[], tag: 'region' | 'qualities'): VolumeBar[] {
 	const m = new Map<string, number>();
 	for (const w of workouts)
 		for (const ex of w.exercises) {
-			const tags = params(ex.exId)?.[tag] ?? [];
+			const tags = params(ex.exercise)?.[tag] ?? [];
 			for (const t of tags) m.set(t, (m.get(t) ?? 0) + ex.sets.length);
 		}
 	return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([key, value]) => ({ key, value }));
 }
 
-export const regionVolume = (w: WorkoutEntry[]): VolumeBar[] => volumeBy(w, 'region');
-export const qualityVolume = (w: WorkoutEntry[]): VolumeBar[] => volumeBy(w, 'qualities');
+export const regionVolume = (w: Session[]): VolumeBar[] => volumeBy(w, 'region');
+export const qualityVolume = (w: Session[]): VolumeBar[] => volumeBy(w, 'qualities');
 
 export interface LoadStat {
 	label: string;
@@ -99,7 +100,7 @@ function mondayOf(iso: string): Date {
 
 /** Training load bucketed by calendar week (oldest→newest): set count, tonnage,
  *  time-under-tension, CNS load. */
-export function weeklyStats(workouts: WorkoutEntry[]): LoadStat[] {
+export function weeklyStats(workouts: Session[]): LoadStat[] {
 	const buckets = new Map<string, LoadStat>();
 	for (const w of workouts) {
 		const monday = mondayOf(w.at);
@@ -117,11 +118,11 @@ export function weeklyStats(workouts: WorkoutEntry[]): LoadStat[] {
 		}
 		for (const ex of w.exercises) {
 			b.sets += ex.sets.length;
-			b.cns += (CNS_WEIGHT[params(ex.exId)?.cnsCost ?? ''] ?? 0) * ex.sets.length;
+			b.cns += (CNS_WEIGHT[params(ex.exercise)?.cnsCost ?? ''] ?? 0) * ex.sets.length;
 			for (const s of ex.sets) {
 				const reps = s.reps ?? 1;
-				if (s.weight != null) b.tonnage += s.weight * reps;
-				if (s.time != null) b.tut += s.time * reps;
+				if (s.loadKg != null) b.tonnage += s.loadKg * reps;
+				if (s.workSec != null) b.tut += s.workSec * reps;
 			}
 		}
 	}
@@ -147,7 +148,7 @@ const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
  *  RPE is the mean of the logged set RPEs; duration is the logged `durationMin`,
  *  falling back to the session's work + rest time, then to ~2.5 min/set when
  *  nothing timed was recorded. Returns 0 for a session with no sets. */
-function sessionLoad(w: WorkoutEntry): number {
+function sessionLoad(w: Session): number {
 	let rpeSum = 0;
 	let rpeN = 0;
 	let workSec = 0;
@@ -159,7 +160,7 @@ function sessionLoad(w: WorkoutEntry): number {
 				rpeSum += s.rpe;
 				rpeN += 1;
 			}
-			workSec += (s.time ?? 0) * (s.reps ?? 1) + (s.rest ?? 0);
+			workSec += (s.workSec ?? 0) * (s.reps ?? 1) + (s.restSec ?? 0);
 		}
 	if (setCount === 0) return 0;
 	const sessionRpe = rpeN ? rpeSum / rpeN : 5; // no RPE logged → assume moderate
@@ -176,7 +177,7 @@ function sessionLoad(w: WorkoutEntry): number {
  *  any sessions that day; plus the earliest logged day. Future-dated entries are
  *  ignored. */
 function dailyLoads(
-	workouts: WorkoutEntry[],
+	workouts: Session[],
 	nowMs: number,
 ): { byDay: Map<number, number>; earliest: number } {
 	const byDay = new Map<number, number>();
@@ -203,7 +204,7 @@ const ewmaLambda = (n: number) => 2 / (n + 1);
  *  meaningful — returns null otherwise (the UI shows "building baseline").
  *  `nowMs` is passed in so the function stays pure/testable.
  *  Bands: <0.8 under-loaded, 0.8–1.3 optimal, 1.3–1.5 high, >1.5 spike. */
-export function acwr(workouts: WorkoutEntry[], nowMs: number): Acwr | null {
+export function acwr(workouts: Session[], nowMs: number): Acwr | null {
 	const { byDay, earliest } = dailyLoads(workouts, nowMs);
 	// Without ~3 weeks of history the chronic baseline isn't trustworthy.
 	if (!Number.isFinite(earliest) || (nowMs - earliest) / DAY < 21) return null;
@@ -239,7 +240,7 @@ export interface WeekLoad {
  *  rest days included as zero load. Same weekly volume done evenly every day
  *  (high monotony) carries more overload risk than the same volume done in spikes
  *  with easy days between. Returns null when nothing was trained in the window. */
-export function weekLoad(workouts: WorkoutEntry[], nowMs: number): WeekLoad | null {
+export function weekLoad(workouts: Session[], nowMs: number): WeekLoad | null {
 	const { byDay } = dailyLoads(workouts, nowMs);
 	const today = dayStart(nowMs);
 	const days: number[] = [];
@@ -261,19 +262,17 @@ export function weekLoad(workouts: WorkoutEntry[], nowMs: number): WeekLoad | nu
 
 /** A session counts as trained once at least one set is marked done (prefilled
  *  but-untouched sets don't count). */
-const hasDoneSet = (w: WorkoutEntry): boolean =>
-	w.exercises.some((ex) => ex.sets.some((s) => s.done));
+const hasDoneSet = (w: Session): boolean => w.exercises.some((ex) => ex.sets.some((s) => s.done));
 
 /** Number of sessions actually trained (≥1 completed set). */
-export function completedSessions(workouts: WorkoutEntry[]): number {
+export function completedSessions(workouts: Session[]): number {
 	return workouts.filter(hasDoneSet).length;
 }
 
-const loggedDays = (workouts: WorkoutEntry[]) =>
-	new Set(workouts.filter(hasDoneSet).map((w) => w.at));
+const loggedDays = (workouts: Session[]) => new Set(workouts.filter(hasDoneSet).map((w) => w.at));
 
 /** Consecutive calendar days with a logged workout, ending today (or yesterday). */
-export function trainStreak(workouts: WorkoutEntry[]): number {
+export function trainStreak(workouts: Session[]): number {
 	const days = loggedDays(workouts);
 	if (days.size === 0) return 0;
 	const cur = new Date();
@@ -287,7 +286,7 @@ export function trainStreak(workouts: WorkoutEntry[]): number {
 }
 
 /** Distinct days trained in the last 7 calendar days. */
-export function sessionsLast7(workouts: WorkoutEntry[]): number {
+export function sessionsLast7(workouts: Session[]): number {
 	const days = loggedDays(workouts);
 	const cur = new Date();
 	let n = 0;
@@ -299,7 +298,7 @@ export function sessionsLast7(workouts: WorkoutEntry[]): number {
 }
 
 /** Counts of logged RPE values, bucketed 1–10. */
-export function rpeHistogram(workouts: WorkoutEntry[]): Point[] {
+export function rpeHistogram(workouts: Session[]): Point[] {
 	const counts = new Array(11).fill(0) as number[];
 	for (const w of workouts)
 		for (const ex of w.exercises)
@@ -329,7 +328,7 @@ const OUTCOME_SCORE = [20, 45, 70, 95];
 /** Personalize readiness from the logged history: a rolling baseline, the recent
  *  trend, and a calibration offset that leans future scores toward how the user
  *  actually trains. Pure; needs a handful of entries before it does anything. */
-export function readinessInsights(log: ReadinessEntry[]): ReadinessInsights {
+export function readinessInsights(log: LoggedReadinessCheck[]): ReadinessInsights {
 	const scores = log.map((e) => e.score);
 	const recent = scores.slice(-14);
 	const baseline = recent.length >= 5 ? Math.round(mean(recent)) : null;

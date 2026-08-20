@@ -4,17 +4,18 @@
 // than inventing days from scratch.
 import { exerciseParams } from './content/exercises';
 import { type Content, type MetricId, REST_DAY_TYPE } from './content/types';
+import { asExerciseId, asWeekdayKey, overrideKey } from './ids';
 import * as m from './paraglide/messages';
 import type {
-	Assessment,
+	Baseline,
 	Equipment,
 	Focus,
 	Goal,
 	Level,
+	Override,
+	Phase,
 	Program,
-	ProgramDayCfg,
-	ProgramPhase,
-	ProgramTarget,
+	WeekdayTemplate,
 } from './types';
 
 // Weekday preference per goal — earlier weekdays are kept as training first.
@@ -79,14 +80,14 @@ function gradeLevel(grade: string | null): Level | null {
 }
 
 /** Calibrated level: the boulder grade wins over the self-selected bucket. */
-function calibratedLevel(a: Assessment): Level {
+function calibratedLevel(a: Baseline): Level {
 	return gradeLevel(a.boulderGrade) ?? a.level;
 }
 
 const isFingerExercise = (exId: string): boolean =>
 	exerciseParams[exId]?.variants[0]?.region?.includes('fingers') ?? false;
 
-function levelPhases(level: Level): ProgramPhase[] {
+function levelPhases(level: Level): Phase[] {
 	const s = LEVEL_SCALE[level];
 	return [
 		{
@@ -108,7 +109,7 @@ function levelPhases(level: Level): ProgramPhase[] {
 }
 
 /** The weekdays this assessment trains (in calendar order), for display/preview. */
-export function trainingDays(content: Content, a: Assessment): string[] {
+export function trainingDays(content: Content, a: Baseline): string[] {
 	const trainCount = Math.min(6, Math.max(1, Math.round(a.daysPerWeek)));
 	const order = [...PRIORITY[a.goal]];
 	const bump = order.indexOf(FOCUS_DAY[a.focus]);
@@ -120,7 +121,7 @@ export function trainingDays(content: Content, a: Assessment): string[] {
 /** Build a program tailored to the assessment + baseline tests. */
 export function generateProgram(
 	content: Content,
-	a: Assessment,
+	a: Baseline,
 	baselines: Partial<Record<MetricId, number | null>>,
 ): Program {
 	const restKey = REST_DAY_TYPE;
@@ -128,31 +129,39 @@ export function generateProgram(
 	const have = new Set(a.equipment);
 	const cap = sessionCap(a.sessionMinutes);
 
-	const template: Record<string, ProgramDayCfg> = {};
-	const targets: Record<string, ProgramTarget> = {};
+	const template: Record<string, WeekdayTemplate> = {};
+	const targets: Record<string, Override> = {};
 
 	for (const d of content.days) {
-		if (d.k === restKey) continue;
+		// `d.id` is the day type, `d.k` the weekday it occupies. Both comparisons
+		// below used to read `d.k`, which is calendar position and — per its own
+		// declaration — "never identifies the protocol". `d.k === restKey` could
+		// therefore never be true, and the template was written with a weekday key
+		// where a day-type id belongs: the legacy shape `migrate.ts` exists to
+		// repair, still being freshly generated. Found by #55, when naming the
+		// field `dayType` made the mismatch a type error.
+		if (d.id === restKey) continue;
 		if (!keep.has(d.k)) {
-			template[d.k] = { dayKey: restKey }; // rest out the days beyond days/week
+			template[d.k] = { dayType: restKey }; // rest out the days beyond days/week
 			continue;
 		}
 		// Keep only the exercises this gear supports, trimmed to the session length.
 		const ex = d.ex.filter((id) => !REQUIRES[id] || have.has(REQUIRES[id])).slice(0, cap);
 		if (ex.length === 0) {
-			template[d.k] = { dayKey: restKey }; // nothing trainable here → rest it
+			template[d.k] = { dayType: restKey }; // nothing trainable here → rest it
 			continue;
 		}
-		if (ex.length !== d.ex.length) template[d.k] = { dayKey: d.k, ex };
+		if (ex.length !== d.ex.length)
+			template[d.k] = { dayType: d.id, exercises: ex.map(asExerciseId) };
 		// Per-exercise overrides: seed working load from the baseline test, and
 		// cap finger effort when there's a niggle.
 		for (const exId of ex) {
-			const t: ProgramTarget = {};
+			const t: Override = {};
 			const map = LOAD_FROM_BASELINE[exId];
 			const v = map ? baselines[map.metric] : null;
 			if (map && v != null) t.loadKg = Math.round(v * map.factor);
 			if (a.niggle && isFingerExercise(exId)) t.rpe = NIGGLE_RPE_CAP;
-			if (Object.keys(t).length) targets[`${d.k}:${exId}`] = t;
+			if (Object.keys(t).length) targets[overrideKey(asWeekdayKey(d.k), asExerciseId(exId))] = t;
 		}
 	}
 

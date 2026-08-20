@@ -16,8 +16,10 @@ import { ExternalLink, X } from 'lucide-react';
 import { useState } from 'react';
 import { type DeepBand, type FlagArea, scoreDeep } from '$lib/content';
 import type { Content } from '$lib/content/types';
+import { isoDayOf } from '$lib/dates';
+import { displayDate } from '$lib/displayDate';
 import * as m from '$lib/paraglide/messages';
-import type { DeepEntry } from '$lib/types';
+import type { SelfCheck } from '$lib/types';
 import { Eyebrow, Prose } from './ui/primitives';
 import { button, card, option } from './ui/variants';
 
@@ -63,7 +65,7 @@ export function SelfCheckSheet({
 }: {
 	area: FlagArea;
 	assessment: Content['deep'][string];
-	last: DeepEntry | undefined;
+	last: SelfCheck | undefined;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
@@ -95,7 +97,7 @@ export function SelfCheckSheet({
 						<p className="text-[12.5px] leading-snug text-ink-dim">{assessment.intro}</p>
 						{last ? (
 							<p className="num mt-1.5 text-[11px] text-ink-faint">
-								{m.deep_last({ score: last.score, date: last.date })}
+								{m.deep_last({ score: last.score, date: displayDate(isoDayOf(last.at)) })}
 							</p>
 						) : null}
 

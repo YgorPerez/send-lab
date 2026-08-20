@@ -23,7 +23,7 @@ import {
 } from '$lib/format';
 import type { ExerciseId, TaskKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
-import type { WorkoutSet } from '$lib/types';
+import type { LoggedSet } from '$lib/types';
 import { cn } from '$lib/utils';
 import type { SetField } from '../prototype-fixtures';
 import { SetEditor } from './SetRows';
@@ -107,7 +107,7 @@ export interface TaskState {
 	variants: { name: string; tool?: string; speed?: string }[];
 	prescription: Variant;
 	fields: SetField[];
-	sets: WorkoutSet[];
+	sets: LoggedSet[];
 	/** Has interval timings the rest timer can run. */
 	timed: boolean;
 }
@@ -125,7 +125,7 @@ export function TaskCard({
 	active: boolean;
 	onSelectVariant: (index: number) => void;
 	onUseTimer: () => void;
-	onChangeSet: (index: number, next: WorkoutSet) => void;
+	onChangeSet: (index: number, next: LoggedSet) => void;
 	onAddSet: () => void;
 }) {
 	// Two-axis exercises (tool × speed) get two pickers; everything else gets one

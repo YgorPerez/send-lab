@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { asExerciseId, asWeekdayKey } from '../src/lib/ids';
 import { acwr, readinessInsights, weekLoad } from '../src/lib/stats';
+import type { LoggedReadinessCheck } from '../src/lib/types';
 
 const DAY = 86_400_000;
 const NOW = Date.parse('2026-06-24T12:00:00Z');
@@ -8,19 +10,18 @@ const iso = (daysAgo: number) => new Date(NOW - daysAgo * DAY).toISOString().sli
 
 /** A workout `daysAgo` days back with `sets` sets each at the given `rpe`. */
 const w = (daysAgo: number, sets: number, rpe: number) => ({
-	date: iso(daysAgo),
 	at: iso(daysAgo),
-	day: 'Mon',
+	weekday: asWeekdayKey('Mon'),
 	exercises: [
 		{
-			exId: 'x',
+			exercise: asExerciseId('x'),
 			name: 'x',
 			sets: Array.from({ length: sets }, () => ({
-				weight: null,
-				edge: null,
-				time: null,
+				loadKg: null,
+				edgeMm: null,
+				workSec: null,
 				reps: null,
-				rest: null,
+				restSec: null,
 				rpe,
 				grip: null,
 				done: true,
@@ -65,8 +66,7 @@ test('weekLoad: even daily load is monotonous, spiky load with rest days is vari
 	assert.equal(weekLoad([w(10, 5, 7)], NOW), null);
 });
 
-const entry = (score: number, outcome?: number) => ({
-	date: 'd',
+const entry = (score: number, outcome?: number): LoggedReadinessCheck => ({
 	at: 0,
 	verdict: 'green',
 	score,

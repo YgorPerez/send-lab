@@ -39,6 +39,8 @@ import {
 	visibleQuestionsOrdered,
 } from '$lib/content';
 import type { Content, VerdictId } from '$lib/content/types';
+import { isoDayOf } from '$lib/dates';
+import { displayDate } from '$lib/displayDate';
 import { OUTCOME_LABEL, WELLNESS_LABEL } from '$lib/format';
 import type { ExerciseId, TaskKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
@@ -614,7 +616,7 @@ function BodyweightNudge({
 	onLog: () => void;
 }) {
 	const series = bodyweight.series;
-	const delta = series.length > 1 ? bodyweight.latestKg - series[0].v : 0;
+	const delta = series.length > 1 ? bodyweight.latestKg - series[0].kg : 0;
 	return (
 		<Section label={m.field_bodyweight()}>
 			<div>
@@ -634,7 +636,7 @@ function BodyweightNudge({
 					</div>
 					<div className="mt-1 w-full">
 						<Sparkline
-							points={series.map((s) => ({ value: s.v, label: s.date }))}
+							points={series.map((s) => ({ value: s.kg, label: displayDate(isoDayOf(s.at)) }))}
 							color="var(--violet)"
 							height={20}
 						/>
@@ -691,7 +693,7 @@ function InjuryEntry({
 					<span className="min-w-0 flex-1">
 						<span className="block text-[13px] font-medium text-ink">{deep.assessment.title}</span>
 						<span className="num mt-0.5 block text-[11px] text-ink-faint">
-							{m.deep_last({ score: deep.last.score, date: deep.last.date })}
+							{m.deep_last({ score: deep.last.score, date: displayDate(isoDayOf(deep.last.at)) })}
 						</span>
 					</span>
 					<ChevronRight size={15} className="shrink-0 text-ink-faint" />

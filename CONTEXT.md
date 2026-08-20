@@ -35,7 +35,7 @@ switched.
 _Avoid_: plan, routine, schedule, split, protocol
 
 **Block**:
-The run of weeks the active program spans. Its length is the sum of its phases.
+The run of weeks the active program spans.
 _Avoid_: cycle, mesocycle, program length
 
 **Phase**:
@@ -62,6 +62,12 @@ _Avoid_: day, session, entry, cell
 A reusable archetype for a slot: its category, load level, and default exercise
 list. A slot runs one day type; several slots can run the same one.
 _Avoid_: day, template, protocol, split
+
+**Weekday template**:
+One weekday's entry in the program: the day type it runs, plus any customization
+of that day type's exercises or label. It applies to every training week in the
+block, where a slot is one weekday of one week.
+_Avoid_: day, day config, program day, schedule
 
 **Rest day**:
 A slot whose day type prescribes no exercises. Rest days are never scheduled
@@ -123,6 +129,12 @@ _Avoid_: item, entry, todo
 One logged effort within a session: load, edge, time, reps, rest, effort, grip,
 and whether it was completed.
 _Avoid_: rep, attempt, effort
+
+**Logged exercise**:
+One exercise inside a session, holding the sets recorded against it. It is an
+instance of a library exercise, not another word for one — and it is history,
+where a task is plan.
+_Avoid_: session exercise, entry, task
 
 **Round**:
 One repetition of the work interval inside a set — what the rest timer counts
