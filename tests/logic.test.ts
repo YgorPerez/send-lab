@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { computeReadiness, phaseId, scoreDeep, visibleQuestions } from '../src/lib/content/logic';
+import {
+	computeReadiness,
+	phaseId,
+	scoreSelfCheck,
+	visibleQuestions,
+} from '../src/lib/content/logic';
 
 // readiness score is exercised through computeReadiness().score (the engine's output).
 const score = (a: Record<string, number>) => computeReadiness(a).score;
@@ -40,7 +45,7 @@ test('computeReadiness: poor wellness → tissue', () => {
 
 test('computeReadiness: injury gates the verdict, area-specific', () => {
 	// sharp finger pain is a hard stop regardless of wellness
-	const sharp = computeReadiness({ sleep: 10, fatigue: 10, soreness: 10, body: 1, severity: 3 });
+	const sharp = computeReadiness({ sleep: 10, fatigue: 10, soreness: 10, body: 1, pain: 3 });
 	assert.equal(sharp.verdict, 'rest');
 	assert.equal(sharp.area, 'fingers');
 	assert.equal(sharp.flags[0].id, 'finger_pain');
@@ -51,7 +56,7 @@ test('computeReadiness: injury gates the verdict, area-specific', () => {
 		fatigue: 10,
 		soreness: 10,
 		body: 3,
-		severity: 2,
+		pain: 2,
 		time: 10,
 	});
 	assert.equal(shoulder.verdict, 'tissue');
@@ -65,7 +70,7 @@ test('computeReadiness: injury gates the verdict, area-specific', () => {
 		fatigue: 10,
 		soreness: 10,
 		body: 2,
-		severity: 1,
+		pain: 1,
 		time: 10,
 	});
 	assert.equal(elbow.verdict, 'moderate');
@@ -123,14 +128,14 @@ test('computeReadiness: personal history (calibration / trend / baseline) adjust
 });
 
 test('visibleQuestions: follow-ups appear only when they change the outcome', () => {
-	// fresh day: core + skin (a hard day is on the table), no severity/stress/mood
+	// fresh day: core + skin (a hard day is on the table), no pain/stress/mood
 	const fresh = visibleQuestions({ sleep: 10, fatigue: 10, soreness: 10, body: 0, time: 10 });
-	assert.ok(!fresh.includes('severity'));
+	assert.ok(!fresh.includes('pain'));
 	assert.ok(!fresh.includes('stress'));
 	assert.ok(fresh.includes('skin'));
 
-	// something hurts → ask severity
-	assert.ok(visibleQuestions({ body: 2 }).includes('severity'));
+	// something hurts → ask the pain level
+	assert.ok(visibleQuestions({ body: 2 }).includes('pain'));
 
 	// poor sleep → ask stress + mood; no hard day → no skin
 	const tired = visibleQuestions({ sleep: 0, fatigue: 4, soreness: 5, body: 0, time: 10 });
@@ -138,11 +143,15 @@ test('visibleQuestions: follow-ups appear only when they change the outcome', ()
 	assert.ok(!tired.includes('skin'));
 });
 
-test('scoreDeep normalizes 0–10 answers to 0–100 and bands them', () => {
-	assert.deepEqual(scoreDeep([10, 10, 10]), { score: 100, band: 'manageable', stage: 'returning' });
-	assert.deepEqual(scoreDeep([0, 0, 0]), { score: 0, band: 'significant', stage: 'acute' });
-	assert.equal(scoreDeep([6, 6, 6, 6, 6]).band, 'moderate');
-	assert.equal(scoreDeep([]).score, 0);
+test('scoreSelfCheck normalizes 0–10 answers to 0–100 and bands them', () => {
+	assert.deepEqual(scoreSelfCheck([10, 10, 10]), {
+		score: 100,
+		band: 'manageable',
+		stage: 'returning',
+	});
+	assert.deepEqual(scoreSelfCheck([0, 0, 0]), { score: 0, band: 'significant', stage: 'acute' });
+	assert.equal(scoreSelfCheck([6, 6, 6, 6, 6]).band, 'moderate');
+	assert.equal(scoreSelfCheck([]).score, 0);
 });
 
 test('phaseId scales phases to block length, last week is deload', () => {

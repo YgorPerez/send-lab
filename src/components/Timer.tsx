@@ -33,10 +33,10 @@ import {
 	IDLE,
 	type IntervalConfig,
 	nextOf,
-	type Phase,
-	phaseLengthOf,
 	type Run,
 	remainingOf,
+	type Segment,
+	segmentLengthOf,
 	step,
 	totalOf,
 } from '$lib/intervalProtocol';
@@ -45,7 +45,7 @@ import { cn } from '$lib/utils';
 import { Eyebrow } from './ui/primitives';
 import { button, input } from './ui/variants';
 
-const PHASE_LABEL: Record<Phase, () => string> = {
+const SEGMENT_LABEL: Record<Segment, () => string> = {
 	idle: m.timer_ready,
 	prepare: m.timer_prepare,
 	work: m.timer_work,
@@ -54,7 +54,7 @@ const PHASE_LABEL: Record<Phase, () => string> = {
 	done: m.timer_done,
 };
 
-const PHASE_COLOR: Record<Phase, string> = {
+const SEGMENT_COLOR: Record<Segment, string> = {
 	idle: 'var(--ink-dim)',
 	prepare: 'var(--warn)',
 	work: 'var(--stop)',
@@ -63,8 +63,8 @@ const PHASE_COLOR: Record<Phase, string> = {
 	done: 'var(--ink-dim)',
 };
 
-/** Which cue announces arriving in a phase. Mirrors the SvelteKit app exactly. */
-const PHASE_CUE = {
+/** Which cue announces arriving in a segment. Mirrors the SvelteKit app exactly. */
+const SEGMENT_CUE = {
 	idle: null,
 	prepare: 'start',
 	work: 'work',
@@ -88,7 +88,7 @@ const FIELDS: { key: keyof IntervalConfig; label: () => string }[] = [
 	{ key: 'setRest', label: m.timer_setrest_s },
 ];
 
-/** The last seconds of a phase get their own cue, the way Timer Plus counts in. */
+/** The last seconds of a segment get their own cue, the way Timer Plus counts in. */
 const COUNTDOWN_FROM = 3;
 
 /**
@@ -114,12 +114,12 @@ interface Reading {
 	config: IntervalConfig;
 	/** The number on the clock — the prepare or work length while idle. */
 	shown: number;
-	phaseLength: number;
+	segmentLength: number;
 	elapsed: number;
 	left: number;
 	total: number;
 	accent: string;
-	next: { phase: Phase; seconds: number } | null;
+	next: { segment: Segment; seconds: number } | null;
 	running: boolean;
 }
 
@@ -128,12 +128,12 @@ function readingOf(run: Run, config: IntervalConfig, running: boolean): Reading 
 		run,
 		config,
 		shown:
-			run.phase === 'idle' ? (config.prepare > 0 ? config.prepare : config.work) : run.remaining,
-		phaseLength: phaseLengthOf(run, config),
+			run.segment === 'idle' ? (config.prepare > 0 ? config.prepare : config.work) : run.remaining,
+		segmentLength: segmentLengthOf(run, config),
 		elapsed: elapsedOf(run, config),
 		left: remainingOf(run, config),
 		total: totalOf(config),
-		accent: PHASE_COLOR[run.phase],
+		accent: SEGMENT_COLOR[run.segment],
 		next: nextOf(run, config),
 		running,
 	};
@@ -181,9 +181,9 @@ function FullScreenClock({
 	onToggle: () => void;
 	onReset: () => void;
 }) {
-	const { run, config, shown, phaseLength, accent, left, elapsed, running, next } = reading;
-	const phaseLabel = PHASE_LABEL[run.phase]();
-	// The ring reports the phase you are in, not the whole session: mid-hang the
+	const { run, config, shown, segmentLength, accent, left, elapsed, running, next } = reading;
+	const segmentLabel = SEGMENT_LABEL[run.segment]();
+	// The ring reports the segment you are in, not the whole session: mid-hang the
 	// useful question is "how much of *this* is left", and the session total is
 	// already on the lines underneath.
 	const R = 46;
@@ -193,7 +193,7 @@ function FullScreenClock({
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Popup
-					aria-label={phaseLabel}
+					aria-label={segmentLabel}
 					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
 				>
 					<div className="flex items-start gap-2 px-4 pt-4">
@@ -202,7 +202,7 @@ function FullScreenClock({
 								className="num text-[13px] tracking-wider uppercase"
 								style={{ color: accent }}
 							>
-								{phaseLabel}
+								{segmentLabel}
 							</Dialog.Title>
 							{label ? <p className="eyebrow mt-1 truncate">{label}</p> : null}
 						</div>
@@ -241,7 +241,7 @@ function FullScreenClock({
 									strokeLinecap="round"
 									strokeDasharray={CIRC}
 									strokeDashoffset={
-										phaseLength > 0 ? CIRC * (1 - Math.max(0, shown) / phaseLength) : 0
+										segmentLength > 0 ? CIRC * (1 - Math.max(0, shown) / segmentLength) : 0
 									}
 									style={{ transition: 'stroke-dashoffset 1s linear' }}
 								/>
@@ -266,7 +266,9 @@ function FullScreenClock({
 						{next ? (
 							<span className="num text-[14px] text-ink-faint">
 								{m.timer_next()}{' '}
-								<span style={{ color: PHASE_COLOR[next.phase] }}>{PHASE_LABEL[next.phase]()}</span>
+								<span style={{ color: SEGMENT_COLOR[next.segment] }}>
+									{SEGMENT_LABEL[next.segment]()}
+								</span>
 								{next.seconds > 0 ? ` · ${clock(next.seconds)}` : ''}
 							</span>
 						) : null}
@@ -347,8 +349,8 @@ export function Timer({
 	}, [running, config]);
 
 	useEffect(() => {
-		if (run.phase === 'done') setRunning(false);
-	}, [run.phase]);
+		if (run.segment === 'done') setRunning(false);
+	}, [run.segment]);
 
 	// Cues, derived from the transition rather than fired from inside the tick —
 	// a side effect in a state updater is precisely what `react-doctor` fails the
@@ -358,14 +360,15 @@ export function Timer({
 	useEffect(() => {
 		const before = previous.current;
 		previous.current = run;
-		if (before.phase === run.phase && before.round === run.round && before.set === run.set) {
+		if (before.segment === run.segment && before.round === run.round && before.set === run.set) {
 			if (running && run.remaining > 0 && run.remaining <= COUNTDOWN_FROM) cue('countdown');
 			return;
 		}
 		// Prepare handing over to work is the one transition that gets its own
 		// two-note cue: it is the moment the athlete has to move, and a single beep
 		// identical to every other single beep is not enough to act on blind.
-		const name = before.phase === 'prepare' && run.phase === 'work' ? 'go' : PHASE_CUE[run.phase];
+		const name =
+			before.segment === 'prepare' && run.segment === 'work' ? 'go' : SEGMENT_CUE[run.segment];
 		if (name) cue(name);
 	}, [run, running]);
 
@@ -411,7 +414,7 @@ export function Timer({
 	useEffect(() => releaseCues, []);
 
 	const start = () => {
-		if (run.phase === 'idle' || run.phase === 'done') setRun(beginning(config));
+		if (run.segment === 'idle' || run.segment === 'done') setRun(beginning(config));
 		setRunning(true);
 	};
 	const reset = () => {
@@ -443,8 +446,8 @@ export function Timer({
 					className="num shrink-0 text-[10px] tracking-wider uppercase"
 					style={{ color: accent }}
 				>
-					{PHASE_LABEL[run.phase]()}
-					{run.phase !== 'idle' && run.phase !== 'done'
+					{SEGMENT_LABEL[run.segment]()}
+					{run.segment !== 'idle' && run.segment !== 'done'
 						? ` · ${m.timer_round({ n: run.round, total: config.rounds })} · ${run.set}/${config.sets}`
 						: ''}
 				</span>

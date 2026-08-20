@@ -32,7 +32,7 @@ function defaultState(): Record<string, unknown> {
 		program: defaultProgram(),
 		savedPrograms: [],
 		rehab: null,
-		deepLog: [],
+		selfCheckLog: [],
 		readinessLog: [],
 	};
 }
@@ -67,7 +67,7 @@ export function sanitizeState(raw: unknown): Record<string, unknown> {
 	out.program = normalizeProgram(raw.program);
 	if (Array.isArray(raw.savedPrograms)) out.savedPrograms = raw.savedPrograms;
 	if (raw.rehab === null || isPlainObject(raw.rehab)) out.rehab = raw.rehab;
-	if (Array.isArray(raw.deepLog)) out.deepLog = raw.deepLog;
+	if (Array.isArray(raw.selfCheckLog)) out.selfCheckLog = raw.selfCheckLog;
 	if (Array.isArray(raw.readinessLog)) out.readinessLog = raw.readinessLog;
 	return out;
 }

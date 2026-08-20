@@ -204,7 +204,7 @@ interface Flag {
 }
 
 /** One deep-assessment question; each option scores 0–10, where 10 = healthy. */
-interface DeepQuestion {
+interface SelfCheckQuestion {
 	id: string;
 	q: string;
 	a: { t: string; v: number }[];
@@ -212,13 +212,13 @@ interface DeepQuestion {
 
 /** A per-area injury self-check, modelled on a validated instrument (its domains
  *  + 0–100 scoring) — attributed via `source`/`url`, not a diagnosis. */
-interface DeepAssessment {
+interface SelfCheckInstrument {
 	title: string;
 	intro: string;
 	/** Instrument it's based on, e.g. "VISA-C (climbing finger/wrist)". */
 	source: string;
 	url: string;
-	questions: DeepQuestion[];
+	questions: SelfCheckQuestion[];
 }
 
 /** The localized half of the content (prose only; params come from exercises.ts). */
@@ -231,7 +231,7 @@ export interface LocaleContent {
 	/** Per-problem recommendations keyed by flag id (see logic.ts `dailyFlags`). */
 	flags: Record<string, Flag>;
 	/** Per-area injury self-checks, keyed by FlagArea (fingers/elbow/shoulder/wrist). */
-	deep: Record<string, DeepAssessment>;
+	selfChecks: Record<string, SelfCheckInstrument>;
 	phases: Record<PhaseId, Phase>;
 	/** Jargon/acronym → plain-language definition, surfaced as tooltips in prose. */
 	glossary: Record<string, string>;

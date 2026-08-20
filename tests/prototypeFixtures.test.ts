@@ -83,7 +83,7 @@ describe('Today', () => {
 		expect(f.today.trendPoints).toHaveLength(14);
 		expect(f.today.bodyweight.promptToday).toBe(true);
 		expect(f.today.missed).not.toBeNull();
-		expect(f.today.deep.assessment.questions.length).toBeGreaterThan(0);
+		expect(f.today.selfCheck.instrument.questions.length).toBeGreaterThan(0);
 		expect(f.today.stats.total).toBeGreaterThan(0);
 	});
 

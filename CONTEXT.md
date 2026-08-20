@@ -142,6 +142,12 @@ down. A 6 × (7s on / 3s off) set runs six rounds, and the athlete logs the set
 rather than each round.
 _Avoid_: cycle, interval, rep
 
+**Segment**:
+The part of a protocol running right now — preparing, working, resting between
+rounds, or resting between sets. Seconds long, and never a phase: a phase spans
+weeks.
+_Avoid_: phase, interval, stage, step
+
 **Trained**:
 A slot is trained once at least one of its tasks is marked complete — including
 exercises the athlete added off-script, which count toward training rather than
@@ -198,6 +204,11 @@ A per-athlete offset applied to the readiness score, learned from how their
 sessions actually turned out against what was predicted.
 _Avoid_: adjustment, correction, tuning
 
+**Outcome**:
+How a session actually went, reported by the athlete afterwards: bailed, flat,
+as-expected, or strong. The only thing calibration learns from.
+_Avoid_: result, feedback, rating, review
+
 **Probe**:
 An objective same-day reading — a quick maximal finger pull — compared against
 the athlete's own recent norm to catch fatigue they haven't noticed. Read for
@@ -211,6 +222,18 @@ Still present in the SvelteKit app until cutover.
 A per-area questionnaire modelled on a validated clinical instrument, scoring
 0–100 and banding to a rehab stage. Informs training, never diagnoses.
 _Avoid_: deep assessment, diagnosis, screening, test
+
+**Band**:
+Which of three ranges an injury self-check score fell in — manageable, moderate
+or significant. It is what routes the athlete to a rehab stage, so it is never
+free text.
+_Avoid_: bracket, tier, grade, level
+
+**Pain level**:
+How a reported symptom presents, from stiff through tender and painful to sharp.
+Distinct from a flag's severity, which is how urgently to act, and from soreness,
+which is one of the daily wellness answers.
+_Avoid_: severity, soreness, pain score
 
 **Rehab**:
 The mode where the program is replaced by a conservative plan for one injured

@@ -250,9 +250,9 @@ export interface TodayFixture {
 	/** No rehab block is running; the entry point is still on the screen. */
 	rehab: null;
 	/** The injury self-check reachable from the finger flag, and its last result. */
-	deep: {
+	selfCheck: {
 		area: FlagArea;
-		assessment: Content['deep'][string];
+		instrument: Content['selfChecks'][string];
 		last: SelfCheck;
 	};
 }
@@ -355,7 +355,7 @@ export interface PrototypeFixtures {
 		workouts: Session[];
 		readinessLog: LoggedReadinessCheck[];
 		bodyweight: BodyweightReading[];
-		deepLog: SelfCheck[];
+		selfCheckLog: SelfCheck[];
 	};
 }
 
@@ -566,9 +566,9 @@ function buildBodyweight(now: number): BodyweightReading[] {
 	});
 }
 
-function buildDeepLog(now: number): SelfCheck[] {
+function buildSelfCheckLog(now: number): SelfCheck[] {
 	const iso = isoDaysAgo(now, 11);
-	// Banded by `scoreDeep`: 74 falls in the middle band, which routes rehab to
+	// Banded by `scoreSelfCheck`: 74 falls in the middle band, which routes rehab to
 	// the subacute stage rather than to a full stop.
 	return [
 		{ at: new Date(`${iso}T09:00:00`).getTime(), area: 'fingers', score: 74, band: 'moderate' },
@@ -685,10 +685,10 @@ function buildToday(
 			labels: ctx.missed.exerciseIds.map((id) => content.exercises[id].name),
 		},
 		rehab: null,
-		deep: {
+		selfCheck: {
 			area: 'fingers',
-			assessment: content.deep.fingers,
-			last: state.deepLog[0],
+			instrument: content.selfChecks.fingers,
+			last: state.selfCheckLog[0],
 		},
 	};
 }
@@ -849,7 +849,7 @@ export function getPrototypeFixtures(now: number = Date.now()): PrototypeFixture
 		workouts: [buildTodaySession(content, iso, exerciseIds, keep[0]), ...history],
 		readinessLog,
 		bodyweight: buildBodyweight(now),
-		deepLog: buildDeepLog(now),
+		selfCheckLog: buildSelfCheckLog(now),
 	};
 
 	return {

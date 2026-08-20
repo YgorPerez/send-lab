@@ -314,12 +314,12 @@ function Today() {
 				onLog={() => setBodyweightLogged(true)}
 			/>
 
-			<InjuryEntry deep={t.deep} onSelfCheck={() => setSelfCheckOpen(true)} />
+			<InjuryEntry selfCheck={t.selfCheck} onSelfCheck={() => setSelfCheckOpen(true)} />
 
 			<SelfCheckSheet
-				area={t.deep.area as FlagArea}
-				assessment={t.deep.assessment}
-				last={t.deep.last}
+				area={t.selfCheck.area as FlagArea}
+				instrument={t.selfCheck.instrument}
+				last={t.selfCheck.last}
 				open={selfCheckOpen}
 				onOpenChange={setSelfCheckOpen}
 			/>
@@ -673,10 +673,10 @@ function BodyweightNudge({
 
 /** Injury. Last section on purpose — rarely needed, never hidden. */
 function InjuryEntry({
-	deep,
+	selfCheck,
 	onSelfCheck,
 }: {
-	deep: TodayFixture['deep'];
+	selfCheck: TodayFixture['selfCheck'];
 	onSelfCheck: () => void;
 }) {
 	return (
@@ -691,17 +691,22 @@ function InjuryEntry({
 					className="flex w-full items-center gap-2 p-3 text-left transition-colors active:bg-panel-2"
 				>
 					<span className="min-w-0 flex-1">
-						<span className="block text-[13px] font-medium text-ink">{deep.assessment.title}</span>
+						<span className="block text-[13px] font-medium text-ink">
+							{selfCheck.instrument.title}
+						</span>
 						<span className="num mt-0.5 block text-[11px] text-ink-faint">
-							{m.deep_last({ score: deep.last.score, date: displayDate(isoDayOf(deep.last.at)) })}
+							{m.deep_last({
+								score: selfCheck.last.score,
+								date: displayDate(isoDayOf(selfCheck.last.at)),
+							})}
 						</span>
 					</span>
 					<ChevronRight size={15} className="shrink-0 text-ink-faint" />
 				</button>
 				<p className="border-t border-line-soft px-3 py-2 text-[10.5px] leading-snug text-ink-faint">
-					{m.deep_based_on({ source: deep.assessment.source })}{' '}
+					{m.deep_based_on({ source: selfCheck.instrument.source })}{' '}
 					<a
-						href={deep.assessment.url}
+						href={selfCheck.instrument.url}
 						target="_blank"
 						rel="noopener noreferrer"
 						className="inline-flex items-center gap-0.5 whitespace-nowrap text-ink-dim underline decoration-line underline-offset-2"

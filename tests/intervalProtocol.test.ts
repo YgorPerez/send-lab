@@ -2,7 +2,7 @@
 //
 // This is the test the four prototypes could not write, because each of them had
 // the arithmetic tangled into a component. Running the whole protocol tick by
-// tick and asserting the phase sequence is the only way to catch an off-by-one
+// tick and asserting the segment sequence is the only way to catch an off-by-one
 // in a transition that only happens on the last round of the last set.
 import { describe, expect, test } from 'vitest';
 import {
@@ -11,9 +11,9 @@ import {
 	IDLE,
 	type IntervalConfig,
 	nextOf,
-	type Phase,
 	type Run,
 	remainingOf,
+	type Segment,
 	step,
 	totalOf,
 } from '../src/lib/intervalProtocol.ts';
@@ -29,21 +29,21 @@ const REPEATERS: IntervalConfig = {
 };
 
 /** Run the protocol to completion and report every second of it. */
-function run(c: IntervalConfig, limit = 5000): { phases: Phase[]; seconds: number } {
-	const phases: Phase[] = [];
+function run(c: IntervalConfig, limit = 5000): { segments: Segment[]; seconds: number } {
+	const segments: Segment[] = [];
 	let r = beginning(c);
 	let seconds = 0;
-	let previous: Phase | null = null;
-	while (r.phase !== 'done' && seconds < limit) {
-		if (r.phase !== previous) {
-			phases.push(r.phase);
-			previous = r.phase;
+	let previous: Segment | null = null;
+	while (r.segment !== 'done' && seconds < limit) {
+		if (r.segment !== previous) {
+			segments.push(r.segment);
+			previous = r.segment;
 		}
 		r = step(r, c);
 		seconds += 1;
 	}
-	phases.push(r.phase);
-	return { phases, seconds };
+	segments.push(r.segment);
+	return { segments, seconds };
 }
 
 describe('the protocol', () => {
@@ -66,8 +66,8 @@ describe('the protocol', () => {
 	});
 
 	test('runs prepare, then work/rest per round, then the set rest, then finishes', () => {
-		const { phases } = run({ prepare: 3, work: 2, rest: 1, rounds: 2, sets: 2, setRest: 4 });
-		expect(phases).toEqual([
+		const { segments } = run({ prepare: 3, work: 2, rest: 1, rounds: 2, sets: 2, setRest: 4 });
+		expect(segments).toEqual([
 			'prepare',
 			'work',
 			'rest',
@@ -85,34 +85,34 @@ describe('the protocol', () => {
 	// session over-runs by half a minute.
 	test('does not rest after the final round of a set', () => {
 		const c = { prepare: 0, work: 2, rest: 5, rounds: 2, sets: 1, setRest: 0 };
-		expect(run(c).phases).toEqual(['work', 'rest', 'work', 'done']);
+		expect(run(c).segments).toEqual(['work', 'rest', 'work', 'done']);
 		// Two efforts and exactly one rest between them.
 		expect(run(c).seconds).toBe(2 * 2 + 5);
 	});
 
-	// `run` collapses consecutive identical phases, so back-to-back rounds with no
+	// `run` collapses consecutive identical segments, so back-to-back rounds with no
 	// rest between them show as one `work` — the assertion that matters is that
 	// both rounds were actually spent rather than one being swallowed.
-	test('skips a zero-length phase rather than sitting in it', () => {
+	test('skips a zero-length segment rather than sitting in it', () => {
 		const noRest = run({ prepare: 0, work: 2, rest: 0, rounds: 2, sets: 1, setRest: 0 });
-		expect(noRest.phases).toEqual(['work', 'done']);
+		expect(noRest.segments).toEqual(['work', 'done']);
 		expect(noRest.seconds).toBe(4);
 
 		const noSetRest = run({ prepare: 0, work: 2, rest: 0, rounds: 1, sets: 2, setRest: 0 });
-		expect(noSetRest.phases).toEqual(['work', 'done']);
+		expect(noSetRest.segments).toEqual(['work', 'done']);
 		expect(noSetRest.seconds).toBe(4);
 	});
 
 	test('is total — idle and done return themselves', () => {
 		expect(step(IDLE, REPEATERS)).toEqual(IDLE);
-		const done: Run = { phase: 'done', remaining: 0, round: 6, set: 2 };
+		const done: Run = { segment: 'done', remaining: 0, round: 6, set: 2 };
 		expect(step(done, REPEATERS)).toEqual(done);
 	});
 
 	// A protocol prescribing zero seconds of work would otherwise sit forever on
 	// `remaining: 0`, because the tick only advances when `remaining <= 1`.
 	test('cannot stall on a zero-second effort', () => {
-		const { phases, seconds } = run({
+		const { segments, seconds } = run({
 			prepare: 0,
 			work: 0,
 			rest: 0,
@@ -120,7 +120,7 @@ describe('the protocol', () => {
 			sets: 1,
 			setRest: 0,
 		});
-		expect(phases[phases.length - 1]).toBe('done');
+		expect(segments[segments.length - 1]).toBe('done');
 		expect(seconds).toBeLessThan(10);
 	});
 });
@@ -153,7 +153,7 @@ describe('derived readings', () => {
 	test('idle reports nothing done and done reports everything', () => {
 		expect(elapsedOf(IDLE, REPEATERS)).toBe(0);
 		expect(remainingOf(IDLE, REPEATERS)).toBe(totalOf(REPEATERS));
-		const done: Run = { phase: 'done', remaining: 0, round: 6, set: 2 };
+		const done: Run = { segment: 'done', remaining: 0, round: 6, set: 2 };
 		expect(remainingOf(done, REPEATERS)).toBe(0);
 	});
 });
@@ -161,18 +161,18 @@ describe('derived readings', () => {
 describe('the next-up preview', () => {
 	// The preview and the transition come from the same table, so this asserts
 	// they agree rather than asserting a hardcoded sequence twice.
-	test('names the phase the protocol actually goes to', () => {
+	test('names the segment the protocol actually goes to', () => {
 		let r = beginning(REPEATERS);
-		while (r.phase !== 'done') {
+		while (r.segment !== 'done') {
 			const preview = nextOf(r, REPEATERS);
 			const after = step({ ...r, remaining: 1 }, REPEATERS);
-			expect(preview?.phase).toBe(after.phase);
+			expect(preview?.segment).toBe(after.segment);
 			r = step(r, REPEATERS);
 		}
 	});
 
 	test('has nothing to preview before the start or after the end', () => {
 		expect(nextOf(IDLE, REPEATERS)).toBeNull();
-		expect(nextOf({ phase: 'done', remaining: 0, round: 1, set: 1 }, REPEATERS)).toBeNull();
+		expect(nextOf({ segment: 'done', remaining: 0, round: 1, set: 1 }, REPEATERS)).toBeNull();
 	});
 });

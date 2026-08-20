@@ -42,6 +42,7 @@
 // Identity is branded, key-side only (#20). `src/lib/ids.ts` is the only module
 // that mints one, so a localized label reaching a key is a compile error rather
 // than a screen that renders correctly in English.
+import type { SelfCheckBand } from '$lib/content/logic';
 import type { DayTypeId, Grip, VerdictId } from '$lib/content/types';
 import type { ExerciseId, OverrideKey, WeekdayKey } from '$lib/ids';
 
@@ -109,8 +110,9 @@ export interface SelfCheck {
 	area: RehabArea;
 	/** 0–100, from the area's validated instrument. */
 	score: number;
-	/** The band the score fell in. Not a closed union anywhere yet. */
-	band: string;
+	/** Which band the score fell in — the same closed set the content library
+	 *  scores to. It routes to a rehab stage, so it is never free text. */
+	band: SelfCheckBand;
 }
 
 /** A daily readiness check recorded for the trend over time. */

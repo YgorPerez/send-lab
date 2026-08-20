@@ -688,7 +688,7 @@ const content: LocaleContent = {
 			],
 		},
 		{
-			id: 'severity',
+			id: 'pain',
 			followup: true,
 			q: 'How does it feel?',
 			why: 'Stiffness is safe to train around, tenderness means back off, sharp pain is a stop — severity sets the cap.',
@@ -860,7 +860,7 @@ const content: LocaleContent = {
 			focus: ['easy only', 'cut volume', 'monitor'],
 		},
 	},
-	deep: {
+	selfChecks: {
 		fingers: {
 			title: 'Finger / pulley self-check',
 			intro:

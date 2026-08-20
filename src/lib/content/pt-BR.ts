@@ -700,7 +700,7 @@ const content: LocaleContent = {
 			],
 		},
 		{
-			id: 'severity',
+			id: 'pain',
 			followup: true,
 			q: 'Como está a sensação?',
 			why: 'Rigidez dá pra contornar, sensibilidade pede recuar, dor aguda é parada — a gravidade define o limite.',
@@ -872,7 +872,7 @@ const content: LocaleContent = {
 			focus: ['só leve', 'cortar volume', 'monitorar'],
 		},
 	},
-	deep: {
+	selfChecks: {
 		fingers: {
 			title: 'Autoavaliação de dedo / polia',
 			intro:

@@ -38,11 +38,13 @@ function bodyArea(answers: Answers): FlagArea | null {
 	return BODY_AREA[answers.body ?? 0] ?? null;
 }
 
-// The `severity` follow-up: 0 stiff · 1 tender · 2 painful · 3 sharp.
-type Severity = 'stiff' | 'tender' | 'painful' | 'sharp';
-const SEVERITY: Severity[] = ['stiff', 'tender', 'painful', 'sharp'];
-const severityOf = (answers: Answers): Severity | null =>
-	bodyArea(answers) ? (SEVERITY[answers.severity ?? 0] ?? 'stiff') : null;
+// The `pain` follow-up: 0 stiff · 1 tender · 2 painful · 3 sharp. Named a pain
+// level, not a severity: `DailyFlag.severity` is how urgently to act ('stop' |
+// 'warn' | 'info'), which is a different axis from how the symptom presents.
+type PainLevel = 'stiff' | 'tender' | 'painful' | 'sharp';
+const PAIN_LEVELS: PainLevel[] = ['stiff', 'tender', 'painful', 'sharp'];
+const painLevelOf = (answers: Answers): PainLevel | null =>
+	bodyArea(answers) ? (PAIN_LEVELS[answers.pain ?? 0] ?? 'stiff') : null;
 
 // ---------------- subjective wellness → 0–100 ----------------
 
@@ -97,10 +99,10 @@ const intensityFromScore = (score: number): Intensity =>
 
 /** Apply the area-specific injury gate to an intensity. */
 function injuryCap(answers: Answers, i: Intensity): Intensity {
-	const sev = severityOf(answers);
-	if (bodyArea(answers) === 'fingers' && sev === 'sharp') return 'rest';
-	if (sev === 'painful') return cap(i, 'tissue');
-	if (sev === 'tender') return cap(i, 'moderate');
+	const pain = painLevelOf(answers);
+	if (bodyArea(answers) === 'fingers' && pain === 'sharp') return 'rest';
+	if (pain === 'painful') return cap(i, 'tissue');
+	if (pain === 'tender') return cap(i, 'moderate');
 	return i;
 }
 
@@ -117,7 +119,7 @@ const timeShort = (answers: Answers): boolean => (answers.time ?? 10) <= 3;
  *  are low), and skin (only when a hard, skin-intensive day is otherwise on). */
 export function visibleQuestions(answers: Answers): string[] {
 	const out = [...CORE_QUESTIONS];
-	if ((answers.body ?? 0) > 0) out.push('severity');
+	if ((answers.body ?? 0) > 0) out.push('pain');
 	if ((answers.sleep ?? 10) <= 3 || (answers.fatigue ?? 10) <= 4) out.push('stress', 'mood');
 	// Skin only matters on a hard day — ask it once the wellness core is in and the
 	// day is still pointing high (don't surface it on the initial defaults).
@@ -129,7 +131,7 @@ export function visibleQuestions(answers: Answers): string[] {
 /** Each follow-up sits directly beneath the core question that triggers it, so it
  *  reads as a sub-question in context (severity under `body`, etc.). */
 const FOLLOWUP_PARENT: Record<string, string> = {
-	severity: 'body',
+	pain: 'body',
 	stress: 'fatigue',
 	mood: 'fatigue',
 	skin: 'time',
@@ -195,10 +197,10 @@ export function computeReadiness(
 	const score = Math.max(0, Math.min(100, readinessScore(answers) + (hist.calibration ?? 0)));
 	let intensity = injuryCap(answers, intensityFromScore(score));
 	const area = bodyArea(answers);
-	const sev = severityOf(answers);
+	const pain = painLevelOf(answers);
 	const flags: DailyFlag[] = [];
 
-	if (area && sev) flags.push(areaFlag(area, sev === 'painful' || sev === 'sharp'));
+	if (area && pain) flags.push(areaFlag(area, pain === 'painful' || pain === 'sharp'));
 
 	// Illness gate ("neck check"): systemic symptoms (fever / below the neck) are a
 	// hard stop — training a taxed system risks more than it gains (Schwellnus 2016).
@@ -253,26 +255,29 @@ export function computeReadiness(
 	return { score, verdict, area, flags, asked: visibleQuestions(answers) };
 }
 
-// ---------------- deep injury self-checks ----------------
+// ---------------- injury self-checks ----------------
 
-export type DeepBand = 'manageable' | 'moderate' | 'significant';
-/** Rehab stages, mirrored from rehab.ts (kept local so content has no app import). */
-type DeepStage = 'acute' | 'subacute' | 'returning';
+export type SelfCheckBand = 'manageable' | 'moderate' | 'significant';
+/** The stage a band routes to. Declared here rather than imported from
+ *  `$lib/types`, deliberately: `lib/types.ts` depends on `content/types.ts`, so
+ *  content importing app types would invert the layering. It is byte-identical to
+ *  `RehabStage`, which is a duplication worth resolving — see the note on #55. */
+type RehabStage = 'acute' | 'subacute' | 'returning';
 
-export interface DeepResult {
+export interface SelfCheckResult {
 	/** 0–100, where 100 = no symptoms (normalized like VISA-C). */
 	score: number;
-	band: DeepBand;
-	stage: DeepStage;
+	band: SelfCheckBand;
+	stage: RehabStage;
 }
 
 /** Score an injury self-check: normalize 0–10 answers to 0–100, then band it.
  *  Thresholds track the VISA-C group means (no-pain ~83, pain ~72, limiting ~60). */
-export function scoreDeep(values: number[]): DeepResult {
+export function scoreSelfCheck(values: number[]): SelfCheckResult {
 	const max = values.length * 10;
 	const score = max ? Math.round((values.reduce((a, b) => a + b, 0) / max) * 100) : 0;
-	const band: DeepBand = score >= 80 ? 'manageable' : score >= 60 ? 'moderate' : 'significant';
-	const stage: DeepStage =
+	const band: SelfCheckBand = score >= 80 ? 'manageable' : score >= 60 ? 'moderate' : 'significant';
+	const stage: RehabStage =
 		band === 'manageable' ? 'returning' : band === 'moderate' ? 'subacute' : 'acute';
 	return { score, band, stage };
 }
