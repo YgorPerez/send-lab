@@ -1,15 +1,18 @@
-// The athlete-typed text in the redesign prototypes' shared dataset.
+// The athlete-typed text in the seeded scenario.
 //
-// Everything else on the four prototype screens is app copy (`messages/`) or
-// training content (`src/lib/content/`), both of which are already bilingual and
-// already guarded. What is left is the handful of strings a person typed —
-// session notes, activity notes — which have no home in either store and would
-// otherwise be English-only in a set of prototypes whose whole point is that
-// they are judged in pt-BR too, where the layout breaks first.
+// Everything else on the screens is app copy (`messages/`) or training content
+// (`src/lib/content/`), both of which are already bilingual and already guarded.
+// What is left is the handful of strings a person typed — session notes — which
+// have no home in either store and would otherwise be English-only in an app that
+// is used in pt-BR, where the layout breaks first.
+//
+// A note is free text, so once written it stays in the language it was written
+// in; that is what ADR 0012 distinguishes a stored *label* from. This module is
+// the scenario's stand-in for the athlete having typed them.
 //
 // Kept in its own module, with **no imports**, so `scripts/check-locale-parity.ts`
 // can read it under plain `tsx` without resolving the app's Vite aliases.
-export const FIXTURE_PROSE: Record<string, Record<string, string>> = {
+export const SEED_PROSE: Record<string, Record<string, string>> = {
 	'en-US': {
 		note_strong: 'Felt strong on the last two sets — added 2.5kg and it still moved well.',
 		note_skin: 'Skin was thin by the third round. Cut it there rather than push through.',

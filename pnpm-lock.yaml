@@ -21,6 +21,12 @@ importers:
       '@t3-oss/env-core':
         specifier: 0.13.11
         version: 0.13.11(typescript@6.0.3)(zod@4.4.3)
+      '@tanstack/db':
+        specifier: 0.8.2
+        version: 0.8.2(typescript@6.0.3)
+      '@tanstack/react-db':
+        specifier: 0.3.2
+        version: 0.3.2(react@19.2.8)(typescript@6.0.3)
       '@tanstack/react-router':
         specifier: 1.170.29
         version: 1.170.29(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -2214,9 +2220,28 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
 
+  '@tanstack/db-ivm@0.1.19':
+    resolution: {integrity: sha512-3VGvgNXAPSVqny/pL8Y6n/txnaZzV49WmgSQ9N5eyCQNgMtuOEOJHKDatqqCy3gDxVu6pkhSHDKxcNFOtxMouw==}
+    peerDependencies:
+      typescript: '>=4.7'
+
+  '@tanstack/db@0.8.2':
+    resolution: {integrity: sha512-ZnwTCH4bd7fodVCbI1SGQWlqL/wWNErfbloweErwfgSD4ULzGoW4AVyxYHH/kK2b5iM9X6Qui0OeTFaY7FM52A==}
+    peerDependencies:
+      typescript: '>=4.7'
+
   '@tanstack/history@1.162.1':
     resolution: {integrity: sha512-DR9t6lfLVdrjgCwpglrR9DR7Ok8/HlXjcOE+goWXF3zyuLUO/ug7vMbSFxTqrQTtbRghJfyhmIZ0S6LhPIy44w==}
     engines: {node: '>=20.19'}
+
+  '@tanstack/pacer-lite@0.2.2':
+    resolution: {integrity: sha512-eQ1MyLKCHyXiH7NbdmB80W77OhiMgGBUb+qDx/8WMGbwg5Lf/NlfD0TfNYAqY77i8V3AxoDoYdICrQE5ADw4Yw==}
+    engines: {node: '>=18'}
+
+  '@tanstack/react-db@0.3.2':
+    resolution: {integrity: sha512-ms0e8b7e+PFdjoIOb1ZNDIEMA3jvwrKYOPJLZLDyFxs4SUdLVPyUFjVzVKE1MzgYyemOEVo3HLP8MGL8r1bXFg==}
+    peerDependencies:
+      react: '>=16.8.0'
 
   '@tanstack/react-router@1.170.29':
     resolution: {integrity: sha512-xQwakR0ReaUGu3xeXEl2CqzlIXk4i9vxaf/zqdzoELMY0mDZgMOr+xobiA5cQdn8cnovqZgqqUxcwXhsruC+NA==}
@@ -3325,6 +3350,10 @@ packages:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
     engines: {node: '>=14'}
 
+  fractional-indexing@3.4.0:
+    resolution: {integrity: sha512-8J3glhz2rrpKG6KmI7wmJo3zH1VjeOpN+vTJSw1fOyO+Viqq3zX6/5NGh6oaZB2qIAYdOYuu5Dz9xp4faOO0Pg==}
+    engines: {node: ^14.13.1 || >=16.0.0}
+
   framer-motion@13.1.0:
     resolution: {integrity: sha512-QSZrF0Id3QGuHJ+OL+9PSY9pk86C8ERFalwAGSchzTm65+ZoGH/RM26lmEARLljcHj2lqhv0jZOOks+EI3COOw==}
     peerDependencies:
@@ -4419,6 +4448,9 @@ packages:
   smob@1.6.2:
     resolution: {integrity: sha512-RQsvleCbF8cVHEv+xuDGaA4pOizFqJ0GgjtMSRo6oP8pnN7WsigHgVGey6aILRBKv4W2YOMHLqbKdnB6hpB9fw==}
     engines: {node: '>=20.0.0'}
+
+  sorted-btree@1.8.1:
+    resolution: {integrity: sha512-395+XIP+wqNn3USkFSrNz7G3Ss/MXlZEqesxvzCRFwL14h6e8LukDHdLBePn5pwbm5OQ9vGu8mDyz2lLDIqamQ==}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -6924,7 +6956,30 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 8.2.1(@types/node@26.0.0)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.50.0)(tsx@4.22.4)(yaml@2.9.0)
 
+  '@tanstack/db-ivm@0.1.19(typescript@6.0.3)':
+    dependencies:
+      fractional-indexing: 3.4.0
+      sorted-btree: 1.8.1
+      typescript: 6.0.3
+
+  '@tanstack/db@0.8.2(typescript@6.0.3)':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      '@tanstack/db-ivm': 0.1.19(typescript@6.0.3)
+      '@tanstack/pacer-lite': 0.2.2
+      typescript: 6.0.3
+
   '@tanstack/history@1.162.1': {}
+
+  '@tanstack/pacer-lite@0.2.2': {}
+
+  '@tanstack/react-db@0.3.2(react@19.2.8)(typescript@6.0.3)':
+    dependencies:
+      '@tanstack/db': 0.8.2(typescript@6.0.3)
+      react: 19.2.8
+      use-sync-external-store: 1.6.0(react@19.2.8)
+    transitivePeerDependencies:
+      - typescript
 
   '@tanstack/react-router@1.170.29(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
@@ -8097,6 +8152,8 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
+
+  fractional-indexing@3.4.0: {}
 
   framer-motion@13.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
@@ -9282,6 +9339,8 @@ snapshots:
   sisteransi@1.0.5: {}
 
   smob@1.6.2: {}
+
+  sorted-btree@1.8.1: {}
 
   source-map-js@1.2.1: {}
 

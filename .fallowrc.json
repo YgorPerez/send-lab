@@ -3,10 +3,7 @@
 	"ignoreDependencies": [
 		"@inlang/plugin-message-format",
 		"@inlang/plugin-m-function-matcher",
-		"@base-ui/react",
 		"motion",
-		"tailwind-variants",
-		"lucide-react",
 		"@fontsource-variable/inter",
 		"@fontsource-variable/roboto-mono",
 		"@tanstack/react-start"
@@ -15,6 +12,6 @@
 		"duplicate-exports": "off",
 		"unused-files": "off",
 		"unused-exports": "off",
-		"unused-types": "off"
+		"unused-types": "error"
 	}
 }

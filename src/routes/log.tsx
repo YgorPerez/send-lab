@@ -1,6 +1,8 @@
 // LOG.
 //
-// Fourteen readiness checks and twenty-eight sessions.
+// Every readiness check and every session the account holds — five weeks of them
+// on a seeded store, and more every week after.
+//
 // The screen that punishes low density, and the one where this direction has the
 // clearest answer: a history is a *list*, and a list earns its keep by having a
 // stable row shape you can run your eye down.
@@ -16,32 +18,42 @@
 // would make the history feel like a spreadsheet that has to be finished.
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo } from 'react';
+import { getContent } from '$lib/content';
 import { OUTCOME_LABEL } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
+import { getLocale } from '$lib/paraglide/runtime';
+import { resolveLog } from '$lib/screens/log';
+import { useTrainingRecord } from '$lib/store/account';
 import { SetTable } from '../components/SetRows';
 import { Eyebrow, Section } from '../components/ui/primitives';
 import { Row, RowGroup } from '../components/ui/Rows';
 import { chip } from '../components/ui/variants';
-import { getPrototypeFixtures } from '../prototype-fixtures';
 
 export const Route = createFileRoute('/log')({ component: Log });
 
 function Log() {
-	const fx = useMemo(() => getPrototypeFixtures(), []);
-	const { readiness, sessions } = fx.log;
+	// The history, live. `useTrainingRecord` subscribes to the collections, so a
+	// session logged on Train appears here without this screen knowing anything
+	// about how it got stored.
+	const record = useTrainingRecord();
+	const locale = getLocale();
+	const { checks, sessions } = useMemo(
+		() => resolveLog(getContent(locale), record, locale),
+		[record, locale],
+	);
 
 	return (
 		<div className="flex flex-col gap-7">
 			<header className="flex items-baseline justify-between gap-2 pt-1.5">
 				<h1 className="h-screen-title">{m.sec_log()}</h1>
 				<span className="num shrink-0 text-[11px] text-ink-faint">
-					{sessions.length} · {readiness.length}
+					{sessions.length} · {checks.length}
 				</span>
 			</header>
 
-			<Section label={m.log_readiness()} meta={<span className="num">{readiness.length}</span>}>
+			<Section label={m.log_readiness()} meta={<span className="num">{checks.length}</span>}>
 				<RowGroup>
-					{readiness.map((r) => (
+					{checks.map((r) => (
 						<Row
 							key={r.iso}
 							value={r.iso}
@@ -124,7 +136,7 @@ function Log() {
 						>
 							<div className="flex flex-col gap-2.5">
 								{s.exercises.map((ex) => (
-									<div key={ex.exerciseId}>
+									<div key={ex.exercise}>
 										<div className="mb-0.5 text-[12.5px] font-semibold text-chalk">{ex.name}</div>
 										<SetTable fields={ex.fields} sets={ex.sets} />
 									</div>

@@ -19,15 +19,14 @@
 //      would render as a missing verdict for a pt-BR athlete and pass every
 //      check. The redesign is judged on a phone in both locales, so this half
 //      matters at least as much as the first.
-//   3. `src/prototype-prose.ts` — the athlete-typed text in the redesign
-//      prototypes' shared dataset (#42). Small, but read by all four direction
-//      branches at once, and the whole point of those branches is that they are
-//      judged in pt-BR, where a dense layout breaks first.
+//   3. `src/lib/store/prose.ts` — the athlete-typed text in the seeded scenario
+//      (#56). Small, but it is the only free text in the account state, and the
+//      app is used in pt-BR, where a dense layout breaks first.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import enContent from '../src/lib/content/en-US.ts';
 import ptContent from '../src/lib/content/pt-BR.ts';
-import { FIXTURE_PROSE } from '../src/prototype-prose.ts';
+import { SEED_PROSE } from '../src/lib/store/prose.ts';
 
 const BASE = 'en-US';
 const TARGET = 'pt-BR';
@@ -90,8 +89,8 @@ report(
 );
 
 // ---- 3. Prototype fixture prose (flat, per locale) ----
-const fxBase = new Set(Object.keys(FIXTURE_PROSE[BASE] ?? {}));
-const fxTarget = new Set(Object.keys(FIXTURE_PROSE[TARGET] ?? {}));
+const fxBase = new Set(Object.keys(SEED_PROSE[BASE] ?? {}));
+const fxTarget = new Set(Object.keys(SEED_PROSE[TARGET] ?? {}));
 
 report(
 	'fixtures',

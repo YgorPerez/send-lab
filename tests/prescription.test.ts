@@ -44,12 +44,13 @@ import {
 } from '../src/lib/prescription.ts';
 import type { Baseline, Level, Phase, Program, Session } from '../src/lib/types.ts';
 
-// The resolver is locale-blind — it deals in ids — but `getContent()` is not, and
-// jsdom has no usable `localStorage` for Paraglide's strategy to read. Pinning the
-// locale is what makes the *content* deterministic; the day types and exercise
-// ids asserted below are the same under either one.
+// The resolver is locale-blind — it deals in ids — but the content is not.
+// `getContent` takes the locale explicitly now (#56), so these suites name the
+// one they mean; the day types and exercise ids asserted below are the same
+// under either. `overwriteGetLocale` is still needed for `exerciseLabel`, which
+// reads the active locale to produce a display string.
 overwriteGetLocale(() => 'en-US');
-const content = getContent();
+const content = getContent('en-US');
 
 const MON = asWeekdayKey('Mon');
 const THU = asWeekdayKey('Thu');
@@ -283,7 +284,9 @@ describe('which variant an exercise runs', () => {
 
 		overwriteGetLocale(() => 'pt-BR');
 		try {
-			expect(exerciseLabel(getContent().exercises[PULL], 1)).toBe('Escada de barra de 1 braço');
+			expect(exerciseLabel(getContent('pt-BR').exercises[PULL], 1)).toBe(
+				'Escada de barra de 1 braço',
+			);
 		} finally {
 			overwriteGetLocale(() => 'en-US');
 		}
@@ -769,8 +772,8 @@ describe('what went untrained yesterday', () => {
 		overwriteGetLocale(() => 'pt-BR');
 		try {
 			// Under pt-BR the Thursday label is 'Qui'; the key does not move.
-			expect(dayTemplate(getContent(), 'pull').label).toBe('Qui');
-			expect(missedYesterday(getContent(), s, FRIDAY)?.weekday).toBe('Thu');
+			expect(dayTemplate(getContent('pt-BR'), 'pull').label).toBe('Qui');
+			expect(missedYesterday(getContent('pt-BR'), s, FRIDAY)?.weekday).toBe('Thu');
 		} finally {
 			overwriteGetLocale(() => 'en-US');
 		}

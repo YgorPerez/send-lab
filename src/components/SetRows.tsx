@@ -24,10 +24,10 @@
 import { Check } from 'lucide-react';
 import { GRIPS, gripLabel } from '$lib/format';
 import type { ExerciseId } from '$lib/ids';
+import type { SetField } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import type { LoggedSet } from '$lib/types';
 import { cn } from '$lib/utils';
-import type { SetField } from '../prototype-fixtures';
 import { Picker } from './ui/Picker';
 import { input } from './ui/variants';
 

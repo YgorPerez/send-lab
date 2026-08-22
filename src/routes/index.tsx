@@ -13,12 +13,12 @@
 // screen, where the check came first and the athlete scrolled past nine questions
 // to reach the one line they opened the app for.
 //
-// The screen is genuinely live. It re-runs the real `computeReadiness` against
-// whatever the check currently says, using the same load signals and personal
-// baseline the fixture derived — so changing an answer moves the score, the
-// verdict, the watch-outs and which exercises the plan holds back. #42 puts the
-// training logic out of scope for the redesign; this renders it rather than
-// re-deciding it.
+// The screen is genuinely live, and as of #56 it is live over the real store. It
+// re-runs `computeReadiness` against whatever the check currently says, using the
+// load signals and the personal calibration the account's own history produced —
+// so changing an answer moves the score, the verdict, the watch-outs and which
+// exercises the plan holds back. #42 puts the training logic out of scope for the
+// redesign; this renders it rather than re-deciding it.
 //
 // WHAT IS PAGE COMPOSITION AND WHAT IS NOT
 // ----------------------------------------
@@ -31,34 +31,30 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, ChevronRight, ExternalLink } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import {
-	type Answers,
-	type BodyArea,
-	computeReadiness,
-	getContent,
-	visibleQuestionsOrdered,
-} from '$lib/content';
+import { type Answers, type BodyArea, computeReadiness, getContent } from '$lib/content';
 import type { Content, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
 import { OUTCOME_LABEL, WELLNESS_LABEL } from '$lib/format';
 import type { ExerciseId, TaskKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
+import { getLocale } from '$lib/paraglide/runtime';
 import { loadReadinessDraft, saveReadinessDraft } from '$lib/readinessDraft';
-import { capByVerdict } from '$lib/readinessPlan';
-import { acwr, readinessInsights, weekLoad } from '$lib/stats';
+import {
+	heldExercises,
+	type Question,
+	resolveQuestions,
+	resolveToday,
+	type Task,
+	type TodayScreen,
+} from '$lib/screens/today';
+import { useTrainingRecord } from '$lib/store/account';
 import { cn } from '$lib/utils';
 import { ReadinessCheck } from '../components/ReadinessCheck';
 import { RehabStarter, SelfCheckSheet } from '../components/SelfCheck';
 import { Bare, Eyebrow, Meter, Prose, Section, Stat } from '../components/ui/primitives';
 import { Sparkline } from '../components/ui/Sparkline';
 import { button, card, chip, input } from '../components/ui/variants';
-import {
-	getPrototypeFixtures,
-	type QuizFixture,
-	type TaskFixture,
-	type TodayFixture,
-} from '../prototype-fixtures';
 
 export const Route = createFileRoute('/')({ component: Today });
 
@@ -69,9 +65,13 @@ const FLAG_CHIP = { stop: 'stop', warn: 'warn', info: 'neutral' } as const;
 
 function Today() {
 	const now = useMemo(() => Date.now(), []);
-	const fx = useMemo(() => getPrototypeFixtures(now), [now]);
-	const content = useMemo(() => getContent(), []);
-	const t = fx.today;
+	// The store, live. Everything below is a function of it: `resolveToday` reads
+	// the plan and the history out of the collections, and nothing on this screen
+	// is fabricated any more (#56).
+	const record = useTrainingRecord();
+	const locale = getLocale();
+	const content = useMemo(() => getContent(locale), [locale]);
+	const t = useMemo(() => resolveToday(content, record, now), [content, record, now]);
 
 	// A DRAFT THAT PERSISTS — the second of the three recurring patterns (#53,
 	// obligation 3).
@@ -109,49 +109,27 @@ function Today() {
 	// an effect: the verdict is a function of the answers and the history, and
 	// storing it would let it disagree with them.
 	//
-	// The same inputs the fixture used, re-derived so the check is live: load
-	// signals read the history *behind* today (a session logged today cannot be
-	// part of the load that decided whether to train today), and the personal
-	// baseline reads the logged checks, which likewise exclude today's.
-	const { readiness, insights } = useMemo(() => {
-		const history = fx.state.workouts.filter((w) => w.at !== t.iso);
-		const ins = readinessInsights(fx.state.readinessLog);
-		const load = {
-			acwr: acwr(history, now)?.status ?? null,
-			monotony: weekLoad(history, now)?.status === 'monotonous' ? ('high' as const) : null,
-		};
-		return { readiness: computeReadiness(answers, load, ins), insights: ins };
-	}, [answers, fx, t.iso, now]);
+	// The two history-derived inputs come off the screen rather than being
+	// recomputed here, because they are the same signals the record produced and
+	// both read the history *behind* today (`lib/screens/today.ts`). What is live
+	// is the answers: change one and the score, the verdict, the watch-outs and
+	// which work is held all move.
+	const insights = t.insights;
+	const readiness = useMemo(
+		() => computeReadiness(answers, t.load, insights),
+		[answers, t.load, insights],
+	);
 
 	const verdict = content.verdicts[readiness.verdict];
 	const heldSet = useMemo(
-		() =>
-			new Set(
-				capByVerdict(
-					t.tasks.map((x) => x.exerciseId),
-					readiness.verdict,
-				).held,
-			),
+		() => heldExercises(t.tasks, readiness.verdict),
 		[t.tasks, readiness.verdict],
 	);
 
 	// Follow-ups appear and disappear as the core answers change, so the rendered
-	// list is rebuilt from the same `visibleQuestionsOrdered` the app uses rather
-	// than from the fixture's frozen snapshot.
-	const questions = useMemo<QuizFixture[]>(
-		() =>
-			visibleQuestionsOrdered(answers).map(({ id, sub }) => {
-				const q = content.quiz.find((x) => x.id === id);
-				return {
-					id,
-					sub,
-					question: q?.q ?? id,
-					...(q?.why ? { why: q.why } : {}),
-					...(q?.study ? { study: q.study } : {}),
-					options: (q?.a ?? []).map((o) => ({ label: o.t, value: o.v })),
-					answer: answers[id] ?? null,
-				};
-			}),
+	// list is rebuilt on every answer rather than resolved once.
+	const questions = useMemo<Question[]>(
+		() => resolveQuestions(content, answers),
 		[answers, content],
 	);
 	const answered = questions.filter((q) => q.answer != null).length;
@@ -162,7 +140,7 @@ function Today() {
 	const breakdown = ['sleep', 'fatigue', 'soreness', 'stress', 'mood']
 		.filter((id) => answers[id] != null)
 		.map((id) => ({ id, value: answers[id] }));
-	const nextTask = t.tasks.find((x) => !done[x.key] && !heldSet.has(x.exerciseId));
+	const nextTask = t.tasks.find((x) => !done[x.key] && !heldSet.has(x.exercise));
 
 	return (
 		// `gap-7` between sections, not `gap-4`. The screen carries the same eight
@@ -179,7 +157,7 @@ function Today() {
 					<p className="num mt-1 truncate text-[11px] text-ink-faint">{t.dateLabel}</p>
 				</div>
 				<span className="num shrink-0 text-[11px] text-ink-faint">
-					{m.week_label({ n: t.week })}
+					{m.week_label({ n: t.weekNumber })}
 				</span>
 			</header>
 
@@ -225,6 +203,7 @@ function Today() {
 				day={t.day}
 				phase={t.phase}
 				tasks={t.tasks}
+				isRestDay={t.isRestDay}
 				done={done}
 				heldSet={heldSet}
 				onToggle={(key) => setDone((p) => ({ ...p, [key]: !p[key] }))}
@@ -314,15 +293,21 @@ function Today() {
 				onLog={() => setBodyweightLogged(true)}
 			/>
 
-			<InjuryEntry selfCheck={t.selfCheck} onSelfCheck={() => setSelfCheckOpen(true)} />
-
-			<SelfCheckSheet
-				area={t.selfCheck.area}
-				instrument={t.selfCheck.instrument}
-				last={t.selfCheck.last}
-				open={selfCheckOpen}
-				onOpenChange={setSelfCheckOpen}
-			/>
+			{/* The library has an instrument for three of the four body areas and none
+			    for the wrist (#71), so the whole section is conditional rather than
+			    rendering a check with nothing behind it. */}
+			{t.selfCheck ? (
+				<>
+					<InjuryEntry selfCheck={t.selfCheck} onSelfCheck={() => setSelfCheckOpen(true)} />
+					<SelfCheckSheet
+						area={t.selfCheck.area}
+						instrument={t.selfCheck.instrument}
+						last={t.selfCheck.last}
+						open={selfCheckOpen}
+						onOpenChange={setSelfCheckOpen}
+					/>
+				</>
+			) : null}
 		</div>
 	);
 }
@@ -425,19 +410,21 @@ function PlanCard({
 	day,
 	phase,
 	tasks,
+	isRestDay,
 	done,
 	heldSet,
 	onToggle,
 	missed,
 	onTakeMissed,
 }: {
-	day: TodayFixture['day'];
-	phase: TodayFixture['phase'];
-	tasks: TaskFixture[];
+	day: TodayScreen['day'];
+	phase: TodayScreen['phase'];
+	tasks: Task[];
+	isRestDay: boolean;
 	done: Record<TaskKey, boolean>;
 	heldSet: ReadonlySet<ExerciseId>;
 	onToggle: (key: TaskKey) => void;
-	missed: TodayFixture['missed'];
+	missed: TodayScreen['missed'];
 	onTakeMissed: () => void;
 }) {
 	return (
@@ -460,13 +447,18 @@ function PlanCard({
 						{day.prime} · {day.sec}
 					</p>
 				</div>
+				{/* A rest day is an answer, not an empty list. The day type prescribes no
+				    exercises, it never counts against adherence, and it is what the
+				    athlete opened the app to find out — so it says so, in the place the
+				    tasks would have been. */}
+				{isRestDay ? <p className="px-3 py-3 text-[13px] text-ink-dim">{m.td_rest_day()}</p> : null}
 				<ul>
 					{tasks.map((task) => {
 						// Keyed by `TaskKey`, not by exercise id. The same exercise appears
 						// in several weekdays of a block, and a tick keyed by exercise would
 						// tick every slot that prescribes it (ADR-0001).
 						const isDone = done[task.key];
-						const held = heldSet.has(task.exerciseId) && !isDone;
+						const held = heldSet.has(task.exercise) && !isDone;
 						return (
 							<li
 								key={task.key}
@@ -609,13 +601,16 @@ function BodyweightNudge({
 	logged,
 	onLog,
 }: {
-	bodyweight: TodayFixture['bodyweight'];
+	bodyweight: TodayScreen['bodyweight'];
 	draft: string;
 	onDraftChange: (v: string) => void;
 	logged: boolean;
 	onLog: () => void;
 }) {
 	const series = bodyweight.series;
+	// Nothing weighed yet. The nudge has no series to sit above and no number to
+	// compare against, so the section stays off the screen until there is one.
+	if (bodyweight.latestKg == null) return null;
 	const delta = series.length > 1 ? bodyweight.latestKg - series[0].kg : 0;
 	return (
 		<Section label={m.field_bodyweight()}>
@@ -676,7 +671,7 @@ function InjuryEntry({
 	selfCheck,
 	onSelfCheck,
 }: {
-	selfCheck: TodayFixture['selfCheck'];
+	selfCheck: NonNullable<TodayScreen['selfCheck']>;
 	onSelfCheck: () => void;
 }) {
 	return (
@@ -694,12 +689,14 @@ function InjuryEntry({
 						<span className="block text-[13px] font-medium text-ink">
 							{selfCheck.instrument.title}
 						</span>
-						<span className="num mt-0.5 block text-[11px] text-ink-faint">
-							{m.deep_last({
-								score: selfCheck.last.score,
-								date: displayDate(isoDayOf(selfCheck.last.at)),
-							})}
-						</span>
+						{selfCheck.last ? (
+							<span className="num mt-0.5 block text-[11px] text-ink-faint">
+								{m.deep_last({
+									score: selfCheck.last.score,
+									date: displayDate(isoDayOf(selfCheck.last.at)),
+								})}
+							</span>
+						) : null}
 					</span>
 					<ChevronRight size={15} className="shrink-0 text-ink-faint" />
 				</button>

@@ -67,7 +67,7 @@ export function SelfCheckSheet({
 }: {
 	area: BodyArea;
 	instrument: SelfCheckInstrument;
-	last: SelfCheck | undefined;
+	last: SelfCheck | null;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {

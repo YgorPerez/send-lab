@@ -21,7 +21,7 @@ import { assertRuntimeEnv } from './env';
  *
  * Identity is a stable id, never a display string (ADR 0003).
  */
-export interface Athlete {
+interface Athlete {
 	accountId: string;
 }
 

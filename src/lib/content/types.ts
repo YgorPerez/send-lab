@@ -135,13 +135,10 @@ export interface Exercise {
 	variants: Variant[];
 }
 
-/** A user-authored exercise. Shaped like a merged Exercise (its prose is written
- *  inline, in one language) so it drops straight into Content.exercises by id. */
-export interface CustomExercise extends Exercise {
-	/** When set, the exercise is also a baseline metric (id = the exercise id),
-	 *  reading the named logged-set field. `weight` is kg; `time` is seconds. */
-	track?: { field: 'weight' | 'time' };
-}
+// `CustomExercise` stood here until #56. Athlete-authored exercises left the
+// rebuild with #12 — `getContent` stopped merging them and the library closed —
+// and the type was the last thing still describing one. `CONTEXT.md` records the
+// same under **Exercise**: "The library is the app's, not the athlete's."
 
 /** Stable id of a day type — the protocol a slot runs. Independent of weekdays:
  *  a day type keeps its identity wherever it is scheduled (see ADR-0002). */

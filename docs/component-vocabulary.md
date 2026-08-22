@@ -72,7 +72,34 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
 `ids.ts` (identity), `intervalProtocol.ts` (the timer's arithmetic), `cues.ts`
-(its beeps and haptics).
+(its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
+exercise shows, and what a fresh row is prefilled with), and `prescription.ts`
+(what a slot runs, and at what numbers).
+
+## Where a screen's data comes from
+
+Added by [#56](https://github.com/YgorPerez/send-lab/issues/56), which replaced the
+prototypes' frozen snapshot with the store. A page composes from the vocabulary
+above and reads from exactly two things:
+
+| Layer | Lives in | What it is |
+|---|---|---|
+| The store | `src/lib/store/` | Fifteen keyed row sets (ADR 0007), and `useTrainingRecord()`, which assembles them into one `TrainingRecord` |
+| The screen resolver | `src/lib/screens/` | `resolveToday` / `resolveTrain` / `resolveLog` — pure functions of `(content, record, now)` |
+
+What the three built screens do with it, which is idiom 2 and idiom 3 one layer
+down: **each holds `useState` over what a resolver returned, never over what it
+fetched.** The resolver re-runs when the record changes; the route's own state is
+the athlete's edits on top of it. Two decisions #56 made along the way:
+
+- **`getContent(locale)` takes the locale.** It used to read `getLocale()` itself,
+  which made every consumer implicitly locale-aware and a pure resolver impossible
+  to write. Routes pass `getLocale()`; tests pass the one they mean. The same rule
+  binds the resolvers — `resolveLog` takes a locale for its clock face rather than
+  reading the ambient one.
+- **A resolver returns inputs, not answers, where the screen decides live.** Today
+  hands over `load` and `insights` rather than a verdict, because `computeReadiness`
+  re-runs against whatever the check currently says.
 
 ---
 

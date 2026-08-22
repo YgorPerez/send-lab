@@ -21,11 +21,10 @@ import {
 	formatSecondsRange,
 	gripLabel,
 } from '$lib/format';
-import type { ExerciseId, TaskKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
+import type { ResolvedTask } from '$lib/screens/train';
 import type { LoggedSet } from '$lib/types';
 import { cn } from '$lib/utils';
-import type { SetField } from '../prototype-fixtures';
 import { SetEditor } from './SetRows';
 import { Picker } from './ui/Picker';
 import { Eyebrow, Prose } from './ui/primitives';
@@ -40,11 +39,14 @@ import { button, chip } from './ui/variants';
  *
  * `CONTEXT.md` defines a **prescription** as the targets *after* swaps,
  * overrides, weekly progression and phase scaling are all resolved. This
- * component renders one and does not resolve it. Today the fixture hands it
- * `ex.variants[0]` — the variant's built-in targets — because nothing overrides
- * them yet; when the store lands (#18) the resolution happens on the way in and
- * nothing here changes. That is the seam, and it is named rather than implied:
- * the prop used to be called `spec`, which quietly claimed nothing.
+ * component renders one and does not resolve it — `lib/screens/train.ts` does,
+ * out of `prescription.ts` reading the store, and hands the answer down.
+ *
+ * The seam held. This prop used to be called `spec`, which quietly claimed
+ * nothing; renaming it to `prescription` was what made it obvious that the
+ * fixture behind it was handing over `ex.variants[0]` and calling it resolved
+ * (#69). Nothing in this component changed when a real resolution arrived
+ * (#56), which is the whole argument for naming a seam before you can fill it.
  */
 function Prescription({ prescription }: { prescription: Variant }) {
 	const pairs: [string, string][] = [];
@@ -95,23 +97,6 @@ function Prescription({ prescription }: { prescription: Variant }) {
 	);
 }
 
-/** A task as the Train screen holds it while the session is in progress. */
-export interface TaskState {
-	key: TaskKey;
-	exerciseId: ExerciseId;
-	exName: string;
-	cat: string;
-	/** CSS custom-property name driving this exercise's accent, e.g. `--violet`. */
-	catVar: string;
-	variantIndex: number;
-	variants: { name: string; tool?: string; speed?: string }[];
-	prescription: Variant;
-	fields: SetField[];
-	sets: LoggedSet[];
-	/** Has interval timings the rest timer can run. */
-	timed: boolean;
-}
-
 export function TaskCard({
 	task,
 	active,
@@ -120,7 +105,7 @@ export function TaskCard({
 	onChangeSet,
 	onAddSet,
 }: {
-	task: TaskState;
+	task: ResolvedTask;
 	/** The timer is currently pointed at this task. */
 	active: boolean;
 	onSelectVariant: (index: number) => void;
@@ -218,7 +203,7 @@ export function TaskCard({
 					<SetEditor
 						// biome-ignore lint/suspicious/noArrayIndexKey: a set's identity is its position in the task
 						key={i}
-						exerciseId={task.exerciseId}
+						exerciseId={task.exercise}
 						index={i}
 						set={s}
 						fields={task.fields}

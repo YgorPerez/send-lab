@@ -24,19 +24,19 @@
 import { ExternalLink } from 'lucide-react';
 import type { Answers } from '$lib/content';
 import * as m from '$lib/paraglide/messages';
+import type { Question } from '$lib/screens/today';
 import { STUDIES } from '$lib/studies';
 import { cn } from '$lib/utils';
-import type { QuizFixture } from '../prototype-fixtures';
 import { option } from './ui/variants';
 
 const studyUrl = (id?: string) => (id ? STUDIES.find((s) => s.id === id)?.url : undefined);
 
-function Question({
+function QuestionRow({
 	q,
 	n,
 	onPick,
 }: {
-	q: QuizFixture;
+	q: Question;
 	n: number | null;
 	onPick: (id: string, v: number) => void;
 }) {
@@ -93,7 +93,7 @@ export function ReadinessCheck({
 	answers,
 	onPick,
 }: {
-	questions: QuizFixture[];
+	questions: Question[];
 	answers: Answers;
 	onPick: (id: string, v: number) => void;
 }) {
@@ -103,7 +103,7 @@ export function ReadinessCheck({
 			{questions.map((q) => {
 				if (!q.sub) n += 1;
 				return (
-					<Question
+					<QuestionRow
 						key={q.id}
 						q={{ ...q, answer: answers[q.id] ?? null }}
 						n={q.sub ? null : n}

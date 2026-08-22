@@ -1,13 +1,22 @@
 // The vocabulary's delivery criterion, as a test: every screen renders the whole
-// fixture, in both locales, out of the owned components.
+// account, in both locales, out of the owned components.
 //
 // It exists because the alternative was screenshots, and a screenshot proves the
 // screen rendered *once*, in the language the machine happened to be in. The
 // assertions are content assertions rather than snapshots — they name the things
-// the prototype brief says must be on each screen (the verdict, the held work,
-// the watch-outs, the readiness check, the bodyweight series, the timer, the past
-// sessions), so a refactor that quietly drops one fails here rather than in
-// review.
+// that must be on each screen (the verdict, the held work, the watch-outs, the
+// readiness check, the bodyweight series, the timer, the past sessions), so a
+// refactor that quietly drops one fails here rather than in review.
+//
+// THE CLOCK IS FROZEN, AND THAT IS NEW
+// ------------------------------------
+// The screens used to read a frozen snapshot that pinned "today" to Thursday's
+// Pull day whatever weekday the suite ran on. They read the store now (#56), and
+// the store resolves today's slot from the real weekday — so on a Sunday the
+// right answer is a rest day and an empty Train screen. That is correct in the
+// app and useless in a test, which is why the system clock is pinned to a
+// Thursday here: what is asserted below is the content of a known slot, not
+// whichever one the calendar offered.
 //
 // It does not, and cannot, prove layout: jsdom has no layout engine. Contrast and
 // horizontal overflow are measured in a real browser by `pnpm check:contrast`,
@@ -15,9 +24,29 @@
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
+import { resetAccountStore } from '../src/lib/store/account.ts';
 import { routeTree } from '../src/routeTree.gen.ts';
+
+/** A Thursday in week 5 of the seeded block — a training day with a full slot,
+ *  and the day the carry-forward and the timer both have something to show. */
+const THURSDAY = new Date('2026-08-13T09:30:00');
+
+beforeAll(() => {
+	// `Date` only. Faking timers wholesale would stop React and the collections
+	// from scheduling anything, and nothing here needs a tick to advance.
+	vi.useFakeTimers({ toFake: ['Date'] });
+	vi.setSystemTime(THURSDAY);
+	// The store is a module singleton that seeds itself on first use, so it has to
+	// be discarded *after* the clock moves or it would seed against the real one.
+	resetAccountStore();
+});
+
+afterAll(() => {
+	vi.useRealTimers();
+	resetAccountStore();
+});
 
 async function render(path: string): Promise<string> {
 	const router = createRouter({
@@ -29,17 +58,19 @@ async function render(path: string): Promise<string> {
 }
 
 // Note on determinism: Today reads a persisted readiness draft before it falls
-// back to the fixture's answers, so a leftover draft would move the score and
-// the verdict this suite asserts. Nothing needs clearing here — jsdom under
+// back to this morning's logged answers, so a leftover draft would move the score
+// and the verdict this suite asserts. Nothing needs clearing here — jsdom under
 // Vitest has no usable `localStorage`, `loadReadinessDraft` catches that and
-// returns an empty draft, and the fixture's answers are what render. If a
-// browser-mode suite ever runs these, it has to clear storage first.
+// returns an empty draft, and the store's own check is what renders. (The same
+// jsdom quirk is why the collections run in memory here; see `usableStorage` in
+// `store/collections.ts`.) If a browser-mode suite ever runs these, it has to
+// clear storage first.
 
 for (const locale of ['en-US', 'pt-BR'] as const) {
 	describe(locale, () => {
 		beforeEach(() => overwriteGetLocale(() => locale));
 
-		test('renders the three training screens with the whole fixture', async () => {
+		test('renders the three training screens out of the store', async () => {
 			const today = await render('/');
 			const train = await render('/train');
 			const log = await render('/log');

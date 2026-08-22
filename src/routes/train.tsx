@@ -15,102 +15,49 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Plus, Repeat } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { getContent } from '$lib/content';
-import type { Content, Range, Variant } from '$lib/content/types';
-import { asExerciseId, type ExerciseId, type TaskKey, taskKey } from '$lib/ids';
+import { asExerciseId, type TaskKey, taskKey } from '$lib/ids';
+import { fieldsFor, midOf, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
-import type { LoggedSet } from '$lib/types';
-import { TaskCard, type TaskState } from '../components/TaskCard';
+import { getLocale } from '$lib/paraglide/runtime';
+import { libraryTask, type ResolvedTask, resolveTrain } from '$lib/screens/train';
+import { useTrainingRecord } from '$lib/store/account';
+import { TaskCard } from '../components/TaskCard';
 import { Timer, type TimerProtocol } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
 import { Eyebrow, Section } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
-import { getPrototypeFixtures, type SetField } from '../prototype-fixtures';
 
 export const Route = createFileRoute('/train')({ component: Train });
 
-const mid = (r?: Range): number | null => (r ? Math.round((r.min + r.max) / 2) : null);
-
-function fieldsFor(spec: Variant | undefined): SetField[] {
-	const f: SetField[] = ['loadKg', 'edgeMm', 'workSec', 'reps'];
-	if (spec?.grip) f.push('grip');
-	f.push('restSec', 'rpe');
-	return f;
-}
-
-function prefilledSet(spec: Variant): LoggedSet {
-	return {
-		loadKg: mid(spec.loadKg),
-		edgeMm: mid(spec.edgeMm),
-		workSec: mid(spec.workSec),
-		reps: mid(spec.reps),
-		restSec: mid(spec.restSec ?? spec.setRestSec),
-		rpe: mid(spec.rpe),
-		grip: spec.grip ?? null,
-		done: false,
-	};
-}
-
 /** The protocol the timer runs for a task, or `null` if it has no timings. */
-function protocolOf(task: TaskState): TimerProtocol | null {
+function protocolOf(task: ResolvedTask): TimerProtocol | null {
 	if (!task.timed) return null;
 	const s = task.prescription;
 	return {
 		label: task.exName,
 		prepare: s.prepareSec ?? 10,
-		work: mid(s.workSec) ?? 10,
-		rest: mid(s.restSec) ?? 0,
-		rounds: mid(s.rounds) ?? 1,
-		sets: mid(s.sets) ?? 1,
-		setRest: mid(s.setRestSec) ?? 0,
-	};
-}
-
-/**
- * A task built for an exercise the athlete adds mid-session. The library is the
- * same one the fixture read, so an added exercise arrives with its real
- * prescription rather than as an empty row.
- */
-function taskFromLibrary(content: Content, exerciseId: ExerciseId, key: TaskKey): TaskState | null {
-	const ex = content.exercises[exerciseId];
-	if (!ex) return null;
-	const spec = ex.variants[0];
-	return {
-		key,
-		exerciseId,
-		exName: ex.name,
-		cat: ex.cat,
-		catVar: ex.catVar,
-		variantIndex: 0,
-		variants: ex.variants.map((v) => ({
-			name: v.name,
-			...(v.tool ? { tool: v.tool } : {}),
-			...(v.speed ? { speed: v.speed } : {}),
-		})),
-		prescription: spec,
-		fields: fieldsFor(spec),
-		sets: [prefilledSet(spec)],
-		timed: spec.workSec != null,
+		work: midOf(s.workSec) ?? 10,
+		rest: midOf(s.restSec) ?? 0,
+		rounds: midOf(s.rounds) ?? 1,
+		sets: midOf(s.sets) ?? 1,
+		setRest: midOf(s.setRestSec) ?? 0,
 	};
 }
 
 function Train() {
-	const fx = useMemo(() => getPrototypeFixtures(), []);
-	const content = useMemo(() => getContent(), []);
+	const record = useTrainingRecord();
+	const locale = getLocale();
+	const content = useMemo(() => getContent(locale), [locale]);
+	// Resolved once, at mount. The prescription for today's slot is what the
+	// athlete opened the screen to work against, and re-resolving it under them
+	// while they are logging sets would move the targets mid-session.
+	const [screen] = useState(() => resolveTrain(content, record, Date.now()));
 
-	const [tasks, setTasks] = useState<TaskState[]>(() =>
-		fx.train.items.map((it) => ({
-			key: it.key,
-			exerciseId: it.exerciseId,
-			exName: it.exName,
-			cat: it.cat,
-			catVar: it.catVar,
-			variantIndex: it.variantIndex,
-			variants: [...it.variants],
-			prescription: it.prescription,
-			fields: it.fields,
-			sets: it.sets.map((s) => ({ ...s })),
-			timed: it.timed,
-		})),
+	// Their working copy of it. `sets` is cloned rather than shared: the rows are
+	// edited in place as the session goes, and the resolved item is what they
+	// started from.
+	const [tasks, setTasks] = useState<ResolvedTask[]>(() =>
+		screen.tasks.map((t) => ({ ...t, sets: t.sets.map((s) => ({ ...s })) })),
 	);
 
 	// WHICH TASK THE CLOCK IS RUNNING.
@@ -123,44 +70,40 @@ function Train() {
 	// going." An implicit derivation cannot honour that, because nothing in it is
 	// the athlete changing anything.
 	const [pinnedKey, setPinnedKey] = useState<TaskKey | null>(
-		() => fx.train.items.find((it) => it.timed)?.key ?? null,
+		() => screen.tasks.find((t) => t.timed)?.key ?? null,
 	);
 	// Owned here, not by the Timer: re-seeding remounts the Timer, and an open
 	// dialog owned inside it would close on that remount. The clock stays up and
 	// picks up the new protocol.
 	const [clockOpen, setClockOpen] = useState(false);
 
-	const [note, setNote] = useState(fx.train.note);
+	const [note, setNote] = useState(screen.note);
 	const [duration, setDuration] = useState(
-		fx.train.durationMin == null ? '' : String(fx.train.durationMin),
+		screen.durationMin == null ? '' : String(screen.durationMin),
 	);
 
-	const update = (key: TaskKey, fn: (t: TaskState) => TaskState) =>
+	const update = (key: TaskKey, fn: (t: ResolvedTask) => ResolvedTask) =>
 		setTasks((prev) => prev.map((t) => (t.key === key ? fn(t) : t)));
 
 	const selectVariant = (key: TaskKey, index: number) =>
 		update(key, (t) => {
-			const ex = content.exercises[t.exerciseId];
+			const ex = content.exercises[t.exercise];
 			const next = ex?.variants[index] ?? t.prescription;
 			return { ...t, variantIndex: index, prescription: next, fields: fieldsFor(next) };
 		});
 
 	const addExercise = (raw: string) => {
-		const exerciseId = asExerciseId(raw);
-		const next = taskFromLibrary(
-			content,
-			exerciseId,
-			taskKey(fx.train.weekId, fx.train.weekdayKey, exerciseId),
-		);
+		const exercise = asExerciseId(raw);
+		const next = libraryTask(content, exercise, taskKey(screen.week, screen.weekday, exercise));
 		if (next) setTasks((prev) => [...prev, next]);
 	};
 
 	const available = useMemo(
 		() =>
-			fx.train.available
-				.filter((a) => !tasks.some((t) => t.exerciseId === a.exerciseId))
-				.map((a) => ({ value: a.exerciseId, label: `${a.name} · ${a.cat}` })),
-		[fx.train.available, tasks],
+			screen.available
+				.filter((a) => !tasks.some((t) => t.exercise === a.exercise))
+				.map((a) => ({ value: a.exercise, label: `${a.name} · ${a.cat}` })),
+		[screen.available, tasks],
 	);
 
 	const timerTask = tasks.find((t) => t.key === pinnedKey && t.timed) ?? null;
@@ -176,7 +119,7 @@ function Train() {
 		<div className="flex flex-col gap-6">
 			<header className="flex items-baseline justify-between gap-2 pt-1.5">
 				<h1 className="h-screen-title min-w-0">
-					{m.sec_train()} · {fx.train.weekdayLabel}
+					{m.sec_train()} · {screen.weekdayLabel}
 				</h1>
 				<span className="num shrink-0 text-[11px] text-ink-faint">
 					{doneSets}/{totalSets} {m.timer_sets().toLowerCase()}
@@ -236,8 +179,8 @@ function Train() {
 				/>
 				<button
 					type="button"
-					disabled={!fx.train.canRepeatLast}
-					title={fx.train.canRepeatLast ? undefined : m.train_no_prev()}
+					disabled={!screen.canRepeatLast}
+					title={screen.canRepeatLast ? undefined : m.train_no_prev()}
 					className={button({ size: 'md', class: 'min-h-11 self-start' })}
 				>
 					<Repeat size={14} />
