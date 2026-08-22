@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // ---- better-auth core tables (email + password) ----
 
@@ -92,6 +92,60 @@ export const appStateTable = sqliteTable('app_state', {
 		.$defaultFn(() => new Date())
 		.notNull(),
 });
+
+/**
+ * The training record, one row per row (#57).
+ *
+ * ADR 0007 split the account document into fifteen keyed collections because the
+ * granularity the athlete's offline writes have to merge at is the row. This is
+ * that split at the storage layer: without it, last-write-wins-per-row is only
+ * true inside one client, and two devices ticking two different tasks still
+ * collide on one database row — which is the collision the whole arrangement
+ * exists to stop.
+ *
+ * **`app_state` above is deliberately left alone.** Production is still the
+ * SvelteKit app on `main` and it reads that table; this one is additive, and the
+ * rebuild is the only thing that touches it. Nothing migrates between them —
+ * #11's *Out of scope* carries no accounts or history across. (That table keeps
+ * its name because it is not ours to rename while production reads it; every name
+ * minted here takes the glossary's word instead — ADR 0014.)
+ *
+ * `updatedAt` is **the athlete's device's clock at the moment of the edit**, in
+ * epoch milliseconds, and not the server's arrival time. That is what makes the
+ * merge rule survive the outbox (#58): a write queued on a plane and flushed an
+ * hour later must lose to an edit made on the phone in the meantime, and arrival
+ * order says the opposite. Stored as a plain integer rather than in drizzle's
+ * `timestamp` mode for the same reason — it is a version, compared numerically,
+ * and `app_state.updatedAt` above is the different thing (server write time).
+ *
+ * A **`null` `data` is a tombstone**, not a row holding null. Deleting outright
+ * would let a stale update resurrect a deleted row, because there would be
+ * nothing left to compare its timestamp against; keeping the key with its
+ * deletion time makes delete and update the same rule. Nothing prunes tombstones
+ * yet — at five accounts and roughly 28 KB each that is affordable, and a sweep
+ * belongs with the outbox that starts generating them in bulk.
+ */
+export const recordRow = sqliteTable(
+	'record_row',
+	{
+		accountId: text('account_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		/** Which collection — `taskDone`, `sessions`, ... See `server/record/rows.ts`. */
+		collection: text('collection').notNull(),
+		/** The collection's own `getKey(row)`, as a string. */
+		rowKey: text('row_key').notNull(),
+		/** The row, as JSON. Null is a tombstone. Not `data`, which is on **Training
+		 *  record**'s `_Avoid_` list (ADR 0014). */
+		row: text('row'),
+		/** Epoch ms on the writing device. See the note above. */
+		updatedAt: integer('updated_at').notNull(),
+	},
+	// No secondary index. Every read here is "the whole record for one account",
+	// and the primary key's leading column already serves that — a separate index
+	// on `account_id` would be a duplicate that only costs write amplification.
+	(t) => [primaryKey({ columns: [t.accountId, t.collection, t.rowKey] })],
+);
 
 /** One personal API token per user — authenticates their own AI/MCP client (and
  *  the /api/v1 REST API) via `Authorization: Bearer <token>`. Stored in plaintext

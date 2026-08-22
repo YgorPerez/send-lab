@@ -256,7 +256,8 @@ export function computeReadiness(
 
 // ---------------- injury self-checks ----------------
 
-export type SelfCheckBand = 'manageable' | 'moderate' | 'significant';
+export const SELF_CHECK_BANDS = ['manageable', 'moderate', 'significant'] as const;
+export type SelfCheckBand = (typeof SELF_CHECK_BANDS)[number];
 
 export interface SelfCheckResult {
 	/** 0–100, where 100 = no symptoms (normalized like VISA-C). */

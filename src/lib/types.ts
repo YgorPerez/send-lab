@@ -149,10 +149,23 @@ export interface LoggedReadinessCheck {
 	outcome?: number;
 }
 
-export type Goal = 'boulder' | 'sport' | 'all';
-export type Focus = 'fingers' | 'power' | 'endurance' | 'tissue';
-export type Level = 'intermediate' | 'advanced' | 'elite';
-export type Equipment = 'hangboard' | 'board' | 'rings' | 'weights';
+// The four closed sets the onboarding intake answers in. Arrays rather than bare
+// unions for the same reason as the content library's: a `Baseline` arrives over
+// the wire on every hydrate, and the write path checks these at runtime. They stay
+// here rather than moving down beside the content library's own sets — ADR 0013
+// moves a set down when it is shared *across* that boundary, and `content/` reads
+// none of these.
+export const GOALS = ['boulder', 'sport', 'all'] as const;
+export type Goal = (typeof GOALS)[number];
+
+export const FOCUSES = ['fingers', 'power', 'endurance', 'tissue'] as const;
+export type Focus = (typeof FOCUSES)[number];
+
+export const LEVELS = ['intermediate', 'advanced', 'elite'] as const;
+export type Level = (typeof LEVELS)[number];
+
+export const EQUIPMENT = ['hangboard', 'board', 'rings', 'weights'] as const;
+export type Equipment = (typeof EQUIPMENT)[number];
 
 /** The one-off intake taken at onboarding. Shapes the generated program and its
  *  progression rate. */

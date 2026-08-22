@@ -30,6 +30,7 @@
 		"fallow:health": "fallow health",
 		"test": "vitest run --project unit",
 		"db:push": "drizzle-kit push",
+		"db:ddl": "tsx scripts/apply-ddl.ts",
 		"verify": "pnpm run lint && pnpm run lint:hooks && pnpm run check && pnpm run check:env && pnpm run check:i18n && pnpm run check:routes && pnpm run doctor && pnpm run fallow && pnpm run test"
 	},
 	"dependencies": {

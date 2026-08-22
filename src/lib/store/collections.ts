@@ -17,20 +17,22 @@
 //
 // ONE COLLECTION PER SURVIVING FIELD
 // ----------------------------------
-// `server/stateOps.ts`'s `defaultState()` is the inventory of what survived the
-// keep/drop audit, and every field of it is a collection below. Two departures,
-// both deliberate:
+// `server/stateOps.ts`'s `defaultState()` was the inventory of what survived the
+// keep/drop audit, and every field of it is a collection below. (That module is
+// gone as of #57 — ADR 0015 — and `server/state/rows.ts` is the same inventory
+// stated per key. `tests/stateRows.test.ts` holds the two lists against each
+// other.) Two departures, both deliberate:
 //
 //   * **`log` is not here.** #12 dropped it — two of its three kinds died with
 //     `metrics[]`, `'rec'` was written nowhere, and the survivor was a drifting
-//     copy of `taskDone`. `lib/types.ts` already deleted `LogEntry`;
-//     `defaultState()` is the stale half and #57 owns removing it.
+//     copy of `taskDone`. `lib/types.ts` deleted `LogEntry`, and #57 deleted
+//     `defaultState()` along with the rest of the document skeleton.
 //   * **`workouts` is `sessions` and `assessment` is `baseline`.** Both old names
 //     are on the glossary's _Avoid_ list for the thing they hold, and these keys
 //     are new storage rather than a migration of the SvelteKit document — there
-//     is nothing to carry across (#11, *Out of scope*). #57 renames the same two
-//     keys server-side when it mounts `sanitizeState`. ADR 0014 is the general
-//     rule this instance produced.
+//     is nothing to carry across (#11, *Out of scope*). The server says the same
+//     two words: `server/state/rows.ts` is the per-key guard #57 built in place of
+//     `sanitizeState`. ADR 0014 is the general rule this instance produced.
 //
 // SINGLETONS ARE STILL COLLECTIONS
 // --------------------------------
@@ -47,16 +49,24 @@
 // `null`: no baseline is no baseline, and a row saying so would be one more state
 // to get wrong.
 //
-// NOTHING HERE WRITES TO A SERVER
-// -------------------------------
-// There are no `onInsert`/`onUpdate`/`onDelete` handlers, so a mutation persists
-// to `localStorage` and stops. That is the whole of #56 — the read half. ADR 0008
-// is explicit that `@tanstack/offline-transactions` is what makes a write safe,
-// and it is deliberately not installed yet: the queue, the sync handlers and the
-// per-key `/api/state` path all land together in #57.
+// EVERY COLLECTION WRITES, AND NONE OF THEM WAITS
+// -----------------------------------------------
+// #56 left the three handlers off; #57 adds them. Each one hands its mutations to
+// `push`, which queues them for `/api/state` and returns — it does **not** await
+// the network, and the reason is in the library's own ordering: the localStorage
+// collection awaits this handler *before* persisting to storage, and rolls the
+// mutation back if it throws. A handler that awaited `fetch` would mean ticking a
+// task offline blocks, times out, and then un-ticks itself.
+//
+// So the local write is unconditional and the server write trails it. `store/sync.ts`
+// carries what that leaves unsolved and why it is #58's: the queue is in memory,
+// so the *intent* to sync does not survive a reload even though the row does.
+// ADR 0008 is still the ruling that `@tanstack/offline-transactions` is what makes
+// a write durable; this is the online path only.
 import { createCollection, localStorageCollectionOptions, type StorageApi } from '@tanstack/db';
 import type { DayTypeId } from '$lib/content/types';
-import type { ExerciseId, SlotKey, TaskKey, WeekId } from '$lib/ids';
+import type { AthleteId, ExerciseId, SlotKey, TaskKey, WeekId } from '$lib/ids';
+import type { UnsyncedWrite } from '$lib/recordWire';
 import type {
 	Baseline,
 	BodyweightReading,
@@ -71,6 +81,74 @@ import type {
 /** Namespaced the way `readinessDraft.ts` namespaces its own key. One key per
  *  collection: the document is split in storage, not only in memory. */
 const PREFIX = 'sendlab:';
+
+/** The storage segment a store with no account gets.
+ *
+ *  A plain string, and deliberately never an `AthleteId`: signed out is `null`
+ *  everywhere above this line. A sentinel that could pass for a real id is how one
+ *  athlete's rows end up under another's prefix, and `tests/ids.test.ts` refuses
+ *  the assertion that would create one. */
+const NO_ACCOUNT = 'signed-out';
+
+/** Everything `collectionOptions` decides, as one value. `getKey` is the only
+ *  thing a factory still supplies for itself — it is the one part that differs.
+ *
+ *  Declared rather than inferred: the builder returns different shapes depending
+ *  on whether it was given storage and a `push`, and spreading that union into
+ *  `localStorageCollectionOptions` makes its overload resolution pick the wrong
+ *  one. */
+interface CollectionOptions {
+	storageKey: string;
+	startSync: boolean;
+	storage?: StorageApi;
+	onInsert?: WriteHandler;
+	onUpdate?: WriteHandler;
+	onDelete?: WriteHandler;
+}
+
+/** What the collection calls when rows change.
+ *
+ *  It returns a promise because the library's types require one, and an
+ *  immediately-resolved promise is the whole point: the collection awaits this
+ *  before persisting to storage, so anything slower than a microtask here is a
+ *  local write held up by the network. */
+type WriteHandler = (params: { transaction: { mutations: readonly Mutated[] } }) => Promise<void>;
+
+/** Hand changed rows to whatever is going to send them. Never awaited.
+ *
+ *  `UnsyncedWrite` is declared in `lib/recordWire.ts`, below both this module and
+ *  the server's — the first cut had it here and a byte-identical `StateWrite` on
+ *  the server, which is exactly the drift the comment on it warned about. */
+export type PushWrites = (writes: readonly UnsyncedWrite[]) => void;
+
+/** The shape of a mutation, as much of it as a handler here reads. Written out
+ *  rather than imported: the library's own type is generic over the row and all
+ *  fifteen collections share this one handler. */
+interface Mutated {
+	readonly key: unknown;
+	readonly modified?: unknown;
+	readonly metadata?: unknown;
+}
+
+/**
+ * What a hydrate tags its own writes with, so they are not sent straight back.
+ *
+ * `store/sync.ts` passes this when it applies the server's answer to the
+ * collections; the handlers below skip anything carrying it. Metadata rather than
+ * a "we are hydrating right now" flag, because the library invokes the handler
+ * when the transaction commits rather than inside `insert()` — a flag would
+ * already be down by then, and the echo it let through would re-stamp every row's
+ * `updated_at` with *now*, beating a real edit made on another device.
+ */
+export const HYDRATED = { hydrated: true } as const;
+
+function isHydration(mutation: Mutated): boolean {
+	return (
+		typeof mutation.metadata === 'object' &&
+		mutation.metadata !== null &&
+		(mutation.metadata as { hydrated?: unknown }).hydrated === true
+	);
+}
 
 /** The key every singleton row is filed under. Its value is never read — the
  *  collection holds one row or none, and which one it is is not a question. */
@@ -140,8 +218,9 @@ export interface RehabRow {
  *  `locale` is account data rather than a cookie (ADR 0006): `/mcp` authenticates
  *  by bearer token and never reads cookies, so localized MCP output cannot come
  *  from anything the browser sets, and this is what carries the choice to a
- *  second device. Null means follow the device. **Its resolution order is #57's**
- *  — this ticket only gives it somewhere to live. */
+ *  second device. Null means follow the device. Its resolution order is
+ *  `store/locale.ts`'s: the device on boot, the account once it hydrates, and a
+ *  switch writes both. */
 export interface PrefsRow {
 	id: typeof ONLY;
 	weight: 'kg' | 'lb';
@@ -171,92 +250,138 @@ export interface RecordStore {
 	readonly savedPrograms: ReturnType<typeof savedProgramsCollection>;
 }
 
-/** How one collection is configured, everywhere.
+/**
+ * How one collection is configured, everywhere.
  *
- *  `startSync: true` so the rows are in memory the moment the collection exists.
- *  The default is lazy, and lazy would mean the first render of a screen reads an
- *  empty store and then re-renders — which on Today is a rest day, three zeroed
- *  counters and an empty chart, drawn for one frame before the real answer. */
-function options(name: string, storage?: StorageApi) {
-	return { storageKey: `${PREFIX}${name}`, startSync: true, ...(storage ? { storage } : {}) };
+ * `startSync: true` so the rows are in memory the moment the collection exists.
+ * The default is lazy, and lazy would mean the first render of a screen reads an
+ * empty store and then re-renders — which on Today is a rest day, three zeroed
+ * counters and an empty chart, drawn for one frame before the real answer.
+ *
+ * The storage key carries the **account** — `sendlab:<accountId>:taskDone`. That
+ * is what keeps two athletes' records apart on one device, and it is why #56
+ * namespaced these keys rather than leaving them bare. Signing out does not clear
+ * them: signing back in is then instant and offline, and #58's queue needs the
+ * unsynced rows to still be there.
+ */
+function collectionOptions(
+	account: string,
+	name: string,
+	storage: StorageApi | undefined,
+	push?: PushWrites,
+): CollectionOptions {
+	return {
+		storageKey: `${PREFIX}${account}:${name}`,
+		startSync: true,
+		...(storage ? { storage } : {}),
+		...writeHandlers(name, push),
+	};
 }
 
-const currentWeekCollection = (s?: StorageApi) =>
+/** The three handlers, or none at all when there is nothing to push to.
+ *
+ *  A delete is spelled as a write of `null` rather than as its own operation,
+ *  matching the server: under last-write-wins a deletion is content like any
+ *  other, ordered by the same clock. */
+function writeHandlers(name: string, push?: PushWrites): Partial<CollectionOptions> {
+	if (!push) return {};
+	const send =
+		(deleted: boolean): WriteHandler =>
+		async ({ transaction }) => {
+			const rows = transaction.mutations.filter((m) => !isHydration(m));
+			if (rows.length === 0) return;
+			// One timestamp for the whole transaction: the mutations happened in the
+			// same interaction, and stamping them apart would invent an ordering the
+			// athlete did not express.
+			const at = Date.now();
+			push(
+				rows.map((m) => ({
+					collection: name,
+					key: String(m.key),
+					row: deleted ? null : m.modified,
+					at,
+				})),
+			);
+		};
+	return { onInsert: send(false), onUpdate: send(false), onDelete: send(true) };
+}
+
+const currentWeekCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<CurrentWeekRow, string>({
-			...options('currentWeek', s),
+			...o,
 			getKey: (row) => row.id,
 		}),
 	);
 
-const programCollection = (s?: StorageApi) =>
+const programCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<ProgramRow, string>({
-			...options('program', s),
+			...o,
 			getKey: (row) => row.id,
 		}),
 	);
 
-const baselineCollection = (s?: StorageApi) =>
+const baselineCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<BaselineRow, string>({
-			...options('baseline', s),
+			...o,
 			getKey: (row) => row.id,
 		}),
 	);
 
-const rehabCollection = (s?: StorageApi) =>
+const rehabCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<RehabRow, string>({
-			...options('rehab', s),
+			...o,
 			getKey: (row) => row.id,
 		}),
 	);
 
-const prefsCollection = (s?: StorageApi) =>
+const prefsCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<PrefsRow, string>({
-			...options('prefs', s),
+			...o,
 			getKey: (row) => row.id,
 		}),
 	);
 
-const swapsCollection = (s?: StorageApi) =>
+const swapsCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<SwapRow, string>({
-			...options('swaps', s),
+			...o,
 			getKey: (row) => row.exercise,
 		}),
 	);
 
-const dayPlanCollection = (s?: StorageApi) =>
+const dayPlanCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<DayPlanRow, string>({
-			...options('dayPlan', s),
+			...o,
 			getKey: (row) => row.slot,
 		}),
 	);
 
-const dayExercisesCollection = (s?: StorageApi) =>
+const dayExercisesCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<DayExercisesRow, string>({
-			...options('dayExercises', s),
+			...o,
 			getKey: (row) => row.slot,
 		}),
 	);
 
-const daySwapsCollection = (s?: StorageApi) =>
+const daySwapsCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<DaySwapRow, string>({
-			...options('daySwaps', s),
+			...o,
 			getKey: (row) => row.task,
 		}),
 	);
 
-const taskDoneCollection = (s?: StorageApi) =>
+const taskDoneCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<TaskDoneRow, string>({
-			...options('taskDone', s),
+			...o,
 			getKey: (row) => row.task,
 		}),
 	);
@@ -264,36 +389,36 @@ const taskDoneCollection = (s?: StorageApi) =>
 /** Keyed by ISO calendar date: a session is the training done in one slot on one
  *  date, so the date is its identity and a second session that day replaces it
  *  rather than doubling it. Never a localized label (ADR-0003). */
-const sessionsCollection = (s?: StorageApi) =>
+const sessionsCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<Session, string>({
-			...options('sessions', s),
+			...o,
 			getKey: (row) => row.at,
 		}),
 	);
 
 /** Keyed by epoch ms — a readiness check is identified by when it was taken, and
  *  the athlete can re-check within a day. */
-const readinessLogCollection = (s?: StorageApi) =>
+const readinessLogCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<LoggedReadinessCheck, number>({
-			...options('readinessLog', s),
+			...o,
 			getKey: (row) => row.at,
 		}),
 	);
 
-const selfCheckLogCollection = (s?: StorageApi) =>
+const selfCheckLogCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<SelfCheck, number>({
-			...options('selfCheckLog', s),
+			...o,
 			getKey: (row) => row.at,
 		}),
 	);
 
-const bodyweightCollection = (s?: StorageApi) =>
+const bodyweightCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<BodyweightReading, number>({
-			...options('bodyweight', s),
+			...o,
 			getKey: (row) => row.at,
 		}),
 	);
@@ -309,10 +434,10 @@ const bodyweightCollection = (s?: StorageApi) =>
  * holding the same program under two names. The ticket that builds the Program
  * page is where that gets an id.
  */
-const savedProgramsCollection = (s?: StorageApi) =>
+const savedProgramsCollection = (o: CollectionOptions) =>
 	createCollection(
 		localStorageCollectionOptions<SavedProgram, string>({
-			...options('savedPrograms', s),
+			...o,
 			getKey: (row) => row.name,
 		}),
 	);
@@ -354,7 +479,12 @@ function memoryStorage(): StorageApi {
 }
 
 /**
- * A fresh, empty set of collections.
+ * A fresh, empty set of collections for one account.
+ *
+ * `account` segments the storage keys, so two athletes on one device hold two
+ * records and neither can read the other's. `push` is what makes the collections
+ * write to the server; without it they persist locally and stop, which is what
+ * #56 shipped and what a signed-out store still does.
  *
  * `storage` is for tests: pass an in-memory `StorageApi` and the collections
  * persist nowhere, and two stores over the same one are what a reload is. Left
@@ -362,24 +492,28 @@ function memoryStorage(): StorageApi {
  * not.
  */
 export function createRecordStore(
+	account: AthleteId | null,
+	push?: PushWrites,
 	storage: StorageApi | undefined = storageOverride(),
 ): RecordStore {
+	const segment = account ?? NO_ACCOUNT;
+	const options = (name: string) => collectionOptions(segment, name, storage, push);
 	return {
-		currentWeek: currentWeekCollection(storage),
-		program: programCollection(storage),
-		baseline: baselineCollection(storage),
-		rehab: rehabCollection(storage),
-		prefs: prefsCollection(storage),
-		swaps: swapsCollection(storage),
-		dayPlan: dayPlanCollection(storage),
-		dayExercises: dayExercisesCollection(storage),
-		daySwaps: daySwapsCollection(storage),
-		taskDone: taskDoneCollection(storage),
-		sessions: sessionsCollection(storage),
-		readinessLog: readinessLogCollection(storage),
-		selfCheckLog: selfCheckLogCollection(storage),
-		bodyweight: bodyweightCollection(storage),
-		savedPrograms: savedProgramsCollection(storage),
+		currentWeek: currentWeekCollection(options('currentWeek')),
+		program: programCollection(options('program')),
+		baseline: baselineCollection(options('baseline')),
+		rehab: rehabCollection(options('rehab')),
+		prefs: prefsCollection(options('prefs')),
+		swaps: swapsCollection(options('swaps')),
+		dayPlan: dayPlanCollection(options('dayPlan')),
+		dayExercises: dayExercisesCollection(options('dayExercises')),
+		daySwaps: daySwapsCollection(options('daySwaps')),
+		taskDone: taskDoneCollection(options('taskDone')),
+		sessions: sessionsCollection(options('sessions')),
+		readinessLog: readinessLogCollection(options('readinessLog')),
+		selfCheckLog: selfCheckLogCollection(options('selfCheckLog')),
+		bodyweight: bodyweightCollection(options('bodyweight')),
+		savedPrograms: savedProgramsCollection(options('savedPrograms')),
 	};
 }
 

@@ -9,12 +9,16 @@ import type { StorageApi } from '@tanstack/db';
 import { describe, expect, it } from 'vitest';
 import { getContent } from '../src/lib/content/index.ts';
 import { isoDayOf } from '../src/lib/dates.ts';
-import { asWeekId, parseTaskKey, weekdayKeyOf } from '../src/lib/ids.ts';
+import { asAthleteId, asWeekId, parseTaskKey, weekdayKeyOf } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { trainableExerciseIds } from '../src/lib/prescription.ts';
 import { createRecordStore } from '../src/lib/store/collections.ts';
 import { readTrainingRecord } from '../src/lib/store/record.ts';
 import { scenarioRows, seedRecordStore } from '../src/lib/store/seed.ts';
+
+/** Any account id: these tests never sync, so the only thing it does is segment
+ *  the storage keys. */
+const ACCOUNT = asAthleteId('athlete-1');
 
 // Pin the locale before anything reads content: Paraglide's real strategy is
 // `localStorage` first (ADR 0006) and jsdom under Vitest has none, so an
@@ -38,14 +42,14 @@ function memoryStorage(): StorageApi {
 }
 
 function seeded(now = NOW) {
-	const store = createRecordStore(memoryStorage());
+	const store = createRecordStore(ACCOUNT, undefined, memoryStorage());
 	seedRecordStore(store, getContent('en-US'), 'en-US', now);
 	return store;
 }
 
 describe('seeding', () => {
 	it('fills an empty store, and refuses to do it twice', () => {
-		const store = createRecordStore(memoryStorage());
+		const store = createRecordStore(ACCOUNT, undefined, memoryStorage());
 
 		expect(seedRecordStore(store, getContent('en-US'), 'en-US', NOW)).toBe(true);
 		const sessions = store.sessions.size;
@@ -59,12 +63,12 @@ describe('seeding', () => {
 
 	it('survives a reload of the same storage, without re-seeding', () => {
 		const storage = memoryStorage();
-		const first = createRecordStore(storage);
+		const first = createRecordStore(ACCOUNT, undefined, storage);
 		seedRecordStore(first, getContent('en-US'), 'en-US', NOW);
 		const written = first.sessions.size;
 
 		// A second store over the same bytes is what the next page load is.
-		const second = createRecordStore(storage);
+		const second = createRecordStore(ACCOUNT, undefined, storage);
 		expect(second.sessions.size).toBe(written);
 		expect(seedRecordStore(second, getContent('en-US'), 'en-US', NOW)).toBe(false);
 		expect(readTrainingRecord(second).baseline?.level).toBe('advanced');
@@ -81,12 +85,27 @@ describe('seeding', () => {
 			},
 			removeItem: (k) => storage.removeItem(k),
 		};
-		seedRecordStore(createRecordStore(spy), getContent('en-US'), 'en-US', NOW);
+		seedRecordStore(createRecordStore(ACCOUNT, undefined, spy), getContent('en-US'), 'en-US', NOW);
 
 		// ADR 0007's whole point: the account is not one blob any more.
-		expect(keys).toContain('sendlab:sessions');
-		expect(keys).toContain('sendlab:taskDone');
+		expect(keys).toContain(`sendlab:${ACCOUNT}:sessions`);
+		expect(keys).toContain(`sendlab:${ACCOUNT}:taskDone`);
 		expect(keys.length).toBeGreaterThan(5);
+	});
+
+	it('keeps two accounts on one device apart', () => {
+		// #57's account boundary. The keys were namespaced rather than bare from
+		// #56 precisely so this segment could be added without moving anyone's rows.
+		const storage = memoryStorage();
+		const mine = createRecordStore(asAthleteId('athlete-1'), undefined, storage);
+		const yours = createRecordStore(asAthleteId('athlete-2'), undefined, storage);
+
+		seedRecordStore(mine, getContent('en-US'), 'en-US', NOW);
+
+		expect(mine.sessions.toArray.length).toBeGreaterThan(0);
+		expect(yours.sessions.toArray).toEqual([]);
+		// And the second store is empty enough that it would seed for itself.
+		expect(seedRecordStore(yours, getContent('en-US'), 'en-US', NOW)).toBe(true);
 	});
 });
 
@@ -168,7 +187,7 @@ describe('the training record a seeded store reads as', () => {
 describe('an account with nothing in it', () => {
 	it('reads as a valid record rather than as undefined', () => {
 		// What #57 sees before the server answers, and what a signed-out store is.
-		const record = readTrainingRecord(createRecordStore(memoryStorage()));
+		const record = readTrainingRecord(createRecordStore(ACCOUNT, undefined, memoryStorage()));
 
 		expect(record.currentWeek).toBe(asWeekId(1));
 		expect(record.baseline).toBeNull();

@@ -15,13 +15,8 @@ import { Link } from '@tanstack/react-router';
 import { Dumbbell, House, ScrollText } from 'lucide-react';
 import type { ReactNode } from 'react';
 import * as m from '$lib/paraglide/messages';
-import { setLocale } from '$lib/paraglide/runtime';
+import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
-
-/** The two locales the app ships. Declared here rather than imported: Paraglide
- *  emits `runtime.js` as JSDoc-annotated JavaScript and does not export a
- *  `Locale` type, so importing one is a compile error rather than a widening. */
-export type AppLocale = 'en-US' | 'pt-BR';
 
 const TABS = [
 	{ to: '/', label: m.nav_today, Icon: House },
@@ -32,11 +27,15 @@ const TABS = [
 /**
  * Locale, switched in place.
  *
- * Paraglide's `setLocale` reloads the document by default. A reload here would
- * throw away every bit of in-progress session state on the Train screen, so it is
- * suppressed and the caller re-renders the tree instead. Short codes, not
- * `lang_en` / `lang_pt`: "Português (BR)" does not fit a control this size in
- * either locale, and a language tag is an identifier rather than copy.
+ * The switch **reports** the choice and does not persist it. It used to call
+ * Paraglide's `setLocale` itself, which was fine while the device was the only
+ * place a locale lived; #57 made it account data too, and "switching writes both"
+ * is one rule that belongs in one function — `store/locale.ts`'s `chooseLocale`.
+ * A control that half-persists is how the other half stops happening.
+ *
+ * Short codes, not `lang_en` / `lang_pt`: "Português (BR)" does not fit a control
+ * this size in either locale, and a language tag is an identifier rather than
+ * copy.
  */
 function LocaleSwitch({
 	locale,
@@ -47,7 +46,6 @@ function LocaleSwitch({
 }) {
 	const pick = (l: AppLocale) => {
 		if (l === locale) return;
-		setLocale(l, { reload: false });
 		onChange(l);
 	};
 	const opts: { id: AppLocale; short: string; full: string }[] = [

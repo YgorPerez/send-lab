@@ -8,8 +8,21 @@
 // readiness check, the bodyweight series, the timer, the past sessions), so a
 // refactor that quietly drops one fails here rather than in review.
 //
-// THE CLOCK IS FROZEN, AND THAT IS NEW
-// ------------------------------------
+// THE SCENARIO IS SEEDED HERE, AND THAT IS NEW
+// --------------------------------------------
+// The store used to seed itself on first read. #57 took that out of the boot path
+// — it ran synchronously, before any fetch could return, so a real account would
+// have hydrated into a store already holding five fabricated weeks — and
+// `store/seed.ts` survives as the scenario the tests assert against. So this
+// suite seeds the store it is about to render.
+//
+// That is also more deterministic than what it replaced. The lazy seed fired
+// inside the first render, which meant it picked up whichever locale that render
+// happened to be in and the second locale reused it. Seeding once, explicitly, in
+// `en-US` is the same arrangement said out loud.
+//
+// THE CLOCK IS FROZEN
+// -------------------
 // The screens used to read a frozen snapshot that pinned "today" to Thursday's
 // Pull day whatever weekday the suite ran on. They read the store now (#56), and
 // the store resolves today's slot from the real weekday — so on a Sunday the
@@ -25,8 +38,10 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { getContent } from '../src/lib/content/index.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
-import { resetRecordStore } from '../src/lib/store/record.ts';
+import { recordStore, resetRecordStore } from '../src/lib/store/record.ts';
+import { seedRecordStore } from '../src/lib/store/seed.ts';
 import { routeTree } from '../src/routeTree.gen.ts';
 
 /** A Thursday in week 5 of the seeded block — a training day with a full slot,
@@ -38,9 +53,12 @@ beforeAll(() => {
 	// from scheduling anything, and nothing here needs a tick to advance.
 	vi.useFakeTimers({ toFake: ['Date'] });
 	vi.setSystemTime(THURSDAY);
-	// The store is a module singleton that seeds itself on first use, so it has to
-	// be discarded *after* the clock moves or it would seed against the real one.
+	// Discarded *after* the clock moves, or the collections would be built against
+	// the real one.
 	resetRecordStore();
+	// Signed out, which is what a render with no session reads. The scenario is
+	// account state either way; what an account would add is somewhere to sync it.
+	seedRecordStore(recordStore(), getContent('en-US'), 'en-US', THURSDAY.getTime());
 });
 
 afterAll(() => {

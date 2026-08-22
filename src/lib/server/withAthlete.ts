@@ -7,6 +7,7 @@
 // The known weakness is that a forgotten wrapper is a silent, exploitable hole.
 // That is why `pnpm check:routes` asserts every exported method of every server
 // route goes through this function, and why the gate fails if one does not.
+import { type AthleteId, parseAthleteId } from '$lib/ids';
 import { userIdFromBearer } from './apiToken';
 import { getAuth } from './auth';
 import { isForbiddenCrossSiteForm } from './csrf';
@@ -22,7 +23,7 @@ import { assertRuntimeEnv } from './env';
  * Identity is a stable id, never a display string (ADR 0003).
  */
 interface Athlete {
-	accountId: string;
+	accountId: AthleteId;
 }
 
 interface HandlerContext {
@@ -57,7 +58,11 @@ export function withAthlete(handler: AthleteHandler) {
 		}
 
 		const session = await getAuth().api.getSession({ headers: request.headers });
-		const accountId = session?.user?.id ?? (await userIdFromBearer(request));
+		// Branded here, at the one place an athlete's identity enters the server
+		// (#20). Everything below takes `AthleteId`, so a route that reached for
+		// some other string — a display name, a row key — is a compile error rather
+		// than a query against the wrong account.
+		const accountId = parseAthleteId(session?.user?.id ?? (await userIdFromBearer(request)));
 		if (!accountId) {
 			return new Response('Unauthorized', { status: 401 });
 		}

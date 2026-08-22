@@ -14,6 +14,7 @@ import { Route as LogRouteImport } from './routes/log'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as TrainRouteImport } from './routes/train'
 import { Route as ApiMeRouteImport } from './routes/api/me'
+import { Route as ApiStateRouteImport } from './routes/api/state'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const ApiMeRoute = ApiMeRouteImport.update({
   path: '/api/me',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStateRoute = ApiStateRouteImport.update({
+  id: '/api/state',
+  path: '/api/state',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/train': typeof TrainRoute
   '/api/me': typeof ApiMeRoute
+  '/api/state': typeof ApiStateRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/train': typeof TrainRoute
   '/api/me': typeof ApiMeRoute
+  '/api/state': typeof ApiStateRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -70,15 +78,37 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/train': typeof TrainRoute
   '/api/me': typeof ApiMeRoute
+  '/api/state': typeof ApiStateRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/log' | '/login' | '/train' | '/api/me' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/log'
+    | '/login'
+    | '/train'
+    | '/api/me'
+    | '/api/state'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/log' | '/login' | '/train' | '/api/me' | '/api/auth/$'
+  to:
+    | '/'
+    | '/log'
+    | '/login'
+    | '/train'
+    | '/api/me'
+    | '/api/state'
+    | '/api/auth/$'
   id:
-    '__root__' | '/' | '/log' | '/login' | '/train' | '/api/me' | '/api/auth/$'
+    | '__root__'
+    | '/'
+    | '/log'
+    | '/login'
+    | '/train'
+    | '/api/me'
+    | '/api/state'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -87,6 +117,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   TrainRoute: typeof TrainRoute
   ApiMeRoute: typeof ApiMeRoute
+  ApiStateRoute: typeof ApiStateRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -127,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiMeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/state': {
+      id: '/api/state'
+      path: '/api/state'
+      fullPath: '/api/state'
+      preLoaderRoute: typeof ApiStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -143,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   TrainRoute: TrainRoute,
   ApiMeRoute: ApiMeRoute,
+  ApiStateRoute: ApiStateRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

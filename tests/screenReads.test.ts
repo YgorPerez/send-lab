@@ -15,7 +15,7 @@
 import type { StorageApi } from '@tanstack/db';
 import { describe, expect, it } from 'vitest';
 import { computeReadiness, getContent } from '../src/lib/content/index.ts';
-import { asExerciseId } from '../src/lib/ids.ts';
+import { asAthleteId, asExerciseId } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { effectiveVariant, resolveSwapIndex, variantOf } from '../src/lib/prescription.ts';
 import { resolveLog } from '../src/lib/screens/log.ts';
@@ -24,6 +24,10 @@ import { resolveTrain } from '../src/lib/screens/train.ts';
 import { createRecordStore } from '../src/lib/store/collections.ts';
 import { readTrainingRecord } from '../src/lib/store/record.ts';
 import { seedRecordStore } from '../src/lib/store/seed.ts';
+
+/** Any account id: these tests never sync, so the only thing it does is segment
+ *  the storage keys. */
+const ACCOUNT = asAthleteId('athlete-1');
 
 overwriteGetLocale(() => 'en-US');
 
@@ -43,7 +47,7 @@ function memoryStorage(): StorageApi {
 const content = getContent('en-US');
 
 function record() {
-	const store = createRecordStore(memoryStorage());
+	const store = createRecordStore(ACCOUNT, undefined, memoryStorage());
 	seedRecordStore(store, content, 'en-US', NOW);
 	return readTrainingRecord(store);
 }
@@ -246,7 +250,7 @@ describe('the screens are resolved, not fabricated', () => {
 });
 
 function seededWith(now: number) {
-	const store = createRecordStore(memoryStorage());
+	const store = createRecordStore(ACCOUNT, undefined, memoryStorage());
 	seedRecordStore(store, content, 'en-US', now);
 	return store;
 }

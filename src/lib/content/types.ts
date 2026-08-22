@@ -2,7 +2,14 @@
 // metadata) are language-neutral and live once in `exercises.ts`; only prose
 // (names, cues, rationale) differs per locale. `getContent()` merges the two.
 
-export type VerdictId = 'rest' | 'tissue' | 'moderate' | 'short' | 'green';
+/** Every ceiling a readiness check can set on a session, tightest first.
+ *  An array rather than a bare union because the write path validates against it:
+ *  a stored verdict arrives from the network and has to be checked at runtime, not
+ *  only described at compile time. (ADR 0013 rules on *where* a shared set is
+ *  declared — here, a layer below the app — and this is that place; its *form* is
+ *  a separate question, answered by the fact that something now reads it.) */
+export const VERDICT_IDS = ['rest', 'tissue', 'moderate', 'short', 'green'] as const;
+export type VerdictId = (typeof VERDICT_IDS)[number];
 export type PhaseId = 'phase1' | 'phase2' | 'deload';
 export type MetricId =
 	| 'rfd'
@@ -23,7 +30,16 @@ export interface Range {
 }
 
 /** Primary grip an exercise loads. */
-export type Grip = 'half-crimp' | 'open-hand' | 'full-crimp' | 'pinch' | 'sloper' | 'wrist' | 'jug';
+export const GRIPS = [
+	'half-crimp',
+	'open-hand',
+	'full-crimp',
+	'pinch',
+	'sloper',
+	'wrist',
+	'jug',
+] as const;
+export type Grip = (typeof GRIPS)[number];
 
 /** Adaptation an exercise trains (an exercise may hit several). */
 export type Quality =
@@ -59,12 +75,14 @@ export type Cost = 'low' | 'mod' | 'high';
  * Not `Region`, above: that is which body region an *exercise loads*, an axis of
  * training rather than of injury, and its members differ (`pull`, `antagonist`).
  */
-export type BodyArea = 'fingers' | 'elbow' | 'shoulder' | 'wrist';
+export const BODY_AREAS = ['fingers', 'elbow', 'shoulder', 'wrist'] as const;
+export type BodyArea = (typeof BODY_AREAS)[number];
 
 /** How far along a rehab block is — it gates which work is allowed. Declared
  *  beside `BodyArea` and for the same reason: the content library routes a
  *  self-check band to a stage, and the app stores the stage it routed to. */
-export type RehabStage = 'acute' | 'subacute' | 'returning';
+export const REHAB_STAGES = ['acute', 'subacute', 'returning'] as const;
+export type RehabStage = (typeof REHAB_STAGES)[number];
 
 /** Language-neutral, fully-parametrized targets + metadata for one variant.
  *  Targets are ranges in canonical units: counts, **seconds**, kg, mm, % and
@@ -142,14 +160,16 @@ export interface Exercise {
 
 /** Stable id of a day type — the protocol a slot runs. Independent of weekdays:
  *  a day type keeps its identity wherever it is scheduled (see ADR-0002). */
-export type DayTypeId =
-	| 'limit-power'
-	| 'pinch-wrist'
-	| 'endurance'
-	| 'pull'
-	| 'max-tissue'
-	| 'performance'
-	| 'rest';
+export const DAY_TYPE_IDS = [
+	'limit-power',
+	'pinch-wrist',
+	'endurance',
+	'pull',
+	'max-tissue',
+	'performance',
+	'rest',
+] as const;
+export type DayTypeId = (typeof DAY_TYPE_IDS)[number];
 
 /** The rest day type — no exercises, never counts as scheduled work. Identified
  *  by id rather than by matching its localized load label. */

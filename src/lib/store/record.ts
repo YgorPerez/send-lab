@@ -23,11 +23,16 @@
 // split is the same one `prescription.ts` made for the same reason: everything
 // worth testing is testable without rendering.
 import { useLiveQuery } from '@tanstack/react-db';
-import { useMemo } from 'react';
-import { getContent } from '$lib/content';
+import { useMemo, useSyncExternalStore } from 'react';
 import type { DayTypeId } from '$lib/content/types';
-import { asWeekId, type ExerciseId, type SlotKey, type TaskKey } from '$lib/ids';
-import { getLocale } from '$lib/paraglide/runtime';
+import {
+	type AthleteId,
+	asWeekId,
+	type ExerciseId,
+	parseAthleteId,
+	type SlotKey,
+	type TaskKey,
+} from '$lib/ids';
 import type { ResolverState } from '$lib/prescription';
 import type {
 	BodyweightReading,
@@ -52,7 +57,7 @@ import {
 	type SwapRow,
 	type TaskDoneRow,
 } from './collections';
-import { seedRecordStore } from './seed';
+import { createRecordSync, type RecordSync } from './sync';
 
 /** Display units, notification opt-in and the athlete's language, without the
  *  key the singleton row is filed under. */
@@ -81,8 +86,9 @@ export interface TrainingRecord extends ResolverState {
 const NO_PROGRAM: Program = { weeks: 8, template: {}, targets: {}, phases: [], autoProgress: true };
 
 /** Preferences before the athlete has set any. `locale: null` means follow the
- *  device — its resolution order is #57's. */
-const NO_PREFS: Prefs = { weight: 'kg', length: 'mm', notify: false, locale: null };
+ *  device; `store/locale.ts` is the resolution order that phrase stands for, and
+ *  it needs this as the base of the row it inserts on a first locale switch. */
+export const NO_PREFS: Prefs = { weight: 'kg', length: 'mm', notify: false, locale: null };
 
 /** The first training week, for an account that has not started a block. */
 const FIRST_WEEK = asWeekId(1);
@@ -199,12 +205,79 @@ function assemble(rows: Rows): TrainingRecord {
 	};
 }
 
-// --------------------------------------------------------------- the singleton
-
-let store: RecordStore | null = null;
+// ------------------------------------------------------- the active account
+//
+// One store per account, and the active one is whichever athlete is signed in.
+// The account is set from outside rather than read from the session here: this
+// module is the store, and importing `auth-client` into it would put a network
+// call behind every screen test that renders one.
 
 /**
- * The one store this browser tab reads.
+ * Where the last signed-in account is remembered.
+ *
+ * The session is a network call, and offline it simply fails — so without this,
+ * a cold start with no network reads the signed-out store, shows the athlete
+ * fifteen empty collections, and files whatever they log next somewhere that
+ * never syncs. Remembering the id is what makes an offline launch open the right
+ * record. It is cleared when the session resolves to *absent*, which is a real
+ * sign-out, and never when it merely fails to resolve.
+ */
+const REMEMBERED = 'sendlab:account';
+
+function remembered(): AthleteId | null {
+	try {
+		return parseAthleteId(localStorage.getItem(REMEMBERED));
+	} catch {
+		// No `window`, or storage denied. Both mean: nothing remembered.
+		return null;
+	}
+}
+
+let active: AthleteId | null = remembered();
+const stores = new Map<string, RecordStore>();
+/** Held beside the stores so an account keeps the same sync for as long as its
+ *  collections live — a second one would mean two queues over one store, each
+ *  flushing rows the other still thinks are unsynced.
+ *
+ *  Nothing reads this from outside yet. `unsynced()` on a sync is `CONTEXT.md`'s
+ *  **unsynced work**, and showing it to the athlete is the one thing #57 leaves
+ *  on the table: `sync_saving` / `sync_offline` already exist in both locales,
+ *  but where the indicator goes is a component-vocabulary decision and the
+ *  browser tier that would measure it has not been re-run since the store
+ *  landed. */
+const syncs = new Map<string, RecordSync | null>();
+const listeners = new Set<() => void>();
+
+/**
+ * Point the store at an account, or at nobody.
+ *
+ * **Only call this once the session has actually resolved.** A session that is
+ * still pending, or that failed because the device is offline, is not a signed-out
+ * athlete — and treating it as one swaps the store for an empty namespace that
+ * never syncs. `__root.tsx` carries that guard.
+ *
+ * Signing out does **not** clear the previous account's rows: they stay under
+ * their own storage prefix, so signing back in is instant and offline, and the
+ * writes #58's queue has not yet flushed are still there to flush. What keeps two
+ * athletes apart on one device is the prefix, not deletion. What is forgotten is
+ * only *which* account was last active.
+ */
+export function setActiveAccount(accountId: string | null): void {
+	const next = parseAthleteId(accountId);
+	if (next === active) return;
+	active = next;
+	try {
+		if (next === null) localStorage.removeItem(REMEMBERED);
+		else localStorage.setItem(REMEMBERED, next);
+	} catch {
+		// Storage denied. The account still switches for this tab; only the
+		// offline-launch shortcut is lost.
+	}
+	for (const notify of listeners) notify();
+}
+
+/**
+ * The store for the account currently signed in.
  *
  * Built on first use rather than at module scope: on the server there is no
  * `localStorage` and the collections fall back to an in-memory store, and there
@@ -212,27 +285,80 @@ let store: RecordStore | null = null;
  * that reads none of them (ADR 0006 — the shell is the only thing prerendered,
  * and it must stay account-independent).
  *
- * Seeding happens here, once, because "the collections are never all empty" is an
- * invariant of the store rather than of any screen. #57 replaces the seed with
- * the server's answer and this function does not change.
- *
- * **The account boundary is not here yet.** One store, no `AthleteId`: what keeps
- * two athletes' records apart on a shared device is #57's, and it is the reason
- * the storage keys are namespaced rather than bare.
+ * **It starts empty.** #56 seeded a fabricated five weeks here, because nothing
+ * fetched an account yet and three screens would otherwise have had nothing to
+ * render. That is exactly what must not happen now: the seed ran synchronously on
+ * first read, before any fetch could return, so a real account would hydrate into
+ * a store already holding invented history. `store/seed.ts` survives as the
+ * scenario the tests assert against and the app imports it nowhere.
  */
 export function recordStore(): RecordStore {
-	if (!store) {
-		store = createRecordStore();
-		const locale = getLocale();
-		seedRecordStore(store, getContent(locale), locale, Date.now());
+	const account = active;
+	// One entry per account, plus one for nobody — `null` is not a `Map` key worth
+	// arguing about, so the signed-out store files under the empty string.
+	const cacheKey = account ?? '';
+	const existing = stores.get(cacheKey);
+	if (existing) return existing;
+
+	// The signed-out store does not sync: there is no account to sync it to.
+	const sync = account === null ? null : createRecordSync();
+	const store = createRecordStore(account, sync?.push);
+	stores.set(cacheKey, store);
+	syncs.set(cacheKey, sync);
+
+	// Hydrating on the cache miss, rather than in an effect, keeps it to once per
+	// account per tab however many screens mount. Guarded on `window` because the
+	// prerendered shell must not reach for an account.
+	if (sync && typeof window !== 'undefined') {
+		void sync.hydrate(store).catch((error: unknown) => {
+			// A failed hydrate is not a failed app: the collections already hold
+			// whatever this device last saw, which offline is the only answer there
+			// is. The next mutation's flush is the next attempt.
+			console.warn('/api/state hydrate deferred:', error);
+		});
 	}
 	return store;
 }
 
-/** Drop the store, so the next reader builds and re-seeds a fresh one. For tests
- *  and for #57's sign-out. */
+/** Drop every store, so the next reader builds a fresh one. For tests, and for
+ *  the account switch that has to forget the collections it built. */
 export function resetRecordStore(): void {
-	store = null;
+	active = null;
+	stores.clear();
+	syncs.clear();
+	try {
+		localStorage.removeItem(REMEMBERED);
+	} catch {
+		// Nothing to forget.
+	}
+	for (const notify of listeners) notify();
+}
+
+/** The active account's sync, or `null` when signed out. `store/locale.ts` needs
+ *  it to tell "the account holds no preferences" from "the account has not
+ *  answered yet" — writing a fabricated default row before the answer arrives
+ *  would beat the athlete's real one under last-write-wins. */
+export function recordSync(): RecordSync | null {
+	recordStore();
+	return syncs.get(active ?? '') ?? null;
+}
+
+function subscribe(notify: () => void): () => void {
+	listeners.add(notify);
+	return () => void listeners.delete(notify);
+}
+
+/** The account the store is pointed at, live.
+ *
+ *  A dependency rather than a value to read: every `useLiveQuery` over a
+ *  collection has to re-subscribe when this changes, or it keeps reporting the
+ *  store it first saw — one athlete's rows on another athlete's screen. */
+export function useActiveAccount(): AthleteId | null {
+	return useSyncExternalStore(
+		subscribe,
+		() => active,
+		() => null,
+	);
 }
 
 /**
@@ -241,24 +367,32 @@ export function resetRecordStore(): void {
  * Fifteen subscriptions rather than one: each collection notifies on its own, so
  * ticking a task re-renders without the sessions, the readiness log or the
  * bodyweight series being re-read. That granularity is the thing ADR 0007 bought.
+ *
+ * Signed out, this reads the signed-out store — empty until the athlete trains,
+ * and never sent anywhere. The screens render the same either way; what differs
+ * is whether the rows have an account to belong to.
  */
 export function useTrainingRecord(): TrainingRecord {
+	// Re-read when the account changes: signing in swaps all fifteen collections
+	// for a different athlete's, and every `useLiveQuery` below has to re-subscribe
+	// rather than keep reporting the store it first saw.
+	const account = useActiveAccount();
 	const s = recordStore();
-	const currentWeek = useLiveQuery(() => s.currentWeek).data;
-	const program = useLiveQuery(() => s.program).data;
-	const baseline = useLiveQuery(() => s.baseline).data;
-	const rehab = useLiveQuery(() => s.rehab).data;
-	const prefs = useLiveQuery(() => s.prefs).data;
-	const swaps = useLiveQuery(() => s.swaps).data;
-	const dayPlan = useLiveQuery(() => s.dayPlan).data;
-	const dayExercises = useLiveQuery(() => s.dayExercises).data;
-	const daySwaps = useLiveQuery(() => s.daySwaps).data;
-	const taskDone = useLiveQuery(() => s.taskDone).data;
-	const sessions = useLiveQuery(() => s.sessions).data;
-	const readinessLog = useLiveQuery(() => s.readinessLog).data;
-	const selfCheckLog = useLiveQuery(() => s.selfCheckLog).data;
-	const bodyweight = useLiveQuery(() => s.bodyweight).data;
-	const savedPrograms = useLiveQuery(() => s.savedPrograms).data;
+	const currentWeek = useLiveQuery(() => s.currentWeek, [account]).data;
+	const program = useLiveQuery(() => s.program, [account]).data;
+	const baseline = useLiveQuery(() => s.baseline, [account]).data;
+	const rehab = useLiveQuery(() => s.rehab, [account]).data;
+	const prefs = useLiveQuery(() => s.prefs, [account]).data;
+	const swaps = useLiveQuery(() => s.swaps, [account]).data;
+	const dayPlan = useLiveQuery(() => s.dayPlan, [account]).data;
+	const dayExercises = useLiveQuery(() => s.dayExercises, [account]).data;
+	const daySwaps = useLiveQuery(() => s.daySwaps, [account]).data;
+	const taskDone = useLiveQuery(() => s.taskDone, [account]).data;
+	const sessions = useLiveQuery(() => s.sessions, [account]).data;
+	const readinessLog = useLiveQuery(() => s.readinessLog, [account]).data;
+	const selfCheckLog = useLiveQuery(() => s.selfCheckLog, [account]).data;
+	const bodyweight = useLiveQuery(() => s.bodyweight, [account]).data;
+	const savedPrograms = useLiveQuery(() => s.savedPrograms, [account]).data;
 
 	return useMemo(
 		() =>

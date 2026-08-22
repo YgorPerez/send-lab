@@ -1,8 +1,10 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import appCss from '../app.css?url';
-import { type AppLocale, AppShell } from '../components/AppShell';
-import { getLocale } from '../lib/paraglide/runtime';
+import { AppShell } from '../components/AppShell';
+import { authClient } from '../lib/auth-client';
+import { useResolvedLocale } from '../lib/store/locale';
+import { setActiveAccount } from '../lib/store/record';
 import { installViewTransitionGuards } from '../lib/viewTransition';
 
 export const Route = createRootRoute({
@@ -73,24 +75,39 @@ function RootComponent() {
 		void navigator.serviceWorker.register('/sw.js');
 	}, []);
 
+	// Point the store at whoever is signed in. This is the account boundary (#57):
+	// the collections are keyed `sendlab:<accountId>:*`.
+	//
+	// **Only once the session has resolved.** `useSession` starts pending and, with
+	// no network, *stays* unresolved — and a session that is merely unknown is not
+	// a signed-out athlete. Acting on the pending null swapped the store for the
+	// signed-out namespace on every boot, and offline it stayed there: fifteen
+	// empty collections, and whatever the athlete logged next filed somewhere that
+	// never syncs. `store/record.ts` remembers the last account so the offline
+	// launch opens the right one in the meantime.
+	//
+	// In an effect rather than a route loader, deliberately: ADR 0006 excludes
+	// loaders for account data, because loader caching is what re-introduces
+	// back/forward reuse of one athlete's data.
+	const { data: session, isPending, error } = authClient.useSession();
+	const accountId = session?.user?.id ?? null;
+	useEffect(() => {
+		if (isPending || error) return;
+		setActiveAccount(accountId);
+	}, [isPending, error, accountId]);
+
 	// The active locale is held here, at the top of the app tree, for one reason:
 	// switching it has to re-render *everything*. Paraglide's `m.*()` calls read
 	// the locale at call time, so a component that does not re-render keeps
 	// rendering the old language. Re-keying the subtree on the locale forces a
 	// remount and makes the switch total rather than partial.
 	//
-	// Read lazily and guarded: the shell prerenders, and `getLocale()` reads
-	// `localStorage` first under the configured strategy.
-	const [locale, setLocale] = useState<AppLocale>(() => {
-		try {
-			return getLocale() as AppLocale;
-		} catch {
-			return 'en-US';
-		}
-	});
+	// Where the value comes from — the device on boot, the account once it
+	// hydrates, both on a switch — is `store/locale.ts`'s.
+	const [locale, chooseLocale] = useResolvedLocale();
 
 	return (
-		<AppShell locale={locale} onLocaleChange={setLocale}>
+		<AppShell locale={locale} onLocaleChange={chooseLocale}>
 			<div key={locale}>
 				<Outlet />
 			</div>
