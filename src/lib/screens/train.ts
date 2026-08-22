@@ -30,22 +30,25 @@ import {
 	trainableExerciseIds,
 	variantOf,
 } from '$lib/prescription';
-import type { TrainingRecord } from '$lib/store/account';
+import type { Task } from '$lib/screens/today';
+import type { TrainingRecord } from '$lib/store/record';
 import type { LoggedSet } from '$lib/types';
 
 /**
- * A **task** — one exercise as it appears in one slot — with its prescription
- * resolved and its sets attached.
+ * A task with its **prescription** resolved, and the sets logged against it.
  *
- * `screens/today.ts` names the same concept `Task`, and the two are not
- * duplicates: Today lists tasks to tick off, so it needs a label and a tick,
- * while Train is logged *against* one, so it needs the numbers. What
- * distinguishes this one is the resolution, which is why the name says so.
+ * It extends `Task` rather than restating it: this is the same unit the athlete
+ * ticks off on Today, carrying what the logger additionally needs. Two screens,
+ * one concept, one declaration of `key`/`exercise`/`exName`/`done`.
+ *
+ * The adjective is on the right noun. It was `ResolvedTask` for one commit, which
+ * put it on the wrong one — it is not the task that gets resolved, it is the
+ * prescription (`CONTEXT.md`: "the targets an exercise is to be trained at in a
+ * specific slot, after swaps, overrides, weekly progression, and phase scaling
+ * are all resolved"). That is the same error `FlagArea` and `RehabArea` made,
+ * and it lost for the same reason (#69).
  */
-export interface ResolvedTask {
-	key: TaskKey;
-	exercise: ExerciseId;
-	exName: string;
+export interface PrescribedTask extends Task {
 	cat: string;
 	/** CSS custom-property name driving this exercise's accent, e.g. `--violet`.
 	 *  It is which family the exercise belongs to, not a hex value. */
@@ -67,7 +70,7 @@ export interface TrainScreen {
 	weekday: WeekdayKey;
 	weekdayLabel: string;
 	week: WeekId;
-	tasks: ResolvedTask[];
+	tasks: PrescribedTask[];
 	/** Library exercises not in today's slot, for the add-exercise picker. */
 	available: { exercise: ExerciseId; name: string; cat: string }[];
 	note: string;
@@ -110,7 +113,7 @@ function scheduledTask(
 	weekday: WeekdayKey,
 	exercise: ExerciseId,
 	logged: TrainingRecord['sessions'][number]['exercises'] | undefined,
-): ResolvedTask {
+): PrescribedTask {
 	const ex = content.exercises[exercise];
 	const variantIndex = resolveSwapIndex(record, week, weekday, exercise);
 	const prescription = effectiveVariant(
@@ -121,8 +124,11 @@ function scheduledTask(
 		weekday,
 		exercise,
 	);
+	const sets = (logged ?? []).find((e) => e.exercise === exercise)?.sets;
 	return task(ex, exercise, taskKey(week, weekday, exercise), variantIndex, prescription, {
-		sets: (logged ?? []).find((e) => e.exercise === exercise)?.sets,
+		sets,
+		// A task is trained once one of its sets is (ADR-0001, **Trained**).
+		done: sets?.some((set) => set.done) ?? false,
 	});
 }
 
@@ -143,7 +149,7 @@ export function libraryTask(
 	content: Content,
 	exercise: ExerciseId,
 	key: TaskKey,
-): ResolvedTask | null {
+): PrescribedTask | null {
 	const ex = content.exercises[exercise];
 	if (!ex) return null;
 	return task(ex, exercise, key, 0, ex.variants[0], {});
@@ -157,12 +163,13 @@ function task(
 	key: TaskKey,
 	variantIndex: number,
 	prescription: Variant,
-	logged: { sets?: LoggedSet[] },
-): ResolvedTask {
+	logged: { sets?: LoggedSet[]; done?: boolean },
+): PrescribedTask {
 	return {
 		key,
 		exercise,
 		exName: ex.name,
+		done: logged.done ?? false,
 		cat: ex.cat,
 		catVar: ex.catVar,
 		variantIndex,

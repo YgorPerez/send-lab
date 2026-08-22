@@ -23,7 +23,7 @@ import { OUTCOME_LABEL } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { resolveLog } from '$lib/screens/log';
-import { useTrainingRecord } from '$lib/store/account';
+import { useTrainingRecord } from '$lib/store/record';
 import { SetTable } from '../components/SetRows';
 import { Eyebrow, Section } from '../components/ui/primitives';
 import { Row, RowGroup } from '../components/ui/Rows';

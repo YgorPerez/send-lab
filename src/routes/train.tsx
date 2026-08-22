@@ -19,8 +19,8 @@ import { asExerciseId, type TaskKey, taskKey } from '$lib/ids';
 import { fieldsFor, midOf, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import { libraryTask, type ResolvedTask, resolveTrain } from '$lib/screens/train';
-import { useTrainingRecord } from '$lib/store/account';
+import { libraryTask, type PrescribedTask, resolveTrain } from '$lib/screens/train';
+import { useTrainingRecord } from '$lib/store/record';
 import { TaskCard } from '../components/TaskCard';
 import { Timer, type TimerProtocol } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
@@ -30,7 +30,7 @@ import { button, input } from '../components/ui/variants';
 export const Route = createFileRoute('/train')({ component: Train });
 
 /** The protocol the timer runs for a task, or `null` if it has no timings. */
-function protocolOf(task: ResolvedTask): TimerProtocol | null {
+function protocolOf(task: PrescribedTask): TimerProtocol | null {
 	if (!task.timed) return null;
 	const s = task.prescription;
 	return {
@@ -56,7 +56,7 @@ function Train() {
 	// Their working copy of it. `sets` is cloned rather than shared: the rows are
 	// edited in place as the session goes, and the resolved item is what they
 	// started from.
-	const [tasks, setTasks] = useState<ResolvedTask[]>(() =>
+	const [tasks, setTasks] = useState<PrescribedTask[]>(() =>
 		screen.tasks.map((t) => ({ ...t, sets: t.sets.map((s) => ({ ...s })) })),
 	);
 
@@ -82,7 +82,7 @@ function Train() {
 		screen.durationMin == null ? '' : String(screen.durationMin),
 	);
 
-	const update = (key: TaskKey, fn: (t: ResolvedTask) => ResolvedTask) =>
+	const update = (key: TaskKey, fn: (t: PrescribedTask) => PrescribedTask) =>
 		setTasks((prev) => prev.map((t) => (t.key === key ? fn(t) : t)));
 
 	const selectVariant = (key: TaskKey, index: number) =>

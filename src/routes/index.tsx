@@ -48,7 +48,7 @@ import {
 	type Task,
 	type TodayScreen,
 } from '$lib/screens/today';
-import { useTrainingRecord } from '$lib/store/account';
+import { useTrainingRecord } from '$lib/store/record';
 import { cn } from '$lib/utils';
 import { ReadinessCheck } from '../components/ReadinessCheck';
 import { RehabStarter, SelfCheckSheet } from '../components/SelfCheck';
@@ -167,7 +167,7 @@ function Today() {
 				vsBaseline={vsBaseline}
 				breakdown={breakdown}
 				scoreNote={t.scoreNote}
-				nextTaskLabel={nextTask?.label ?? null}
+				nextTaskLabel={nextTask?.exName ?? null}
 			/>
 
 			{/* Post-session outcome: the input that turns the heuristic weighting into
@@ -470,7 +470,7 @@ function PlanCard({
 								<button
 									type="button"
 									aria-pressed={isDone}
-									aria-label={task.label}
+									aria-label={task.exName}
 									onClick={() => onToggle(task.key)}
 									className={cn(
 										'flex size-11 shrink-0 items-center justify-center rounded-md border transition-colors',
@@ -485,7 +485,7 @@ function PlanCard({
 										isDone ? 'text-ink-faint line-through' : held ? 'text-ink-faint' : 'text-ink',
 									)}
 								>
-									{task.label}
+									{task.exName}
 								</span>
 								{held ? (
 									<span className={chip({ tone: 'warn' })}>{m.td_held()}</span>

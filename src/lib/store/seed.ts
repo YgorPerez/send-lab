@@ -11,7 +11,7 @@
 // history behind it, and a readiness check already answered.
 //
 // This is the last of `prototype-fixtures.ts`. What that module *derived* is now
-// the read path (`store/account.ts`, `lib/screens/*`); what it **held** is here,
+// the read path (`store/record.ts`, `lib/screens/*`); what it **held** is here,
 // and it is held as rows rather than rebuilt on every render. #57 replaces this
 // file with the server's answer, and the read path above it does not change —
 // which is the point of putting the seam at the collections.
@@ -65,7 +65,7 @@ import type {
 	SelfCheck,
 	Session,
 } from '$lib/types';
-import type { AccountStore, TaskDoneRow } from './collections';
+import type { RecordStore, TaskDoneRow } from './collections';
 import { SINGLETON_KEY } from './collections';
 import { SEED_PROSE } from './prose';
 
@@ -432,7 +432,7 @@ export function scenarioRows(content: Content, locale: string, now: number): See
  *  re-seeding on top of them would be the worst bug this file could have. Written
  *  over the store's own values so a sixteenth collection is covered by existing
  *  rather than by remembering. */
-function isEmpty(store: AccountStore): boolean {
+function isEmpty(store: RecordStore): boolean {
 	return Object.values(store).every((collection) => collection.size === 0);
 }
 
@@ -444,8 +444,8 @@ function isEmpty(store: AccountStore): boolean {
  * purpose: no rehab block is running, the preferences default to following the
  * device, and the athlete has saved no programs.
  */
-export function seedAccountStore(
-	store: AccountStore,
+export function seedRecordStore(
+	store: RecordStore,
 	content: Content,
 	locale: string,
 	now: number,

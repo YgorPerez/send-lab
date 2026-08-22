@@ -16,7 +16,7 @@ import { exerciseLabel, weekdayLabel } from '$lib/format';
 import { asExerciseId, type ExerciseId, type WeekdayKey } from '$lib/ids';
 import { fieldsFor, type SetField } from '$lib/loggedSet';
 import { variantOf } from '$lib/prescription';
-import type { TrainingRecord } from '$lib/store/account';
+import type { TrainingRecord } from '$lib/store/record';
 import type { LoggedSet } from '$lib/types';
 
 export interface LoggedCheckRow {
@@ -68,7 +68,7 @@ export function resolveLog(content: Content, record: TrainingRecord, locale: str
 		// trend, the baseline and the calibration read it. A history reads the
 		// other way.
 		checks: [...record.readinessLog].reverse().map((r) => checkRow(content, r, locale)),
-		// Already newest first (`store/account.ts`).
+		// Already newest first (`store/record.ts`).
 		sessions: record.sessions.map((s) => sessionRow(content, s)),
 	};
 }

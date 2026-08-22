@@ -29,7 +29,8 @@
 //     are on the glossary's _Avoid_ list for the thing they hold, and these keys
 //     are new storage rather than a migration of the SvelteKit document — there
 //     is nothing to carry across (#11, *Out of scope*). #57 renames the same two
-//     keys server-side when it mounts `sanitizeState`.
+//     keys server-side when it mounts `sanitizeState`. ADR 0014 is the general
+//     rule this instance produced.
 //
 // SINGLETONS ARE STILL COLLECTIONS
 // --------------------------------
@@ -152,7 +153,7 @@ export interface PrefsRow {
 // ------------------------------------------------------------------ the store
 
 /** Every collection the account is held in. */
-export interface AccountStore {
+export interface RecordStore {
 	readonly currentWeek: ReturnType<typeof currentWeekCollection>;
 	readonly program: ReturnType<typeof programCollection>;
 	readonly baseline: ReturnType<typeof baselineCollection>;
@@ -360,9 +361,9 @@ function memoryStorage(): StorageApi {
  * out, they use `window.localStorage` where it works and memory where it does
  * not.
  */
-export function createAccountStore(
+export function createRecordStore(
 	storage: StorageApi | undefined = storageOverride(),
-): AccountStore {
+): RecordStore {
 	return {
 		currentWeek: currentWeekCollection(storage),
 		program: programCollection(storage),

@@ -95,8 +95,11 @@ export interface ResolverState {
 	 *  whether a slot was trained, which is why adherence and carry-forward both
 	 *  read it rather than counting sessions. */
 	readonly taskDone: Readonly<Partial<Record<TaskKey, boolean>>>;
-	/** The training history. Named for the glossary's **session**; the persisted
-	 *  document still calls the array `workouts`, which #59 owns renaming. */
+	/** The training history. Named for the glossary's **session**, and as of #56
+	 *  the store's collection is named that too. The *server* document still calls
+	 *  the array `workouts` — a word on Session's _Avoid_ list — and #57 renames it
+	 *  when it mounts `sanitizeState`. (This said #59, which is the ephemeral-state
+	 *  ticket and never owned it.) */
 	readonly sessions: readonly Session[];
 	/** The onboarding intake, or null before it is taken. Read for `level`, which
 	 *  scales the weekly progression rate. */

@@ -26,7 +26,7 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
-import { resetAccountStore } from '../src/lib/store/account.ts';
+import { resetRecordStore } from '../src/lib/store/record.ts';
 import { routeTree } from '../src/routeTree.gen.ts';
 
 /** A Thursday in week 5 of the seeded block — a training day with a full slot,
@@ -40,12 +40,12 @@ beforeAll(() => {
 	vi.setSystemTime(THURSDAY);
 	// The store is a module singleton that seeds itself on first use, so it has to
 	// be discarded *after* the clock moves or it would seed against the real one.
-	resetAccountStore();
+	resetRecordStore();
 });
 
 afterAll(() => {
 	vi.useRealTimers();
-	resetAccountStore();
+	resetRecordStore();
 });
 
 async function render(path: string): Promise<string> {

@@ -1,0 +1,76 @@
+# The glossary's name outranks the persisted key
+
+When a stored field's name disagrees with `CONTEXT.md`, **the storage moves.** The
+glossary term is the canonical name at every layer the athlete's data passes
+through — the collection, the row, the server document, the wire — and a key that
+carries a word from a term's `_Avoid_` list is a defect to be fixed rather than a
+historical fact to be adapted around.
+
+This binds **names only**. The glossary has no standing on behaviour, and it lost
+that argument in #55 when it was used to make a behavioural claim. What it settles
+is what a thing is called.
+
+## Why this needed deciding
+
+`prescription.ts` declared `ResolverState` with a field `sessions`, named for the
+glossary's **Session**. The persisted document called the same array `workouts` —
+which is the first word on Session's `_Avoid_` list. The same disagreement sat one
+field over: `ResolverState.baseline` against the document's `assessment`, where
+*assessment* is the first word on **Baseline**'s `_Avoid_` list.
+
+So one array had two names across one seam, and each of the two tickets that
+touched the area left the disagreement in place. #55 renamed the *type* to
+`Baseline` and never touched the state key. #69 named the resolver's field
+`sessions` and wrote a comment deferring the rename — to **#59**, which is the
+ephemeral-state ticket and never owned it. That mis-attribution survived two
+tickets and was only caught when #56 came to implement the interface. An unowned
+rename does not stay put; it drifts, and it takes its documentation with it.
+
+## The alternative, and why it lost
+
+The cheaper option was an adapter: keep the persisted keys and rename on the way
+into `ResolverState`, in the one function that assembles the record. It costs
+nothing to write and it is invisible.
+
+That is the objection. An adapter makes the disagreement permanent and free,
+which means it is never resolved — every later reader has to learn both names and
+which layer speaks which, and every new field gets to choose. The mapping also has
+to be repeated at each seam that grows: the collection, the write path, the MCP
+endpoint's payload. The cost of *not* deciding compounds; the cost of deciding is
+paid once.
+
+## What it cost, and why that was affordable here
+
+Renaming a persisted key normally means a migration. It did not here, and the
+reason is specific rather than general: the rebuild carries no accounts or history
+across (#11, *Out of scope*), the alpha is five accounts of roughly 28 KB, and the
+athlete has said data continuity is not required. #56's collections are new
+storage rather than a rewrite of the SvelteKit document, so client-side the rename
+cost nothing at all.
+
+The server side is not free. `server/stateOps.ts`'s `defaultState()` and
+`sanitizeState()` still say `workouts` and `assessment`, and **#57 renames them**
+when it mounts the write path. That work exists because of this decision and is
+recorded here rather than discovered there.
+
+## Consequences
+
+**A new field takes the glossary's word, at every layer, on the first write.** The
+cheapest moment to name a stored field correctly is before anything has stored it.
+
+**The audit is a grep, and it is not finished.** As of #56 the client store is
+clean; these still say a word the glossary avoids, and each is owned rather than
+merely noticed:
+
+- `server/stateOps.ts` — the document skeleton. **#57.**
+- `lib/migrate.ts` — writes `workouts` and the long-dead `dayKey`. It needs a
+  ruling (delete or rewrite) before it needs a rename.
+- `lib/stats.ts` — parameters and prose, no behaviour. Cosmetic and contained.
+- `messages/` — the key `log_workouts`. Note the *text* is already right in both
+  locales ("Sessions" / "Treinos"); only the key drifted, which is what makes it
+  the least urgent and the easiest to forget.
+
+**This does not license renaming a glossary term to match the code.** The
+direction is one-way. If a stored name looks better than the term, the argument to
+have is about the term — in `CONTEXT.md`, where changing it is visible — and not
+by leaving the storage as a second opinion.

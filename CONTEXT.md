@@ -20,6 +20,13 @@ held on the device, as the boundary keeping one athlete's record separate from
 another's on a shared device.
 _Avoid_: user, profile
 
+**Training record**:
+Everything one athlete's account holds — the program, the sessions, the readiness
+checks, the bodyweight series, the baseline. What an account owns, as opposed to
+the account itself, which is the identity that owns it; and what a second device
+is catching up to.
+_Avoid_: state, data, document, account data
+
 **Baseline**:
 The one-off intake taken at onboarding — goal, focus, level, days per week, gear
 on hand, hardest grades, current niggles. Shapes the generated program and its

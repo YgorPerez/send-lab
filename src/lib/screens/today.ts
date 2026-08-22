@@ -44,17 +44,29 @@ import {
 	trainStreak,
 	weekLoad,
 } from '$lib/stats';
-import type { TrainingRecord } from '$lib/store/account';
+import type { TrainingRecord } from '$lib/store/record';
 import type { BodyweightReading, SelfCheck } from '$lib/types';
 
-/** One exercise as it appears in today's slot — the unit the athlete ticks off. */
+/**
+ * One exercise as it appears in one slot — the unit the athlete ticks off.
+ *
+ * The glossary's **Task**, with the glossary's own fields and nothing else.
+ * `screens/train.ts` extends it into `PrescribedTask` rather than declaring a
+ * second shape: Train needs the same task carrying its resolved prescription and
+ * its sets, and the two used to hold the exercise's name under two different
+ * field names.
+ */
 export interface Task {
 	/** What completion is recorded against (ADR-0001). Unique across slots, which
 	 *  an exercise id alone is not: the same exercise appears in several weekdays
 	 *  of a block, and keying a tick by exercise would tick all of them. */
 	key: TaskKey;
 	exercise: ExerciseId;
-	label: string;
+	/** The exercise's name, in the active locale. Derived at render, never
+	 *  stored (ADR 0012). */
+	exName: string;
+	/** Whether this task is ticked off. ADR-0001 makes this the record that says
+	 *  whether the slot was trained. */
 	done: boolean;
 }
 
@@ -171,7 +183,7 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 	const tasks: Task[] = scheduled.map((exercise) => ({
 		key: taskKey(week, weekday, exercise),
 		exercise,
-		label: content.exercises[exercise].name,
+		exName: content.exercises[exercise].name,
 		done: record.taskDone[taskKey(week, weekday, exercise)] ?? doneExercises.has(exercise),
 	}));
 

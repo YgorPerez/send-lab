@@ -1,7 +1,8 @@
 // The read half of the store: collections in, one training record out.
 //
-// `CONTEXT.md` calls what an account owns its **training record**, and that is
-// what this assembles. The collections below it are fifteen keyed row sets
+// **Training record** is a `CONTEXT.md` term: everything one athlete's account
+// holds. An account is the identity that owns it; this is the thing owned, which
+// is why the store below is a `RecordStore` and not an account one. The collections below it are fifteen keyed row sets
 // (ADR 0007); every screen and every domain module above it wants maps and
 // arrays. This module is the one place that turns one into the other, so nothing
 // upstream has to know that `taskDone` is rows rather than an object.
@@ -38,20 +39,20 @@ import type {
 	Session,
 } from '$lib/types';
 import {
-	type AccountStore,
 	type BaselineRow,
 	type CurrentWeekRow,
-	createAccountStore,
+	createRecordStore,
 	type DayExercisesRow,
 	type DayPlanRow,
 	type DaySwapRow,
 	type PrefsRow,
 	type ProgramRow,
+	type RecordStore,
 	type RehabRow,
 	type SwapRow,
 	type TaskDoneRow,
 } from './collections';
-import { seedAccountStore } from './seed';
+import { seedRecordStore } from './seed';
 
 /** Display units, notification opt-in and the athlete's language, without the
  *  key the singleton row is filed under. */
@@ -107,7 +108,7 @@ function byKey<Row, K extends string, V>(
  * ratio, the log screen — wants them newest first, so sorting once here is
  * cheaper and safer than five callers each remembering to.
  */
-export function readTrainingRecord(store: AccountStore): TrainingRecord {
+export function readTrainingRecord(store: RecordStore): TrainingRecord {
 	return assemble({
 		currentWeek: store.currentWeek.toArray,
 		program: store.program.toArray,
@@ -129,7 +130,7 @@ export function readTrainingRecord(store: AccountStore): TrainingRecord {
 
 /** Every collection's rows, as the hook and the pure reader both have them.
  *
- *  Spelled out rather than derived from `AccountStore`: a collection's own row
+ *  Spelled out rather than derived from `RecordStore`: a collection's own row
  *  type carries the library's virtual `$key`/`$synced` props, and naming those
  *  here would make this module's shape a function of an internal detail of a
  *  pre-1.0 dependency. Both callers hand over something assignable to plain
@@ -200,7 +201,7 @@ function assemble(rows: Rows): TrainingRecord {
 
 // --------------------------------------------------------------- the singleton
 
-let store: AccountStore | null = null;
+let store: RecordStore | null = null;
 
 /**
  * The one store this browser tab reads.
@@ -219,18 +220,18 @@ let store: AccountStore | null = null;
  * two athletes' records apart on a shared device is #57's, and it is the reason
  * the storage keys are namespaced rather than bare.
  */
-export function accountStore(): AccountStore {
+export function recordStore(): RecordStore {
 	if (!store) {
-		store = createAccountStore();
+		store = createRecordStore();
 		const locale = getLocale();
-		seedAccountStore(store, getContent(locale), locale, Date.now());
+		seedRecordStore(store, getContent(locale), locale, Date.now());
 	}
 	return store;
 }
 
 /** Drop the store, so the next reader builds and re-seeds a fresh one. For tests
  *  and for #57's sign-out. */
-export function resetAccountStore(): void {
+export function resetRecordStore(): void {
 	store = null;
 }
 
@@ -242,7 +243,7 @@ export function resetAccountStore(): void {
  * bodyweight series being re-read. That granularity is the thing ADR 0007 bought.
  */
 export function useTrainingRecord(): TrainingRecord {
-	const s = accountStore();
+	const s = recordStore();
 	const currentWeek = useLiveQuery(() => s.currentWeek).data;
 	const program = useLiveQuery(() => s.program).data;
 	const baseline = useLiveQuery(() => s.baseline).data;

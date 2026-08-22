@@ -70,7 +70,7 @@ progress from drift.
   right way — the three training screens now reach the store, the resolver and the content library.
   Exports went *up*, which is not drift: `store/` and `screens/` have a public API sized for
   [#57](https://github.com/YgorPerez/send-lab/issues/57), and fallow counts an export with no
-  *cross-module* caller — `accountStore` and `resetAccountStore` do have callers
+  *cross-module* caller — `recordStore` and `resetRecordStore` do have callers
   (`useTrainingRecord`, `tests/screens.test.ts`), just not outside their own module and the tests
   fallow ignores. What each rule needs before it can go back on:
   - **`unused-files`** — the six page tickets. Every remaining entry is one page's domain module

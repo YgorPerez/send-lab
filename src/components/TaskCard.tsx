@@ -22,7 +22,7 @@ import {
 	gripLabel,
 } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
-import type { ResolvedTask } from '$lib/screens/train';
+import type { PrescribedTask } from '$lib/screens/train';
 import type { LoggedSet } from '$lib/types';
 import { cn } from '$lib/utils';
 import { SetEditor } from './SetRows';
@@ -105,7 +105,7 @@ export function TaskCard({
 	onChangeSet,
 	onAddSet,
 }: {
-	task: ResolvedTask;
+	task: PrescribedTask;
 	/** The timer is currently pointed at this task. */
 	active: boolean;
 	onSelectVariant: (index: number) => void;

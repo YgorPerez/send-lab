@@ -12,9 +12,9 @@ import { isoDayOf } from '../src/lib/dates.ts';
 import { asWeekId, parseTaskKey, weekdayKeyOf } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { trainableExerciseIds } from '../src/lib/prescription.ts';
-import { readTrainingRecord } from '../src/lib/store/account.ts';
-import { createAccountStore } from '../src/lib/store/collections.ts';
-import { scenarioRows, seedAccountStore } from '../src/lib/store/seed.ts';
+import { createRecordStore } from '../src/lib/store/collections.ts';
+import { readTrainingRecord } from '../src/lib/store/record.ts';
+import { scenarioRows, seedRecordStore } from '../src/lib/store/seed.ts';
 
 // Pin the locale before anything reads content: Paraglide's real strategy is
 // `localStorage` first (ADR 0006) and jsdom under Vitest has none, so an
@@ -38,35 +38,35 @@ function memoryStorage(): StorageApi {
 }
 
 function seeded(now = NOW) {
-	const store = createAccountStore(memoryStorage());
-	seedAccountStore(store, getContent('en-US'), 'en-US', now);
+	const store = createRecordStore(memoryStorage());
+	seedRecordStore(store, getContent('en-US'), 'en-US', now);
 	return store;
 }
 
 describe('seeding', () => {
 	it('fills an empty store, and refuses to do it twice', () => {
-		const store = createAccountStore(memoryStorage());
+		const store = createRecordStore(memoryStorage());
 
-		expect(seedAccountStore(store, getContent('en-US'), 'en-US', NOW)).toBe(true);
+		expect(seedRecordStore(store, getContent('en-US'), 'en-US', NOW)).toBe(true);
 		const sessions = store.sessions.size;
 		expect(sessions).toBeGreaterThan(20);
 
 		// The store already holds an account. Seeding on top of it would be the
 		// worst bug this file could have, so it is a hard "no" rather than a merge.
-		expect(seedAccountStore(store, getContent('en-US'), 'en-US', NOW + 86_400_000)).toBe(false);
+		expect(seedRecordStore(store, getContent('en-US'), 'en-US', NOW + 86_400_000)).toBe(false);
 		expect(store.sessions.size).toBe(sessions);
 	});
 
 	it('survives a reload of the same storage, without re-seeding', () => {
 		const storage = memoryStorage();
-		const first = createAccountStore(storage);
-		seedAccountStore(first, getContent('en-US'), 'en-US', NOW);
+		const first = createRecordStore(storage);
+		seedRecordStore(first, getContent('en-US'), 'en-US', NOW);
 		const written = first.sessions.size;
 
 		// A second store over the same bytes is what the next page load is.
-		const second = createAccountStore(storage);
+		const second = createRecordStore(storage);
 		expect(second.sessions.size).toBe(written);
-		expect(seedAccountStore(second, getContent('en-US'), 'en-US', NOW)).toBe(false);
+		expect(seedRecordStore(second, getContent('en-US'), 'en-US', NOW)).toBe(false);
 		expect(readTrainingRecord(second).baseline?.level).toBe('advanced');
 	});
 
@@ -81,7 +81,7 @@ describe('seeding', () => {
 			},
 			removeItem: (k) => storage.removeItem(k),
 		};
-		seedAccountStore(createAccountStore(spy), getContent('en-US'), 'en-US', NOW);
+		seedRecordStore(createRecordStore(spy), getContent('en-US'), 'en-US', NOW);
 
 		// ADR 0007's whole point: the account is not one blob any more.
 		expect(keys).toContain('sendlab:sessions');
@@ -168,7 +168,7 @@ describe('the training record a seeded store reads as', () => {
 describe('an account with nothing in it', () => {
 	it('reads as a valid record rather than as undefined', () => {
 		// What #57 sees before the server answers, and what a signed-out store is.
-		const record = readTrainingRecord(createAccountStore(memoryStorage()));
+		const record = readTrainingRecord(createRecordStore(memoryStorage()));
 
 		expect(record.currentWeek).toBe(asWeekId(1));
 		expect(record.baseline).toBeNull();

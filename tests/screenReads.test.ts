@@ -21,9 +21,9 @@ import { effectiveVariant, resolveSwapIndex, variantOf } from '../src/lib/prescr
 import { resolveLog } from '../src/lib/screens/log.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
-import { readTrainingRecord } from '../src/lib/store/account.ts';
-import { createAccountStore } from '../src/lib/store/collections.ts';
-import { seedAccountStore } from '../src/lib/store/seed.ts';
+import { createRecordStore } from '../src/lib/store/collections.ts';
+import { readTrainingRecord } from '../src/lib/store/record.ts';
+import { seedRecordStore } from '../src/lib/store/seed.ts';
 
 overwriteGetLocale(() => 'en-US');
 
@@ -43,8 +43,8 @@ function memoryStorage(): StorageApi {
 const content = getContent('en-US');
 
 function record() {
-	const store = createAccountStore(memoryStorage());
-	seedAccountStore(store, content, 'en-US', NOW);
+	const store = createRecordStore(memoryStorage());
+	seedRecordStore(store, content, 'en-US', NOW);
 	return readTrainingRecord(store);
 }
 
@@ -63,7 +63,7 @@ describe('Today', () => {
 		// screen where nothing is both fail to show what "held" means.
 		expect(held.size).toBeGreaterThan(0);
 		expect(held.size).toBeLessThan(TODAY.tasks.length);
-		expect(TODAY.tasks.every((t) => t.label.length > 0)).toBe(true);
+		expect(TODAY.tasks.every((t) => t.exName.length > 0)).toBe(true);
 	});
 
 	it('carries every piece the screen is built around', () => {
@@ -246,7 +246,7 @@ describe('the screens are resolved, not fabricated', () => {
 });
 
 function seededWith(now: number) {
-	const store = createAccountStore(memoryStorage());
-	seedAccountStore(store, content, 'en-US', now);
+	const store = createRecordStore(memoryStorage());
+	seedRecordStore(store, content, 'en-US', now);
 	return store;
 }
