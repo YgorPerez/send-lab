@@ -131,7 +131,7 @@ const SCENARIO_BASELINE: Baseline = {
 const SCENARIO_PROGRAM: Program = {
 	weeks: BLOCK_WEEKS,
 	template: {},
-	targets: {},
+	overrides: {},
 	phases: [],
 	autoProgress: true,
 };
@@ -190,9 +190,9 @@ function planOnly(week: WeekId): ResolverState {
 		currentWeek: week,
 		program: SCENARIO_PROGRAM,
 		swaps: {},
-		dayPlan: {},
-		dayExercises: {},
-		daySwaps: {},
+		slotDayType: {},
+		slotExercises: {},
+		taskSwaps: {},
 		taskDone: {},
 		sessions: [],
 		baseline: SCENARIO_BASELINE,

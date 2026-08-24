@@ -185,7 +185,7 @@ const phase = z.object({
 const program = z.object({
 	weeks: z.number().int().min(1),
 	template: z.record(id.weekday, weekdayTemplate),
-	targets: z.record(id.override, override),
+	overrides: z.record(id.override, override),
 	phases: z.array(phase),
 	autoProgress: z.boolean(),
 });
@@ -260,9 +260,9 @@ const COLLECTIONS: Readonly<Record<string, CollectionSpec<any>>> = {
 		z.object({ exercise: id.exercise, variant: z.number().int().min(0) }),
 		(r) => r.exercise,
 	),
-	dayPlan: spec(z.object({ slot: id.slot, dayType: z.enum(DAY_TYPE_IDS) }), (r) => r.slot),
-	dayExercises: spec(z.object({ slot: id.slot, exercises: z.array(id.exercise) }), (r) => r.slot),
-	daySwaps: spec(z.object({ task: id.task, variant: z.number().int().min(0) }), (r) => r.task),
+	slotDayType: spec(z.object({ slot: id.slot, dayType: z.enum(DAY_TYPE_IDS) }), (r) => r.slot),
+	slotExercises: spec(z.object({ slot: id.slot, exercises: z.array(id.exercise) }), (r) => r.slot),
+	taskSwaps: spec(z.object({ task: id.task, variant: z.number().int().min(0) }), (r) => r.task),
 	taskDone: spec(z.object({ task: id.task, done: z.boolean() }), (r) => r.task),
 	sessions: spec(session, (r) => r.at),
 	readinessLog: spec(loggedReadinessCheck, (r) => String(r.at)),

@@ -48,7 +48,7 @@ export function generateRehabProgram(content: Content, area: BodyArea, stage: Re
 	const keep = new Set(PRIORITY.slice(0, s.days));
 
 	const template: Record<string, WeekdayTemplate> = {};
-	const targets: Record<string, Override> = {};
+	const overrides: Record<string, Override> = {};
 	for (const d of content.days) {
 		if (d.id === REST_DAY_TYPE) continue;
 		if (!keep.has(d.k)) {
@@ -61,13 +61,13 @@ export function generateRehabProgram(content: Content, area: BodyArea, stage: Re
 			name: m.rehab_label(),
 		};
 		for (const exId of dayEx)
-			targets[overrideKey(asWeekdayKey(d.k), asExerciseId(exId))] = { rpe: s.rpe };
+			overrides[overrideKey(asWeekdayKey(d.k), asExerciseId(exId))] = { rpe: s.rpe };
 	}
 
 	return {
 		weeks: 6,
 		template,
-		targets,
+		overrides,
 		phases: [
 			{ name: m.rehab_label(), weeks: 6, intensity: s.intensity, volume: s.volume, deload: false },
 		],

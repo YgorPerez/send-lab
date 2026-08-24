@@ -244,10 +244,14 @@ export interface Program {
 	 *  while `{}` stayed assignable, so the fallbacks were trusted rather than
 	 *  checked. */
 	template: Partial<Record<WeekdayKey, WeekdayTemplate>>;
-	/** Prescription overrides, keyed by `overrideKey(weekday, exercise)`. Sparse
-	 *  by nature and `Partial` for the same reason as `template`: an exercise with
-	 *  no override runs the variant's built-in target. */
-	targets: Partial<Record<OverrideKey, Override>>;
+	/** The athlete's overrides, keyed by `overrideKey(weekday, exercise)`. They
+	 *  *feed* the prescription rather than being it — what they resolve to is
+	 *  `prescription.ts`'s to compute and is stored nowhere, which is why this
+	 *  field is not called `targets` (#72, ADR 0014).
+	 *
+	 *  Sparse by nature and `Partial` for the same reason as `template`: an
+	 *  exercise with no override runs the variant's built-in target. */
+	overrides: Partial<Record<OverrideKey, Override>>;
 	phases: Phase[];
 	/** Auto-progress working loads each week at study-backed, level-scaled rates. */
 	autoProgress: boolean;

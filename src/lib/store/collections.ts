@@ -167,19 +167,19 @@ export interface SwapRow {
 }
 
 /** Per-slot day type, overriding the weekday template for that slot alone. */
-export interface DayPlanRow {
+export interface SlotDayTypeRow {
 	slot: SlotKey;
 	dayType: DayTypeId;
 }
 
 /** Per-slot exercise list, overriding the day type's defaults for that slot. */
-export interface DayExercisesRow {
+export interface SlotExercisesRow {
 	slot: SlotKey;
 	exercises: ExerciseId[];
 }
 
 /** Per-task variant choice — the strongest swap. */
-export interface DaySwapRow {
+export interface TaskSwapRow {
 	task: TaskKey;
 	variant: number;
 }
@@ -239,9 +239,9 @@ export interface RecordStore {
 	readonly rehab: ReturnType<typeof rehabCollection>;
 	readonly prefs: ReturnType<typeof prefsCollection>;
 	readonly swaps: ReturnType<typeof swapsCollection>;
-	readonly dayPlan: ReturnType<typeof dayPlanCollection>;
-	readonly dayExercises: ReturnType<typeof dayExercisesCollection>;
-	readonly daySwaps: ReturnType<typeof daySwapsCollection>;
+	readonly slotDayType: ReturnType<typeof slotDayTypeCollection>;
+	readonly slotExercises: ReturnType<typeof slotExercisesCollection>;
+	readonly taskSwaps: ReturnType<typeof taskSwapsCollection>;
 	readonly taskDone: ReturnType<typeof taskDoneCollection>;
 	readonly sessions: ReturnType<typeof sessionsCollection>;
 	readonly readinessLog: ReturnType<typeof readinessLogCollection>;
@@ -354,25 +354,25 @@ const swapsCollection = (o: CollectionOptions) =>
 		}),
 	);
 
-const dayPlanCollection = (o: CollectionOptions) =>
+const slotDayTypeCollection = (o: CollectionOptions) =>
 	createCollection(
-		localStorageCollectionOptions<DayPlanRow, string>({
+		localStorageCollectionOptions<SlotDayTypeRow, string>({
 			...o,
 			getKey: (row) => row.slot,
 		}),
 	);
 
-const dayExercisesCollection = (o: CollectionOptions) =>
+const slotExercisesCollection = (o: CollectionOptions) =>
 	createCollection(
-		localStorageCollectionOptions<DayExercisesRow, string>({
+		localStorageCollectionOptions<SlotExercisesRow, string>({
 			...o,
 			getKey: (row) => row.slot,
 		}),
 	);
 
-const daySwapsCollection = (o: CollectionOptions) =>
+const taskSwapsCollection = (o: CollectionOptions) =>
 	createCollection(
-		localStorageCollectionOptions<DaySwapRow, string>({
+		localStorageCollectionOptions<TaskSwapRow, string>({
 			...o,
 			getKey: (row) => row.task,
 		}),
@@ -505,9 +505,9 @@ export function createRecordStore(
 		rehab: rehabCollection(options('rehab')),
 		prefs: prefsCollection(options('prefs')),
 		swaps: swapsCollection(options('swaps')),
-		dayPlan: dayPlanCollection(options('dayPlan')),
-		dayExercises: dayExercisesCollection(options('dayExercises')),
-		daySwaps: daySwapsCollection(options('daySwaps')),
+		slotDayType: slotDayTypeCollection(options('slotDayType')),
+		slotExercises: slotExercisesCollection(options('slotExercises')),
+		taskSwaps: taskSwapsCollection(options('taskSwaps')),
 		taskDone: taskDoneCollection(options('taskDone')),
 		sessions: sessionsCollection(options('sessions')),
 		readinessLog: readinessLogCollection(options('readinessLog')),

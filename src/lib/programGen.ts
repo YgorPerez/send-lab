@@ -130,15 +130,15 @@ export function generateProgram(
 	const cap = sessionCap(a.sessionMinutes);
 
 	const template: Record<string, WeekdayTemplate> = {};
-	const targets: Record<string, Override> = {};
+	const overrides: Record<string, Override> = {};
 
 	for (const d of content.days) {
 		// `d.id` is the day type, `d.k` the weekday it occupies. Both comparisons
 		// below used to read `d.k`, which is calendar position and — per its own
 		// declaration — "never identifies the protocol". `d.k === restKey` could
 		// therefore never be true, and the template was written with a weekday key
-		// where a day-type id belongs: the legacy shape `migrate.ts` exists to
-		// repair, still being freshly generated. Found by #55, when naming the
+		// where a day-type id belongs — the legacy shape the SvelteKit app carried a
+		// lazy migration for, still being freshly generated. Found by #55, when naming the
 		// field `dayType` made the mismatch a type error.
 		if (d.id === restKey) continue;
 		if (!keep.has(d.k)) {
@@ -161,7 +161,7 @@ export function generateProgram(
 			const v = map ? baselines[map.metric] : null;
 			if (map && v != null) t.loadKg = Math.round(v * map.factor);
 			if (a.niggle && isFingerExercise(exId)) t.rpe = NIGGLE_RPE_CAP;
-			if (Object.keys(t).length) targets[overrideKey(asWeekdayKey(d.k), asExerciseId(exId))] = t;
+			if (Object.keys(t).length) overrides[overrideKey(asWeekdayKey(d.k), asExerciseId(exId))] = t;
 		}
 	}
 
@@ -169,5 +169,5 @@ export function generateProgram(
 	let phases = levelPhases(calibratedLevel(a));
 	if (a.niggle) phases = phases.map((p) => ({ ...p, intensity: Math.round(p.intensity * 0.9) }));
 
-	return { weeks: 8, template, targets, phases, autoProgress: true };
+	return { weeks: 8, template, overrides, phases, autoProgress: true };
 }

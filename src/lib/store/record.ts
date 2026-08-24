@@ -47,15 +47,15 @@ import {
 	type BaselineRow,
 	type CurrentWeekRow,
 	createRecordStore,
-	type DayExercisesRow,
-	type DayPlanRow,
-	type DaySwapRow,
 	type PrefsRow,
 	type ProgramRow,
 	type RecordStore,
 	type RehabRow,
+	type SlotDayTypeRow,
+	type SlotExercisesRow,
 	type SwapRow,
 	type TaskDoneRow,
+	type TaskSwapRow,
 } from './collections';
 import { createRecordSync, type RecordSync } from './sync';
 
@@ -83,7 +83,13 @@ export interface TrainingRecord extends ResolverState {
  *  imported from `server/programOps.defaultProgram()`: that is the server's copy
  *  of this value and the two meet at `/api/state` (#57), not through the client
  *  reaching across the boundary for it. */
-const NO_PROGRAM: Program = { weeks: 8, template: {}, targets: {}, phases: [], autoProgress: true };
+const NO_PROGRAM: Program = {
+	weeks: 8,
+	template: {},
+	overrides: {},
+	phases: [],
+	autoProgress: true,
+};
 
 /** Preferences before the athlete has set any. `locale: null` means follow the
  *  device; `store/locale.ts` is the resolution order that phrase stands for, and
@@ -122,9 +128,9 @@ export function readTrainingRecord(store: RecordStore): TrainingRecord {
 		rehab: store.rehab.toArray,
 		prefs: store.prefs.toArray,
 		swaps: store.swaps.toArray,
-		dayPlan: store.dayPlan.toArray,
-		dayExercises: store.dayExercises.toArray,
-		daySwaps: store.daySwaps.toArray,
+		slotDayType: store.slotDayType.toArray,
+		slotExercises: store.slotExercises.toArray,
+		taskSwaps: store.taskSwaps.toArray,
 		taskDone: store.taskDone.toArray,
 		sessions: store.sessions.toArray,
 		readinessLog: store.readinessLog.toArray,
@@ -148,9 +154,9 @@ interface Rows {
 	rehab: readonly RehabRow[];
 	prefs: readonly PrefsRow[];
 	swaps: readonly SwapRow[];
-	dayPlan: readonly DayPlanRow[];
-	dayExercises: readonly DayExercisesRow[];
-	daySwaps: readonly DaySwapRow[];
+	slotDayType: readonly SlotDayTypeRow[];
+	slotExercises: readonly SlotExercisesRow[];
+	taskSwaps: readonly TaskSwapRow[];
 	taskDone: readonly TaskDoneRow[];
 	sessions: readonly Session[];
 	readinessLog: readonly LoggedReadinessCheck[];
@@ -171,18 +177,18 @@ function assemble(rows: Rows): TrainingRecord {
 			(r) => r.exercise,
 			(r) => r.variant,
 		),
-		dayPlan: byKey<DayPlanRow, SlotKey, DayTypeId>(
-			rows.dayPlan,
+		slotDayType: byKey<SlotDayTypeRow, SlotKey, DayTypeId>(
+			rows.slotDayType,
 			(r) => r.slot,
 			(r) => r.dayType,
 		),
-		dayExercises: byKey<DayExercisesRow, SlotKey, ExerciseId[]>(
-			rows.dayExercises,
+		slotExercises: byKey<SlotExercisesRow, SlotKey, ExerciseId[]>(
+			rows.slotExercises,
 			(r) => r.slot,
 			(r) => r.exercises,
 		),
-		daySwaps: byKey<DaySwapRow, TaskKey, number>(
-			rows.daySwaps,
+		taskSwaps: byKey<TaskSwapRow, TaskKey, number>(
+			rows.taskSwaps,
 			(r) => r.task,
 			(r) => r.variant,
 		),
@@ -384,9 +390,9 @@ export function useTrainingRecord(): TrainingRecord {
 	const rehab = useLiveQuery(() => s.rehab, [account]).data;
 	const prefs = useLiveQuery(() => s.prefs, [account]).data;
 	const swaps = useLiveQuery(() => s.swaps, [account]).data;
-	const dayPlan = useLiveQuery(() => s.dayPlan, [account]).data;
-	const dayExercises = useLiveQuery(() => s.dayExercises, [account]).data;
-	const daySwaps = useLiveQuery(() => s.daySwaps, [account]).data;
+	const slotDayType = useLiveQuery(() => s.slotDayType, [account]).data;
+	const slotExercises = useLiveQuery(() => s.slotExercises, [account]).data;
+	const taskSwaps = useLiveQuery(() => s.taskSwaps, [account]).data;
 	const taskDone = useLiveQuery(() => s.taskDone, [account]).data;
 	const sessions = useLiveQuery(() => s.sessions, [account]).data;
 	const readinessLog = useLiveQuery(() => s.readinessLog, [account]).data;
@@ -403,9 +409,9 @@ export function useTrainingRecord(): TrainingRecord {
 				rehab: rehab ?? [],
 				prefs: prefs ?? [],
 				swaps: swaps ?? [],
-				dayPlan: dayPlan ?? [],
-				dayExercises: dayExercises ?? [],
-				daySwaps: daySwaps ?? [],
+				slotDayType: slotDayType ?? [],
+				slotExercises: slotExercises ?? [],
+				taskSwaps: taskSwaps ?? [],
 				taskDone: taskDone ?? [],
 				sessions: sessions ?? [],
 				readinessLog: readinessLog ?? [],
@@ -420,9 +426,9 @@ export function useTrainingRecord(): TrainingRecord {
 			rehab,
 			prefs,
 			swaps,
-			dayPlan,
-			dayExercises,
-			daySwaps,
+			slotDayType,
+			slotExercises,
+			taskSwaps,
 			taskDone,
 			sessions,
 			readinessLog,

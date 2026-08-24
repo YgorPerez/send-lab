@@ -66,17 +66,29 @@ progress from drift.
   and `server/withAthlete.ts`'s `Athlete`, which only its own module used. All seven are gone or
   un-exported, and the rule now enforces.
 - **`unused-files` and `unused-exports` are still off.** Was 27 files and 34 exported symbols at the
-  scaffold; now **12 files and 47 exports**. The file count is the one that moved, and it moved the
-  right way — the three training screens now reach the store, the resolver and the content library.
+  scaffold; now **11 files and 45 exports** (both re-measured after #72's deletion, by flipping
+  each rule on and reading the count rather than carrying the previous one forward).
+  The file count is the one that moved, and it moved the right way — the three training screens now reach the store, the resolver and the content library.
   Exports went *up*, which is not drift: `store/` and `screens/` have a public API sized for
   [#57](https://github.com/YgorPerez/send-lab/issues/57), and fallow counts an export with no
   *cross-module* caller — `recordStore` and `resetRecordStore` do have callers
   (`useTrainingRecord`, `tests/screens.test.ts`), just not outside their own module and the tests
   fallow ignores. What each rule needs before it can go back on:
-  - **`unused-files`** — the six page tickets. Every remaining entry is one page's domain module
-    (`grades.ts`, `presets.ts`, `programGen.ts`, `rehab.ts`) or a server module whose route is unbuilt.
-    One is a decision rather than work: `migrate.ts` needs a ruling (delete or rewrite; it still writes
-    `dayKey`, which nothing has read since #55).
+  - **`unused-files`** — mostly the six page tickets. The one entry that was a decision rather than
+    work is settled: #72 deleted `migrate.ts` outright. Measured with the rule flipped on after that
+    deletion, **11 files** remain, in three kinds — and only the first kind is a page ticket:
+    - a page's domain module (`grades.ts`, `presets.ts`, `programGen.ts`, `rehab.ts`) or a server
+      module whose route is unbuilt (`programOps.ts`, `oauth.ts`, `oauthCleanup.ts`) — these go
+      when their caller lands;
+    - a **test-only fixture**: `store/seed.ts` has three importers, all under `tests/`, which this
+      config ignores — so it reads as unreachable and always will. It needs an ignore entry, not a
+      caller;
+    - a **standalone ops script**: `scripts/backfill-tokens.ts` is run by hand and is in no
+      package.json script, so no entry point will ever reach it.
+
+    So the rule does *not* come back on for free with the last page ticket: the second and third
+    kinds need a ruling of their own first. #72 measured this rather than assuming it, after the
+    issue's premise that `migrate.ts` was what blocked the rule turned out to be wrong.
   - **`unused-exports`** — #57, which is what calls the store's write side.
 
   Everything else fallow owns stays **on** — unused and unlisted dependencies, unresolved imports,

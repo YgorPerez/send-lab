@@ -120,9 +120,9 @@ describe('the training record a seeded store reads as', () => {
 		// Sparse records, all present and all empty — nothing is customized in the
 		// scenario, so what the screens show is the built-in program progressed.
 		expect(record.swaps).toEqual({});
-		expect(record.dayPlan).toEqual({});
-		expect(record.dayExercises).toEqual({});
-		expect(record.daySwaps).toEqual({});
+		expect(record.slotDayType).toEqual({});
+		expect(record.slotExercises).toEqual({});
+		expect(record.taskSwaps).toEqual({});
 	});
 
 	it('keys completion by task, never by exercise (ADR-0001)', () => {

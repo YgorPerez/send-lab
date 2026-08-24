@@ -17,6 +17,11 @@
 // `server/state/*` (#57), the label helpers to `format.ts`, and `taskKey` is
 // superseded by `ids.ts`, which brands it.
 //
+// `setDayPlan` is quoted as history and has no counterpart here: the concept it
+// wrote is `slotDayType`, renamed by #72 under ADR 0014. `resolveDay` is not
+// history — it is live below, and its `day` is the content library's `Day`,
+// which #72 left alone. ADR 0014's audit list owns that one.
+//
 // STATE IS AN ARGUMENT
 // --------------------
 // Every function on `main` read `appState` directly, which is why none of them
@@ -86,11 +91,11 @@ export interface ResolverState {
 	/** Library-wide variant choice per exercise — the weakest swap. */
 	readonly swaps: Readonly<Partial<Record<ExerciseId, number>>>;
 	/** Per-slot day type, overriding the template for that slot alone. */
-	readonly dayPlan: Readonly<Partial<Record<SlotKey, DayTypeId>>>;
+	readonly slotDayType: Readonly<Partial<Record<SlotKey, DayTypeId>>>;
 	/** Per-slot exercise list, overriding the template for that slot alone. */
-	readonly dayExercises: Readonly<Partial<Record<SlotKey, ExerciseId[]>>>;
+	readonly slotExercises: Readonly<Partial<Record<SlotKey, ExerciseId[]>>>;
 	/** Per-task variant choice — the strongest swap. */
-	readonly daySwaps: Readonly<Partial<Record<TaskKey, number>>>;
+	readonly taskSwaps: Readonly<Partial<Record<TaskKey, number>>>;
 	/** Which tasks are ticked off. ADR-0001 makes this the one record that says
 	 *  whether a slot was trained, which is why adherence and carry-forward both
 	 *  read it rather than counting sessions. */
@@ -133,7 +138,7 @@ function resolveDayType(
 	weekday: WeekdayKey,
 ): DayTypeId {
 	return (
-		state.dayPlan[slotKey(week, weekday)] ??
+		state.slotDayType[slotKey(week, weekday)] ??
 		state.program.template[weekday]?.dayType ??
 		builtInDayType(content, weekday)
 	);
@@ -165,7 +170,7 @@ export function resolveExerciseIds(
 	weekday: WeekdayKey,
 ): ExerciseId[] {
 	return (
-		state.dayExercises[slotKey(week, weekday)] ??
+		state.slotExercises[slotKey(week, weekday)] ??
 		state.program.template[weekday]?.exercises ??
 		resolveDay(content, state, week, weekday).ex.map(asExerciseId)
 	);
@@ -180,12 +185,12 @@ export function resolveExerciseIds(
  * override holds across the whole block. Week-addressing it would make overrides
  * per-week, which is a product change rather than a typing one (`ids.ts`).
  */
-export function programTarget(
+export function programOverride(
 	state: ResolverState,
 	weekday: WeekdayKey,
 	exercise: ExerciseId,
 ): Override | undefined {
-	return state.program.targets[overrideKey(weekday, exercise)];
+	return state.program.overrides[overrideKey(weekday, exercise)];
 }
 
 /**
@@ -200,7 +205,7 @@ export function programVariantIndex(
 	weekday: WeekdayKey,
 	exercise: ExerciseId,
 ): number {
-	return programTarget(state, weekday, exercise)?.variant ?? state.swaps[exercise] ?? 0;
+	return programOverride(state, weekday, exercise)?.variant ?? state.swaps[exercise] ?? 0;
 }
 
 /**
@@ -217,7 +222,7 @@ export function resolveSwapIndex(
 	weekday: WeekdayKey,
 	exercise: ExerciseId,
 ): number {
-	const perSlot = state.daySwaps[taskKey(week, weekday, exercise)];
+	const perSlot = state.taskSwaps[taskKey(week, weekday, exercise)];
 	if (perSlot != null) return perSlot;
 	return programVariantIndex(state, weekday, exercise);
 }
@@ -491,19 +496,19 @@ export function effectiveVariant(
 	weekday: WeekdayKey,
 	exercise: ExerciseId,
 ): Variant {
-	const target = programTarget(state, weekday, exercise);
+	const override = programOverride(state, weekday, exercise);
 	const phase = phaseForWeek(state, week);
-	if (!target && !phase && !state.program.autoProgress) return base;
+	if (!override && !phase && !state.program.autoProgress) return base;
 
 	const v: Variant = { ...base };
-	if (target) {
-		if (target.sets != null) v.sets = fixedRange(target.sets);
-		if (target.reps != null) v.reps = fixedRange(target.reps);
-		if (target.loadKg != null) v.loadKg = fixedRange(target.loadKg);
-		if (target.edgeMm != null) v.edgeMm = fixedRange(target.edgeMm);
-		if (target.workSec != null) v.workSec = fixedRange(target.workSec);
-		if (target.restSec != null) v.restSec = fixedRange(target.restSec);
-		if (target.rpe != null) v.rpe = fixedRange(target.rpe);
+	if (override) {
+		if (override.sets != null) v.sets = fixedRange(override.sets);
+		if (override.reps != null) v.reps = fixedRange(override.reps);
+		if (override.loadKg != null) v.loadKg = fixedRange(override.loadKg);
+		if (override.edgeMm != null) v.edgeMm = fixedRange(override.edgeMm);
+		if (override.workSec != null) v.workSec = fixedRange(override.workSec);
+		if (override.restSec != null) v.restSec = fixedRange(override.restSec);
+		if (override.rpe != null) v.rpe = fixedRange(override.rpe);
 	}
 	if (v.loadKg) v.loadKg = scaleRange(v.loadKg, loadPct(content, state, week, exercise, phase));
 	if (phase) {

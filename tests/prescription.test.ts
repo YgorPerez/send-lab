@@ -33,7 +33,7 @@ import {
 	missedYesterday,
 	phaseForWeek,
 	prefillLoadKg,
-	programTarget,
+	programOverride,
 	programVariantIndex,
 	type ResolverState,
 	resolveDay,
@@ -64,7 +64,7 @@ const ex = asExerciseId;
 
 /** A program with nothing customized. */
 function program(patch: Partial<Program> = {}): Program {
-	return { weeks: 8, template: {}, targets: {}, phases: [], autoProgress: false, ...patch };
+	return { weeks: 8, template: {}, overrides: {}, phases: [], autoProgress: false, ...patch };
 }
 
 /** State with nothing customized: the built-in week, no overrides, no history. */
@@ -73,9 +73,9 @@ function state(patch: Partial<ResolverState> = {}): ResolverState {
 		currentWeek: asWeekId(1),
 		program: program(),
 		swaps: {},
-		dayPlan: {},
-		dayExercises: {},
-		daySwaps: {},
+		slotDayType: {},
+		slotExercises: {},
+		taskSwaps: {},
 		taskDone: {},
 		sessions: [],
 		baseline: null,
@@ -128,7 +128,7 @@ describe('which day type a slot runs', () => {
 	test('a per-slot day type overrides the template, for that one slot', () => {
 		const s = state({
 			program: program({ template: { [THU]: { dayType: 'endurance' } } }),
-			dayPlan: { [slotKey(W5, THU)]: 'max-tissue' },
+			slotDayType: { [slotKey(W5, THU)]: 'max-tissue' },
 		});
 		expect(resolveDay(content, s, W5, THU).id).toBe('max-tissue');
 		// The same weekday, one week over, is untouched by the slot override.
@@ -170,7 +170,7 @@ describe('which exercises a slot runs', () => {
 	test('the per-slot list wins over the template, for that one slot', () => {
 		const s = state({
 			program: program({ template: { [THU]: { dayType: 'pull', exercises: [ex('maxhang')] } } }),
-			dayExercises: { [slotKey(W5, THU)]: [ex('pinch'), ex('antag')] },
+			slotExercises: { [slotKey(W5, THU)]: [ex('pinch'), ex('antag')] },
 		});
 		expect(resolveExerciseIds(content, s, W5, THU)).toEqual([ex('pinch'), ex('antag')]);
 		expect(resolveExerciseIds(content, s, W6, THU)).toEqual([ex('maxhang')]);
@@ -193,7 +193,7 @@ describe('which exercises a slot runs', () => {
 	// here rather than decorative.
 	test('reads its two per-slot records under their own key shapes', () => {
 		const s = state({
-			dayExercises: { [slotKey(W5, THU)]: [ex('pinch')] },
+			slotExercises: { [slotKey(W5, THU)]: [ex('pinch')] },
 			taskDone: { [taskKey(W5, THU, ex('pinch'))]: true },
 		});
 		expect(resolveExerciseIds(content, s, W5, THU)).toEqual([ex('pinch')]);
@@ -218,7 +218,7 @@ describe('which variant an exercise runs', () => {
 	test("the program's swap for a weekday beats the library-wide one", () => {
 		const s = state({
 			swaps: { [PULL]: 2 },
-			program: program({ targets: { [overrideKey(THU, PULL)]: { variant: 1 } } }),
+			program: program({ overrides: { [overrideKey(THU, PULL)]: { variant: 1 } } }),
 		});
 		expect(resolveSwapIndex(s, W5, THU, PULL)).toBe(1);
 		// An override is keyed by weekday and carries no week, so it holds across
@@ -230,8 +230,8 @@ describe('which variant an exercise runs', () => {
 	test('a per-slot swap beats both, in that slot alone', () => {
 		const s = state({
 			swaps: { [PULL]: 2 },
-			program: program({ targets: { [overrideKey(THU, PULL)]: { variant: 1 } } }),
-			daySwaps: { [taskKey(W5, THU, PULL)]: 3 },
+			program: program({ overrides: { [overrideKey(THU, PULL)]: { variant: 1 } } }),
+			taskSwaps: { [taskKey(W5, THU, PULL)]: 3 },
 		});
 		expect(resolveSwapIndex(s, W5, THU, PULL)).toBe(3);
 		expect(resolveSwapIndex(s, W6, THU, PULL)).toBe(1);
@@ -244,14 +244,14 @@ describe('which variant an exercise runs', () => {
 	test('a swap to index 0 is a choice, not an absence', () => {
 		const s = state({
 			swaps: { [PULL]: 2 },
-			program: program({ targets: { [overrideKey(THU, PULL)]: { variant: 0 } } }),
+			program: program({ overrides: { [overrideKey(THU, PULL)]: { variant: 0 } } }),
 		});
 		expect(resolveSwapIndex(s, W5, THU, PULL)).toBe(0);
 
 		const perSlot = state({
 			swaps: { [PULL]: 2 },
-			program: program({ targets: { [overrideKey(THU, PULL)]: { variant: 1 } } }),
-			daySwaps: { [taskKey(W5, THU, PULL)]: 0 },
+			program: program({ overrides: { [overrideKey(THU, PULL)]: { variant: 1 } } }),
+			taskSwaps: { [taskKey(W5, THU, PULL)]: 0 },
 		});
 		expect(resolveSwapIndex(perSlot, W5, THU, PULL)).toBe(0);
 	});
@@ -261,10 +261,10 @@ describe('which variant an exercise runs', () => {
 		// A single slot's swap is not a change to the program.
 		const s = state({
 			swaps: { [PULL]: 2 },
-			daySwaps: { [taskKey(W5, THU, PULL)]: 3 },
+			taskSwaps: { [taskKey(W5, THU, PULL)]: 3 },
 		});
 		expect(programVariantIndex(s, THU, PULL)).toBe(2);
-		expect(programTarget(s, THU, PULL)).toBeUndefined();
+		expect(programOverride(s, THU, PULL)).toBeUndefined();
 	});
 
 	test('an index past the end falls back to the default variant', () => {
@@ -404,7 +404,7 @@ describe('whether a slot was trained, and how much of a week was', () => {
 		// The library closed when #12 dropped athlete-authored exercises, so a
 		// stored id can outlive its exercise. A slot left holding only unknown ids
 		// is not a training day.
-		const s = state({ dayExercises: { [slotKey(W5, THU)]: [ex('no_such_exercise')] } });
+		const s = state({ slotExercises: { [slotKey(W5, THU)]: [ex('no_such_exercise')] } });
 		expect(isSlotTrained(content, s, W5, THU)).toBe(false);
 		expect(weekCompletion(content, s, W5)).toEqual({ trained: 0, scheduled: SCHEDULED - 1 });
 	});
@@ -540,7 +540,7 @@ describe('the prescription a slot actually runs', () => {
 
 	test('an override collapses a prescribed range to a fixed value', () => {
 		const s = state({
-			program: program({ targets: { [overrideKey(THU, PULL)]: { sets: 5, reps: 3 } } }),
+			program: program({ overrides: { [overrideKey(THU, PULL)]: { sets: 5, reps: 3 } } }),
 		});
 		const v = effectiveVariant(content, s, base(), W5, THU, PULL);
 		expect(v.sets).toEqual({ min: 5, max: 5 });
@@ -554,7 +554,7 @@ describe('the prescription a slot actually runs', () => {
 			program: program({
 				autoProgress: false,
 				phases: [{ name: 'Base', weeks: 8, intensity: 90, volume: 50, deload: false }],
-				targets: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
+				overrides: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
 			}),
 		});
 		const v = effectiveVariant(content, s, base(), W5, THU, PULL);
@@ -590,7 +590,7 @@ describe('the prescription a slot actually runs', () => {
 		const s = state({
 			program: program({
 				autoProgress: true,
-				targets: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
+				overrides: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
 			}),
 		});
 		// Nothing ticked, so weeks 1 and 2 each score adherence 1 and
@@ -607,7 +607,7 @@ describe('the prescription a slot actually runs', () => {
 		const half = state({
 			program: program({
 				autoProgress: true,
-				targets: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
+				overrides: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
 			}),
 			// Three of week 1's six scheduled slots.
 			taskDone: {
@@ -632,7 +632,7 @@ describe('the prescription a slot actually runs', () => {
 					{ name: 'Build', weeks: 2, intensity: 100, volume: 100, deload: false },
 					{ name: 'Deload', weeks: 1, intensity: 70, volume: 60, deload: true },
 				],
-				targets: { [overrideKey(THU, PULL)]: { loadKg: 60, sets: 5 } },
+				overrides: { [overrideKey(THU, PULL)]: { loadKg: 60, sets: 5 } },
 			}),
 		});
 		// Week 3 is the deload, and auto-progression must not apply to it: 60 x 0.70
@@ -646,7 +646,7 @@ describe('the prescription a slot actually runs', () => {
 		const s = state({
 			program: program({
 				autoProgress: true,
-				targets: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
+				overrides: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
 			}),
 			baseline: baseline('elite'),
 		});
@@ -663,12 +663,12 @@ describe('the prescription a slot actually runs', () => {
 	// so the synergy is on by default and turning Friday into a rest day is what
 	// removes it.
 	test('a synergy partner in the same week doubles the rate', () => {
-		const targets = { [overrideKey(THU, ABRA)]: { loadKg: 60 } };
-		const withPartner = state({ program: program({ autoProgress: true, targets }) });
+		const overrides = { [overrideKey(THU, ABRA)]: { loadKg: 60 } };
+		const withPartner = state({ program: program({ autoProgress: true, overrides }) });
 		const without = state({
 			program: program({
 				autoProgress: true,
-				targets,
+				overrides,
 				template: { [FRI]: { dayType: 'rest' } },
 			}),
 		});
@@ -711,7 +711,7 @@ describe('carrying missed work forward', () => {
 	});
 
 	test('carries onto a slot that has already been customized', () => {
-		const s = state({ dayExercises: { [slotKey(W5, THU)]: [ex('pinch')] } });
+		const s = state({ slotExercises: { [slotKey(W5, THU)]: [ex('pinch')] } });
 		expect(carryForward(content, s, W5, THU, [ex('maxhang')])).toEqual([
 			ex('pinch'),
 			ex('maxhang'),

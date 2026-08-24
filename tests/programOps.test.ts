@@ -3,8 +3,8 @@ import { test } from 'vitest';
 import { asExerciseId, asWeekdayKey, overrideKey } from '../src/lib/ids';
 import {
 	applyEditDay,
+	applySetOverride,
 	applySetPhases,
-	applySetTarget,
 	DAY_TYPE_IDS,
 	defaultProgram,
 	EXERCISE_IDS,
@@ -69,23 +69,23 @@ test('DAY_TYPE_IDS are day types, not weekdays', () => {
 	}
 });
 
-test('applySetTarget sets, clears a field, and removes empty targets', () => {
+test('applySetOverride sets, clears a field, and removes empty overrides', () => {
 	const p = defaultProgram();
 	const id = EXERCISE_IDS[0];
 	const key = overrideKey(asWeekdayKey('Mon'), asExerciseId(id));
-	applySetTarget(p, 'Mon', id, { loadKg: 30, sets: 4 });
-	assert.equal(p.targets[key]?.loadKg, 30);
-	assert.equal(p.targets[key]?.sets, 4);
+	applySetOverride(p, 'Mon', id, { loadKg: 30, sets: 4 });
+	assert.equal(p.overrides[key]?.loadKg, 30);
+	assert.equal(p.overrides[key]?.sets, 4);
 
-	applySetTarget(p, 'Mon', id, { loadKg: null }); // null clears just that field
+	applySetOverride(p, 'Mon', id, { loadKg: null }); // null clears just that field
 	// The `sets` assertion below is what proves the key survived — clearing one
 	// field must not drop the override, and both reads would be `undefined` if it
 	// had.
-	assert.equal(p.targets[key]?.loadKg, undefined);
-	assert.equal(p.targets[key]?.sets, 4);
+	assert.equal(p.overrides[key]?.loadKg, undefined);
+	assert.equal(p.overrides[key]?.sets, 4);
 
-	applySetTarget(p, 'Mon', id, { sets: null }); // clearing the last field drops the key
-	assert.equal(p.targets[key], undefined);
+	applySetOverride(p, 'Mon', id, { sets: null }); // clearing the last field drops the key
+	assert.equal(p.overrides[key], undefined);
 
-	assert.throws(() => applySetTarget(p, 'Mon', 'badid', { sets: 1 }));
+	assert.throws(() => applySetOverride(p, 'Mon', 'badid', { sets: 1 }));
 });

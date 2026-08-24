@@ -17,10 +17,19 @@ const BUILT_IN_DAY_TYPE: Record<string, string> = Object.fromEntries(
 	enUS.days.map((d) => [d.k, d.id]),
 );
 export const EXERCISE_IDS = Object.keys(exerciseParams);
-const TARGET_FIELDS = ['variant', 'sets', 'reps', 'loadKg', 'edgeMm', 'workSec', 'restSec', 'rpe'];
+const OVERRIDE_FIELDS = [
+	'variant',
+	'sets',
+	'reps',
+	'loadKg',
+	'edgeMm',
+	'workSec',
+	'restSec',
+	'rpe',
+];
 
 export function defaultProgram(): Program {
-	return { weeks: 8, template: {}, targets: {}, phases: [], autoProgress: true };
+	return { weeks: 8, template: {}, overrides: {}, phases: [], autoProgress: true };
 }
 
 function num(v: unknown, lo: number, hi: number, fallback: number): number {
@@ -87,8 +96,8 @@ export function applyEditDay(
 	program.template[key] = entry;
 }
 
-/** Set/clear a per-exercise target override for a weekday. */
-export function applySetTarget(
+/** Set/clear a per-exercise override for a weekday. */
+export function applySetOverride(
 	program: Program,
 	weekday: unknown,
 	exercise: unknown,
@@ -99,15 +108,15 @@ export function applySetTarget(
 		throw new Error(`weekday must be one of ${WEEKDAYS.join(', ')}`);
 	if (typeof exercise !== 'string' || !isKnown(exercise, extraIds))
 		throw new Error('exercise must be a known exercise id (see list_exercises)');
-	if (!isObj(patch)) throw new Error('target fields must be an object');
+	if (!isObj(patch)) throw new Error('override fields must be an object');
 	const key = overrideKey(asWeekdayKey(weekday), asExerciseId(exercise));
-	const next: Override = { ...program.targets[key] };
-	for (const f of TARGET_FIELDS) {
+	const next: Override = { ...program.overrides[key] };
+	for (const f of OVERRIDE_FIELDS) {
 		if (!(f in patch)) continue;
 		const v = patch[f];
 		if (v === null) delete next[f as keyof Override];
 		else next[f as keyof Override] = Math.round(Number(v));
 	}
-	if (Object.keys(next).length) program.targets[key] = next;
-	else delete program.targets[key];
+	if (Object.keys(next).length) program.overrides[key] = next;
+	else delete program.overrides[key];
 }

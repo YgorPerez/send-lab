@@ -61,16 +61,28 @@ this decision and was recorded here rather than discovered there.
 **A new field takes the glossary's word, at every layer, on the first write.** The
 cheapest moment to name a stored field correctly is before anything has stored it.
 
-**The audit is a grep, and it is not finished.** As of #56 the client store is
-clean; these still say a word the glossary avoids, and each is owned rather than
-merely noticed:
+**The audit is a grep, and it is not finished.** #56 recorded the client store as
+clean and it was not: #72 found four survivors there — `dayPlan`, `dayExercises`,
+`daySwaps` and `Program.targets` — each naming a key shape the code does not have.
+The lesson is that "clean" has to mean *grepped against the `_Avoid_` lists*, term
+by term, and not merely *looks right*. These still say a word the glossary avoids,
+and each is owned rather than merely noticed:
 
 - ~~`server/stateOps.ts` — the document skeleton.~~ **Done in #57**, by
   replacement rather than rename: `server/state/rows.ts` is the per-key guard that
   succeeded it, and it says `sessions` and `baseline` and has no `log`.
-- `lib/migrate.ts` — writes `workouts` and the long-dead `dayKey`. It needs a
-  ruling (delete or rewrite) before it needs a rename.
+- ~~`lib/migrate.ts` — writes `workouts` and the long-dead `dayKey`.~~ **Ruled in
+  #72**: deleted rather than rewritten. It upgraded *legacy* documents, and #11's
+  *Out of scope* ports no accounts and no history, so there was never going to be
+  anything for it to upgrade. Nothing in `src/` imported it.
 - `lib/stats.ts` — parameters and prose, no behaviour. Cosmetic and contained.
+- `resolveDay` (`lib/prescription.ts`) and `applyEditDay` (`server/programOps.ts`)
+  — both say *day* for something that is not a weekday: `resolveDay` returns a
+  **day type**, `applyEditDay` edits a **weekday template**, and *day* is on both
+  terms' `_Avoid_` lists. #72 found these while renaming its own four and
+  deliberately did **not** take them: `resolveDay`'s `day` is the content
+  library's `Day`/`days`/`dayTemplate` family, so the rename is that family's,
+  not one function's. Owned here so it is not re-discovered as new.
 - `messages/` — the key `log_workouts`. Note the *text* is already right in both
   locales ("Sessions" / "Treinos"); only the key drifted, which is what makes it
   the least urgent and the easiest to forget.

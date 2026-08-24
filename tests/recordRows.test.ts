@@ -62,8 +62,8 @@ describe('a bad row is rejected, not coerced', () => {
 		expect(check.ok === false && check.reason).toContain('done');
 	});
 
-	it('refuses a dayPlan row whose day type is not one of the seven', () => {
-		const check = sanitizeRow('dayPlan', 'w1-Thu', { slot: 'w1-Thu', dayType: 'leg-day' });
+	it('refuses a slotDayType row whose day type is not one of the seven', () => {
+		const check = sanitizeRow('slotDayType', 'w1-Thu', { slot: 'w1-Thu', dayType: 'leg-day' });
 		expect(check.ok).toBe(false);
 	});
 
