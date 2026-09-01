@@ -23,7 +23,7 @@ import type { LoadSignals } from '$lib/content/logic';
 import type {
 	BodyArea,
 	Content,
-	Day,
+	DayType,
 	PhaseId,
 	SelfCheckInstrument,
 	VerdictId,
@@ -108,7 +108,7 @@ export interface TodayScreen {
 	/** The block phase this week falls in, localized. */
 	phase: Content['phases'][PhaseId];
 	/** Today's day type — category, primary and secondary focus, load label. */
-	day: Day;
+	day: DayType;
 	tasks: Task[];
 	/** Nothing is scheduled today. A rest day is a real answer, not an empty
 	 *  screen: it never counts against adherence and it is what the athlete came

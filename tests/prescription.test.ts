@@ -12,7 +12,7 @@
 // the whole reason this file can exist without rendering anything.
 import { describe, expect, test } from 'vitest';
 import { getContent } from '../src/lib/content/index.ts';
-import { exerciseLabel } from '../src/lib/format.ts';
+import { exerciseLabel, weekdayLabel } from '../src/lib/format.ts';
 import {
 	asExerciseId,
 	asWeekdayKey,
@@ -771,8 +771,10 @@ describe('what went untrained yesterday', () => {
 
 		overwriteGetLocale(() => 'pt-BR');
 		try {
-			// Under pt-BR the Thursday label is 'Qui'; the key does not move.
-			expect(dayTemplate(getContent('pt-BR'), 'pull').label).toBe('Qui');
+			// Under pt-BR the Thursday label is 'Qui'; the key does not move. Asked of
+			// the weekday rather than of the day type: ADR 0016 split them, and a
+			// weekday label reached through a day type was the conflation itself.
+			expect(weekdayLabel(getContent('pt-BR'), asWeekdayKey('Thu'))).toBe('Qui');
 			expect(missedYesterday(getContent('pt-BR'), s, FRIDAY)?.weekday).toBe('Thu');
 		} finally {
 			overwriteGetLocale(() => 'en-US');

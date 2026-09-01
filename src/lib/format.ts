@@ -59,7 +59,7 @@ export function formatEdge(r: Range): string {
  * than an empty cell that looks intentional.
  */
 export function weekdayLabel(content: Content, weekday: WeekdayKey): string {
-	return content.days.find((d) => d.k === weekday)?.label ?? weekday;
+	return content.builtInWeek.find((d) => d.k === weekday)?.label ?? weekday;
 }
 
 const GRIP_LABEL: Record<Grip, () => string> = {

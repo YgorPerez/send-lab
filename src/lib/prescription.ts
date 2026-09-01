@@ -43,7 +43,7 @@
 // which is why `missedYesterday` hands back a `WeekdayKey` and not a label.
 import type {
 	Content,
-	Day,
+	DayType,
 	DayTypeId,
 	Exercise,
 	Range,
@@ -116,12 +116,14 @@ export interface ResolverState {
 
 /** The day type a weekday runs in the built-in week — its calendar default. */
 export function builtInDayType(content: Content, weekday: WeekdayKey): DayTypeId {
-	return content.days.find((d) => d.k === weekday)?.id ?? content.days[0].id;
+	return (
+		content.builtInWeek.find((d) => d.k === weekday)?.dayType ?? content.builtInWeek[0].dayType
+	);
 }
 
 /** A day type, by its stable id. Independent of when it is scheduled (ADR-0002). */
-export function dayTemplate(content: Content, dayType: DayTypeId): Day {
-	return content.days.find((d) => d.id === dayType) ?? content.days[0];
+export function dayTemplate(content: Content, dayType: DayTypeId): DayType {
+	return content.dayTypes.find((d) => d.id === dayType) ?? content.dayTypes[0];
 }
 
 /**
@@ -157,7 +159,7 @@ export function resolveDay(
 	state: ResolverState,
 	week: WeekId,
 	weekday: WeekdayKey,
-): Day {
+): DayType {
 	const base = dayTemplate(content, resolveDayType(content, state, week, weekday));
 	const name = state.program.template[weekday]?.name;
 	return name ? { ...base, type: name } : base;
@@ -344,9 +346,9 @@ export function weekCompletion(
 ): { trained: number; scheduled: number } {
 	let scheduled = 0;
 	let trained = 0;
-	for (const day of content.days) {
-		// `Day.k` is calendar position and plain `string` in the content layer; this
-		// is the boundary where it becomes an identity.
+	for (const day of content.builtInWeek) {
+		// `BuiltInWeekday.k` is calendar position and plain `string` in the content
+		// layer; this is the boundary where it becomes an identity.
 		const weekday = asWeekdayKey(day.k);
 		if (trainableExerciseIds(content, state, week, weekday).length === 0) continue;
 		scheduled += 1;
@@ -443,7 +445,7 @@ function programIncludesExercise(
 	week: WeekId,
 	exercise: ExerciseId,
 ): boolean {
-	return content.days.some((day) =>
+	return content.builtInWeek.some((day) =>
 		resolveExerciseIds(content, state, week, asWeekdayKey(day.k)).includes(exercise),
 	);
 }

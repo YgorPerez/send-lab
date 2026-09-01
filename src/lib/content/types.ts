@@ -175,14 +175,19 @@ export type DayTypeId = (typeof DAY_TYPE_IDS)[number];
  *  by id rather than by matching its localized load label. */
 export const REST_DAY_TYPE: DayTypeId = 'rest';
 
-export interface Day {
+/**
+ * A reusable archetype for a slot: its category, load level and default exercise
+ * list. `CONTEXT.md`'s **Day type**.
+ *
+ * It says *what*, and nothing about *when*. That separation is the whole point of
+ * the split: this record used to be called `Day` and carried `k` and `label` too,
+ * so it was a day type and a weekday at once — see ADR 0016. A day type keeps its
+ * identity wherever it is scheduled (ADR-0002), which is exactly why a weekday
+ * cannot be one of its fields.
+ */
+export interface DayType {
 	/** Stable day-type id — what this protocol *is*, independent of when it runs. */
 	id: DayTypeId;
-	/** The weekday this day type occupies in the built-in week (Mon..Sun). Calendar
-	 *  position only; it never identifies the protocol. */
-	k: string;
-	/** Localized weekday label. Display only — never stored, never matched on. */
-	label: string;
 	/** Localized day category/type (e.g. "Limit / Power", "Rest"). */
 	type: string;
 	prime: string;
@@ -191,8 +196,31 @@ export interface Day {
 	load: string;
 	/** CSS custom-property reference driving the load accent, e.g. `var(--flag)`. */
 	color: string;
-	/** Exercise ids referenced by this day, primary first. */
+	/** Exercise ids referenced by this day type, primary first. */
 	ex: string[];
+}
+
+/**
+ * One weekday of the **built-in week** — the day type a weekday runs before the
+ * athlete's program customizes anything. `CONTEXT.md`'s **Built-in week**.
+ *
+ * This says *when*, and names the *what* by id rather than holding it. Two
+ * weekdays may name the same day type, and a day type no weekday names is still a
+ * day type — neither is expressible while the two live in one record.
+ */
+export interface BuiltInWeekday {
+	/** Stable weekday key, `Mon`..`Sun`.
+	 *
+	 *  Typed `string` rather than `WeekdayKey` deliberately: that brand lives in
+	 *  `lib/ids.ts`, and ADR 0013 forbids `content/` importing upward from the app
+	 *  — it compiles, which is the whole problem. Narrowing this properly means
+	 *  moving the weekday key set down here, which is ADR 0013's own rule and a
+	 *  decision of its own rather than a side effect of this split. */
+	k: string;
+	/** Localized weekday label. Display only — never stored, never matched on. */
+	label: string;
+	/** The day type this weekday runs by default. */
+	dayType: DayTypeId;
 }
 
 interface Metric {
@@ -264,7 +292,8 @@ export interface SelfCheckInstrument {
 
 /** The localized half of the content (prose only; params come from exercises.ts). */
 export interface LocaleContent {
-	days: Day[];
+	dayTypes: DayType[];
+	builtInWeek: BuiltInWeekday[];
 	exercises: Record<string, { name: string; cat: string; variants: VariantProse[] }>;
 	metrics: Metric[];
 	quiz: QuizQuestion[];

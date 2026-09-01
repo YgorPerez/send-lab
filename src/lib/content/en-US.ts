@@ -1,11 +1,9 @@
 import type { LocaleContent } from './types';
 
 const content: LocaleContent = {
-	days: [
+	dayTypes: [
 		{
 			id: 'limit-power',
-			k: 'Mon',
-			label: 'Mon',
 			type: 'Limit / Power',
 			prime: 'Recruitment pulls → Limit bouldering',
 			sec: 'Contact strength / RFD, then hardest problems',
@@ -15,8 +13,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'pinch-wrist',
-			k: 'Tue',
-			label: 'Tue',
 			type: 'Pinch / Wrist',
 			prime: 'Pinch block + Wrist / Sloper',
 			sec: 'Abrahangs AM · antagonists',
@@ -26,8 +22,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'endurance',
-			k: 'Wed',
-			label: 'Wed',
 			type: 'Endurance',
 			prime: '7/3 Repeaters → Sport climbing',
 			sec: 'Strength-endurance, critical force, pump',
@@ -37,8 +31,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'pull',
-			k: 'Thu',
-			label: 'Thu',
 			type: 'Pull',
 			prime: 'Heavy pull day + Sloper density',
 			sec: 'Weighted pull-ups, OAP · Abrahangs AM',
@@ -48,8 +40,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'max-tissue',
-			k: 'Fri',
-			label: 'Fri',
 			type: 'Max / Tissue',
 			prime: 'Max hangs (maintenance) + Density',
 			sec: 'Tissue investment, MTJ density',
@@ -59,8 +49,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'performance',
-			k: 'Sat',
-			label: 'Sat',
 			type: 'Performance',
 			prime: 'Outdoor / Performance',
 			sec: 'Hangboard = warm-up only',
@@ -70,8 +58,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'rest',
-			k: 'Sun',
-			label: 'Sun',
 			type: 'Rest',
 			prime: 'Full rest',
 			sec: 'No finger loading · walk / mobility',
@@ -79,6 +65,15 @@ const content: LocaleContent = {
 			color: 'var(--ink-faint)',
 			ex: ['rest'],
 		},
+	],
+	builtInWeek: [
+		{ k: 'Mon', label: 'Mon', dayType: 'limit-power' },
+		{ k: 'Tue', label: 'Tue', dayType: 'pinch-wrist' },
+		{ k: 'Wed', label: 'Wed', dayType: 'endurance' },
+		{ k: 'Thu', label: 'Thu', dayType: 'pull' },
+		{ k: 'Fri', label: 'Fri', dayType: 'max-tissue' },
+		{ k: 'Sat', label: 'Sat', dayType: 'performance' },
+		{ k: 'Sun', label: 'Sun', dayType: 'rest' },
 	],
 	exercises: {
 		recruit: {

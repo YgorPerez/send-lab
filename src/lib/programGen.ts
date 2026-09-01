@@ -6,6 +6,7 @@ import { exerciseParams } from './content/exercises';
 import { type Content, type MetricId, REST_DAY_TYPE } from './content/types';
 import { asExerciseId, asWeekdayKey, overrideKey } from './ids';
 import * as m from './paraglide/messages';
+import { dayTemplate } from './prescription';
 import type {
 	Baseline,
 	Equipment,
@@ -115,7 +116,7 @@ export function trainingDays(content: Content, a: Baseline): string[] {
 	const bump = order.indexOf(FOCUS_DAY[a.focus]);
 	if (bump > 0) order.unshift(...order.splice(bump, 1));
 	const keep = new Set(order.slice(0, trainCount));
-	return content.days.filter((d) => keep.has(d.k)).map((d) => d.k);
+	return content.builtInWeek.filter((d) => keep.has(d.k)).map((d) => d.k);
 }
 
 /** Build a program tailored to the assessment + baseline tests. */
@@ -132,27 +133,31 @@ export function generateProgram(
 	const template: Record<string, WeekdayTemplate> = {};
 	const overrides: Record<string, Override> = {};
 
-	for (const d of content.days) {
-		// `d.id` is the day type, `d.k` the weekday it occupies. Both comparisons
-		// below used to read `d.k`, which is calendar position and — per its own
-		// declaration — "never identifies the protocol". `d.k === restKey` could
-		// therefore never be true, and the template was written with a weekday key
-		// where a day-type id belongs — the legacy shape the SvelteKit app carried a
-		// lazy migration for, still being freshly generated. Found by #55, when naming the
-		// field `dayType` made the mismatch a type error.
-		if (d.id === restKey) continue;
-		if (!keep.has(d.k)) {
-			template[d.k] = { dayType: restKey }; // rest out the days beyond days/week
+	for (const weekday of content.builtInWeek) {
+		// Two records, because they are two things (ADR 0016): `weekday` says *when*
+		// and which day type that weekday runs by default; `type` is that day type.
+		//
+		// They used to be one, and the bug that produced was exactly this loop.
+		// Both comparisons below were written against `d.k` — calendar position,
+		// which per its own declaration "never identifies the protocol" — so
+		// `d.k === restKey` could never be true, and the template was generated with
+		// a weekday key where a day-type id belongs. #55 found it when naming the
+		// field `dayType` made it a type error; the split is what makes it
+		// unspellable rather than merely caught.
+		if (weekday.dayType === restKey) continue;
+		if (!keep.has(weekday.k)) {
+			template[weekday.k] = { dayType: restKey }; // rest out days beyond days/week
 			continue;
 		}
+		const type = dayTemplate(content, weekday.dayType);
 		// Keep only the exercises this gear supports, trimmed to the session length.
-		const ex = d.ex.filter((id) => !REQUIRES[id] || have.has(REQUIRES[id])).slice(0, cap);
+		const ex = type.ex.filter((id) => !REQUIRES[id] || have.has(REQUIRES[id])).slice(0, cap);
 		if (ex.length === 0) {
-			template[d.k] = { dayType: restKey }; // nothing trainable here → rest it
+			template[weekday.k] = { dayType: restKey }; // nothing trainable here → rest it
 			continue;
 		}
-		if (ex.length !== d.ex.length)
-			template[d.k] = { dayType: d.id, exercises: ex.map(asExerciseId) };
+		if (ex.length !== type.ex.length)
+			template[weekday.k] = { dayType: weekday.dayType, exercises: ex.map(asExerciseId) };
 		// Per-exercise overrides: seed working load from the baseline test, and
 		// cap finger effort when there's a niggle.
 		for (const exId of ex) {
@@ -161,7 +166,8 @@ export function generateProgram(
 			const v = map ? baselines[map.metric] : null;
 			if (map && v != null) t.loadKg = Math.round(v * map.factor);
 			if (a.niggle && isFingerExercise(exId)) t.rpe = NIGGLE_RPE_CAP;
-			if (Object.keys(t).length) overrides[overrideKey(asWeekdayKey(d.k), asExerciseId(exId))] = t;
+			if (Object.keys(t).length)
+				overrides[overrideKey(asWeekdayKey(weekday.k), asExerciseId(exId))] = t;
 		}
 	}
 

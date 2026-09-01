@@ -70,6 +70,12 @@ A reusable archetype for a slot: its category, load level, and default exercise
 list. A slot runs one day type; several slots can run the same one.
 _Avoid_: day, template, protocol, split
 
+**Built-in week**:
+The training library's own mapping from each weekday to the day type it runs
+before the athlete's program customizes anything. It is content, not program: the
+athlete never edits it, and a weekday template overrides it.
+_Avoid_: default week, the week, days, day list
+
 **Weekday template**:
 One weekday's entry in the program: the day type it runs, plus any customization
 of that day type's exercises or label. It applies to every training week in the

@@ -1,11 +1,9 @@
 import type { LocaleContent } from './types';
 
 const content: LocaleContent = {
-	days: [
+	dayTypes: [
 		{
 			id: 'limit-power',
-			k: 'Mon',
-			label: 'Seg',
 			type: 'Limite / Potência',
 			prime: 'Recruitment pulls → Boulder no limite',
 			sec: 'Força de contato e RFD, depois os boulders mais duros',
@@ -15,8 +13,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'pinch-wrist',
-			k: 'Tue',
-			label: 'Ter',
 			type: 'Pinça / Punho',
 			prime: 'Pinch block + Punho / Sloper',
 			sec: 'Abrahangs de manhã · antagonistas',
@@ -26,8 +22,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'endurance',
-			k: 'Wed',
-			label: 'Qua',
 			type: 'Resistência',
 			prime: 'Repeaters 7/3 → Escalada esportiva',
 			sec: 'Resistência de força, força crítica, pump',
@@ -37,8 +31,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'pull',
-			k: 'Thu',
-			label: 'Qui',
 			type: 'Puxada',
 			prime: 'Dia de puxada pesada + Densidade em sloper',
 			sec: 'Barras com peso, OAP · Abrahangs de manhã',
@@ -48,8 +40,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'max-tissue',
-			k: 'Fri',
-			label: 'Sex',
 			type: 'Máx / Tecido',
 			prime: 'Max hangs (manutenção) + Densidade',
 			sec: 'Investir no tecido, densidade da JMT',
@@ -59,8 +49,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'performance',
-			k: 'Sat',
-			label: 'Sáb',
 			type: 'Performance',
 			prime: 'Rocha / Performance',
 			sec: 'Hangboard = só aquecimento',
@@ -70,8 +58,6 @@ const content: LocaleContent = {
 		},
 		{
 			id: 'rest',
-			k: 'Sun',
-			label: 'Dom',
 			type: 'Descanso',
 			prime: 'Descanso total',
 			sec: 'Sem carga nos dedos · caminhada / mobilidade',
@@ -79,6 +65,15 @@ const content: LocaleContent = {
 			color: 'var(--ink-faint)',
 			ex: ['rest'],
 		},
+	],
+	builtInWeek: [
+		{ k: 'Mon', label: 'Seg', dayType: 'limit-power' },
+		{ k: 'Tue', label: 'Ter', dayType: 'pinch-wrist' },
+		{ k: 'Wed', label: 'Qua', dayType: 'endurance' },
+		{ k: 'Thu', label: 'Qui', dayType: 'pull' },
+		{ k: 'Fri', label: 'Sex', dayType: 'max-tissue' },
+		{ k: 'Sat', label: 'Sáb', dayType: 'performance' },
+		{ k: 'Sun', label: 'Dom', dayType: 'rest' },
 	],
 	exercises: {
 		recruit: {

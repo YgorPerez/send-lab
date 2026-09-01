@@ -49,19 +49,19 @@ export function generateRehabProgram(content: Content, area: BodyArea, stage: Re
 
 	const template: Record<string, WeekdayTemplate> = {};
 	const overrides: Record<string, Override> = {};
-	for (const d of content.days) {
-		if (d.id === REST_DAY_TYPE) continue;
-		if (!keep.has(d.k)) {
-			template[d.k] = { dayType: REST_DAY_TYPE };
+	for (const weekday of content.builtInWeek) {
+		if (weekday.dayType === REST_DAY_TYPE) continue;
+		if (!keep.has(weekday.k)) {
+			template[weekday.k] = { dayType: REST_DAY_TYPE };
 			continue;
 		}
-		template[d.k] = {
-			dayType: d.id,
+		template[weekday.k] = {
+			dayType: weekday.dayType,
 			exercises: dayEx.map(asExerciseId),
 			name: m.rehab_label(),
 		};
 		for (const exId of dayEx)
-			overrides[overrideKey(asWeekdayKey(d.k), asExerciseId(exId))] = { rpe: s.rpe };
+			overrides[overrideKey(asWeekdayKey(weekday.k), asExerciseId(exId))] = { rpe: s.rpe };
 	}
 
 	return {

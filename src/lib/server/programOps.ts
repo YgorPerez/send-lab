@@ -11,10 +11,10 @@ import type { Override, Program, WeekdayTemplate } from '$lib/types';
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 /** Valid day-type ids — what a template's `dayType` references (ADR-0002). Read
  *  from the base locale's day list; the ids are language-neutral. */
-export const DAY_TYPE_IDS: string[] = enUS.days.map((d) => d.id);
+export const DAY_TYPE_IDS: string[] = enUS.dayTypes.map((d) => d.id);
 /** Weekday key → the day type it runs in the built-in week. */
 const BUILT_IN_DAY_TYPE: Record<string, string> = Object.fromEntries(
-	enUS.days.map((d) => [d.k, d.id]),
+	enUS.builtInWeek.map((d) => [d.k, d.dayType]),
 );
 export const EXERCISE_IDS = Object.keys(exerciseParams);
 const OVERRIDE_FIELDS = [

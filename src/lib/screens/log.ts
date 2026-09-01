@@ -15,7 +15,7 @@ import { displayDate } from '$lib/displayDate';
 import { exerciseLabel, weekdayLabel } from '$lib/format';
 import { asExerciseId, type ExerciseId, type WeekdayKey } from '$lib/ids';
 import { fieldsFor, type SetField } from '$lib/loggedSet';
-import { variantOf } from '$lib/prescription';
+import { dayTemplate, variantOf } from '$lib/prescription';
 import type { TrainingRecord } from '$lib/store/record';
 import type { LoggedSet } from '$lib/types';
 
@@ -100,7 +100,16 @@ function checkRow(
 function sessionRow(content: Content, s: TrainingRecord['sessions'][number]): LoggedSessionRow {
 	// `Session.weekday` is branded on the entity (#55), so nothing is re-minted
 	// on the way out.
-	const day = content.days.find((d) => d.k === s.weekday);
+	//
+	// What this resolves is the *built-in* week's day type for that weekday, which
+	// is an approximation rather than the day type the session actually ran — a
+	// `Session` records no day type at all, so the moment the athlete edits a
+	// weekday's day type this row goes on showing the built-in one. ADR 0016's
+	// split surfaced that (the lookup is by weekday, the field read describes a day
+	// type) and deliberately preserved the behaviour: the fix is to record the day
+	// type on the session, which changes what a session *is*.
+	const weekday = content.builtInWeek.find((d) => d.k === s.weekday);
+	const day = weekday ? dayTemplate(content, weekday.dayType) : undefined;
 	const exercises = renderableExercises(content, s);
 	return {
 		iso: s.at,
