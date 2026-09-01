@@ -96,3 +96,21 @@ there and remain open: no client data-fetching library, since one server resourc
 under one key would make its cache a third copy of the truth beside the store and
 the localStorage mirror; and no route loaders for account data, which is what keeps
 router loader caching from re-introducing back/forward reuse.
+
+**The prerendered shell is base-locale and Outlet-empty, so the first client
+render must be too.** Added after #70, which this decision caused. The shell is
+built with no `window`, so it bakes `en-US` text and an empty Outlet; the client
+resolves the real locale from `localStorage` *synchronously* and fills the Outlet
+as soon as the route module is ready. Both can beat React to the comparison, and
+then React discards the whole tree and re-renders it — on every pt-BR load, in the
+locale the athlete actually uses. It is only visible as a console error, because
+recovery leaves the page looking correct.
+
+The rule that follows is narrow: **whatever hydrates must match the shell, and the
+truth arrives one render later.** `__root.tsx` defers both to a layout effect, and
+`AppShell` passes Paraglide an explicit `{ locale }` rather than letting it fall
+back to `getLocale()`, whose runtime value moves the instant `localStorage` is
+read. Enforced by **`pnpm check:hydration`**, beside `check:contrast` and
+`check:motion` — `check:contrast` reported these for weeks and passed anyway, by
+design, which is why the observation needed a gate of its own rather than a
+sharper eye.

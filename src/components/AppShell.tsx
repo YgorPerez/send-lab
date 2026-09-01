@@ -124,7 +124,13 @@ export function AppShell({
 										)}
 									/>
 									<Icon size={18} strokeWidth={isActive ? 2.2 : 1.7} />
-									<span className="eyebrow">{label()}</span>
+									{/* Explicit `{ locale }`, not the implicit `getLocale()` the
+									    function falls back to: Paraglide's own runtime locale
+									    updates the instant `localStorage` is read, before React's
+									    hydration-deferred `locale` prop (#70) catches up, and the
+									    two disagreeing is a text hydration mismatch on every
+									    pt-BR load. */}
+									<span className="eyebrow">{label({}, { locale })}</span>
 								</>
 							)}
 						</Link>

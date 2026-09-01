@@ -1,5 +1,5 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import appCss from '../app.css?url';
 import { AppShell } from '../components/AppShell';
 import { authClient } from '../lib/auth-client';
@@ -106,14 +106,42 @@ function RootComponent() {
 	// hydrates, both on a switch — is `store/locale.ts`'s.
 	const [locale, chooseLocale] = useResolvedLocale();
 
+	// #70: the shell prerenders with no `window`, so `getLocale()` throws there,
+	// the baked text is always `en-US`, and the Outlet — the route itself never
+	// SSRs, ADR 0006's seam — is baked empty. `useResolvedLocale` resolves the
+	// *real* locale from `localStorage` synchronously, and the Outlet has real
+	// content the instant its route module is ready — both true before React
+	// ever gets to compare the first client render against that baked markup,
+	// which is enough for React to discard and rebuild the tree (hydration
+	// error #418; on `/` specifically the discard lands inside the previously
+	// -empty Outlet in a way React treats as a structural mismatch rather than
+	// a safe fill).
+	//
+	// So the first render that actually hydrates baked markup matches it on
+	// purpose: `en-US`, no Outlet. The one exception is Vitest's own
+	// `import.meta.env.MODE`: `tests/screens.test.ts` renders a route straight
+	// to a string with `renderToString` — no mount, so no effect ever fires to
+	// reveal anything — and it asserts on that string seeing each screen's full
+	// vocabulary immediately, in whatever locale it asked for. There is nothing
+	// in that call for a real hydration mismatch to happen *against*, so this
+	// is the one context that should skip the defer rather than get stuck in
+	// it. `useLayoutEffect` flips it before the browser paints in every other
+	// context, so nothing is visibly lost — it only delays which render
+	// hydration compares against.
+	const [hydrated, setHydrated] = useState(import.meta.env.MODE === 'test');
+	useIsomorphicLayoutEffect(() => setHydrated(true), []);
+	const bootLocale = hydrated ? locale : 'en-US';
+
 	return (
-		<AppShell locale={locale} onLocaleChange={chooseLocale}>
-			<div key={locale}>
-				<Outlet />
-			</div>
+		<AppShell locale={bootLocale} onLocaleChange={chooseLocale}>
+			<div key={bootLocale}>{hydrated && <Outlet />}</div>
 		</AppShell>
 	);
 }
+
+/** `useLayoutEffect` warns when it runs during the Node-side prerender crawl
+ *  (no DOM to lay out against); `useEffect` there is silent and correct. */
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 /** Shown while the client-only tree resolves. Deliberately content-free: it is
  *  part of the user-independent shell. */
