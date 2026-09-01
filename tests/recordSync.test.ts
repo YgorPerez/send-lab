@@ -6,8 +6,9 @@
 // survives one. Both are silent when they break — the app looks fine and the data
 // is wrong a day later.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { asAthleteId } from '../src/lib/ids.ts';
-import type { UnsyncedWrite } from '../src/lib/recordWire.ts';
+import { asAthleteId, asExerciseId, asWeekdayKey, asWeekId, taskKey } from '../src/lib/ids.ts';
+import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
+import type { UnsyncedWrite, WriteRejection } from '../src/lib/recordWire.ts';
 import { createRecordStore, type RecordStore } from '../src/lib/store/collections.ts';
 import { createRecordSync, type Transport } from '../src/lib/store/sync.ts';
 
@@ -31,6 +32,7 @@ function fakeTransport(
 ) {
 	const sent: UnsyncedWrite[][] = [];
 	let fail = false;
+	let rejected: WriteRejection[] = [];
 	// Every call, including the ones that threw. Counting only the successes is
 	// what let a retry loop hide.
 	let attempts = 0;
@@ -40,7 +42,9 @@ function fakeTransport(
 			attempts++;
 			if (fail) throw new Error('offline');
 			sent.push([...writes]);
-			return { applied: writes.length, stale: 0, rejected: [] };
+			const report = { applied: writes.length, stale: 0, rejected };
+			rejected = [];
+			return report;
 		},
 	};
 	return {
@@ -49,6 +53,12 @@ function fakeTransport(
 		attempts: () => attempts,
 		setFailing: (v: boolean) => {
 			fail = v;
+		},
+		/** Answer the next batch with a refusal — a 200 that names rows the server
+		 *  will not store. Not the same as `setFailing`, and the difference is the
+		 *  whole of #58's terminal state: a refusal cannot be retried into success. */
+		reject: (rows: WriteRejection[]) => {
+			rejected = rows;
 		},
 	};
 }
@@ -101,7 +111,7 @@ beforeEach(() => {
 describe('what the store sends', () => {
 	it('batches a burst of mutations into one request', async () => {
 		const fake = fakeTransport();
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		store.taskDone.insert({ task: 'a', done: true } as never);
@@ -116,7 +126,7 @@ describe('what the store sends', () => {
 
 	it('sends one row per key, not one per edit', async () => {
 		const fake = fakeTransport();
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		store.taskDone.insert({ task: 'a', done: true } as never);
@@ -131,7 +141,7 @@ describe('what the store sends', () => {
 
 	it('spells a delete as a write of null', async () => {
 		const fake = fakeTransport();
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		store.taskDone.insert({ task: 'a', done: true } as never);
@@ -147,7 +157,7 @@ describe('a write the network refused', () => {
 	it('stays queued, and is counted as unsynced work', async () => {
 		const fake = fakeTransport();
 		fake.setFailing(true);
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		store.taskDone.insert({ task: 'a', done: true } as never);
@@ -166,7 +176,7 @@ describe('a write the network refused', () => {
 		// second, indefinitely. A deferred write waits for something to happen.
 		const fake = fakeTransport();
 		fake.setFailing(true);
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		store.taskDone.insert({ task: 'a', done: true } as never);
@@ -180,7 +190,7 @@ describe('a write the network refused', () => {
 	it('goes out on the next flush once the network is back', async () => {
 		const fake = fakeTransport();
 		fake.setFailing(true);
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		store.taskDone.insert({ task: 'a', done: true } as never);
@@ -197,7 +207,7 @@ describe('hydrating from the server', () => {
 	/** A store wired to a sync whose `read` answers `record`. */
 	function hydrating(rows: Record<string, unknown[]>, deleted: Record<string, string[]> = {}) {
 		const fake = fakeTransport(rows, deleted);
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store: RecordStore = createRecordStore(ACCOUNT, sync.push, memory());
 		return { fake, sync, store };
 	}
@@ -251,7 +261,7 @@ describe('hydrating from the server', () => {
 		// one covering the case: it passed because the write had already flushed.
 		const fake = fakeTransport({ taskDone: [{ task: 'a', done: false }] });
 		fake.setFailing(true);
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		store.taskDone.insert({ task: 'a', done: true } as never);
@@ -281,7 +291,7 @@ describe('hydrating from the server', () => {
 	it('does not re-apply a tombstone for a row since re-created here', async () => {
 		const fake = fakeTransport({ taskDone: [] }, { taskDone: ['a'] });
 		fake.setFailing(true);
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		store.taskDone.insert({ task: 'a', done: true } as never);
@@ -308,7 +318,7 @@ describe('hydrating from the server', () => {
 		// What `chooseLocale` waits on before it will invent a preferences row.
 		const fake = fakeTransport();
 		fake.setFailing(true);
-		const sync = createRecordSync(fake.transport);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
 
 		let settledYet = false;
@@ -352,5 +362,186 @@ describe('a store with nowhere to push', () => {
 		store.taskDone.insert({ task: 'a', done: true } as never);
 		await settle();
 		expect(store.taskDone.toArray).toHaveLength(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// #24's named assertions, at the level a jsdom suite can reach them. The fifth —
+// "survives a real reload" — needs a service worker and a real navigation and is
+// the browser tier's; what stands in for it here is a second sync built over the
+// same storage, which is the same question asked of this module rather than of
+// the browser.
+
+describe('a write made with the network down', () => {
+	it('survives the tab and reaches the server on the next start', async () => {
+		const cells = memory();
+		const first = fakeTransport();
+		first.setFailing(true);
+
+		const sync = createRecordSync(ACCOUNT, first.transport, cells);
+		const store = createRecordStore(ACCOUNT, sync.push, memory());
+		store.taskDone.insert({ task: 'w1-Thu:pull', done: true } as never);
+		await settle();
+
+		// Offline: the write was attempted and did not land.
+		expect(first.attempts()).toBe(1);
+		expect(first.sent).toEqual([]);
+		expect(sync.unsynced()).toBe(1);
+
+		// The reload. A new sync over the same storage — the old one's memory is
+		// gone, which is exactly what used to lose the write.
+		const second = fakeTransport();
+		const revived = createRecordSync(ACCOUNT, second.transport, cells);
+		await settle();
+
+		expect(second.sent).toHaveLength(1);
+		expect(second.sent[0][0].collection).toBe('taskDone');
+		expect(second.sent[0][0].key).toBe('w1-Thu:pull');
+		expect(revived.unsynced()).toBe(0);
+	});
+
+	it('is not resent by a reload once it has landed', async () => {
+		const cells = memory();
+		const first = fakeTransport();
+		const sync = createRecordSync(ACCOUNT, first.transport, cells);
+		const store = createRecordStore(ACCOUNT, sync.push, memory());
+		store.taskDone.insert({ task: 'w1-Thu:pull', done: true } as never);
+		await settle();
+		expect(first.sent).toHaveLength(1);
+
+		const second = fakeTransport();
+		createRecordSync(ACCOUNT, second.transport, cells);
+		await settle();
+
+		// A durable record of unsent work is only half the job: one that never
+		// cleared would replay the athlete's whole history on every launch.
+		expect(second.sent).toEqual([]);
+	});
+});
+
+describe('a write the server refuses', () => {
+	it('does not stall the writes behind it, and stays counted', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const cells = memory();
+		const fake = fakeTransport();
+		const sync = createRecordSync(ACCOUNT, fake.transport, cells);
+
+		sync.push([
+			{ collection: 'sessions', key: 'bad', row: { at: 'x' }, at: T1 },
+			{ collection: 'taskDone', key: 'good', row: { task: 'good', done: true }, at: T1 },
+		]);
+		fake.reject([{ collection: 'sessions', key: 'bad', reason: 'unknown collection' }]);
+		await settle();
+
+		// The refusal is terminal, so it leaves the replay — otherwise FIFO would
+		// retry it forever with `good` stuck behind it, and a refusal arrives as a
+		// 200, so nothing would ever say so.
+		sync.push([{ collection: 'prefs', key: 'only', row: { weight: 'kg' }, at: T1 + 1 }]);
+		await settle();
+		expect(fake.sent.at(-1)?.map((w) => w.key)).toEqual(['only']);
+
+		// But it is still unsynced work — in its final state, per `CONTEXT.md` —
+		// and a second start still knows it, so the athlete can still be told.
+		expect(sync.refused().map((r) => r.reason)).toEqual(['unknown collection']);
+		expect(createRecordSync(ACCOUNT, fakeTransport().transport, cells).refused()).toHaveLength(1);
+		error.mockRestore();
+	});
+});
+
+describe('signing out', () => {
+	it('leaves the unsynced work where it is', async () => {
+		const cells = memory();
+		const fake = fakeTransport();
+		fake.setFailing(true);
+		const sync = createRecordSync(ACCOUNT, fake.transport, cells);
+		sync.push([{ collection: 'taskDone', key: 'w1-Thu:pull', row: { done: true }, at: T1 }]);
+		await settle();
+		expect(sync.unsynced()).toBe(1);
+
+		// #24: expiry never clears the store or the unsynced work — only an
+		// explicit online sign-out, and only after it drains. A session going
+		// stale on a phone in a basement is not the athlete asking to forget
+		// anything, and clearing on it would delete training that exists nowhere
+		// else. Nothing in this module is reachable from session expiry at all,
+		// which is how that is guaranteed rather than remembered: the work is keyed
+		// by account and outlives every sync built over it.
+		const afterExpiry = createRecordSync(ACCOUNT, fakeTransport().transport, cells);
+		expect(afterExpiry.unsynced()).toBe(1);
+	});
+
+	it('does not let a second athlete replay the first one\u2019s writes', async () => {
+		const cells = memory();
+		const mine = fakeTransport();
+		mine.setFailing(true);
+		const sync = createRecordSync(ACCOUNT, mine.transport, cells);
+		sync.push([{ collection: 'sessions', key: 'mine', row: { at: 'x' }, at: T1 }]);
+		await settle();
+
+		// One device, one `localStorage`, the other athlete signs in.
+		const theirs = fakeTransport();
+		const other = createRecordSync(asAthleteId('athlete-2'), theirs.transport, cells);
+		await settle();
+
+		expect(other.unsynced()).toBe(0);
+		expect(theirs.sent).toEqual([]);
+	});
+});
+
+const MINE = '2026-08-20T10:00:00.000Z';
+const THEIRS = '2026-08-21T10:00:00.000Z';
+
+describe('two devices that diverged, in pt-BR', () => {
+	// The recurring trap, and why this whole block runs in pt-BR: the English
+	// weekday labels are byte-identical to the stable keys (`Mon`, `Thu`), so a
+	// key accidentally built from a *label* passes every en-US assertion. Under
+	// pt-BR the label is `Qui` and the key is still `Thu`, and only then does the
+	// bug show. ADR 0003; `CONTEXT.md` opens with it.
+	beforeEach(() => {
+		overwriteGetLocale(() => 'pt-BR');
+		return () => overwriteGetLocale(() => 'en-US');
+	});
+
+	it('keeps both entries when each device appended its own', async () => {
+		// The server knows only about the *other* device's session; this device's
+		// is still unsynced, which is what makes the two genuinely divergent
+		// rather than one being a subset of the other.
+		const fake = fakeTransport({ sessions: [{ at: THEIRS, exercises: [] }] });
+		fake.setFailing(true);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
+		const store = createRecordStore(ACCOUNT, sync.push, memory());
+
+		store.sessions.insert({ at: MINE, exercises: [] } as never);
+		await settle();
+		expect(sync.unsynced()).toBe(1);
+
+		await sync.hydrate(store);
+
+		// The property the whole merge rule rests on. Collections are keyed by
+		// entry id, so two devices appending produce two keys and there is nothing
+		// to resolve — the genuine conflicts all reduce to a single key. Asserted
+		// rather than believed: losing a session is silent, and this rule is what
+		// the offline design was bought with.
+		expect(
+			rowsOf(store.sessions)
+				.map((r) => (r as { at: string }).at)
+				.sort(),
+		).toEqual([MINE, THEIRS].sort());
+	});
+
+	it('builds a task key from ids, not from the localized weekday', async () => {
+		const fake = fakeTransport();
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
+		const store = createRecordStore(ACCOUNT, sync.push, memory());
+
+		const key = taskKey(asWeekId(1), asWeekdayKey('Thu'), asExerciseId('pull'));
+		store.taskDone.insert({ task: key, done: true } as never);
+		await settle();
+
+		// Under pt-BR the athlete sees `Qui`. What crosses the wire, and what the
+		// other device will match on, must still be `Thu` — a key that moved with
+		// the locale would file the same tick under two rows and lose one of them
+		// on every language switch.
+		expect(fake.sent[0][0].key).toBe('w1-Thu:pull');
+		expect(fake.sent[0][0].key).not.toContain('Qui');
 	});
 });

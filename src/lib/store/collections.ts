@@ -454,12 +454,17 @@ const savedProgramsCollection = (o: CollectionOptions) =>
  * construction and then works anyway, which is the shape of failure that gets
  * ignored rather than fixed.
  *
+ * Exported because #58's unsynced work has to make the *same* decision: a device
+ * whose storage is unusable must not persist the collections in memory while
+ * believing the record of what has not been sent is durable, or the two disagree
+ * about what survives a reload.
+ *
  * Storage that cannot be read is no storage: the collections run in memory and
  * the account lives for as long as the tab does. That is a real degradation and
  * it is #57's to surface — `CONTEXT.md` already has the word for it (**unsynced
  * work**) — but it is not a crash, and it is not silence either.
  */
-function storageOverride(): StorageApi | undefined {
+export function storageOverride(): StorageApi | undefined {
 	const candidate: unknown = typeof window === 'undefined' ? null : window.localStorage;
 	// No `window` at all: the library's own memory fallback already handles it.
 	if (!candidate) return undefined;

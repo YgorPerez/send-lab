@@ -307,7 +307,7 @@ export function recordStore(): RecordStore {
 	if (existing) return existing;
 
 	// The signed-out store does not sync: there is no account to sync it to.
-	const sync = account === null ? null : createRecordSync();
+	const sync = account === null ? null : createRecordSync(account);
 	const store = createRecordStore(account, sync?.push);
 	stores.set(cacheKey, store);
 	syncs.set(cacheKey, sync);

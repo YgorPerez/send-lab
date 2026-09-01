@@ -22,20 +22,24 @@
 // deletion either; it is far more often a write that has not synced. What the
 // server can say is that a row was deleted, and it says so with a tombstone.
 //
-// WHAT THIS LEAVES UNSOLVED, AND WHO OWNS IT
-// ------------------------------------------
-// The pending map is **in memory**. A write made offline survives in
-// `localStorage` as part of the collection, but the *fact that it has not reached
-// the server* does not survive a reload — so a reload while offline loses the
-// intent to sync, and the row sits locally until something else touches it.
+// WHERE THE UNSENT WRITES LIVE
+// ----------------------------
+// Not here, and not in memory. `store/unsynced.ts` holds them, persisted under
+// `sendlab:<account>:unsynced`, which is what #58 added: this module used to keep
+// them in a `Map`, so a reload while offline lost *the fact that a row had not
+// been sent* even though the row itself survived inside its collection. The write
+// then sat on the device until something else happened to touch the same row.
 //
-// That is deliberate and it is #58's: ADR 0008 says `@tanstack/offline-transactions`
-// is what makes a write durable, and installing the queue here was ruled out of
-// scope. `unsynced()` below is what the UI can show in the meantime —
-// `CONTEXT.md` calls it **unsynced work** — and it is honest about the gap rather
-// than hiding it.
+// That module also owns the terminal state. A row the server *refuses* — a 200
+// whose report names it — leaves the replay rather than being retried forever
+// with every later write stuck behind it, and stays counted, because
+// `CONTEXT.md` is explicit that work which can never be sent is unsynced work in
+// its final state rather than a separate thing.
+//
+import type { StorageApi } from '@tanstack/db';
 import type { StoredRecord, UnsyncedWrite, WriteReport } from '$lib/recordWire';
-import { HYDRATED, type RecordStore } from './collections';
+import { HYDRATED, type RecordStore, storageOverride } from './collections';
+import { createUnsyncedWork, type RefusedWrite } from './unsynced';
 
 /** How long a burst of mutations is allowed to accumulate before it is sent.
  *  Ticking four tasks in a row is one request rather than four; a quarter second
@@ -68,32 +72,24 @@ export const httpTransport: Transport = {
 	},
 };
 
-/**
- * One row's identity in the pending map: its collection and its key.
- *
- * Joined on a NUL, which is not decoration. A row key here can be free text —
- * `savedPrograms` is keyed by the athlete's own name for a program — so a
- * printable separator can appear inside either half, and `"a:b" + ":" + "c"` and
- * `"a" + ":" + "b:c"` would be one entry for two different rows. NUL cannot occur
- * in a collection name or in any key the app mints.
- */
-function pendingKey(collection: string, key: string): string {
-	return `${collection}\0${key}`;
-}
-
 export interface RecordSync {
 	/** Hand rows to the server. Returns immediately; never throws. */
 	push(writes: readonly UnsyncedWrite[]): void;
 	/** Fetch the account's record and write it into `store`. */
 	hydrate(store: RecordStore): Promise<void>;
-	/** Send whatever is pending now, rather than waiting for the debounce. */
+	/** Send the unsynced work now, rather than waiting for the debounce. */
 	flush(): Promise<void>;
 	/** Resolves once a hydrate has been *attempted* — succeeded or failed. What a
 	 *  caller needs before it can tell "the account holds no such row" from "the
 	 *  account has not answered yet". */
 	settled(): Promise<void>;
-	/** Rows written locally that the server has not acknowledged. */
+	/** Rows written locally that the server has not acknowledged, including the
+	 *  ones it never will. `CONTEXT.md`'s **unsynced work**. */
 	unsynced(): number;
+	/** The work in its final state: writes the server refused, which will not be
+	 *  retried. Surfaced so a screen can say so — the whole hazard of a refusal is
+	 *  that it arrives as a 200 and is otherwise invisible. */
+	refused(): RefusedWrite[];
 }
 
 /**
@@ -103,12 +99,16 @@ export interface RecordSync {
  * because a sync that could be pointed at a different account mid-life is a way
  * to write one athlete's rows into another's record.
  */
-export function createRecordSync(transport: Transport = httpTransport): RecordSync {
-	/** The unsynced writes, one per row, so a second edit of the same row replaces
-	 *  the first rather than waiting behind it. That is the same last-write-wins
-	 *  rule the server applies, done early: sending both would be a round trip
-	 *  whose result is discarded by the next one. */
-	const pending = new Map<string, UnsyncedWrite>();
+export function createRecordSync(
+	account: string,
+	transport: Transport = httpTransport,
+	storage: StorageApi | undefined = storageOverride(),
+): RecordSync {
+	/** The unsynced writes, durable and one per row, so a second edit of a row
+	 *  replaces the first rather than waiting behind it. That is the same
+	 *  last-write-wins rule the server applies, done early: sending both would be a
+	 *  round trip whose result is discarded by the next one. */
+	const work = createUnsyncedWork(account, storage);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let inFlight: Promise<void> | null = null;
 
@@ -123,7 +123,7 @@ export function createRecordSync(transport: Transport = httpTransport): RecordSy
 	});
 
 	function schedule() {
-		if (timer !== null || pending.size === 0) return;
+		if (timer !== null || work.sendable().length === 0) return;
 		timer = setTimeout(() => {
 			timer = null;
 			void flush();
@@ -135,29 +135,20 @@ export function createRecordSync(transport: Transport = httpTransport): RecordSy
 		// whichever order the network chose, and the merge rule would then be
 		// deciding between two writes that are not actually in dispute.
 		if (inFlight) return inFlight;
-		if (pending.size === 0) return;
+		const batch = work.sendable();
+		if (batch.length === 0) return;
 
 		let delivered = false;
-		const batch = [...pending.values()];
 		inFlight = (async () => {
 			try {
 				const report = await transport.write(batch);
 				delivered = true;
-				// Only drop the rows that were actually sent: an edit made while the
-				// request was in flight is newer and must survive to the next flush.
-				for (const write of batch) {
-					const key = pendingKey(write.collection, write.key);
-					if (pending.get(key) === write) pending.delete(key);
-				}
-				for (const bad of report.rejected) {
-					console.error(
-						`/api/state refused ${bad.collection}/${bad.key}: ${bad.reason}. ` +
-							'The client and the server disagree about this row — one of them has a bug.',
-					);
-					pending.delete(pendingKey(bad.collection, bad.key));
-				}
+				// One call, because dropping what was delivered and marking what was
+				// refused are the same accounting step over the same batch — and
+				// splitting them is how a row ends up in neither state.
+				work.settle(batch, report.rejected);
 			} catch (error) {
-				// Offline, or the server is down. The rows stay pending and the next
+				// Offline, or the server is down. The rows stay unsynced and the next
 				// mutation — or `online` — retries them. Not thrown: nothing above
 				// this is in a position to do anything about it, and the mutation it
 				// belongs to committed locally a long time ago.
@@ -170,7 +161,7 @@ export function createRecordSync(transport: Transport = httpTransport): RecordSy
 		await inFlight;
 		// Re-arm only after a request that actually landed, and only for an edit
 		// that arrived while it was in flight. Re-arming after a *failure* is a
-		// retry loop: the pending map is never empty after one, so an offline
+		// retry loop: the unsynced work is never empty after one, so an offline
 		// device would send four requests a second for as long as it stayed
 		// offline. A deferred write waits for the next mutation, or for `online`.
 		if (delivered) schedule();
@@ -179,9 +170,7 @@ export function createRecordSync(transport: Transport = httpTransport): RecordSy
 	async function hydrate(store: RecordStore): Promise<void> {
 		hydrated = store;
 		try {
-			applyRecord(store, await transport.read(), (collection, key) =>
-				pending.has(pendingKey(collection, key)),
-			);
+			applyRecord(store, await transport.read(), work.holds);
 		} finally {
 			markSettled();
 		}
@@ -197,15 +186,24 @@ export function createRecordSync(transport: Transport = httpTransport): RecordSy
 		});
 	}
 
+	// Work found in storage at construction is work a previous tab recorded and
+	// never sent — the reload case #58 exists for. Nothing else would ever send
+	// it: `push` is what arms the debounce, and after a reload the athlete may
+	// simply read a screen and put the phone down. Scheduled rather than flushed
+	// outright so it merges with whatever the first interaction writes, and so a
+	// cold start does not race the hydrate for the same connection.
+	schedule();
+
 	return {
 		push(writes) {
-			for (const write of writes) pending.set(pendingKey(write.collection, write.key), write);
+			work.add(writes);
 			schedule();
 		},
 		hydrate,
 		flush,
 		settled: () => settled,
-		unsynced: () => pending.size,
+		unsynced: () => work.size(),
+		refused: () => work.refused(),
 	};
 }
 
@@ -215,10 +213,11 @@ export function createRecordSync(transport: Transport = httpTransport): RecordSy
  * Three rules, and each one is a way the athlete's training could otherwise be
  * lost:
  *
- *   * **A row still pending is left alone.** It is a change this device made and
- *     has not sent, so it is newer than anything the server can be holding for
- *     that key. Overwriting it would mean: tick a task offline, reconnect, and
- *     watch the tick revert.
+ *   * **A row still waiting to be sent is left alone.** It is a change this device
+ *     made and has not sent, so it is newer than anything the server can be
+ *     holding for that key. Overwriting it would mean: tick a task offline,
+ *     reconnect, and watch the tick revert. A row the server has *refused* is
+ *     deliberately not held — see `unsynced.ts`.
  *   * **A row merely absent is left alone.** Absence is not deletion — it is far
  *     more often a write that has not synced yet. Deleting on absence would mean
  *     logging a session on a plane, landing, and watching it disappear.
@@ -229,7 +228,7 @@ export function createRecordSync(transport: Transport = httpTransport): RecordSy
 function applyRecord(
 	store: RecordStore,
 	record: StoredRecord,
-	isPending: (collection: string, key: string) => boolean,
+	isHeld: (collection: string, key: string) => boolean,
 ): void {
 	for (const [name, rows] of Object.entries(record.rows ?? {})) {
 		const collection = sinkFor(store, name);
@@ -238,7 +237,7 @@ function applyRecord(
 		for (const row of rows) {
 			try {
 				const key = collection.getKeyFromItem(row);
-				if (isPending(name, String(key))) continue;
+				if (isHeld(name, String(key))) continue;
 				// Tagged `HYDRATED` so the collection's own write handler skips it: this
 				// row came *from* the server, and sending it back would re-stamp its
 				// version with a newer clock and beat a real edit made elsewhere.
@@ -266,7 +265,7 @@ function applyRecord(
 		for (const key of keys) {
 			// A delete this device has since undone — the row re-created and not yet
 			// sent — must not be re-applied. Same rule as above.
-			if (isPending(name, key)) continue;
+			if (isHeld(name, key)) continue;
 			// Four collections key on a number and the wire carries strings, so the
 			// string spelling has to be tried both ways round.
 			const actual = collection.has(key) ? key : Number(key);
