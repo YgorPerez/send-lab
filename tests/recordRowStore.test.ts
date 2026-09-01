@@ -17,7 +17,7 @@ const OTHER = asAthleteId('athlete-2');
 const T1 = 1_755_000_000_000;
 const T2 = T1 + 60_000;
 
-/** The `state_row` table alone. No `user` table: the FK is not what is under
+/** The `record_row` table alone. No `user` table: the FK is not what is under
  *  test, and creating it without one keeps the fixture to the thing it exercises
  *  — the same choice `oauthCleanup.test.ts` makes. */
 async function freshDb() {

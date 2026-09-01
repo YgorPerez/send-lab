@@ -217,9 +217,12 @@ const rehab = z.object({
 
 /** One collection's contract: what a row of it looks like, and what its key is.
  *
- *  `keyOf` is the server's copy of the collection's `getKey`. The two are kept in
- *  step by `tests/stateRows.test.ts`, which asserts the registry names exactly
- *  the fifteen collections `createRecordStore()` builds. */
+ *  `keyOf` is the server's copy of the collection's `getKey`, and
+ *  `tests/recordRows.test.ts` holds them together two ways: the registry names
+ *  exactly the fifteen collections `createRecordStore()` builds, and each one's
+ *  two derivations are run over the same row and required to agree. The second
+ *  assertion arrived late: for two tickets only the *names* were checked, so a
+ *  `getKey` could move without its twin and nothing failed. */
 interface CollectionSpec<Row> {
 	readonly row: z.ZodType<Row>;
 	readonly keyOf: (row: Row) => string;

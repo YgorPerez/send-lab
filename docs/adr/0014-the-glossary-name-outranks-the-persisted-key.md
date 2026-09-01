@@ -52,7 +52,7 @@ The server side was not free. `server/stateOps.ts`'s `defaultState()` and
 `sanitizeState()` said `workouts` and `assessment`, and **#57 renamed them** when
 it mounted the write path. In the event the module was replaced rather than
 edited: ADR 0015 made the unit of storage a row, so the whole-document skeleton
-and its coercing sanitizer had nothing left to describe, and `server/state/rows.ts`
+and its coercing sanitizer had nothing left to describe, and `server/record/rows.ts`
 carries the glossary's names from the first line. That work existed because of
 this decision and was recorded here rather than discovered there.
 
@@ -69,7 +69,7 @@ by term, and not merely *looks right*. These still say a word the glossary avoid
 and each is owned rather than merely noticed:
 
 - ~~`server/stateOps.ts` — the document skeleton.~~ **Done in #57**, by
-  replacement rather than rename: `server/state/rows.ts` is the per-key guard that
+  replacement rather than rename: `server/record/rows.ts` is the per-key guard that
   succeeded it, and it says `sessions` and `baseline` and has no `log`.
 - ~~`lib/migrate.ts` — writes `workouts` and the long-dead `dayKey`.~~ **Ruled in
   #72**: deleted rather than rewritten. It upgraded *legacy* documents, and #11's

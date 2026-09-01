@@ -19,8 +19,8 @@
 // ----------------------------------
 // `server/stateOps.ts`'s `defaultState()` was the inventory of what survived the
 // keep/drop audit, and every field of it is a collection below. (That module is
-// gone as of #57 — ADR 0015 — and `server/state/rows.ts` is the same inventory
-// stated per key. `tests/stateRows.test.ts` holds the two lists against each
+// gone as of #57 — ADR 0015 — and `server/record/rows.ts` is the same inventory
+// stated per key. `tests/recordRows.test.ts` holds the two lists against each
 // other.) Two departures, both deliberate:
 //
 //   * **`log` is not here.** #12 dropped it — two of its three kinds died with
@@ -31,7 +31,7 @@
 //     are on the glossary's _Avoid_ list for the thing they hold, and these keys
 //     are new storage rather than a migration of the SvelteKit document — there
 //     is nothing to carry across (#11, *Out of scope*). The server says the same
-//     two words: `server/state/rows.ts` is the per-key guard #57 built in place of
+//     two words: `server/record/rows.ts` is the per-key guard #57 built in place of
 //     `sanitizeState`. ADR 0014 is the general rule this instance produced.
 //
 // SINGLETONS ARE STILL COLLECTIONS

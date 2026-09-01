@@ -138,3 +138,18 @@ reports as deleted is deleted.
 test.** The server re-derives a row's key and refuses a write where the two
 disagree — without it a client bug can file one row under two keys, and
 last-write-wins per row key cannot merge two rows that never collide.
+
+This sentence was ahead of the test for two tickets, which is worth recording
+because the gap was invisible in exactly the way the decision warns about. What
+#57 actually wrote asserts that the registry *names* the fifteen collections
+`createRecordStore()` builds — a real check, and not this one. Moving a
+collection's `getKey` without moving its `keyOf` stayed green, and the failure it
+produces is silent by design: `sanitizeRow` refuses the write, the endpoint
+answers **200** with the row in `rejected`, `store/sync.ts` logs it and drops it,
+and every screen goes on reading the row from the local collection. The athlete
+loses training and nothing anywhere says so. The assertion the sentence describes
+was added afterwards — one real row per collection, both derivations run over it,
+required to agree — and checked against a deliberately moved `getKey` to be sure
+it fails. **A guarantee written
+in an ADR is not a guarantee; the grep for who enforces it is part of accepting
+the decision.**

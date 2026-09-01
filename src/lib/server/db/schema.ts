@@ -118,7 +118,7 @@ export const appStateTable = sqliteTable('app_state', {
  * `timestamp` mode for the same reason — it is a version, compared numerically,
  * and `app_state.updatedAt` above is the different thing (server write time).
  *
- * A **`null` `data` is a tombstone**, not a row holding null. Deleting outright
+ * A **`null` `row` is a tombstone**, not a row holding null. Deleting outright
  * would let a stale update resurrect a deleted row, because there would be
  * nothing left to compare its timestamp against; keeping the key with its
  * deletion time makes delete and update the same rule. Nothing prunes tombstones

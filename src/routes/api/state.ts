@@ -7,12 +7,16 @@
 //
 // TWO METHODS, AND WHY NOT THREE
 // ------------------------------
-// `GET` hydrates: every collection, tombstones excluded. `PUT` applies a batch of
-// per-key writes, where a `data` of `null` is a delete. A delete does not get its
-// own method because under last-write-wins it is not its own operation — it is a
-// write whose content is "gone", ordered against the others by the same clock. A
-// separate `DELETE` would be a second path to the same table with its own chance
-// to disagree about ordering.
+// `GET` hydrates: every collection, and the keys the account has deleted along
+// with them. The tombstones are reported rather than filtered out — a row merely
+// absent from the response is far more often a write that has not synced yet, so
+// absence has to mean "keep what you have", and the tombstone is then the only
+// thing that can carry a deletion to a second device (ADR 0015). `PUT` applies a
+// batch of per-key writes, where a `row` of `null` is a delete. A delete does not
+// get its own method because under last-write-wins it is not its own operation —
+// it is a write whose content is "gone", ordered against the others by the same
+// clock. A separate `DELETE` would be a second path to the same table with its
+// own chance to disagree about ordering.
 //
 // THE BODY IS NOT THE TRUTH
 // -------------------------
