@@ -25,10 +25,10 @@
 // user-independent, and a locale-prefixed route yields either two shells or a
 // redirect on every cold start.
 import { useLiveQuery } from '@tanstack/react-db';
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { getLocale, setLocale } from '$lib/paraglide/runtime';
-import { SINGLETON_KEY } from './collections';
-import { NO_PREFS, recordStore, recordSync, useActiveAccount } from './record';
+import { writePrefs } from './prefs';
+import { recordStore, useActiveAccount } from './record';
 
 /** The languages the app ships.
  *
@@ -43,6 +43,47 @@ function isAppLocale(value: unknown): value is AppLocale {
 	return APP_LOCALES.includes(value as AppLocale);
 }
 
+// ------------------------------------------------------------ the live value
+//
+// The active locale is a module-level value with subscribers, not React state.
+// `useResolvedLocale` sits at the top of the tree, and the settings screen
+// switches the locale from three routes down with no prop path between them; a
+// value held in one component's `useState` can only be changed through that
+// component. This is the same shape `record.ts` uses for the active account.
+
+/** The locale this tab has been switched to, or `null` before any switch. */
+let chosen: AppLocale | null = null;
+const listeners = new Set<() => void>();
+
+/** What the device says, read lazily and guarded: the shell prerenders, and
+ *  `getLocale()` reaches for `localStorage` first under the configured strategy. */
+function deviceLocale(): AppLocale {
+	try {
+		const boot: unknown = getLocale();
+		return isAppLocale(boot) ? boot : 'en-US';
+	} catch {
+		return 'en-US';
+	}
+}
+
+/** The locale the app is in right now. */
+export function currentLocale(): AppLocale {
+	return chosen ?? deviceLocale();
+}
+
+/** Be told when the locale changes. Returns the unsubscribe. */
+export function subscribeLocale(notify: () => void): () => void {
+	listeners.add(notify);
+	return () => void listeners.delete(notify);
+}
+
+/** Switch Paraglide and this tab, telling nobody's account about it. */
+function applyLocale(locale: AppLocale): void {
+	setLocale(locale, { reload: false });
+	chosen = locale;
+	for (const notify of listeners) notify();
+}
+
 /**
  * Record a locale choice in both places.
  *
@@ -55,33 +96,12 @@ function isAppLocale(value: unknown): value is AppLocale {
  * re-keys the whole subtree, which Paraglide's `m.*()` calls require since they
  * read the locale at call time.
  *
- * **The device half is immediate; the account half waits for the hydrate.** With
- * no prefs row yet there is nothing to update, and inserting one means inventing
- * the athlete's *other* preferences — units, notifications — and stamping the
- * invention with the current clock. Before the account has answered there is
- * always no row, so a switch in that window would push fabricated defaults that
- * then beat the athlete's real `lb`/`in` under last-write-wins. Waiting costs the
- * athlete nothing they can see; guessing costs them their settings.
+ * The device half is immediate; the account half is `writePrefs`, which waits
+ * for the hydrate for the reason given there.
  */
 export function chooseLocale(locale: AppLocale): void {
-	setLocale(locale, { reload: false });
-	void writeLocaleToAccount(locale);
-}
-
-async function writeLocaleToAccount(locale: AppLocale): Promise<void> {
-	const sync = recordSync();
-	// Signed out there is nothing to wait for and nothing to race: the row is
-	// local-only, and inventing the rest of it costs nobody anything.
-	if (sync) await sync.settled();
-
-	const prefs = recordStore().prefs;
-	if (prefs.has(SINGLETON_KEY)) {
-		prefs.update(SINGLETON_KEY, (draft) => {
-			draft.locale = locale;
-		});
-	} else {
-		prefs.insert({ id: SINGLETON_KEY, ...NO_PREFS, locale });
-	}
+	applyLocale(locale);
+	void writePrefs({ locale });
 }
 
 /** The locale the account has stored, or `null` for "follow the device". */
@@ -97,22 +117,17 @@ function useAccountLocale(): AppLocale | null {
 /**
  * The active locale, and the one way to change it.
  *
- * Held as state at the top of the app tree rather than read at each use: the
- * whole subtree is re-keyed on it, because `m.*()` reads the locale when it is
- * called and a component that does not re-render keeps rendering the old
- * language.
+ * Held at the top of the app tree rather than read at each use: the whole
+ * subtree is re-keyed on it, because `m.*()` reads the locale when it is called
+ * and a component that does not re-render keeps rendering the old language.
+ *
+ * One reader for both snapshots. In the prerender there is no `window`, so
+ * `currentLocale()` falls back to `en-US` on its own, and `__root.tsx` is what
+ * keeps the first client render matching that baked answer (#70) — this hook
+ * does not have to pretend a second time.
  */
 export function useResolvedLocale(): [AppLocale, (next: AppLocale) => void] {
-	const [locale, setLocalState] = useState<AppLocale>(() => {
-		// Read lazily and guarded: the shell prerenders, and `getLocale()` reaches
-		// for `localStorage` first under the configured strategy.
-		try {
-			const boot: unknown = getLocale();
-			return isAppLocale(boot) ? boot : 'en-US';
-		} catch {
-			return 'en-US';
-		}
-	});
+	const locale = useSyncExternalStore(subscribeLocale, currentLocale, currentLocale);
 
 	const fromAccount = useAccountLocale();
 	useEffect(() => {
@@ -120,15 +135,8 @@ export function useResolvedLocale(): [AppLocale, (next: AppLocale) => void] {
 		// Not written back — this *is* the account's value, and `chooseLocale` is
 		// for a choice the athlete made.
 		if (!fromAccount || fromAccount === locale) return;
-		setLocale(fromAccount, { reload: false });
-		setLocalState(fromAccount);
+		applyLocale(fromAccount);
 	}, [fromAccount, locale]);
 
-	return [
-		locale,
-		(next) => {
-			chooseLocale(next);
-			setLocalState(next);
-		},
-	];
+	return [locale, chooseLocale];
 }

@@ -129,8 +129,25 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(login).toContain(locale === 'en-US' ? 'Today' : 'Hoje');
 		});
 
+		// Settings (#62). Only the half that works offline is asserted here: the
+		// account and API-token panels gate on `authClient.useSession()`, which
+		// cannot resolve in a string render (see `/login` above). The preferences
+		// read the store, so they render signed out — which is also the point of
+		// the page's own split: prefs work offline, account actions do not.
+		test('renders the preferences out of the store', async () => {
+			const settings = await render('/settings');
+			expect(settings).toContain(locale === 'en-US' ? 'Units &amp; display' : 'Unidades e exibi');
+			expect(settings).toContain(locale === 'en-US' ? 'Language' : 'Idioma');
+			expect(settings).toContain(locale === 'en-US' ? 'Notifications' : 'Notifica');
+			// The units are identifiers shown as-is in both locales, and the switch
+			// is a real switch rather than a styled button.
+			expect(settings).toContain('>kg<');
+			expect(settings).toContain('>mm<');
+			expect(settings).toContain('role="switch"');
+		});
+
 		test('puts the chrome on every screen', async () => {
-			for (const path of ['/', '/train', '/log', '/login']) {
+			for (const path of ['/', '/train', '/log', '/login', '/settings']) {
 				const html = await render(path);
 				// The three tabs, and the view-transition names the `app.css` rules
 				// pair with. A renamed name silently re-animates the chrome, which is
@@ -171,7 +188,7 @@ describe('the vocabulary holds across the screens', () => {
 	// on one page is how that unravels. `/login` is excluded: its body does not
 	// render without a session (see above).
 	test('every screen sets exactly one screen title, in the top rank', async () => {
-		for (const path of ['/', '/train', '/log']) {
+		for (const path of ['/', '/train', '/log', '/settings']) {
 			const html = await render(path);
 			expect(html.match(/h-screen-title/g) ?? [], path).toHaveLength(1);
 		}

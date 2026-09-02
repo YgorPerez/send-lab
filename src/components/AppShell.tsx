@@ -29,7 +29,7 @@
 // without the other silently re-animates the chrome. The rail keeps `tabbar`
 // unchanged — it is the same element, so it holds still for the same reason.
 import { Link } from '@tanstack/react-router';
-import { Dumbbell, House, ScrollText } from 'lucide-react';
+import { Dumbbell, House, ScrollText, Settings } from 'lucide-react';
 import type { ReactNode } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { AppLocale } from '$lib/store/locale';
@@ -116,7 +116,23 @@ export function AppShell({
 				style={{ viewTransitionName: 'topbar' }}
 			>
 				<span className="eyebrow">Send Lab</span>
-				<LocaleSwitch locale={locale} onChange={onLocaleChange} />
+				<div className="flex items-center gap-2">
+					<LocaleSwitch locale={locale} onChange={onLocaleChange} />
+					{/* Settings is reached from the strip, not from the tabs (#62): the
+					    tabs are the three places the athlete goes on a training day, and
+					    this is the one place they go to change how the app behaves. It
+					    sits with the locale switch because the two are the same kind of
+					    thing — about the app, not about a screen. Explicit `{ locale }` on
+					    the label for the reason the tab labels give. */}
+					<Link
+						to="/settings"
+						aria-label={m.nav_settings({}, { locale })}
+						className="flex size-9 items-center justify-center rounded-md border border-line text-ink-faint transition-colors hover:text-ink"
+						activeProps={{ className: 'bg-panel-3 text-chalk' }}
+					>
+						<Settings size={16} strokeWidth={1.8} />
+					</Link>
+				</div>
 			</header>
 
 			{/* `max-w-[520px]` is the phone measure and it stays the phone measure.

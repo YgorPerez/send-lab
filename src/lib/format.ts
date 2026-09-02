@@ -8,10 +8,12 @@
 //
 // The SvelteKit app kept these in `$lib/plan` + `$lib/units`, neither of which
 // survived into the rebuild. They are re-derived rather than ported whole:
-// `units.ts` existed to convert kg↔lb and mm↔in against a stored preference, and
-// the rebuild has no preferences store yet, so everything below is canonical
-// units only. When the real settings screen lands, this is the seam that grows
-// the conversion back.
+// `units.ts` existed to convert kg↔lb and mm↔in against a stored preference.
+// The preference exists again — `prefs.weight` / `prefs.length`, set on Settings
+// (#62) — but nothing reads it yet, so everything below is canonical units only.
+// This is the seam that grows the conversion back, and it should take the
+// preference as an argument rather than read it, for the reason `getContent`
+// takes its locale.
 //
 // ADR-0003 applies: these produce *display strings*. Nothing here is ever
 // matched on, stored, or used as a key.

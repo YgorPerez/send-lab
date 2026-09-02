@@ -8,7 +8,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { locales } from '../src/lib/paraglide/runtime.js';
 import { SINGLETON_KEY } from '../src/lib/store/collections.ts';
-import { APP_LOCALES, chooseLocale } from '../src/lib/store/locale.ts';
+import {
+	APP_LOCALES,
+	chooseLocale,
+	currentLocale,
+	subscribeLocale,
+} from '../src/lib/store/locale.ts';
 import { recordStore, resetRecordStore } from '../src/lib/store/record.ts';
 
 let original: PropertyDescriptor | undefined;
@@ -79,5 +84,25 @@ describe('switching writes both', () => {
 			notify: true,
 			locale: 'pt-BR',
 		});
+	});
+});
+
+describe('a choice made anywhere reaches the root', () => {
+	// `useResolvedLocale` sits at the top of the tree and re-keys everything on
+	// the locale. The settings screen switches it from three routes down, with no
+	// prop path between them — so the choice has to be observable, not only
+	// written. Asserted at the module rather than by mounting: the hook is
+	// `useSyncExternalStore` over exactly these two functions.
+	it('notifies a subscriber and reads back as the current locale', () => {
+		const seen: string[] = [];
+		const stop = subscribeLocale(() => seen.push(currentLocale()));
+
+		chooseLocale('pt-BR');
+		expect(seen).toEqual(['pt-BR']);
+		expect(currentLocale()).toBe('pt-BR');
+
+		stop();
+		chooseLocale('en-US');
+		expect(seen).toEqual(['pt-BR']);
 	});
 });

@@ -61,6 +61,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
+| `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
+| `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
 
 ## The domain pieces — `src/components/`
 
@@ -166,6 +168,50 @@ disabled, not hidden, because a hidden button leaves the athlete looking for it.
 
 `tests/emptyStates.test.ts` renders the three screens over a store that was reset
 and not seeded, on a training weekday and on the rest weekday, in both locales.
+
+## Settings
+
+Settled by [#62](https://github.com/YgorPerez/send-lab/issues/62), the first page
+built after the three training screens, and the one where two rules got tested
+first.
+
+**The split the offline ticket decided is drawn on the page.** Preferences are
+account data already in the local store, so units, language and notifications
+save on the device and sync when they can — through `store/prefs.ts`'s
+`writePrefs`, which is the one update-or-insert the locale switch also goes
+through. Signing out and the API token need the server. Offline, the header
+carries a warn `chip`, one line says which half needs a connection, and the
+account controls drop their fill rather than failing silently. Sign-out flushes
+unsynced work first and is *held* — with the reason on screen — if anything is
+still unsent, because signing out with training on the device is how it is lost.
+`lib/online.ts` is the read half of the `online` event `store/sync.ts` already
+retries on.
+
+**The ration held by moving the primary into the dialog.** A settings page has a
+button in every section and none of them is the thing the athlete came to do, so
+every one is `quiet`. The one `primary` is the confirm inside the `AlertDialog`
+that guards token regeneration — the only action on its surface.
+
+**The locale is a live value, not a component's state.** `useResolvedLocale` sits
+at the root and Settings switches the locale from three routes down with no prop
+path between them, so `store/locale.ts` holds the current locale with
+subscribers (`currentLocale` / `subscribeLocale`) and the hook is
+`useSyncExternalStore` over them — the shape `record.ts` already uses for the
+active account. The strip's `EN` / `PT` switch and the page's full-name one are
+the same call.
+
+**Settings is reached from the top strip, not from a tab.** A gear beside the
+locale switch: the two are the same kind of thing — about the app, not about a
+screen — and the rail still carries the same three destinations and no more.
+
+Two things the page deliberately does not do. `notify` is rendered as it exists —
+one boolean, local notifications only, permission asked for at the tap and the
+switch showing the browser's answer rather than the stored intent — because
+[#75](https://github.com/YgorPerez/send-lab/issues/75) replaces the field and
+[#81](https://github.com/YgorPerez/send-lab/issues/81) builds the two switches
+that take its place; no push path is built here. And the unit preferences are
+recorded but nothing yet converts for display: `format.ts` is the seam that
+grows the conversion back, and it says so.
 
 ---
 
@@ -332,7 +378,7 @@ does not get two columns.**
 | `week`, `program` | **two columns, expected** | Unbuilt ([#63](https://github.com/YgorPerez/send-lab/issues/63), [#65](https://github.com/YgorPerez/send-lab/issues/65)). A slot grid and a phase editor are the two shapes that most obviously want a second column beside them |
 | `train` | **capped** | Defined by the posture it is used in. Seven loggable fields laid out against 360px, stretched to twice that, put the number being typed an inch from its label. Measured: the wide layout saves it 128px, which is the bottom bar |
 | `login`, `welcome` | **capped** | A form and a stepper. A stepper is one thing at a time by design |
-| `settings` | **capped, expected** | A list of controls; width adds nothing |
+| `settings` | **capped** | A list of controls; width adds nothing. Built ([#62](https://github.com/YgorPerez/send-lab/issues/62)) through `Pane` as expected |
 | `studies` | **open** | [#37](https://github.com/YgorPerez/send-lab/issues/37) owns its affordances first |
 
 **Four of nine diverge, and five reuse the phone design unchanged.** That ratio is
@@ -440,13 +486,16 @@ unit that means anything here.
 | `train` | **built** | — | finishing: device pass |
 | `log` | **built** | — | finishing: device pass |
 | `login` | moved, undesigned | — | small: first-run and error states |
-| `settings` | blank | `Switch`, `AlertDialog` (both Base UI) | ≈ 1 × `log` |
+| `settings` | **built** ([#62](https://github.com/YgorPerez/send-lab/issues/62)) | `Switch`, `AlertDialog` — both landed, both Base UI | came in at ≈ 1 × `log`, as costed |
 | `week` | blank | a slot grid | ≈ 1 × `train` |
 | `program` | blank | an override field, a phase editor | ≈ 1.5 × `train` |
 | `welcome` | blank | a stepper shell | ≈ 1.5 × `train` |
 | `studies` | **blocked** by [#37](https://github.com/YgorPerez/send-lab/issues/37) | an evidence badge, which #37 owns | ≈ 1 × `log`, after #37 |
 
 **Roughly five new screens' worth of build, plus four finishing tickets.**
+Settings was first of the five deliberately — cheap, and it yielded the two
+primitives above — so `welcome`'s stepper and `program`'s editors compose against
+sixteen primitives rather than fourteen.
 
 **The desktop layout does not change these numbers**, which is the whole point of
 how #52 answered it. Two of the five unbuilt pages get a second column (`week`,
