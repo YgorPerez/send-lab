@@ -39,7 +39,7 @@ import { OUTCOME_LABEL, WELLNESS_LABEL } from '$lib/format';
 import type { ExerciseId, TaskKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import { loadReadinessDraft, saveReadinessDraft } from '$lib/readinessDraft';
+import { useReadinessDraft } from '$lib/readinessDraft';
 import {
 	heldExercises,
 	type Question,
@@ -76,23 +76,15 @@ function Today() {
 	// A DRAFT THAT PERSISTS — the second of the three recurring patterns (#53,
 	// obligation 3).
 	//
-	// The Svelte version was a `$state` object plus an `$effect` that wrote it.
-	// The React shape is deliberately the same two halves, with the storage in a
-	// named `lib/` module and neither half doing the other's job:
+	// The Svelte version was a `$state` object plus an `$effect` that wrote it, and
+	// the first React cut was the same two halves by hand: a lazy initialiser that
+	// read once at mount, and one effect that wrote keyed on the value. #59 moved
+	// it onto `use-local-storage-state` (#18), which *is* those two halves — so the
+	// idiom is unchanged and there is simply less of it here to get wrong.
 	//
-	//   * A **lazy initialiser** reads once, at mount. Reading during render
-	//     without the lazy form re-reads `localStorage` on every keystroke; doing
-	//     it in an effect renders one frame of the wrong answers first.
-	//   * **One effect writes**, keyed on the value. Not on every setter call —
-	//     that is how a save gets forgotten at the third call site.
-	//
-	// `loadReadinessDraft` is guarded for a missing `window` because the shell
-	// prerenders. The route itself never does (ADR 0006, `ssr: false`).
-	const [answers, setAnswers] = useState<Answers>(() => {
-		const draft = loadReadinessDraft();
-		return Object.keys(draft.answers).length ? draft.answers : t.answers;
-	});
-	useEffect(() => saveReadinessDraft(answers), [answers]);
+	// The draft belongs to one day and expires with it; that rule, and the key,
+	// live in `lib/readinessDraft.ts` rather than in this component.
+	const [answers, setAnswers] = useReadinessDraft(t.answers);
 
 	const [done, setDone] = useState<Record<TaskKey, boolean>>(() =>
 		Object.fromEntries(t.tasks.map((task) => [task.key, task.done])),

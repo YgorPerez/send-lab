@@ -78,8 +78,13 @@ import type {
 	Session,
 } from '$lib/types';
 
-/** Namespaced the way `readinessDraft.ts` namespaces its own key. One key per
- *  collection: the document is split in storage, not only in memory. */
+/** One key per collection: the document is split in storage, not only in memory.
+ *
+ *  Shares the `sendlab:` namespace with the ephemeral stores but not their shape —
+ *  those are `sendlab:<name>:v<n>` (`lib/ephemeral.ts`), these are
+ *  `sendlab:<account>:<collection>`. The difference is deliberate: a collection is
+ *  account data whose shape changes are a migration, and an ephemeral draft is
+ *  throwaway whose shape changes are a version bump that discards it. */
 const PREFIX = 'sendlab:';
 
 /** The storage segment a store with no account gets.

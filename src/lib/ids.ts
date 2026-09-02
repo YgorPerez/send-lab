@@ -72,6 +72,24 @@ export type TaskKey = Identity<'TaskKey'>;
 export type SlotKey = Identity<'SlotKey'>;
 
 /**
+ * Which protocol the rest timer is running — one task, at one variant. Shaped
+ * `w1-Thu:pull@0`.
+ *
+ * A `TaskKey` is not enough: swapping the variant of the pinned task is a
+ * *different* protocol, and the clock has to reseed for it. The variant index is
+ * what carries that, so it is part of the identity rather than a second argument
+ * travelling beside it.
+ *
+ * Branded because #59 made this a **persisted** identity rather than only a React
+ * remount key: it is the scope the timer's stored setup is filed under, and it is
+ * compared with `===` on the way back out. That is exactly the job ADR 0003 says
+ * a bare string must not be trusted with — an unbranded key built one way in the
+ * component and another way in storage would restore one exercise's clock onto
+ * another's card, and nothing would fail to compile.
+ */
+export type ProtocolKey = Identity<'ProtocolKey'>;
+
+/**
  * The key of one prescription override: this exercise, on this weekday of the
  * program template. Shaped `Tue:pinch`.
  *
@@ -223,6 +241,23 @@ export interface SlotParts {
 	week: WeekId;
 	weekday: WeekdayKey;
 }
+
+/**
+ * The key of one protocol run: this task, at this variant.
+ *
+ * `@` rather than a third `:`, so it cannot be mistaken for — or parsed as — a
+ * task key with an odd exercise. The variant index is not branded: it is an
+ * offset into `Content.exercises[…].variants`, a position rather than an
+ * identity, which is the same reason `LoggedExercise.variant` is a number.
+ */
+export function protocolKey(task: TaskKey, variantIndex: number): ProtocolKey {
+	return `${task}@${variantIndex}` as ProtocolKey;
+}
+
+/** What the timer is scoped to when no task is pinned. A real value rather than
+ *  `null`, because "no protocol" is still a scope the stored setup can be filed
+ *  under and compared against — and one the athlete can configure a clock in. */
+export const NO_PROTOCOL = 'none' as ProtocolKey;
 
 /** The two identities inside a slot key, or `null` if it is not one. */
 export function parseSlotKey(value: unknown): SlotParts | null {

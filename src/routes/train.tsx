@@ -13,13 +13,21 @@
 // three ruled bands inside it, no gaps to hunt across.
 import { createFileRoute } from '@tanstack/react-router';
 import { Plus, Repeat } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getContent } from '$lib/content';
-import { asExerciseId, type TaskKey, taskKey } from '$lib/ids';
+import {
+	asExerciseId,
+	NO_PROTOCOL,
+	protocolKey as protocolKeyOf,
+	slotKey,
+	type TaskKey,
+	taskKey,
+} from '$lib/ids';
 import { fieldsFor, midOf, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { libraryTask, type PrescribedTask, resolveTrain } from '$lib/screens/train';
+import { restoredSession, useSessionDraft } from '$lib/sessionDraft';
 import { useTrainingRecord } from '$lib/store/record';
 import { TaskCard } from '../components/TaskCard';
 import { Timer, type TimerProtocol } from '../components/Timer';
@@ -53,12 +61,27 @@ function Train() {
 	// while they are logging sets would move the targets mid-session.
 	const [screen] = useState(() => resolveTrain(content, record, Date.now()));
 
-	// Their working copy of it. `sets` is cloned rather than shared: the rows are
-	// edited in place as the session goes, and the resolved item is what they
-	// started from.
-	const [tasks, setTasks] = useState<PrescribedTask[]>(() =>
-		screen.tasks.map((t) => ({ ...t, sets: t.sets.map((s) => ({ ...s })) })),
+	// THEIR WORKING COPY, WHICH NOW SURVIVES A RELOAD (#59).
+	//
+	// `sets` is cloned rather than shared: the rows are edited in place as the
+	// session goes, and the resolved item is what they started from.
+	//
+	// The same two halves as the readiness draft, one screen up in complexity. A
+	// **lazy initialiser reads once at mount** — `restoredSession` hands back the
+	// stored draft when it belongs to this slot and the freshly resolved copy
+	// otherwise — and **one effect writes**, keyed on the three values, rather
+	// than a save at each of the seven places that mutate them. `sessionDraft.ts`
+	// owns the key, the slot scoping and the shape check.
+	const [storedDraft, persistDraft] = useSessionDraft();
+	const slot = slotKey(screen.week, screen.weekday);
+	const [initial] = useState(() =>
+		restoredSession(storedDraft, slot, {
+			tasks: screen.tasks.map((t) => ({ ...t, sets: t.sets.map((s) => ({ ...s })) })),
+			note: screen.note,
+			duration: screen.durationMin == null ? '' : String(screen.durationMin),
+		}),
 	);
+	const [tasks, setTasks] = useState<PrescribedTask[]>(initial.tasks);
 
 	// WHICH TASK THE CLOCK IS RUNNING.
 	//
@@ -77,10 +100,12 @@ function Train() {
 	// picks up the new protocol.
 	const [clockOpen, setClockOpen] = useState(false);
 
-	const [note, setNote] = useState(screen.note);
-	const [duration, setDuration] = useState(
-		screen.durationMin == null ? '' : String(screen.durationMin),
-	);
+	const [note, setNote] = useState(initial.note);
+	const [duration, setDuration] = useState(initial.duration);
+
+	useEffect(() => {
+		persistDraft(slot, { tasks, note, duration });
+	}, [persistDraft, slot, tasks, note, duration]);
 
 	const update = (key: TaskKey, fn: (t: PrescribedTask) => PrescribedTask) =>
 		setTasks((prev) => prev.map((t) => (t.key === key ? fn(t) : t)));
@@ -108,9 +133,15 @@ function Train() {
 
 	const timerTask = tasks.find((t) => t.key === pinnedKey && t.timed) ?? null;
 	const protocol = timerTask ? protocolOf(timerTask) : null;
-	// The remount boundary. Changing the pinned task, or the variant of the
-	// pinned task, is a different protocol and reseeds; nothing else here does.
-	const protocolKey = timerTask ? `${timerTask.key}:${timerTask.variantIndex}` : 'none';
+	// The remount boundary, and — since #59 — the scope the timer's stored setup is
+	// filed under. Changing the pinned task, or the variant of the pinned task, is
+	// a different protocol and reseeds; nothing else here does. Minted through
+	// `ids.ts` rather than concatenated here, for the reason that applies to every
+	// key in this app: a shape spelled in the component and again in storage is a
+	// shape that can be spelled two ways.
+	const protocolKey = timerTask
+		? protocolKeyOf(timerTask.key, timerTask.variantIndex)
+		: NO_PROTOCOL;
 
 	const totalSets = tasks.reduce((n, t) => n + t.sets.length, 0);
 	const doneSets = tasks.reduce((n, t) => n + t.sets.filter((s) => s.done).length, 0);
@@ -132,6 +163,7 @@ function Train() {
 				<Timer
 					key={protocolKey}
 					protocol={protocol}
+					protocolKey={protocolKey}
 					clockOpen={clockOpen}
 					onClockOpenChange={setClockOpen}
 				/>

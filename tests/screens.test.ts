@@ -78,11 +78,11 @@ async function render(path: string): Promise<string> {
 // Note on determinism: Today reads a persisted readiness draft before it falls
 // back to this morning's logged answers, so a leftover draft would move the score
 // and the verdict this suite asserts. Nothing needs clearing here — jsdom under
-// Vitest has no usable `localStorage`, `loadReadinessDraft` catches that and
-// returns an empty draft, and the store's own check is what renders. (The same
-// jsdom quirk is why the collections run in memory here; see `usableStorage` in
-// `store/collections.ts`.) If a browser-mode suite ever runs these, it has to
-// clear storage first.
+// Vitest has no usable `localStorage`, so `use-local-storage-state` falls back to
+// its own in-memory map, that map is empty in a fresh worker, and the store's own
+// check is what renders. (The same jsdom quirk is why the collections run in
+// memory here; see `storageOverride` in `store/collections.ts`.) If a
+// browser-mode suite ever runs these, it has to clear storage first.
 
 for (const locale of ['en-US', 'pt-BR'] as const) {
 	describe(locale, () => {

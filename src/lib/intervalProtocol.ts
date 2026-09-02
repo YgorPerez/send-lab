@@ -32,17 +32,26 @@
 // the behavioural reference. The cues it fired are `lib/cues.ts`; the
 // persistence it did by hand belongs to the store (#18).
 
-export type Segment = 'idle' | 'prepare' | 'work' | 'rest' | 'setRest' | 'done';
+/** Every segment, in the order a run passes through them.
+ *
+ *  The array is the declaration and the union is derived from it, rather than the
+ *  other way round, because #59 needs the members at *runtime* — a stored run is
+ *  parsed back out of `localStorage` and its segment has to be checked against
+ *  something. Written as a second hand-kept list, a segment added here would not
+ *  fail to compile there, and the check would silently start rejecting a real
+ *  state. Same shape as `DAY_TYPE_IDS` in `content/types.ts`. */
+export const SEGMENTS = ['idle', 'prepare', 'work', 'rest', 'setRest', 'done'] as const;
+
+export type Segment = (typeof SEGMENTS)[number];
+
+/** The fields a protocol is made of. Derived-from, not duplicated-by,
+ *  `IntervalConfig` — for the same reason as `SEGMENTS`: `timerSetup.ts` checks a
+ *  parsed config field by field, and a field added to the type but not to the
+ *  check is a config that passes validation with a hole in it. */
+export const PROTOCOL_FIELDS = ['prepare', 'work', 'rest', 'rounds', 'sets', 'setRest'] as const;
 
 /** The protocol to run. Seconds throughout; counts are whole. */
-export interface IntervalConfig {
-	prepare: number;
-	work: number;
-	rest: number;
-	rounds: number;
-	sets: number;
-	setRest: number;
-}
+export type IntervalConfig = Record<(typeof PROTOCOL_FIELDS)[number], number>;
 
 /** Where the session currently is. */
 export interface Run {

@@ -27,6 +27,7 @@ import { ChevronDown, Maximize2, Pause, Play, RotateCcw, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react';
 import { cue, releaseCues } from '$lib/cues';
 import { clock } from '$lib/format';
+import type { ProtocolKey } from '$lib/ids';
 import {
 	beginning,
 	elapsedOf,
@@ -41,6 +42,7 @@ import {
 	totalOf,
 } from '$lib/intervalProtocol';
 import * as m from '$lib/paraglide/messages';
+import { restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { Eyebrow } from './ui/primitives';
 import { button, input } from './ui/variants';
@@ -318,25 +320,57 @@ function FullScreenClock({
 
 export function Timer({
 	protocol,
+	protocolKey,
 	clockOpen,
 	onClockOpenChange,
 }: {
 	protocol: TimerProtocol | null;
+	/** What the persisted setup is scoped to — the pinned task and its variant.
+	 *  The parent already computes it as this component's remount boundary, so it
+	 *  is passed rather than re-derived: two spellings of "which protocol is this"
+	 *  is how a restore lands on the wrong exercise. */
+	protocolKey: ProtocolKey;
 	/** Owned by the parent so re-seeding does not close the clock. */
 	clockOpen: boolean;
 	onClockOpenChange: (open: boolean) => void;
 }) {
-	const [config, setConfig] = useState<IntervalConfig>(() => ({
-		prepare: protocol?.prepare ?? 10,
-		work: protocol?.work ?? 10,
-		rest: protocol?.rest ?? 0,
-		rounds: protocol?.rounds ?? 1,
-		sets: protocol?.sets ?? 1,
-		setRest: protocol?.setRest ?? 0,
-	}));
-	const [run, setRun] = useState<Run>(IDLE);
-	const [running, setRunning] = useState(false);
+	// A DRAFT THAT PERSISTS, applied to a clock (#59). The setup and the athlete's
+	// place in it survive a reload — which on Android is not a rare event, since
+	// pull-to-refresh fires a real one in the installed app (#54).
+	//
+	// Read **once, in a lazy initialiser**, exactly as the readiness draft is: the
+	// stored value is a starting point, not a second source of truth. `run` and
+	// `config` are React state from here on, because `run` changes every second
+	// and a clock that read its own position back out of storage would be racing
+	// its own writes. The write is one effect, below.
+	const [storedSetup, persistSetup] = useTimerSetup();
+	const [initial] = useState(() =>
+		restored(storedSetup, protocolKey, {
+			prepare: protocol?.prepare ?? 10,
+			work: protocol?.work ?? 10,
+			rest: protocol?.rest ?? 0,
+			rounds: protocol?.rounds ?? 1,
+			sets: protocol?.sets ?? 1,
+			setRest: protocol?.setRest ?? 0,
+		}),
+	);
+	const [config, setConfig] = useState<IntervalConfig>(initial.config);
+	const [run, setRun] = useState<Run>(initial.run);
+	// Always starts paused, whatever was stored — `restored()` guarantees it, and
+	// `timerSetup.ts` documents why: nothing here knows how long the reload took.
+	const [running, setRunning] = useState<boolean>(initial.running);
 	const [setupOpen, setSetupOpen] = useState(false);
+
+	// One effect writes, keyed on the value — the same half of the idiom the
+	// readiness draft uses, and for the same reason: a save at each setter is how
+	// one gets forgotten at the third call site, and this component has four
+	// (`start`, `reset`, the tick, and the setup dialog).
+	//
+	// `running` is deliberately not in the stored shape, so pausing writes
+	// nothing and the write happens once per tick rather than twice.
+	useEffect(() => {
+		persistSetup(protocolKey, { config, run });
+	}, [persistSetup, protocolKey, config, run]);
 
 	// The tick. A pure updater over one state object, so there is no stale
 	// closure to hold in a ref — see `intervalProtocol.ts`. Re-created when the
