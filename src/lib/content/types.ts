@@ -190,8 +190,12 @@ export interface DayType {
 	id: DayTypeId;
 	/** Localized day category/type (e.g. "Limit / Power", "Rest"). */
 	type: string;
-	prime: string;
-	sec: string;
+	/** Localized headline: what this day trains, in the athlete's words
+	 *  ("Recruitment pulls → Limit bouldering"). */
+	headline: string;
+	/** The line under the headline — the supporting work and any caveat
+	 *  ("Contact strength / RFD, then hardest problems"). */
+	subhead: string;
 	/** Localized load label (e.g. HIGH / ALTO). */
 	load: string;
 	/** CSS custom-property reference driving the load accent, e.g. `var(--flag)`. */

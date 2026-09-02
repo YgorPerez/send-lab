@@ -107,7 +107,7 @@ export interface TodayScreen {
 	weekNumber: number;
 	/** The block phase this week falls in, localized. */
 	phase: Content['phases'][PhaseId];
-	/** Today's day type — category, primary and secondary focus, load label. */
+	/** Today's day type — category, headline, subhead, load label. */
 	day: DayType;
 	tasks: Task[];
 	/** Nothing is scheduled today. A rest day is a real answer, not an empty

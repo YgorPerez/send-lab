@@ -33,7 +33,7 @@ import { useTrainingRecord } from '$lib/store/record';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
-import { Column, Eyebrow, Section } from '../components/ui/primitives';
+import { Eyebrow, Pane, Section } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -154,7 +154,7 @@ function Train() {
 		// column twice that, put the number the athlete is typing an inch from its
 		// own label. So the page keeps the phone layout and caps itself, and the
 		// desktop width is spent on nothing.
-		<Column className="gap-6">
+		<Pane className="gap-6">
 			<header className="flex items-baseline justify-between gap-2 pt-1.5">
 				<h1 className="h-screen-title min-w-0">
 					{m.sec_train()} · {screen.weekdayLabel}
@@ -267,6 +267,6 @@ function Train() {
 				<Plus size={16} />
 				{m.train_finish()}
 			</button>
-		</Column>
+		</Pane>
 	);
 }

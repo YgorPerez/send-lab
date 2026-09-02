@@ -70,25 +70,33 @@ export function Bare({ children, className }: { children: ReactNode; className?:
 // WHAT A PAGE IS, ON A WIDE SCREEN (#52).
 //
 // These two are the only place a page's desktop width is decided, and a page
-// picks exactly one of them. `AppShell` hands the screen up to 1000px; whether
-// that becomes two columns or a capped single one is the page's call, and this
-// is where it says so. The decision and the list of which page picked which are
+// picks exactly one of them. `AppShell` hands the page up to 1000px; whether that
+// becomes two panes or one capped near the phone measure is the page's call, and
+// this is where it says so. The decision and the list of which page picked which are
 // in ADR 0018 and the desktop section of `docs/component-vocabulary.md` — not
 // repeated here.
 //
 // Two shapes rather than one component with an optional prop: `<Panes primary>`
-// with no second column renders no panes, and a name that is only true half the
+// with no second pane renders no panes, and a name that is only true half the
 // time is the thing this repo spends most of its effort not doing.
 // ---------------------------------------------------------------------------
 
 /**
- * One column, capped near the phone measure — the cheap majority.
+ * One pane, capped near the phone measure — the cheap majority.
  *
  * Not a stretched phone layout: these screens were laid out against 360px, and
  * the seven-column set grid on Train is the proof that widening one is a
  * regression rather than a gift.
+ *
+ * `Pane`, not `Column`, and the sentence above is why: "column" already means one
+ * of the four cells a set row wraps into — the measurement that sets the floor on
+ * how narrow an input can get, on the app's most-used screen. A page-wide
+ * `Column` beside a set-row column is one word at two scales with the small one
+ * load-bearing, which is the overload ADR-0002 and ADR-0016 exist to close. The
+ * pair is `Pane` and `Panes`, and they cannot be confused by accident: one takes
+ * children, the other takes two halves, so a mix-up is a type error.
  */
-export function Column({ children, className }: { children: ReactNode; className?: string }) {
+export function Pane({ children, className }: { children: ReactNode; className?: string }) {
 	return (
 		<div className={cn('flex flex-col gap-7 lg:mx-auto lg:max-w-[560px]', className)}>
 			{children}
@@ -97,7 +105,7 @@ export function Column({ children, className }: { children: ReactNode; className
 }
 
 /**
- * Two columns from `lg`, one below it.
+ * Two panes side by side from `lg`, stacked below it.
  *
  * **The split must be contiguous in the phone order**, and that is the whole
  * trick. `display: contents` on the wrappers makes them vanish below `lg`, so

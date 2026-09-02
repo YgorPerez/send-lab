@@ -11,7 +11,7 @@ The breakpoint is one, at Tailwind's `lg` (1024px), and the two layouts are:
 |---|---|---|
 | Navigation | three tabs on the bottom edge | the same three as a 200px left rail |
 | Measure | `max-w-[520px]`, centred | `max-w-[1000px]` beside the rail |
-| Columns | one | two, on the pages that earn it |
+| Panes | one | two, on the pages that earn it |
 
 ## Why this needed deciding
 
@@ -59,11 +59,12 @@ start stays a file read.
   reports it. `--desktop` also emulates `hover` and `pointer`, without which every
   `hover:` rule is inert and the run measures a layout nobody uses.
 - **A page's own desktop shape is a page decision, expressed through `Panes` or
-  `Column`.** The shell hands a screen up to 1000px; whether that becomes two
-  columns or a capped single one is the page's call, and those two adjacent
+  `Pane`.** The shell hands a page up to 1000px; whether that becomes two panes or
+  one capped near the phone measure is the page's call, and those two adjacent
   functions in `ui/primitives.tsx` are the only place either answer is written
   down. Two shapes rather than one with an optional prop, because `<Panes>` with
-  one column renders no panes.
+  one pane renders no panes — and `Pane` rather than `Column`, because "column"
+  already means one of the four cells a set row wraps into.
 - **A hover state never lands on an accent fill**, enforced by the same test file.
   `check:contrast` measures a page nobody is hovering, so hover is the one place it
   cannot catch a regression — and `--flag-deep` carries the ground at 3.91:1 while

@@ -66,9 +66,19 @@ what get customized, trained, and carried forward.
 _Avoid_: day, session, entry, cell
 
 **Day type**:
-A reusable archetype for a slot: its category, load level, and default exercise
-list. A slot runs one day type; several slots can run the same one.
+A reusable archetype for a slot: its category, load level, default exercise list,
+and the two lines of copy that say what the day trains — a headline and the
+subhead under it. A slot runs one day type; several slots can run the same one.
 _Avoid_: day, template, protocol, split
+
+**Headline**:
+The one line a day type leads with, naming the work it exists for —
+"Recruitment pulls → Limit bouldering", "Full rest". Library copy, so it is
+localized and the athlete never writes it, and it is the most prominent thing on
+today's plan after the day type's own name. The **subhead** is the line under it:
+the supporting work and any caveat. Neither is an identifier — a day type is
+addressed by its `DayTypeId` (ADR-0003).
+_Avoid_: focus, primary, prime, description, summary
 
 **Built-in week**:
 The training library's own mapping from each weekday to the day type it runs

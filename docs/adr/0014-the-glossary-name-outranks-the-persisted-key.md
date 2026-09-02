@@ -100,6 +100,25 @@ and each is owned rather than merely noticed:
 - `messages/` — the key `log_workouts`. Note the *text* is already right in both
   locales ("Sessions" / "Treinos"); only the key drifted, which is what makes it
   the least urgent and the easiest to forget.
+- ~~`content/types.ts` — `DayType.prime` and `DayType.sec`.~~ **Found and done in
+  the 2026-09-02 pass**, and it is the entry that says the audit method has a hole.
+  Every item above says a word some `_Avoid_` list names, so a grep finds it. These
+  two said nothing the glossary had an opinion on — because **`Day type`'s entry did
+  not mention them at all**, though they are the most prominent copy on the plan
+  card after the day's own name. A grep against the `_Avoid_` lists cannot find a
+  field the glossary does not know exists.
+
+  What made them worth taking anyway: `sec` is the three letters this codebase uses
+  everywhere else for *seconds* (`workSec`, `restSec`, `prepareSec`, `setRestSec`),
+  and `en-US.ts` carries `sec: 'Contact strength / RFD…'` and `unit: 'sec @ load'`
+  in one file. Now `headline` and `subhead`, and `CONTEXT.md` has an entry for the
+  pair so the next grep can see them. Content-only, never persisted, so nothing
+  migrated.
+
+  **The audit therefore needs a second direction**: walk the *types* and ask which
+  fields have no glossary entry, rather than only walking the glossary and grepping
+  for words it avoids. The first direction finds drift; only the second finds
+  concepts the language never named.
 
 **This does not license renaming a glossary term to match the code.** The
 direction is one-way. If a stored name looks better than the term, the argument to

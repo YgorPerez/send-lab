@@ -55,8 +55,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
 | `Meter` | `primitives.tsx` | A 0–10 reading against a track |
 | `Stat` | `primitives.tsx` | One reading in a divider-separated strip |
-| `Column` | `primitives.tsx` | A page's single column, capped near the phone measure |
-| `Panes` | `primitives.tsx` | A page's two columns from `lg`, one below it |
+| `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure |
+| `Panes` | `primitives.tsx` | A page's two panes from `lg`, stacked below it |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
@@ -77,6 +77,21 @@ Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings
 (its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
 exercise shows, and what a fresh row is prefilled with), and `prescription.ts`
 (what a slot runs, and at what numbers).
+
+### Page and screen are the same thing
+
+Worth saying once, because the type names imply otherwise and someone will
+eventually try to "fix" it into a distinction. `TodayScreen`, `TrainScreen` and
+`LogScreen` name **what a page reads**, not a second concept — `screens/today.ts`
+opens with "What Today reads", and three lines later says "the screen decides
+whether to train", meaning the page. Both words are in use throughout this file
+and in ADR 0010's tiers, and nothing in the codebase tells them apart.
+
+So: they are synonyms, the `*Screen` suffix is a convention for resolver output,
+and no rule is being broken by either word. The one genuinely different sense is
+`view-transition-name: 'screen'` on `<main>` — a CSS name for the region that
+gets replaced on a navigation, kept because #54 measured that transition on the
+device and `tests/motion.test.ts` asserts exactly three such names.
 
 ## Where a screen's data comes from
 
@@ -239,13 +254,16 @@ constraint rather than a style, and `tests/desktop.test.ts` for what enforces it
 composes through it, including the ones that stay one column:
 
 ```tsx
-<Panes primary={<>…</>} secondary={<>…</>} />  // two columns from lg, one below
-<Column>…</Column>                             // one column, capped at 560px
+<Panes primary={<>…</>} secondary={<>…</>} />  // two panes from lg, stacked below
+<Pane>…</Pane>                                 // one pane, capped at 560px
 ```
 
 Two shapes rather than one component with an optional prop: `<Panes>` with one
-column renders no panes, and a name that is only true half the time is the thing
-this repo spends most of its effort not doing. A page's own header goes *outside*
+pane renders no panes, and a name that is only true half the time is the thing
+this repo spends most of its effort not doing. **`Pane`, not `Column`**: "column"
+already means one of the four cells a set row wraps into, which is the
+measurement that floors how narrow an input can get on the app's most-used
+screen — one word at two scales, with the small one load-bearing. A page's own header goes *outside*
 `Panes`, in the page's wrapper, so it spans both columns.
 
 **The split has to be contiguous in the phone order.** `Panes` puts

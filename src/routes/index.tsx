@@ -140,9 +140,9 @@ function Today() {
 		// bigger than the space inside them, which is what makes them read as eight
 		// things rather than as one column of rows.
 		//
-		// The page's own frame, not a `Column`: this is a two-column page at `lg`, so
-		// the frame is the full width the shell hands over and the header sits
-		// outside `Panes` in order to span both columns.
+		// The page's own frame, not a `Pane`: this is a two-pane page at `lg`, so the
+		// frame is the full width the shell hands over and the header sits outside
+		// `Panes` in order to span both.
 		<div className="flex flex-col gap-7">
 			{/* ---- day header. Two lines, no card: the frame for everything below. */}
 			<header className="flex items-baseline justify-between gap-2 pt-1.5">
@@ -474,7 +474,7 @@ function PlanCard({
 					<p className="text-[11.5px] leading-snug font-medium text-chalk">{phase.name}</p>
 					<p className="mt-0.5 text-[11px] leading-snug text-ink-faint">{phase.banner}</p>
 					<p className="mt-1 text-[11px] leading-snug text-ink-faint">
-						{day.prime} · {day.sec}
+						{day.headline} · {day.subhead}
 					</p>
 				</div>
 				{/* A rest day is an answer, not an empty list. The day type prescribes no
