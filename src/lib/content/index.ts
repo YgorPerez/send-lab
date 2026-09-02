@@ -54,6 +54,7 @@ export function getContent(locale: string): Content {
 export {
 	type Answers,
 	computeReadiness,
+	hasWellnessAnswer,
 	phaseId,
 	type SelfCheckBand,
 	scoreSelfCheck,

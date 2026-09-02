@@ -71,6 +71,19 @@ const WELLNESS: { id: string; weight: number; fallback: number }[] = [
 	{ id: 'mood', weight: 0.8, fallback: 8 },
 ];
 
+/**
+ * Whether a readiness score would rest on anything the athlete actually said.
+ *
+ * `readinessScore` substitutes each wellness question's fallback when it is
+ * unanswered, so an empty check still scores — around 80 — and so does a check
+ * where only "how much time do you have" was answered. Neither is a read of the
+ * athlete, and a screen that shows the number as one is fabricating it (#61).
+ * This is the gate, kept beside the table it reads so the two cannot drift.
+ */
+export function hasWellnessAnswer(answers: Answers): boolean {
+	return WELLNESS.some((it) => answers[it.id] != null);
+}
+
 /** Overall readiness, 0–100 (higher = fresher); weighted-normalized like the
  *  deep-assessment scoring. */
 function readinessScore(answers: Answers): number {

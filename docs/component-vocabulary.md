@@ -52,6 +52,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Eyebrow` | `primitives.tsx` | The furniture rank of the type scale |
 | `Section` | `primitives.tsx` | Heading, optional right-hand meta, body |
 | `Bare` | `primitives.tsx` | A group with a rule above it and no box |
+| `Empty` | `primitives.tsx` | What a group says when it has nothing to list: a `Bare`, one line of `Prose`, and the one affordance that fills it |
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
 | `Meter` | `primitives.tsx` | A 0–10 reading against a track |
 | `Stat` | `primitives.tsx` | One reading in a divider-separated strip |
@@ -117,6 +118,54 @@ the athlete's edits on top of it. Two decisions #56 made along the way:
 - **A resolver returns inputs, not answers, where the screen decides live.** Today
   hands over `load` and `insights` rather than a verdict, because `computeReadiness`
   re-runs against whatever the check currently says.
+
+## Empty states
+
+Settled by [#61](https://github.com/YgorPerez/send-lab/issues/61), the first time
+an empty account was a real case — until the store landed, all three screens
+rendered a frozen snapshot in which nothing was ever empty. One question, answered
+once against the vocabulary rather than three times against three screens.
+
+**An empty state is copy, not furniture.** It is `Empty`: a `Bare`, one line of
+localized training copy with its `<b>` rendered, and — where one exists — the
+single affordance that fills it. Never a `card` and never an empty `RowGroup`: a
+bordered box with a sentence in it is the empty box the sentence exists to
+replace, and Log rendered two of them. The copy says what the group is waiting
+for and where that comes from, in the glossary's words — *session*, *readiness
+check*, *scheduled work* — which is exactly where "workout" and "day recommender"
+crept back in the first time; the stale keys that carried them are gone.
+
+Three rules came out of it, and the first is the one that bites:
+
+- **A screen that computes an answer from defaults must say it has no answer.**
+  `computeReadiness` scores each wellness question's *fallback* when it is
+  unanswered, so an empty check still produces a score and a verdict — and on a
+  fresh account that verdict looked exactly like one from a full check: a title,
+  a number, work held off the plan, "about your usual" under a score with no
+  usual behind it. Today gates the read, the held work, today's mark on the
+  trend and every baseline comparison on `hasWellnessAnswer` — one of the five
+  wellness questions, not *any* question, because "how much time do you have" is
+  core too and answering it alone would unlock a score made of fallbacks. The
+  load and trend flags stay, because they are read off the history. The check
+  itself stays live, so the first wellness tap turns them all on.
+- **Zero is honest; hiding it is not.** The counts stay — `0 · 0` in Log's
+  header, `0/12 sets` in Train's — and the empty copy goes where the *list*
+  would have been, under the same heading.
+- **An absence is not always an empty state.** A rest day on Today keeps its own
+  line inside the plan card, because a day type that prescribes nothing is the
+  answer the athlete opened the app for. Train says "no scheduled work" rather
+  than "rest day" because it cannot tell a rest day from a slot the athlete
+  emptied, and Today already names the day type.
+
+Train has no start button, so the ticket's "no session started" is *no scheduled
+work*: nothing in today's slot, the add-exercise picker as the way in. Its second
+empty state is the one that is easy to forget: a slot *with* tasks
+and no set ticked off. A session is trained once one set is (`CONTEXT.md`,
+**Trained**), so the primary is disabled with the line that says what it needs —
+disabled, not hidden, because a hidden button leaves the athlete looking for it.
+
+`tests/emptyStates.test.ts` renders the three screens over a store that was reset
+and not seeded, on a training weekday and on the rest weekday, in both locales.
 
 ---
 
@@ -387,9 +436,9 @@ unit that means anything here.
 
 | Page | State | New primitives it needs | Size |
 |---|---|---|---|
-| `/` Today | **built** | — | finishing: store, empty states, device pass |
-| `train` | **built** | — | finishing |
-| `log` | **built** | — | finishing |
+| `/` Today | **built** | — | finishing: device pass ([#53](https://github.com/YgorPerez/send-lab/issues/53)) |
+| `train` | **built** | — | finishing: device pass |
+| `log` | **built** | — | finishing: device pass |
 | `login` | moved, undesigned | — | small: first-run and error states |
 | `settings` | blank | `Switch`, `AlertDialog` (both Base UI) | ≈ 1 × `log` |
 | `week` | blank | a slot grid | ≈ 1 × `train` |

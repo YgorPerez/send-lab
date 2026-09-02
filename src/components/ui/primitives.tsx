@@ -34,18 +34,22 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
  * makes eight things read as eight rather than as one long column.
  */
 export function Section({
+	id,
 	label,
 	meta,
 	children,
 	className,
 }: {
+	/** An anchor, so an `Empty` elsewhere on the page can point at the section
+	 *  that fills it. */
+	id?: string;
 	label: ReactNode;
 	meta?: ReactNode;
 	children: ReactNode;
 	className?: string;
 }) {
 	return (
-		<section className={cn('flex flex-col gap-2.5', className)}>
+		<section id={id} className={cn('flex flex-col gap-2.5', className)}>
 			<header className="flex items-baseline justify-between gap-2">
 				<h2 className="h-section min-w-0">{label}</h2>
 				{meta ? <div className="eyebrow shrink-0 normal-case">{meta}</div> : null}
@@ -64,6 +68,40 @@ export function Section({
  */
 export function Bare({ children, className }: { children: ReactNode; className?: string }) {
 	return <div className={cn('border-t border-line-soft pt-3', className)}>{children}</div>;
+}
+
+/**
+ * What a group says when it has nothing to list (#61).
+ *
+ * Copy, not furniture: a `Bare`, one line of training copy with its emphasis
+ * rendered, and — where one exists — the single affordance that fills it. Never
+ * a `card` and never an empty `RowGroup`: a bordered box with a sentence in it is
+ * the empty box the sentence exists to replace, and Log rendered two of them
+ * before this existed.
+ *
+ * The copy says what the group is waiting for and where that comes from, in the
+ * glossary's words. It is a message, so it is localized; it is `Prose`, so it can
+ * carry a `<b>`. What it never does is stand in for an answer the screen could
+ * not compute — a rest day is an answer and has its own line, and a verdict from
+ * no answers is not a verdict (see Today).
+ */
+export function Empty({
+	value,
+	action,
+	className,
+}: {
+	value: string;
+	action?: ReactNode;
+	className?: string;
+}) {
+	return (
+		<Bare className={cn('flex flex-col items-start gap-2.5', className)}>
+			<p className="prose-inline text-[13px] leading-snug text-ink-dim">
+				<Prose value={value} />
+			</p>
+			{action}
+		</Bare>
+	);
 }
 
 // ---------------------------------------------------------------------------

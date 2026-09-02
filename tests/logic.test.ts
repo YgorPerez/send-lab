@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
 	computeReadiness,
+	hasWellnessAnswer,
 	phaseId,
 	scoreSelfCheck,
 	visibleQuestions,
@@ -20,6 +21,19 @@ test('readiness score normalizes weighted wellness to 0–100', () => {
 	const lowSleep = score({ sleep: 0, fatigue: 10, soreness: 10, stress: 10, mood: 10 });
 	const lowMood = score({ sleep: 10, fatigue: 10, soreness: 10, stress: 10, mood: 0 });
 	assert.ok(lowSleep < lowMood);
+});
+
+// The engine scores fallbacks for whatever is unanswered, so it always has a
+// number. Whether that number is a read of the athlete is a separate question,
+// and it is this one (#61): a check with only the time or body question answered
+// still scores entirely from fallbacks.
+test('hasWellnessAnswer: only a wellness answer makes the score a read', () => {
+	assert.equal(hasWellnessAnswer({}), false);
+	assert.equal(hasWellnessAnswer({ time: 10, body: 0, illness: 0 }), false);
+	assert.equal(hasWellnessAnswer({ sleep: 7 }), true);
+	assert.equal(hasWellnessAnswer({ time: 10, mood: 3 }), true);
+	// And the engine does score the unanswered case — which is why the gate exists.
+	assert.ok(computeReadiness({ time: 10 }).score > 0);
 });
 
 test('computeReadiness: fresh + time + nothing hurting → green', () => {

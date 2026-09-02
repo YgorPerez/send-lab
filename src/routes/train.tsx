@@ -33,7 +33,7 @@ import { useTrainingRecord } from '$lib/store/record';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
-import { Eyebrow, Pane, Section } from '../components/ui/primitives';
+import { Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -177,36 +177,45 @@ function Train() {
 				/>
 			</div>
 
-			<div className="flex flex-col gap-2.5">
-				{tasks.map((t) => (
-					<TaskCard
-						key={t.key}
-						task={t}
-						active={timerTask?.key === t.key}
-						onSelectVariant={(i) => selectVariant(t.key, i)}
-						onUseTimer={() => setPinnedKey(t.key)}
-						onChangeSet={(i, next) =>
-							update(t.key, (x) => ({
-								...x,
-								sets: x.sets.map((s, j) => (j === i ? next : s)),
-							}))
-						}
-						onAddSet={() =>
-							update(t.key, (x) => ({
-								...x,
-								// A later set carries the previous one forward: the athlete's own
-								// edits become the default for what comes next.
-								sets: [
-									...x.sets,
-									x.sets.length
-										? { ...x.sets[x.sets.length - 1], done: false }
-										: prefilledSet(x.prescription),
-								],
-							}))
-						}
-					/>
-				))}
-			</div>
+			{/* Nothing scheduled — a rest day, or a slot the program left empty. It
+			    says so where the cards would be, and the add-exercise picker below is
+			    the affordance: off-script work still counts as training (#61). Not
+			    "rest day", because this screen cannot tell a rest day from a slot the
+			    athlete emptied, and Today already names the day type. */}
+			{tasks.length === 0 ? (
+				<Empty value={m.train_no_work()} />
+			) : (
+				<div className="flex flex-col gap-2.5">
+					{tasks.map((t) => (
+						<TaskCard
+							key={t.key}
+							task={t}
+							active={timerTask?.key === t.key}
+							onSelectVariant={(i) => selectVariant(t.key, i)}
+							onUseTimer={() => setPinnedKey(t.key)}
+							onChangeSet={(i, next) =>
+								update(t.key, (x) => ({
+									...x,
+									sets: x.sets.map((s, j) => (j === i ? next : s)),
+								}))
+							}
+							onAddSet={() =>
+								update(t.key, (x) => ({
+									...x,
+									// A later set carries the previous one forward: the athlete's own
+									// edits become the default for what comes next.
+									sets: [
+										...x.sets,
+										x.sets.length
+											? { ...x.sets[x.sets.length - 1], done: false }
+											: prefilledSet(x.prescription),
+									],
+								}))
+							}
+						/>
+					))}
+				</div>
+			)}
 
 			<div className="flex flex-col gap-2">
 				<Picker
@@ -263,10 +272,26 @@ function Train() {
 				</div>
 			</Section>
 
-			<button type="button" className={button({ kind: 'primary', size: 'touch' })}>
-				<Plus size={16} />
-				{m.train_finish()}
-			</button>
+			{/* The second empty state, and the easier one to forget (#61): a slot with
+			    tasks and no set ticked off. A session is trained once one set is
+			    (`CONTEXT.md`, **Trained**), so with none there is nothing to record and
+			    the primary says what it is waiting for. Disabled rather than hidden —
+			    a hidden button leaves the athlete looking for it. */}
+			<div className="flex flex-col gap-2">
+				<button
+					type="button"
+					disabled={doneSets === 0}
+					className={button({ kind: 'primary', size: 'touch' })}
+				>
+					<Plus size={16} />
+					{m.train_finish()}
+				</button>
+				{doneSets === 0 ? (
+					<p className="text-center text-[11px] leading-snug text-ink-faint">
+						{m.train_no_set_done()}
+					</p>
+				) : null}
+			</div>
 		</Pane>
 	);
 }

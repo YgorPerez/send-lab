@@ -30,8 +30,8 @@
 // file for why length alone is not a reason to promote one.
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, ChevronRight, ExternalLink } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import { type Answers, type BodyArea, computeReadiness, getContent } from '$lib/content';
+import { useMemo, useState } from 'react';
+import { type BodyArea, computeReadiness, getContent, hasWellnessAnswer } from '$lib/content';
 import type { Content, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
@@ -52,7 +52,16 @@ import { useTrainingRecord } from '$lib/store/record';
 import { cn } from '$lib/utils';
 import { ReadinessCheck } from '../components/ReadinessCheck';
 import { RehabStarter, SelfCheckSheet } from '../components/SelfCheck';
-import { Bare, Eyebrow, Meter, Panes, Prose, Section, Stat } from '../components/ui/primitives';
+import {
+	Bare,
+	Empty,
+	Eyebrow,
+	Meter,
+	Panes,
+	Prose,
+	Section,
+	Stat,
+} from '../components/ui/primitives';
 import { Sparkline } from '../components/ui/Sparkline';
 import { button, card, chip, input } from '../components/ui/variants';
 
@@ -62,6 +71,12 @@ export const Route = createFileRoute('/')({ component: Today });
  *  panels in a row is how a calm screen turns into a warning screen. */
 const FLAG_CARD = { stop: 'stop', warn: 'warn', info: 'plain' } as const;
 const FLAG_CHIP = { stop: 'stop', warn: 'warn', info: 'neutral' } as const;
+
+/** What the verdict holds when there is no verdict: nothing. */
+const NO_HELD: ReadonlySet<ExerciseId> = new Set();
+
+/** Where the empty read sends the athlete: the check, further down the page. */
+const CHECK_ANCHOR = 'readiness-check';
 
 function Today() {
 	const now = useMemo(() => Date.now(), []);
@@ -107,15 +122,25 @@ function Today() {
 	// is the answers: change one and the score, the verdict, the watch-outs and
 	// which work is held all move.
 	const insights = t.insights;
-	const readiness = useMemo(
-		() => computeReadiness(answers, t.load, insights),
-		[answers, t.load, insights],
-	);
 
-	const verdict = content.verdicts[readiness.verdict];
-	const heldSet = useMemo(
-		() => heldExercises(t.tasks, readiness.verdict),
-		[t.tasks, readiness.verdict],
+	// NO CHECK, NO VERDICT (#61).
+	//
+	// `computeReadiness` scores each wellness question's *fallback* when it is
+	// unanswered, so an empty check still comes back with a score and a verdict —
+	// and on a fresh account that verdict looked exactly like one from a full
+	// check: a title, a number, work held off the plan. All of it from nothing.
+	// The read, the held work and the baseline comparison are gated on a wellness
+	// answer — not on *any* answer, because "how much time do you have" is a core
+	// question too and answering it alone would unlock a score made of fallbacks.
+	// The check itself stays live, so the first wellness tap turns them all on.
+	const checked = hasWellnessAnswer(answers);
+	const readiness = useMemo(
+		// With no score there is nothing to hold against the baseline, so the
+		// engine is not handed one: `below_baseline` is the one flag it raises from
+		// the score alone, and it must not raise it from the fallbacks. The load
+		// and trend flags stay — they are read off the history, not the check.
+		() => computeReadiness(answers, t.load, checked ? insights : { ...insights, baseline: null }),
+		[answers, t.load, insights, checked],
 	);
 
 	// Follow-ups appear and disappear as the core answers change, so the rendered
@@ -126,9 +151,25 @@ function Today() {
 	);
 	const answered = questions.filter((q) => q.answer != null).length;
 
-	const delta = insights.baseline == null ? 0 : readiness.score - insights.baseline;
+	const verdict = content.verdicts[readiness.verdict];
+	const heldSet = useMemo(
+		() => (checked ? heldExercises(t.tasks, readiness.verdict) : NO_HELD),
+		[checked, t.tasks, readiness.verdict],
+	);
+
+	// Null until there is both a score and a usual to compare it against. With no
+	// check there is no score, and with no history there is no usual — "about your
+	// usual" in either case is the same fabrication as the verdict, one line down.
+	// Gated here, once, so the read card and the trend's meta cannot disagree.
+	const delta = checked && insights.baseline != null ? readiness.score - insights.baseline : null;
 	const vsBaseline =
-		delta <= -10 ? m.rd_vs_below() : delta >= 10 ? m.rd_vs_above() : m.rd_vs_usual();
+		delta == null
+			? null
+			: delta <= -10
+				? m.rd_vs_below()
+				: delta >= 10
+					? m.rd_vs_above()
+					: m.rd_vs_usual();
 	const breakdown = ['sleep', 'fatigue', 'soreness', 'stress', 'mood']
 		.filter((id) => answers[id] != null)
 		.map((id) => ({ id, value: answers[id] }));
@@ -177,14 +218,35 @@ function Today() {
 			<Panes
 				primary={
 					<>
-						<ReadCard
-							verdict={verdict}
-							score={readiness.score}
-							vsBaseline={vsBaseline}
-							breakdown={breakdown}
-							scoreNote={t.scoreNote}
-							nextTaskLabel={nextTask?.exName ?? null}
-						/>
+						{checked ? (
+							<ReadCard
+								verdict={verdict}
+								score={readiness.score}
+								vsBaseline={vsBaseline}
+								breakdown={breakdown}
+								scoreNote={t.scoreNote}
+								nextTaskLabel={nextTask?.exName ?? null}
+							/>
+						) : (
+							// The read's place, with no read in it. Under the same label the
+							// score carries, so the screen keeps its anchor; the action jumps
+							// to the check, which is at the bottom on a phone and to the right
+							// on a laptop — a link to the anchor is right on both.
+							<Section label={m.rd_score()}>
+								<Empty
+									value={m.td_no_check()}
+									action={
+										<Link
+											to="/"
+											hash={CHECK_ANCHOR}
+											className={button({ size: 'md', class: 'min-h-11' })}
+										>
+											{m.td_answer_check()}
+										</Link>
+									}
+								/>
+							</Section>
+						)}
 
 						{/* Post-session outcome: the input that turns the heuristic weighting into
 			    a personal one.
@@ -245,23 +307,32 @@ function Today() {
 						<Section
 							label={m.readiness_trend()}
 							meta={
-								<span className="num">
-									{insights.baseline != null ? `⌀ ${Math.round(insights.baseline)} · ` : ''}
-									{vsBaseline}
-								</span>
+								insights.baseline != null && vsBaseline ? (
+									<span className="num">
+										⌀ {Math.round(insights.baseline)} · {vsBaseline}
+									</span>
+								) : null
 							}
 						>
-							<div>
-								<Sparkline
-									points={t.trendPoints}
-									baseline={insights.baseline}
-									current={readiness.score}
-								/>
-								<div className="num mt-1 flex justify-between text-[9px] text-ink-faint">
-									<span>{t.trendPoints[0]?.label}</span>
-									<span>{t.trendPoints[t.trendPoints.length - 1]?.label}</span>
+							{/* `Sparkline` draws nothing below two points, which left the section
+							    as a heading over two blank date labels. Say so instead (#61). */}
+							{t.trendPoints.length < 2 ? (
+								<Empty value={m.td_no_trend()} />
+							) : (
+								<div>
+									{/* Today's mark is drawn only once there is a score to mark. The
+									    fourteen points behind it are history and stand either way. */}
+									<Sparkline
+										points={t.trendPoints}
+										baseline={insights.baseline}
+										{...(checked ? { current: readiness.score } : {})}
+									/>
+									<div className="num mt-1 flex justify-between text-[9px] text-ink-faint">
+										<span>{t.trendPoints[0]?.label}</span>
+										<span>{t.trendPoints[t.trendPoints.length - 1]?.label}</span>
+									</div>
 								</div>
-							</div>
+							)}
 						</Section>
 
 						<WatchOuts
@@ -276,6 +347,7 @@ function Today() {
 						{/* ---- the readiness check. Answered, so it opens as a receipt with the
 			     form underneath; the toggle collapses it back to the receipt. */}
 						<Section
+							id={CHECK_ANCHOR}
 							label={m.log_readiness()}
 							meta={
 								<button
@@ -377,7 +449,8 @@ function ReadCard({
 }: {
 	verdict: Content['verdicts'][VerdictId];
 	score: number;
-	vsBaseline: string;
+	/** Null until the history has a usual to compare against. */
+	vsBaseline: string | null;
 	breakdown: { id: string; value: number }[];
 	scoreNote: 'heuristic' | 'tuned';
 	nextTaskLabel: string | null;
@@ -396,7 +469,9 @@ function ReadCard({
 				<div className="shrink-0 text-right">
 					<div className="num text-[30px] leading-none font-bold text-chalk">{score}</div>
 					<Eyebrow className="mt-0.5">{m.rd_score()}</Eyebrow>
-					<div className="mt-0.5 text-[10px] text-ink-faint">{vsBaseline}</div>
+					{vsBaseline ? (
+						<div className="mt-0.5 text-[10px] text-ink-faint">{vsBaseline}</div>
+					) : null}
 				</div>
 			</div>
 
