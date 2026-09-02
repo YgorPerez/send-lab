@@ -71,7 +71,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `SelfCheckSheet` / `RehabStarter` | The injury self-check and the rehab switch |
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
-`ids.ts` (identity), `intervalProtocol.ts` (the timer's arithmetic), `cues.ts`
+`ids.ts` (identity), `protocol.ts` (the timer's arithmetic), `cues.ts`
 (its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
 exercise shows, and what a fresh row is prefilled with), and `prescription.ts`
 (what a slot runs, and at what numbers).

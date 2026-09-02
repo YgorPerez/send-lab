@@ -9,17 +9,17 @@ import {
 	beginning,
 	elapsedOf,
 	IDLE,
-	type IntervalConfig,
 	nextOf,
+	type Protocol,
 	type Run,
 	remainingOf,
 	type Segment,
 	step,
 	totalOf,
-} from '../src/lib/intervalProtocol.ts';
+} from '../src/lib/protocol.ts';
 
 /** A 6×(7s on / 3s off) repeater, twice, with 3 minutes between sets. */
-const REPEATERS: IntervalConfig = {
+const REPEATERS: Protocol = {
 	prepare: 10,
 	work: 7,
 	rest: 3,
@@ -29,7 +29,7 @@ const REPEATERS: IntervalConfig = {
 };
 
 /** Run the protocol to completion and report every second of it. */
-function run(c: IntervalConfig, limit = 5000): { segments: Segment[]; seconds: number } {
+function run(c: Protocol, limit = 5000): { segments: Segment[]; seconds: number } {
 	const segments: Segment[] = [];
 	let r = beginning(c);
 	let seconds = 0;

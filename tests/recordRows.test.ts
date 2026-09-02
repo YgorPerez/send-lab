@@ -59,7 +59,14 @@ describe('the registry covers the store', () => {
 });
 
 describe('ADR 0014 — the glossary name is the wire name', () => {
-	const session = { at: '2026-08-20', weekday: 'Thu', exercises: [], note: '', durationMin: 60 };
+	const session = {
+		at: '2026-08-20',
+		weekday: 'Thu',
+		dayType: 'pull',
+		exercises: [],
+		note: '',
+		durationMin: 60,
+	};
 
 	it('accepts `sessions` and refuses `workouts`', () => {
 		expect(sanitizeRow('sessions', '2026-08-20', session).ok).toBe(true);
@@ -106,6 +113,7 @@ describe('structural, not referential', () => {
 		const check = sanitizeRow('sessions', '2026-08-20', {
 			at: '2026-08-20',
 			weekday: 'Thu',
+			dayType: 'pull',
 			exercises: [{ exercise: 'retired-in-a-later-release', variant: 0, sets: [] }],
 			note: '',
 		});
@@ -121,6 +129,7 @@ describe('structural, not referential', () => {
 		const check = sanitizeRow('sessions', '20 Aug 2026', {
 			at: '20 Aug 2026',
 			weekday: 'Thu',
+			dayType: 'pull',
 			exercises: [],
 			note: '',
 		});
@@ -135,6 +144,7 @@ describe('the key is cross-checked against the row', () => {
 		const check = sanitizeRow('sessions', '2026-08-21', {
 			at: '2026-08-20',
 			weekday: 'Thu',
+			dayType: 'pull',
 			exercises: [],
 			note: '',
 		});

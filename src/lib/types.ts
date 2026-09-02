@@ -111,6 +111,15 @@ export interface Session {
 	at: string;
 	/** The weekday slot trained. Never a localized label (ADR-0003). */
 	weekday: WeekdayKey;
+	/** The day type actually trained, stamped when the session is logged.
+	 *
+	 *  Recorded rather than derived, because it cannot be re-derived. ADR 0016
+	 *  split the day type from the weekday and made visible that a session held
+	 *  neither: the Log screen looked the weekday up in the **built-in week** and
+	 *  showed whatever day type that runs *today*, so editing a weekday's day type
+	 *  silently relabelled every past session on it. A session is history
+	 *  (`CONTEXT.md`), and history cannot be a function of the current program. */
+	dayType: DayTypeId;
 	exercises: LoggedExercise[];
 	note: string;
 	/** Session length in minutes — the duration term of internal load

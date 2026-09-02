@@ -133,8 +133,12 @@ export function dayTemplate(content: Content, dayType: DayTypeId): DayType {
  * Called `resolveDayType`, not `main`'s `resolveDayKey`: a "day key" was the
  * exact overload ADR-0002 closed and #55 finished removing, and this function
  * returns a day type.
+ *
+ * Exported since ADR 0017: a session records the day type it actually ran, and
+ * stamping that at the moment it is logged is this question asked once, rather
+ * than re-asked of the current program every time the history is rendered.
  */
-function resolveDayType(
+export function resolveDayType(
 	content: Content,
 	state: ResolverState,
 	week: WeekId,

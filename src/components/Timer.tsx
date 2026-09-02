@@ -12,10 +12,10 @@
 //
 // WHAT THIS COMPONENT OWNS, AND WHAT IT DOES NOT
 // ----------------------------------------------
-// The protocol arithmetic is `lib/intervalProtocol.ts`, pure and unit-tested; the
+// The protocol arithmetic is `lib/protocol.ts`, pure and unit-tested; the
 // sounds and the buzz are `lib/cues.ts`. What is left here — the tick, the wake
 // lock, and the shape — is the part that genuinely needs a component. See the
-// header of `intervalProtocol.ts` for why the split is what it is: it is the
+// header of `protocol.ts` for why the split is what it is: it is the
 // vocabulary's answer for anything that advances on a clock.
 //
 // The full-screen clock's open state is the *parent's*, not this component's.
@@ -28,20 +28,20 @@ import { useEffect, useRef, useState } from 'react';
 import { cue, releaseCues } from '$lib/cues';
 import { clock } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
+import * as m from '$lib/paraglide/messages';
 import {
 	beginning,
 	elapsedOf,
 	IDLE,
-	type IntervalConfig,
 	nextOf,
+	type Protocol,
 	type Run,
 	remainingOf,
 	type Segment,
 	segmentLengthOf,
 	step,
 	totalOf,
-} from '$lib/intervalProtocol';
-import * as m from '$lib/paraglide/messages';
+} from '$lib/protocol';
 import { restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { Eyebrow } from './ui/primitives';
@@ -75,13 +75,7 @@ const SEGMENT_CUE = {
 	done: 'done',
 } as const;
 
-/** The protocol to run, and what to call it. */
-export interface TimerProtocol extends IntervalConfig {
-	/** The exercise this protocol came from, shown beside the title. */
-	label: string;
-}
-
-const FIELDS: { key: keyof IntervalConfig; label: () => string }[] = [
+const FIELDS: { key: keyof Protocol; label: () => string }[] = [
 	{ key: 'prepare', label: m.timer_prepare_s },
 	{ key: 'work', label: m.timer_work_s },
 	{ key: 'rest', label: m.timer_rest_s },
@@ -113,7 +107,7 @@ function Face({ seconds, className }: { seconds: number; className?: string }) {
 /** Everything the two faces of the timer both read off the run. */
 interface Reading {
 	run: Run;
-	config: IntervalConfig;
+	config: Protocol;
 	/** The number on the clock — the prepare or work length while idle. */
 	shown: number;
 	segmentLength: number;
@@ -125,7 +119,7 @@ interface Reading {
 	running: boolean;
 }
 
-function readingOf(run: Run, config: IntervalConfig, running: boolean): Reading {
+function readingOf(run: Run, config: Protocol, running: boolean): Reading {
 	return {
 		run,
 		config,
@@ -320,11 +314,17 @@ function FullScreenClock({
 
 export function Timer({
 	protocol,
+	label,
 	protocolKey,
 	clockOpen,
 	onClockOpenChange,
 }: {
-	protocol: TimerProtocol | null;
+	protocol: Protocol | null;
+	/** The exercise this protocol came from, shown beside the title. Passed
+	 *  beside the protocol rather than welded into it: it is a localized display
+	 *  string, and a domain type that carries one is a domain type that can be
+	 *  stored with one (ADR 0012). */
+	label: string | null;
 	/** What the persisted setup is scoped to — the pinned task and its variant.
 	 *  The parent already computes it as this component's remount boundary, so it
 	 *  is passed rather than re-derived: two spellings of "which protocol is this"
@@ -354,7 +354,7 @@ export function Timer({
 			setRest: protocol?.setRest ?? 0,
 		}),
 	);
-	const [config, setConfig] = useState<IntervalConfig>(initial.config);
+	const [config, setConfig] = useState<Protocol>(initial.config);
 	const [run, setRun] = useState<Run>(initial.run);
 	// Always starts paused, whatever was stored — `restored()` guarantees it, and
 	// `timerSetup.ts` documents why: nothing here knows how long the reload took.
@@ -373,7 +373,7 @@ export function Timer({
 	}, [persistSetup, protocolKey, config, run]);
 
 	// The tick. A pure updater over one state object, so there is no stale
-	// closure to hold in a ref — see `intervalProtocol.ts`. Re-created when the
+	// closure to hold in a ref — see `protocol.ts`. Re-created when the
 	// configuration changes, so a field edited mid-session takes effect on the
 	// next tick rather than on the next session.
 	useEffect(() => {
@@ -465,7 +465,7 @@ export function Timer({
 			<FullScreenClock
 				open={clockOpen}
 				onOpenChange={onClockOpenChange}
-				label={protocol?.label ?? null}
+				label={label}
 				reading={reading}
 				onToggle={toggle}
 				onReset={reset}
@@ -474,7 +474,7 @@ export function Timer({
 			<div className="flex items-baseline justify-between gap-2 px-3 pt-2.5">
 				<Eyebrow className="min-w-0 truncate">
 					{m.timer_title()}
-					{protocol ? <span className="text-ink-dim"> · {protocol.label}</span> : null}
+					{label ? <span className="text-ink-dim"> · {label}</span> : null}
 				</Eyebrow>
 				<span
 					className="num shrink-0 text-[10px] tracking-wider uppercase"

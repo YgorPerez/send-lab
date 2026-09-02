@@ -421,6 +421,10 @@ function loggedSession(
 	return {
 		at,
 		weekday: weekdayKeyOf(at),
+		// These fixtures assert on load and completion, not on what was scheduled,
+		// so one day type throughout keeps the noise out. That it must be stated at
+		// all is ADR 0017 working: a session records what it ran.
+		dayType: 'pull',
 		exercises: [
 			{
 				exercise,

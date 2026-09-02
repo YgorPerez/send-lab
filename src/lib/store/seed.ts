@@ -53,7 +53,7 @@ import {
 	weekdayKeyOf,
 } from '$lib/ids';
 import { prefilledSet } from '$lib/loggedSet';
-import { type ResolverState, trainableExerciseIds } from '$lib/prescription';
+import { type ResolverState, resolveDayType, trainableExerciseIds } from '$lib/prescription';
 import { capByVerdict } from '$lib/readinessPlan';
 import { acwr, readinessInsights, weekLoad } from '$lib/stats';
 import type {
@@ -241,6 +241,10 @@ function history(content: Content, locale: string, now: number, missedDaysAgo: n
 		out.push({
 			at,
 			weekday,
+			// What that weekday actually ran, asked of the resolver rather than of
+			// the built-in week — the scenario's program is what the history was
+			// trained against.
+			dayType: resolveDayType(content, planOnly(CURRENT_WEEK_ID), CURRENT_WEEK_ID, weekday),
 			exercises,
 			// Roughly one session in four carries a note the athlete typed.
 			note: logged % 4 === 1 ? prose(locale, noteKeys[logged % noteKeys.length]) : '',
@@ -289,7 +293,14 @@ function todaySession(
 		}
 		return { exercise, variant: 0, sets };
 	});
-	return { at, weekday, exercises, note: '', durationMin: 22 };
+	return {
+		at,
+		weekday,
+		dayType: resolveDayType(content, planOnly(CURRENT_WEEK_ID), CURRENT_WEEK_ID, weekday),
+		exercises,
+		note: '',
+		durationMin: 22,
+	};
 }
 
 function readinessHistory(now: number): LoggedReadinessCheck[] {

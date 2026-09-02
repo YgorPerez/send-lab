@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { asExerciseId, asWeekdayKey } from '../src/lib/ids';
 import { acwr, readinessInsights, weekLoad } from '../src/lib/stats';
-import type { LoggedReadinessCheck } from '../src/lib/types';
+import type { LoggedReadinessCheck, Session } from '../src/lib/types';
 
 const DAY = 86_400_000;
 const NOW = Date.parse('2026-06-24T12:00:00Z');
 const iso = (daysAgo: number) => new Date(NOW - daysAgo * DAY).toISOString().slice(0, 10);
 
 /** A workout `daysAgo` days back with `sets` sets each at the given `rpe`. */
-const w = (daysAgo: number, sets: number, rpe: number) => ({
+const w = (daysAgo: number, sets: number, rpe: number): Session => ({
 	at: iso(daysAgo),
 	weekday: asWeekdayKey('Mon'),
 	exercises: [
@@ -29,6 +29,9 @@ const w = (daysAgo: number, sets: number, rpe: number) => ({
 		},
 	],
 	note: '',
+	// Irrelevant to workload arithmetic, which reads effort and duration only —
+	// but a session cannot omit what it trained (ADR 0017).
+	dayType: 'pull',
 });
 
 test('acwr returns null without ~3 weeks of history', () => {

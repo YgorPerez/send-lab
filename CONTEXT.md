@@ -131,7 +131,8 @@ _Avoid_: overload, ramp, increase
 
 **Session**:
 The training actually done in one slot on one calendar date. A slot is a plan; a
-session is the history.
+session is the history — so it records the day type it ran, rather than being
+read back off whatever the program runs on that weekday now.
 _Avoid_: workout, day, entry
 
 **Task**:
@@ -150,8 +151,8 @@ where a task is plan.
 _Avoid_: session exercise, entry, task
 
 **Round**:
-One repetition of the work interval inside a set — what the rest timer counts
-down. A 6 × (7s on / 3s off) set runs six rounds, and the athlete logs the set
+One pass through the work and rest segments inside a set — what the rest timer
+counts down. A 6 × (7s on / 3s off) set runs six rounds, and the athlete logs the set
 rather than each round.
 _Avoid_: cycle, interval, rep
 
@@ -189,6 +190,20 @@ one place only, and an uninstalled app may have it deleted by the browser after
 a week idle. Work that can never be sent is unsynced work in its final state,
 not a separate thing.
 _Avoid_: pending, queued, unsaved, outbox, offline changes
+
+**Draft**:
+What the athlete is part-way through entering, before it is recorded — a
+half-answered readiness check, a session with some sets filled in, a clock they
+have configured but not started. It lives on one device, is never sent to the
+server, and belongs to the thing it was started against: a draft answers to one
+day, one slot, or one protocol, and is discarded rather than offered once that
+has moved on.
+
+Not unsynced work, which is the opposite case in the pair the athlete is most
+likely to confuse: unsynced work is training already *recorded* and certain to
+reach the server, while a draft is training not recorded at all and never will
+be. Losing unsynced work loses history; losing a draft costs a re-entry.
+_Avoid_: pending, partial, autosave, unsaved, in-flight
 
 ### Readiness
 

@@ -124,6 +124,7 @@ const epochMs = z.number().int().min(0);
 const session = z.object({
 	at: isoDate,
 	weekday: id.weekday,
+	dayType: z.enum(DAY_TYPE_IDS),
 	exercises: z.array(loggedExercise),
 	note: z.string(),
 	durationMin: z.number().optional(),

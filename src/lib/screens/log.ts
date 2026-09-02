@@ -101,22 +101,20 @@ function sessionRow(content: Content, s: TrainingRecord['sessions'][number]): Lo
 	// `Session.weekday` is branded on the entity (#55), so nothing is re-minted
 	// on the way out.
 	//
-	// What this resolves is the *built-in* week's day type for that weekday, which
-	// is an approximation rather than the day type the session actually ran — a
-	// `Session` records no day type at all, so the moment the athlete edits a
-	// weekday's day type this row goes on showing the built-in one. ADR 0016's
-	// split surfaced that (the lookup is by weekday, the field read describes a day
-	// type) and deliberately preserved the behaviour: the fix is to record the day
-	// type on the session, which changes what a session *is*.
-	const weekday = content.builtInWeek.find((d) => d.k === s.weekday);
-	const day = weekday ? dayTemplate(content, weekday.dayType) : undefined;
+	// The day type is read off the session rather than looked up. It used to be
+	// resolved from the *built-in* week, which meant editing a weekday's day type
+	// silently relabelled every past session on that weekday — history rewritten
+	// by a change to the plan. ADR 0016 surfaced it and ADR 0017 fixed it by
+	// stamping the day type when the session is logged; all this does now is
+	// localize what was recorded.
+	const day = dayTemplate(content, s.dayType);
 	const exercises = renderableExercises(content, s);
 	return {
 		iso: s.at,
 		dateLabel: displayDate(s.at),
 		weekday: s.weekday,
 		weekdayLabel: weekdayLabel(content, s.weekday),
-		dayType: day?.type ?? '',
+		dayType: day.type,
 		exercises,
 		note: s.note,
 		durationMin: s.durationMin ?? null,

@@ -19,11 +19,11 @@
 import { describe, expect, it } from 'vitest';
 import { scoped } from '../src/lib/ephemeral.ts';
 import { asExerciseId, asWeekdayKey, asWeekId, protocolKey, taskKey } from '../src/lib/ids.ts';
-import type { IntervalConfig, Run } from '../src/lib/intervalProtocol.ts';
-import { IDLE } from '../src/lib/intervalProtocol.ts';
+import type { Protocol, Run } from '../src/lib/protocol.ts';
+import { IDLE } from '../src/lib/protocol.ts';
 import { restored, type TimerSetup } from '../src/lib/timerSetup.ts';
 
-const CONFIG: IntervalConfig = {
+const CONFIG: Protocol = {
 	prepare: 10,
 	work: 7,
 	rest: 3,
@@ -32,7 +32,7 @@ const CONFIG: IntervalConfig = {
 	setRest: 60,
 };
 
-const SEEDED: IntervalConfig = { ...CONFIG, work: 5 };
+const SEEDED: Protocol = { ...CONFIG, work: 5 };
 
 /** Mid-session: third round of the second set, four seconds of work left. */
 const MID: Run = { segment: 'work', remaining: 4, round: 3, set: 2 };
@@ -79,7 +79,7 @@ describe('what the clock comes back as', () => {
 		// They opened the setup and shortened the work interval. That edit is the
 		// whole reason the config is persisted, and re-seeding from the
 		// prescription on every reload would quietly undo it.
-		const edited: IntervalConfig = { ...CONFIG, work: 9 };
+		const edited: Protocol = { ...CONFIG, work: 9 };
 		const back = restored(stored({ config: edited, run: IDLE }), PULL, SEEDED);
 
 		expect(back.config.work).toBe(9);

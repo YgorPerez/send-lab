@@ -97,6 +97,12 @@ day type, the Log row goes on showing the built-in one. Behaviour was preserved
 rather than fixed here — the fix is to record the day type on the session, which
 changes what a session *is* and belongs to whoever owns that.
 
+> **Fixed by [ADR 0017](0017-a-session-records-the-day-type-it-ran.md).** A session
+> now carries `dayType`, stamped when it is logged, and `sessionRow` reads it
+> instead of joining through the built-in week. The split above is what made the
+> approximation visible; recording it is what made the glossary's "a session is the
+> history" true of the type.
+
 **ADR 0014's deferred rename is unblocked but not taken.** `resolveDay` now
 returns a `DayType` and `dayTemplate` returns one too, so both names are now
 plainly wrong rather than ambiguously wrong. That rename is still ADR 0014's, and

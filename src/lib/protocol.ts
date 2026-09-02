@@ -45,13 +45,13 @@ export const SEGMENTS = ['idle', 'prepare', 'work', 'rest', 'setRest', 'done'] a
 export type Segment = (typeof SEGMENTS)[number];
 
 /** The fields a protocol is made of. Derived-from, not duplicated-by,
- *  `IntervalConfig` — for the same reason as `SEGMENTS`: `timerSetup.ts` checks a
+ *  `Protocol` — for the same reason as `SEGMENTS`: `timerSetup.ts` checks a
  *  parsed config field by field, and a field added to the type but not to the
  *  check is a config that passes validation with a hole in it. */
 export const PROTOCOL_FIELDS = ['prepare', 'work', 'rest', 'rounds', 'sets', 'setRest'] as const;
 
 /** The protocol to run. Seconds throughout; counts are whole. */
-export type IntervalConfig = Record<(typeof PROTOCOL_FIELDS)[number], number>;
+export type Protocol = Record<(typeof PROTOCOL_FIELDS)[number], number>;
 
 /** Where the session currently is. */
 export interface Run {
@@ -64,7 +64,7 @@ export interface Run {
 export const IDLE: Run = { segment: 'idle', remaining: 0, round: 1, set: 1 };
 
 /** The state a fresh run starts in — prepare if there is one, else straight to work. */
-export function beginning(c: IntervalConfig): Run {
+export function beginning(c: Protocol): Run {
 	return c.prepare > 0
 		? { segment: 'prepare', remaining: c.prepare, round: 1, set: 1 }
 		: { segment: 'work', remaining: Math.max(1, c.work), round: 1, set: 1 };
@@ -75,7 +75,7 @@ export function beginning(c: IntervalConfig): Run {
  * segment has an answer — including `idle` and `done`, which return themselves so a
  * tick that outlives its `clearInterval` cannot corrupt the run.
  */
-export function step(r: Run, c: IntervalConfig): Run {
+export function step(r: Run, c: Protocol): Run {
 	if (r.remaining > 1) return { ...r, remaining: r.remaining - 1 };
 	switch (r.segment) {
 		case 'prepare':
@@ -105,7 +105,7 @@ export function step(r: Run, c: IntervalConfig): Run {
  * One set: every round's effort, with a rest between rounds but not after the
  * last one — the set rest takes that place.
  */
-function perSetOf(c: IntervalConfig): number {
+function perSetOf(c: Protocol): number {
 	return c.rounds * c.work + Math.max(0, c.rounds - 1) * c.rest;
 }
 
@@ -117,9 +117,9 @@ function perSetOf(c: IntervalConfig): number {
  * On the prototype's 6×(7s/3s)×2 repeaters that reported 310s against an actual
  * 304s — six seconds the athlete was told to expect and never spent. Caught by
  * running the protocol tick by tick against this number
- * (`tests/intervalProtocol.test.ts`), not by reading either expression.
+ * (`tests/protocol.test.ts`), not by reading either expression.
  */
-export function totalOf(c: IntervalConfig): number {
+export function totalOf(c: Protocol): number {
 	return c.prepare + c.sets * perSetOf(c) + Math.max(0, c.sets - 1) * c.setRest;
 }
 
@@ -130,7 +130,7 @@ export function totalOf(c: IntervalConfig): number {
  * a full ring rather than an empty one — an empty ring on a finished protocol
  * reads as "nothing done".
  */
-export function segmentLengthOf(r: Run, c: IntervalConfig): number {
+export function segmentLengthOf(r: Run, c: Protocol): number {
 	switch (r.segment) {
 		case 'prepare':
 			return c.prepare;
@@ -156,7 +156,7 @@ export function segmentLengthOf(r: Run, c: IntervalConfig): number {
  * for the next effort — and it is why the `rest` branch below counts one fewer
  * complete round than the round number suggests.
  */
-export function elapsedOf(r: Run, c: IntervalConfig): number {
+export function elapsedOf(r: Run, c: Protocol): number {
 	if (r.segment === 'idle') return 0;
 	if (r.segment === 'done') return totalOf(c);
 	if (r.segment === 'prepare') return c.prepare - r.remaining;
@@ -173,7 +173,7 @@ export function elapsedOf(r: Run, c: IntervalConfig): number {
 }
 
 /** Seconds left in the whole session. */
-export function remainingOf(r: Run, c: IntervalConfig): number {
+export function remainingOf(r: Run, c: Protocol): number {
 	return Math.max(0, totalOf(c) - elapsedOf(r, c));
 }
 
@@ -185,7 +185,7 @@ export function remainingOf(r: Run, c: IntervalConfig): number {
  * by a second switch statement. One transition table, so the preview cannot
  * disagree with what actually happens next.
  */
-export function nextOf(r: Run, c: IntervalConfig): { segment: Segment; seconds: number } | null {
+export function nextOf(r: Run, c: Protocol): { segment: Segment; seconds: number } | null {
 	if (r.segment === 'idle' || r.segment === 'done') return null;
 	const next = step({ ...r, remaining: 1 }, c);
 	if (next.segment === 'done') return { segment: 'done', seconds: 0 };

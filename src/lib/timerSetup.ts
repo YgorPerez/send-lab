@@ -20,7 +20,7 @@
 //      one exercise's position shown on another's card is worse than no memory.
 //
 // Both are arithmetic, so both live here and not in the component — the same
-// split `intervalProtocol.ts` makes, and for the same reason: a component test
+// split `protocol.ts` makes, and for the same reason: a component test
 // cannot reach them.
 //
 // `storageSync: false` at the hook, per #18: two tabs each ticking would fight
@@ -32,25 +32,25 @@ import { ephemeralKey, inScope, isRecord, type Scoped, scoped } from '$lib/ephem
 import type { ProtocolKey } from '$lib/ids';
 import {
 	IDLE,
-	type IntervalConfig,
 	PROTOCOL_FIELDS,
+	type Protocol,
 	type Run,
 	SEGMENTS,
 	type Segment,
-} from '$lib/intervalProtocol';
+} from '$lib/protocol';
 
 const KEY = ephemeralKey('timer', 1);
 
 /** What is worth persisting: the athlete's protocol, and where they were in it.
  *  Not `running` — see rule 1; it is never stored and never restored. */
 export interface TimerSetup {
-	readonly config: IntervalConfig;
+	readonly config: Protocol;
 	readonly run: Run;
 }
 
 /** A clock ready to render. */
 export interface RestoredTimer {
-	readonly config: IntervalConfig;
+	readonly config: Protocol;
 	readonly run: Run;
 	/** Always `false`. Named rather than omitted, because the whole point is that
 	 *  the caller does not have to remember to pause it. */
@@ -67,7 +67,7 @@ export interface RestoredTimer {
 export function restored(
 	stored: Scoped<TimerSetup> | undefined,
 	protocolKey: ProtocolKey,
-	seeded: IntervalConfig,
+	seeded: Protocol,
 ): RestoredTimer {
 	const setup = inScope(stored, protocolKey);
 	if (!isConfig(setup?.config)) {
@@ -112,7 +112,7 @@ export function useTimerSetup(): [
 /** Storage is parsed, not trusted: an older build wrote it, or a hand edit did.
  *  A config that is missing a field leaves the clock counting from `undefined`,
  *  which renders as `NaN` and never advances. */
-function isConfig(value: unknown): value is IntervalConfig {
+function isConfig(value: unknown): value is Protocol {
 	if (!isRecord(value)) return false;
 	return PROTOCOL_FIELDS.every((f) => typeof value[f] === 'number' && Number.isFinite(value[f]));
 }

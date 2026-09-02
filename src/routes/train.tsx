@@ -26,11 +26,12 @@ import {
 import { fieldsFor, midOf, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
+import type { Protocol } from '$lib/protocol';
 import { libraryTask, type PrescribedTask, resolveTrain } from '$lib/screens/train';
 import { restoredSession, useSessionDraft } from '$lib/sessionDraft';
 import { useTrainingRecord } from '$lib/store/record';
 import { TaskCard } from '../components/TaskCard';
-import { Timer, type TimerProtocol } from '../components/Timer';
+import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
 import { Eyebrow, Section } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
@@ -38,11 +39,10 @@ import { button, input } from '../components/ui/variants';
 export const Route = createFileRoute('/train')({ component: Train });
 
 /** The protocol the timer runs for a task, or `null` if it has no timings. */
-function protocolOf(task: PrescribedTask): TimerProtocol | null {
+function protocolOf(task: PrescribedTask): Protocol | null {
 	if (!task.timed) return null;
 	const s = task.prescription;
 	return {
-		label: task.exName,
 		prepare: s.prepareSec ?? 10,
 		work: midOf(s.workSec) ?? 10,
 		rest: midOf(s.restSec) ?? 0,
@@ -163,6 +163,7 @@ function Train() {
 				<Timer
 					key={protocolKey}
 					protocol={protocol}
+					label={timerTask?.exName ?? null}
 					protocolKey={protocolKey}
 					clockOpen={clockOpen}
 					onClockOpenChange={setClockOpen}
