@@ -75,14 +75,28 @@ and each is owned rather than merely noticed:
   #72**: deleted rather than rewritten. It upgraded *legacy* documents, and #11's
   *Out of scope* ports no accounts and no history, so there was never going to be
   anything for it to upgrade. Nothing in `src/` imported it.
+- ~~`lib/intervalProtocol.ts` — `IntervalConfig`.~~ **Done in the 2026-09-01
+  domain-modeling pass.** It held `{prepare, work, rest, rounds, sets, setRest}`,
+  which is precisely the glossary's **Protocol**, whose `_Avoid_` list reads
+  "interval scheme" — and *interval* is on **Round**'s and **Segment**'s lists too.
+  Found late because the word sat in a *type* and a *filename* rather than in a
+  stored key, which is the half of "at every layer" that is easiest to skip;
+  #59 sharpened it by deriving the type from its own `PROTOCOL_FIELDS`. Now
+  `Protocol` in `lib/protocol.ts`, and `TimerProtocol` was deleted rather than
+  renamed, because its extra field was a localized label welded onto a domain type
+  (ADR 0012).
 - `lib/stats.ts` — parameters and prose, no behaviour. Cosmetic and contained.
 - `resolveDay` (`lib/prescription.ts`) and `applyEditDay` (`server/programOps.ts`)
   — both say *day* for something that is not a weekday: `resolveDay` returns a
   **day type**, `applyEditDay` edits a **weekday template**, and *day* is on both
   terms' `_Avoid_` lists. #72 found these while renaming its own four and
-  deliberately did **not** take them: `resolveDay`'s `day` is the content
-  library's `Day`/`days`/`dayTemplate` family, so the rename is that family's,
-  not one function's. Owned here so it is not re-discovered as new.
+  deliberately did **not** take them, on the grounds that `resolveDay`'s `day` was
+  the content library's `Day`/`days`/`dayTemplate` family. **That blocker is gone**:
+  ADR 0016 split `Day` into `DayType` and `BuiltInWeekday`, so `resolveDay` now
+  returns a `DayType` and the name is plainly wrong rather than ambiguously wrong.
+  Unblocked, still not taken — deliberately, since 0016 was a shape change and
+  mixing a rename across the same nine modules is how both become unreviewable.
+  This is now the oldest live entry on the list.
 - `messages/` — the key `log_workouts`. Note the *text* is already right in both
   locales ("Sessions" / "Treinos"); only the key drifted, which is what makes it
   the least urgent and the easiest to forget.
