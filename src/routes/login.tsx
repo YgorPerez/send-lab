@@ -13,7 +13,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
-import { Eyebrow, Section } from '../components/ui/primitives';
+import { Column, Eyebrow, Section } from '../components/ui/primitives';
 import { button, card, input } from '../components/ui/variants';
 import { authClient, signIn, signOut } from '../lib/auth-client';
 
@@ -31,7 +31,10 @@ function Login() {
 	if (isPending) return <div className="min-h-[50dvh]" />;
 
 	return (
-		<div className="flex flex-col gap-7">
+		// One column at every width. A sign-in form is two fields and a button; the
+		// desktop layout has nothing to give it, which is the point #52 makes about
+		// most of the nine pages — a second column is earned, not granted.
+		<Column>
 			<header className="pt-1.5">
 				<h1 className="h-screen-title">{m.btn_sign_in()}</h1>
 			</header>
@@ -43,7 +46,7 @@ function Login() {
 			    measure a screen that never rendered. Falling back to the signed-out
 			    view is the honest answer: no user means not signed in. */}
 			{session?.user ? <SignedIn name={session.user.name || session.user.email} /> : <SignInForm />}
-		</div>
+		</Column>
 	);
 }
 

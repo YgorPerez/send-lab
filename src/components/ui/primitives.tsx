@@ -66,6 +66,75 @@ export function Bare({ children, className }: { children: ReactNode; className?:
 	return <div className={cn('border-t border-line-soft pt-3', className)}>{children}</div>;
 }
 
+// ---------------------------------------------------------------------------
+// WHAT A PAGE IS, ON A WIDE SCREEN (#52).
+//
+// These two are the only place a page's desktop width is decided, and a page
+// picks exactly one of them. `AppShell` hands the screen up to 1000px; whether
+// that becomes two columns or a capped single one is the page's call, and this
+// is where it says so. The decision and the list of which page picked which are
+// in ADR 0018 and the desktop section of `docs/component-vocabulary.md` — not
+// repeated here.
+//
+// Two shapes rather than one component with an optional prop: `<Panes primary>`
+// with no second column renders no panes, and a name that is only true half the
+// time is the thing this repo spends most of its effort not doing.
+// ---------------------------------------------------------------------------
+
+/**
+ * One column, capped near the phone measure — the cheap majority.
+ *
+ * Not a stretched phone layout: these screens were laid out against 360px, and
+ * the seven-column set grid on Train is the proof that widening one is a
+ * regression rather than a gift.
+ */
+export function Column({ children, className }: { children: ReactNode; className?: string }) {
+	return (
+		<div className={cn('flex flex-col gap-7 lg:mx-auto lg:max-w-[560px]', className)}>
+			{children}
+		</div>
+	);
+}
+
+/**
+ * Two columns from `lg`, one below it.
+ *
+ * **The split must be contiguous in the phone order**, and that is the whole
+ * trick. `display: contents` on the wrappers makes them vanish below `lg`, so
+ * their children become direct flex items of this container and stack in DOM
+ * order — the phone screen is unchanged, to the pixel, by a page adopting this.
+ * The price is that the columns cannot interleave: `secondary` is everything
+ * after one cut point, so a screen gets two columns only if it already reads as
+ * two halves. A screen that would have to be reordered does not get them.
+ *
+ * A page's own header goes *outside* this, in the page's wrapper, so it spans
+ * both columns rather than sitting on top of the first one.
+ */
+export function Panes({
+	primary,
+	secondary,
+	className,
+}: {
+	primary: ReactNode;
+	secondary: ReactNode;
+	className?: string;
+}) {
+	return (
+		<div
+			className={cn(
+				'flex flex-col gap-7 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-5',
+				className,
+			)}
+		>
+			{/* `gap: inherit` rather than a second literal `gap-7`: below `lg` these
+			    wrappers are not boxes at all and the outer gap is what separates every
+			    child, so the vertical rhythm has one definition either way. */}
+			<div className="contents lg:flex lg:flex-col lg:gap-[inherit]">{primary}</div>
+			<div className="contents lg:flex lg:flex-col lg:gap-[inherit]">{secondary}</div>
+		</div>
+	);
+}
+
 const EMPHASIS = /(<b>.*?<\/b>)/g;
 
 /**

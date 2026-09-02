@@ -31,14 +31,17 @@
 //   pnpm build && pnpm check:motion
 //   pnpm check:motion --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:motion --routes=/,/train --verbose
+//   pnpm check:motion --desktop           # the wide layout, 1280px
 //
 // Not in `pnpm verify`, for the same reason `check:contrast` is not: it needs
 // Chrome and a completed build.
-import { discoverRoutes, fail, open, parseArgs, type Session } from './browser.ts';
+import { discoverRoutes, fail, open, parseArgs, type Session, viewport } from './browser.ts';
 
 const args = parseArgs();
-const WIDTH = Number(args.get('width') ?? 360);
-const HEIGHT = Number(args.get('height') ?? 800);
+/** `--desktop` measures the wide layout (#52): a 1280px viewport *and* emulated
+ *  `hover`/`pointer`, without which every `hover:` rule is inert. `--width` and
+ *  `--height` still override. */
+const { width: WIDTH, height: HEIGHT, desktop: DESKTOP } = viewport(args);
 const VERBOSE = args.has('verbose');
 
 /** One frame at 60Hz, rounded up. Anything at or under this is a hard cut. */
@@ -191,6 +194,7 @@ const allowed = await open({
 	tool: 'check:motion',
 	width: WIDTH,
 	height: HEIGHT,
+	desktop: DESKTOP,
 	...(args.has('url') ? { url: args.get('url') as string } : {}),
 });
 let control: { declared: Timed[]; ran: Timed[] };
@@ -228,6 +232,7 @@ const quiet = await open({
 	tool: 'check:motion',
 	width: WIDTH,
 	height: HEIGHT,
+	desktop: DESKTOP,
 	reducedMotion: true,
 	...(args.has('url') ? { url: args.get('url') as string } : {}),
 });

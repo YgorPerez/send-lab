@@ -41,7 +41,7 @@ export function Picker({
 			<Select.Trigger
 				aria-label={ariaLabel}
 				className={cn(
-					'flex h-9 w-full min-w-0 items-center justify-between gap-1 rounded-md border border-line bg-panel-2 px-2 text-left text-[13px] text-ink-dim transition-colors active:bg-panel-3',
+					'flex h-9 w-full min-w-0 items-center justify-between gap-1 rounded-md border border-line bg-panel-2 px-2 text-left text-[13px] text-ink-dim transition-colors hover:bg-panel-3 hover:text-ink active:bg-panel-3',
 					className,
 				)}
 			>

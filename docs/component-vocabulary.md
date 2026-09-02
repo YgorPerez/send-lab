@@ -55,6 +55,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
 | `Meter` | `primitives.tsx` | A 0–10 reading against a track |
 | `Stat` | `primitives.tsx` | One reading in a divider-separated strip |
+| `Column` | `primitives.tsx` | A page's single column, capped near the phone measure |
+| `Panes` | `primitives.tsx` | A page's two columns from `lg`, one below it |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
@@ -215,6 +217,111 @@ Two things differ from #20's sketch, both deliberate:
 
 ---
 
+## The desktop layout
+
+Settled by [#52](https://github.com/YgorPerez/send-lab/issues/52) and recorded as
+[ADR 0018](adr/0018-the-desktop-layout-is-css-below-the-shell.md). The athlete
+asked for a real desktop layout, not a centred column, so a second layout exists —
+and this is the part of it every page ticket has to know.
+
+**One breakpoint, `lg` (1024px). Tablet is not a case.** It resolves downward: it
+gets the phone layout at a comfortable width. The number is derived rather than
+picked — a rail (200px) beside two columns of the 360px measure these screens were
+designed against, plus gutters, first fits at ≈992px, and `lg` is the next stop up.
+
+**The chrome.** The three tabs move from the bottom edge to a 200px left rail
+under the same top strip, and carry the **same three destinations**. `main` goes
+from `max-w-[520px]` to `max-w-[1000px]`. All of it is `lg:` utilities on the one
+`<nav>` and the one `<main>` that already exist — see the ADR for why that is a
+constraint rather than a style, and `tests/desktop.test.ts` for what enforces it.
+
+**`Panes` is the only place a page's desktop width is decided.** Every page
+composes through it, including the ones that stay one column:
+
+```tsx
+<Panes primary={<>…</>} secondary={<>…</>} />  // two columns from lg, one below
+<Column>…</Column>                             // one column, capped at 560px
+```
+
+Two shapes rather than one component with an optional prop: `<Panes>` with one
+column renders no panes, and a name that is only true half the time is the thing
+this repo spends most of its effort not doing. A page's own header goes *outside*
+`Panes`, in the page's wrapper, so it spans both columns.
+
+**The split has to be contiguous in the phone order.** `Panes` puts
+`display: contents` on its two wrappers below `lg`, so they vanish and their
+children stack in DOM order — adopting it costs the phone screen nothing, measured
+to the pixel. The price is that the columns cannot interleave: `secondary` is
+everything after one cut point. So a screen gets a second column only if it
+already reads as two halves. **A page that has to be reordered to fit two columns
+does not get two columns.**
+
+### Which pages spend the width
+
+| Page | Desktop | Why |
+|---|---|---|
+| `/` Today | **two columns** | Cut at the screen's own ordering rule: *decision + evidence* left, *input* right. Measured 3222 → 2019px (en-US), 3367 → 2035px (pt-BR) |
+| `log` | **two columns** | Two independent lists. Side by side the page is as tall as the longer one instead of their sum, and the summary line — which truncates first in pt-BR — gets a column wider than the whole phone |
+| `week`, `program` | **two columns, expected** | Unbuilt ([#63](https://github.com/YgorPerez/send-lab/issues/63), [#65](https://github.com/YgorPerez/send-lab/issues/65)). A slot grid and a phase editor are the two shapes that most obviously want a second column beside them |
+| `train` | **capped** | Defined by the posture it is used in. Seven loggable fields laid out against 360px, stretched to twice that, put the number being typed an inch from its label. Measured: the wide layout saves it 128px, which is the bottom bar |
+| `login`, `welcome` | **capped** | A form and a stepper. A stepper is one thing at a time by design |
+| `settings` | **capped, expected** | A list of controls; width adds nothing |
+| `studies` | **open** | [#37](https://github.com/YgorPerez/send-lab/issues/37) owns its affordances first |
+
+**Four of nine diverge, and five reuse the phone design unchanged.** That ratio is
+the point: the desktop layout is cheap because most of it is the phone layout with
+a cap on it, and the page tickets carry two answers only where the second one pays.
+
+### Hover, focus and hit areas
+
+Desktop brings a pointer and a keyboard; the phone design accounted for neither.
+Both are answered once, and both are free on touch.
+
+- **Hover moves a surface or a border, never a measured text/background pair.**
+  `check:contrast` measures a page nobody is hovering, so a hover state is the one
+  place a contrast regression cannot be caught — and `--flag-deep`, already used
+  as the primary button's *press*, carries the ground at **3.91:1**. Fine for as
+  long as a finger is down, not fine for as long as a pointer rests. So the
+  primary's hover is its border; `quiet` and `bare` raise the panel a step and take
+  their text *lighter*, which can only improve a ratio.
+- **`hover:` costs touch nothing.** Tailwind 4 emits every one of them inside
+  `@media (hover: hover)` — verified in the built stylesheet, not assumed. That is
+  what rules out sticky hover on a tap.
+- **Focus is a real ring, on `:focus-visible`.** Every input carries `outline-none`
+  and replaces the UA outline with a border step, which reads fine under a finger
+  already on the control and tells a keyboard nothing about which of a set row's
+  four columns has the caret. `app.css` puts a 2px `--ring` outline back, offset so
+  it survives on `bg-panel-2`. `:focus-visible` and not `:focus`, so a control the
+  athlete just tapped does not keep a ring around it.
+- **Hit areas do not shrink.** 48px in the tab bar, 44px in the rail, 44px
+  everywhere touched mid-set. A pointer is precise enough for less; a second set of
+  sizes is a second thing to keep in step, and the athlete gains nothing from it.
+- **The hover rule is a gate, not a convention.** `tests/desktop.test.ts` scans
+  every `hover:` utility in the tree against an allow-list — a background within
+  the panel ramp, text taken *lighter*, or any border — and refuses everything
+  else. It carries its own control (the scan must find the hover states the app
+  has) because a scanner that stopped matching would report the same clean run as
+  a compliant tree.
+
+### Measuring it
+
+The three browser checks take `--desktop`, which picks a 1280×900 viewport *and*
+emulates `hover`/`pointer` — width alone is not enough, because under mobile
+emulation Chrome reports `hover: none` and every hover rule is inert.
+
+```
+pnpm build
+pnpm check:hydration --desktop   # the check that catches a layout chosen in JS
+pnpm check:contrast --desktop
+pnpm check:motion --desktop
+```
+
+`check:hydration --desktop` is the load-bearing one: a shell that branched on the
+viewport bakes one answer and mismatches at the other width, and nothing else
+reports it.
+
+---
+
 ## Animation
 
 Animation lives in the **variant** (#46), never as a Motion prop, and there is
@@ -273,6 +380,12 @@ unit that means anything here.
 | `studies` | **blocked** by [#37](https://github.com/YgorPerez/send-lab/issues/37) | an evidence badge, which #37 owns | ≈ 1 × `log`, after #37 |
 
 **Roughly five new screens' worth of build, plus four finishing tickets.**
+
+**The desktop layout does not change these numbers**, which is the whole point of
+how #52 answered it. Two of the five unbuilt pages get a second column (`week`,
+`program`); the other three compose through `Panes` with a single argument and are
+done. The one line the estimate gains is that a page ticket now has to say which
+of the two it is — see [the desktop layout](#the-desktop-layout) above.
 
 Two things that ordering should account for, both of which the page count hides:
 

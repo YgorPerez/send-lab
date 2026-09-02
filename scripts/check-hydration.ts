@@ -48,14 +48,17 @@
 //   pnpm build && pnpm check:hydration
 //   pnpm check:hydration --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:hydration --routes=/,/train --locales=pt-BR --verbose
+//   pnpm check:hydration --desktop        # the wide layout, 1280px
 //
 // Not in `pnpm verify`, for the same reason `check:contrast` and `check:motion`
 // are not: it needs Chrome and a completed build.
-import { discoverLocales, discoverRoutes, fail, open, parseArgs } from './browser.ts';
+import { discoverLocales, discoverRoutes, fail, open, parseArgs, viewport } from './browser.ts';
 
 const args = parseArgs();
-const WIDTH = Number(args.get('width') ?? 360);
-const HEIGHT = Number(args.get('height') ?? 800);
+/** `--desktop` measures the wide layout (#52): a 1280px viewport *and* emulated
+ *  `hover`/`pointer`, without which every `hover:` rule is inert. `--width` and
+ *  `--height` still override. */
+const { width: WIDTH, height: HEIGHT, desktop: DESKTOP } = viewport(args);
 const VERBOSE = args.has('verbose');
 
 /** Below this, the route did not render and a quiet console proves nothing. */
@@ -115,6 +118,7 @@ const session = await open({
 	tool: 'check:hydration',
 	width: WIDTH,
 	height: HEIGHT,
+	desktop: DESKTOP,
 	// Explicit, and full motion on purpose: the reduced-motion build takes
 	// different code paths through the shell, and this check is about the
 	// default one the athlete gets.

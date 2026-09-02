@@ -35,16 +35,19 @@
 //   pnpm build && pnpm check:contrast
 //   pnpm check:contrast --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:contrast --routes=/,/train --locales=pt-BR --width=320
+//   pnpm check:contrast --desktop         # the wide layout, 1280px
 //
 // Set `CHROME_PATH` if Chrome is somewhere unusual. Chrome, the static server
 // and the CDP client are `scripts/browser.ts`, shared with `check:motion`.
-import { discoverLocales, discoverRoutes, fail, open, parseArgs } from './browser.ts';
+import { discoverLocales, discoverRoutes, fail, open, parseArgs, viewport } from './browser.ts';
 
 // ---------------------------------------------------------------- arguments
 
 const args = parseArgs();
-const WIDTH = Number(args.get('width') ?? 360);
-const HEIGHT = Number(args.get('height') ?? 800);
+/** `--desktop` measures the wide layout (#52): a 1280px viewport *and* emulated
+ *  `hover`/`pointer`, without which every `hover:` rule is inert. `--width` and
+ *  `--height` still override. */
+const { width: WIDTH, height: HEIGHT, desktop: DESKTOP } = viewport(args);
 /** Below this, a screen did not render rather than rendered well.
  *
  *  A backstop, not the main guard — the uncaught-exception capture is what
@@ -178,6 +181,7 @@ const session = await open({
 	tool: 'check:contrast',
 	width: WIDTH,
 	height: HEIGHT,
+	desktop: DESKTOP,
 	...(args.has('url') ? { url: args.get('url') as string } : {}),
 });
 const { cdp, origin, evaluate, goto } = session;

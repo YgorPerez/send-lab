@@ -52,7 +52,7 @@ import { useTrainingRecord } from '$lib/store/record';
 import { cn } from '$lib/utils';
 import { ReadinessCheck } from '../components/ReadinessCheck';
 import { RehabStarter, SelfCheckSheet } from '../components/SelfCheck';
-import { Bare, Eyebrow, Meter, Prose, Section, Stat } from '../components/ui/primitives';
+import { Bare, Eyebrow, Meter, Panes, Prose, Section, Stat } from '../components/ui/primitives';
 import { Sparkline } from '../components/ui/Sparkline';
 import { button, card, chip, input } from '../components/ui/variants';
 
@@ -139,6 +139,10 @@ function Today() {
 		// things it always did; what changed is that the space between them is now
 		// bigger than the space inside them, which is what makes them read as eight
 		// things rather than as one column of rows.
+		//
+		// The page's own frame, not a `Column`: this is a two-column page at `lg`, so
+		// the frame is the full width the shell hands over and the header sits
+		// outside `Panes` in order to span both columns.
 		<div className="flex flex-col gap-7">
 			{/* ---- day header. Two lines, no card: the frame for everything below. */}
 			<header className="flex items-baseline justify-between gap-2 pt-1.5">
@@ -153,16 +157,36 @@ function Today() {
 				</span>
 			</header>
 
-			<ReadCard
-				verdict={verdict}
-				score={readiness.score}
-				vsBaseline={vsBaseline}
-				breakdown={breakdown}
-				scoreNote={t.scoreNote}
-				nextTaskLabel={nextTask?.exName ?? null}
-			/>
+			{/* THE CUT (#52).
+			    Today is the page a wide screen most obviously earns something on: it
+			    carries nine things in one scroll, and the athlete opens it for the
+			    first two. Measured on the built app: 3222px → 2019px in English and
+			    3367px → 2035px in pt-BR, with the phone unchanged to the pixel.
+			    The cut is *the ordering rule this file already states*, taken
+			    literally: **decision first, evidence second, input last**. Everything
+			    above is the read and what qualifies it — the verdict, the plan it
+			    produced, the counters, the trend, the watch-outs. Everything below is
+			    what the athlete puts *in*: the check, the bodyweight, the injury
+			    entry. On a phone that is a top and a bottom; on a laptop it is a left
+			    and a right, and the plan stops sitting three scrolls above the check
+			    that changes it.
+			    That the two coincide is not luck — it is the constraint. `Panes`
+			    splits at one point in the phone order and cannot interleave, so a
+			    screen only gets two columns if it already reads as two halves. This
+			    one did. */}
+			<Panes
+				primary={
+					<>
+						<ReadCard
+							verdict={verdict}
+							score={readiness.score}
+							vsBaseline={vsBaseline}
+							breakdown={breakdown}
+							scoreNote={t.scoreNote}
+							nextTaskLabel={nextTask?.exName ?? null}
+						/>
 
-			{/* Post-session outcome: the input that turns the heuristic weighting into
+						{/* Post-session outcome: the input that turns the heuristic weighting into
 			    a personal one.
 
 			    Lifted out of the read card. It was the fifth rule-separated block
@@ -170,136 +194,150 @@ function Today() {
 			    training — sitting inside the morning's read, under its own hairline, it
 			    read as another part of the verdict. Its own section, its own heading,
 			    no box: the heading is the question. */}
-			<Section label={m.rd_outcome_q()}>
-				<div className="grid grid-cols-2 gap-1.5">
-					{[3, 2, 1, 0].map((v) => (
-						<button
-							key={v}
-							type="button"
-							aria-pressed={outcome === v}
-							onClick={() => setOutcome(v)}
-							className={button({
-								kind: 'quiet',
-								size: 'md',
-								class: cn('min-h-11 px-1 text-[12px]', outcome === v && 'border-teal/50 text-teal'),
-							})}
-						>
-							{OUTCOME_LABEL[v]()}
-						</button>
-					))}
-				</div>
-				{outcome != null ? <p className="text-[11px] text-teal">{m.rd_outcome_saved()}</p> : null}
-			</Section>
+						<Section label={m.rd_outcome_q()}>
+							<div className="grid grid-cols-2 gap-1.5">
+								{[3, 2, 1, 0].map((v) => (
+									<button
+										key={v}
+										type="button"
+										aria-pressed={outcome === v}
+										onClick={() => setOutcome(v)}
+										className={button({
+											kind: 'quiet',
+											size: 'md',
+											class: cn(
+												'min-h-11 px-1 text-[12px]',
+												outcome === v && 'border-teal/50 text-teal',
+											),
+										})}
+									>
+										{OUTCOME_LABEL[v]()}
+									</button>
+								))}
+							</div>
+							{outcome != null ? (
+								<p className="text-[11px] text-teal">{m.rd_outcome_saved()}</p>
+							) : null}
+						</Section>
 
-			<PlanCard
-				day={t.day}
-				phase={t.phase}
-				tasks={t.tasks}
-				isRestDay={t.isRestDay}
-				done={done}
-				heldSet={heldSet}
-				onToggle={(key) => setDone((p) => ({ ...p, [key]: !p[key] }))}
-				missed={missedTaken ? null : t.missed}
-				onTakeMissed={() => setMissedTaken(true)}
-			/>
+						<PlanCard
+							day={t.day}
+							phase={t.phase}
+							tasks={t.tasks}
+							isRestDay={t.isRestDay}
+							done={done}
+							heldSet={heldSet}
+							onToggle={(key) => setDone((p) => ({ ...p, [key]: !p[key] }))}
+							missed={missedTaken ? null : t.missed}
+							onTakeMissed={() => setMissedTaken(true)}
+						/>
 
-			{/* ---- counters. Three integers need no box: a rule above them and the
+						{/* ---- counters. Three integers need no box: a rule above them and the
 			     section spacing around them group them perfectly well, and three
 			     bordered boxes for three numbers was the densest-looking and least
 			     dense thing on the screen. */}
-			<Bare className="flex divide-x divide-line-soft">
-				<Stat accent value={t.stats.streak} label={m.stat_streak()} />
-				<Stat value={t.stats.last7} suffix="/7" label={m.stat_week_sessions()} />
-				<Stat value={t.stats.total} label={m.stat_total()} />
-			</Bare>
-
-			{/* ---- the trend. The one chart the rebuild still has data for. */}
-			<Section
-				label={m.readiness_trend()}
-				meta={
-					<span className="num">
-						{insights.baseline != null ? `⌀ ${Math.round(insights.baseline)} · ` : ''}
-						{vsBaseline}
-					</span>
-				}
-			>
-				<div>
-					<Sparkline
-						points={t.trendPoints}
-						baseline={insights.baseline}
-						current={readiness.score}
-					/>
-					<div className="num mt-1 flex justify-between text-[9px] text-ink-faint">
-						<span>{t.trendPoints[0]?.label}</span>
-						<span>{t.trendPoints[t.trendPoints.length - 1]?.label}</span>
-					</div>
-				</div>
-			</Section>
-
-			<WatchOuts
-				flags={readiness.flags}
-				content={content}
-				onSelfCheck={() => setSelfCheckOpen(true)}
-			/>
-
-			{/* ---- the readiness check. Answered, so it opens as a receipt with the
-			     form underneath; the toggle collapses it back to the receipt. */}
-			<Section
-				label={m.log_readiness()}
-				meta={
-					<button type="button" onClick={() => setCheckOpen((v) => !v)} className="text-ink-dim">
-						{checkOpen ? m.btn_close() : m.td_recheck()}
-					</button>
-				}
-			>
-				<div>
-					<div className="flex items-baseline justify-between gap-2 text-[12px] text-ink-faint">
-						<span className="num">
-							{answered}/{questions.length}
-						</span>
-						<button
-							type="button"
-							onClick={() => setAnswers({})}
-							className="text-[11px] text-ink-dim underline decoration-line underline-offset-2"
+						<Bare className="flex divide-x divide-line-soft">
+							<Stat accent value={t.stats.streak} label={m.stat_streak()} />
+							<Stat value={t.stats.last7} suffix="/7" label={m.stat_week_sessions()} />
+							<Stat value={t.stats.total} label={m.stat_total()} />
+						</Bare>
+						{/* ---- the trend. The one chart the rebuild still has data for. */}
+						<Section
+							label={m.readiness_trend()}
+							meta={
+								<span className="num">
+									{insights.baseline != null ? `⌀ ${Math.round(insights.baseline)} · ` : ''}
+									{vsBaseline}
+								</span>
+							}
 						>
-							{m.td_recheck()}
-						</button>
-					</div>
-					{checkOpen ? (
-						<div className="mt-3 border-t border-line-soft pt-3">
-							<ReadinessCheck
-								questions={questions}
-								answers={answers}
-								onPick={(id, v) => setAnswers((prev) => ({ ...prev, [id]: v }))}
-							/>
-						</div>
-					) : null}
-				</div>
-			</Section>
+							<div>
+								<Sparkline
+									points={t.trendPoints}
+									baseline={insights.baseline}
+									current={readiness.score}
+								/>
+								<div className="num mt-1 flex justify-between text-[9px] text-ink-faint">
+									<span>{t.trendPoints[0]?.label}</span>
+									<span>{t.trendPoints[t.trendPoints.length - 1]?.label}</span>
+								</div>
+							</div>
+						</Section>
 
-			<BodyweightNudge
-				bodyweight={t.bodyweight}
-				draft={bodyweight}
-				onDraftChange={setBodyweight}
-				logged={bodyweightLogged}
-				onLog={() => setBodyweightLogged(true)}
-			/>
+						<WatchOuts
+							flags={readiness.flags}
+							content={content}
+							onSelfCheck={() => setSelfCheckOpen(true)}
+						/>
+					</>
+				}
+				secondary={
+					<>
+						{/* ---- the readiness check. Answered, so it opens as a receipt with the
+			     form underneath; the toggle collapses it back to the receipt. */}
+						<Section
+							label={m.log_readiness()}
+							meta={
+								<button
+									type="button"
+									onClick={() => setCheckOpen((v) => !v)}
+									className="text-ink-dim"
+								>
+									{checkOpen ? m.btn_close() : m.td_recheck()}
+								</button>
+							}
+						>
+							<div>
+								<div className="flex items-baseline justify-between gap-2 text-[12px] text-ink-faint">
+									<span className="num">
+										{answered}/{questions.length}
+									</span>
+									<button
+										type="button"
+										onClick={() => setAnswers({})}
+										className="text-[11px] text-ink-dim underline decoration-line underline-offset-2"
+									>
+										{m.td_recheck()}
+									</button>
+								</div>
+								{checkOpen ? (
+									<div className="mt-3 border-t border-line-soft pt-3">
+										<ReadinessCheck
+											questions={questions}
+											answers={answers}
+											onPick={(id, v) => setAnswers((prev) => ({ ...prev, [id]: v }))}
+										/>
+									</div>
+								) : null}
+							</div>
+						</Section>
 
-			{/* The library has an instrument for three of the four body areas and none
+						<BodyweightNudge
+							bodyweight={t.bodyweight}
+							draft={bodyweight}
+							onDraftChange={setBodyweight}
+							logged={bodyweightLogged}
+							onLog={() => setBodyweightLogged(true)}
+						/>
+
+						{/* The library has an instrument for three of the four body areas and none
 			    for the wrist (#71), so the whole section is conditional rather than
 			    rendering a check with nothing behind it. */}
-			{t.selfCheck ? (
-				<>
-					<InjuryEntry selfCheck={t.selfCheck} onSelfCheck={() => setSelfCheckOpen(true)} />
-					<SelfCheckSheet
-						area={t.selfCheck.area}
-						instrument={t.selfCheck.instrument}
-						last={t.selfCheck.last}
-						open={selfCheckOpen}
-						onOpenChange={setSelfCheckOpen}
-					/>
-				</>
-			) : null}
+						{t.selfCheck ? (
+							<>
+								<InjuryEntry selfCheck={t.selfCheck} onSelfCheck={() => setSelfCheckOpen(true)} />
+								<SelfCheckSheet
+									area={t.selfCheck.area}
+									instrument={t.selfCheck.instrument}
+									last={t.selfCheck.last}
+									open={selfCheckOpen}
+									onOpenChange={setSelfCheckOpen}
+								/>
+							</>
+						) : null}
+					</>
+				}
+			/>
 		</div>
 	);
 }

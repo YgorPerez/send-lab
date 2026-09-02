@@ -33,7 +33,7 @@ import { useTrainingRecord } from '$lib/store/record';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
-import { Eyebrow, Section } from '../components/ui/primitives';
+import { Column, Eyebrow, Section } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -147,7 +147,14 @@ function Train() {
 	const doneSets = tasks.reduce((n, t) => n + t.sets.filter((s) => s.done).length, 0);
 
 	return (
-		<div className="flex flex-col gap-6">
+		// NO SECOND COLUMN, DELIBERATELY (#52). Train is the one screen defined by
+		// the posture it is used in — one hand, mid-set, chalk on the fingers — and
+		// a wide screen does not change that. What it would change is the set grid:
+		// seven loggable fields laid out against a 360px measure, stretched across a
+		// column twice that, put the number the athlete is typing an inch from its
+		// own label. So the page keeps the phone layout and caps itself, and the
+		// desktop width is spent on nothing.
+		<Column className="gap-6">
 			<header className="flex items-baseline justify-between gap-2 pt-1.5">
 				<h1 className="h-screen-title min-w-0">
 					{m.sec_train()} · {screen.weekdayLabel}
@@ -260,6 +267,6 @@ function Train() {
 				<Plus size={16} />
 				{m.train_finish()}
 			</button>
-		</div>
+		</Column>
 	);
 }

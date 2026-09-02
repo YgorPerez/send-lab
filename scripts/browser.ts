@@ -36,6 +36,28 @@ export function parseArgs(argv: string[] = process.argv.slice(2)): Map<string, s
 	return out;
 }
 
+/**
+ * The viewport half of every check's arguments, in one place.
+ *
+ * `--desktop` picks a pointer-and-keyboard machine; `--width` / `--height`
+ * override either default. It is one function rather than four lines repeated in
+ * each check because the *pairing* is the thing that has to stay true: a desktop
+ * session at a 360px viewport, or a 1280px viewport reporting `hover: none`, are
+ * both combinations no device has, and both read as working measurements.
+ */
+export function viewport(args: Map<string, string>): {
+	width: number;
+	height: number;
+	desktop: boolean;
+} {
+	const desktop = args.has('desktop');
+	return {
+		desktop,
+		width: Number(args.get('width') ?? (desktop ? 1280 : 360)),
+		height: Number(args.get('height') ?? (desktop ? 900 : 800)),
+	};
+}
+
 let toolName = 'check';
 
 export function fail(message: string): never {
@@ -268,6 +290,21 @@ export interface OpenOptions {
 	 * one machine and a full-motion one on another.
 	 */
 	reducedMotion?: boolean;
+	/**
+	 * Emulate a pointer-and-keyboard machine rather than a phone (`--desktop`).
+	 *
+	 * Added for #52, which gave the app a second layout. Width alone does not
+	 * reach it: `mobile: true` keeps the mobile device metrics whatever the number
+	 * is, and — the part that actually matters — `hover:` utilities live inside
+	 * `@media (hover: hover)`, which Chrome reports as `none` under mobile
+	 * emulation. So a desktop run at `--width=1280` without this measures the wide
+	 * layout with every hover state switched off, which is not what a laptop gets.
+	 *
+	 * Emulated at the browser, like `prefers-reduced-motion` above and for the same
+	 * reason: a stylesheet cannot be tricked into matching a media query from
+	 * inside the page.
+	 */
+	desktop?: boolean;
 	/** Serve this origin instead of the built output (`--url=…`). */
 	url?: string;
 	/** Milliseconds to wait after a navigation before reading the page. */
@@ -283,8 +320,11 @@ export interface OpenOptions {
  */
 export async function open(options: OpenOptions): Promise<Session> {
 	toolName = options.tool;
-	const width = options.width ?? 360;
-	const height = options.height ?? 800;
+	// Defaulted from `desktop` rather than fixed at the phone, so a caller that
+	// bypasses `viewport()` above still cannot get desktop media at a 360px
+	// viewport.
+	const width = options.width ?? (options.desktop ? 1280 : 360);
+	const height = options.height ?? (options.desktop ? 900 : 800);
 	const settleMs = options.settleMs ?? 1200;
 
 	const chromePath = findChrome();
@@ -325,8 +365,8 @@ export async function open(options: OpenOptions): Promise<Session> {
 		await cdp.send('Emulation.setDeviceMetricsOverride', {
 			width,
 			height,
-			deviceScaleFactor: 2,
-			mobile: true,
+			deviceScaleFactor: options.desktop ? 1 : 2,
+			mobile: !options.desktop,
 		});
 		// The media feature, emulated at the browser rather than faked in the page:
 		// a stylesheet cannot be tricked into matching a media query, and this is the
@@ -341,6 +381,14 @@ export async function open(options: OpenOptions): Promise<Session> {
 					name: 'prefers-reduced-motion',
 					value: options.reducedMotion ? 'reduce' : 'no-preference',
 				},
+				// Set on both runs rather than only the desktop one, so a phone
+				// measurement asserts `hover: none` instead of inheriting whatever the
+				// headless default happens to be — the same trap the note above records
+				// for `prefers-reduced-motion`, which defaults to `reduce` here.
+				{ name: 'hover', value: options.desktop ? 'hover' : 'none' },
+				{ name: 'any-hover', value: options.desktop ? 'hover' : 'none' },
+				{ name: 'pointer', value: options.desktop ? 'fine' : 'coarse' },
+				{ name: 'any-pointer', value: options.desktop ? 'fine' : 'coarse' },
 			],
 		});
 

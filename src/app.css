@@ -200,6 +200,37 @@
 		-webkit-font-smoothing: antialiased;
 	}
 
+	/* ---- keyboard focus ----
+	   Desktop brings a keyboard and a pointer, and the phone design accounted for
+	   neither (#52, question 6). Both are answered here rather than per control,
+	   and both are free on touch:
+
+	   HOVER is a `hover:` utility on the five recipes and on the nav. Tailwind 4
+	   emits every one of them inside `@media (hover: hover)`, so a finger never
+	   leaves a control stuck in its hover state — the sticky-hover bug that comes
+	   from writing these by hand. The rule they follow is in `variants.ts`: hover
+	   moves a surface or a border, never a text/background pair `check:contrast`
+	   has measured, because that check measures a page nobody is hovering.
+
+	   FOCUS is this. `:focus-visible`, not `:focus` — the UA matches it for a
+	   keyboard and a screen reader and not for a tap, so a control the athlete
+	   just touched does not keep a ring around it. It has to be declared, because
+	   every input and several buttons carry `outline-none` to replace the UA
+	   outline with a border step; that reads fine under a finger already on the
+	   control and tells a keyboard nothing about which of a set row's four
+	   columns has the caret.
+
+	   The ring colour is `--ring` (the signature vermilion) at full strength
+	   rather than the `outline-ring/50` the `*` rule sets, and it sits 2px off the
+	   control so it survives on `bg-panel-2`, which is the surface every input
+	   uses. Not a `box-shadow`: an outline follows `border-radius`, is not clipped
+	   by an `overflow: hidden` ancestor — the accordion group and the locale
+	   switch are both one — and costs no layout. */
+	:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
 	/* ---- numbers ----
 	   Every reading is set in mono and tabular. A column of numbers that jitters
 	   horizontally as the digits change is the fastest way to make a dense screen

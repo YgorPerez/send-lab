@@ -75,7 +75,12 @@ export const chip = tv({
  * Honoured everywhere for that reason.
  */
 export const input = tv({
-	base: 'w-full min-w-0 rounded-md border border-line bg-panel-2 px-2 py-1.5 text-base text-ink tabular-nums outline-none transition-colors focus:border-ink-faint',
+	// `outline-none` removes the UA outline and `focus:border-ink-faint` replaces
+	// it, which is enough for a finger and not enough for a keyboard: the border
+	// step is small and it says nothing about *which* of four columns in a set row
+	// has the caret. `app.css` puts a real ring back on `:focus-visible`, which a
+	// touch focus never matches — so this costs the phone nothing (#52, question 6).
+	base: 'w-full min-w-0 rounded-md border border-line bg-panel-2 px-2 py-1.5 text-base text-ink tabular-nums outline-none transition-colors hover:border-line-soft focus:border-ink-faint',
 	variants: {
 		align: { left: 'text-left', center: 'text-center' },
 	},
@@ -109,9 +114,19 @@ export const button = tv({
 			// than less. Missed entirely by the first version of `check:contrast`,
 			// which resolved a filled button's backdrop from its parent instead of
 			// from the button itself.
-			primary: 'border-flag bg-flag text-bg active:bg-flag-deep',
-			quiet: 'border-line bg-panel-2 text-ink-dim active:bg-panel-3 active:text-ink',
-			bare: 'border-transparent bg-transparent text-ink-faint active:text-ink',
+			//
+			// HOVER MOVES THE SURFACE OR THE BORDER, NEVER THE MEASURED PAIR (#52).
+			// `active:bg-flag-deep` is fine as a press: it lasts as long as the finger
+			// is down. As a *hover* it would not be — the ground on `--flag-deep`
+			// measures **3.91:1**, under the floor, and a pointer can rest there for as
+			// long as it likes. `check:contrast` would never see it, because it measures
+			// a page nobody is hovering. So the primary's hover is its border, and the
+			// other two raise the panel a step and take their text *lighter*, which can
+			// only improve a ratio.
+			primary: 'border-flag bg-flag text-bg hover:border-chalk active:bg-flag-deep',
+			quiet:
+				'border-line bg-panel-2 text-ink-dim hover:bg-panel-3 hover:text-ink active:bg-panel-3 active:text-ink',
+			bare: 'border-transparent bg-transparent text-ink-faint hover:text-ink active:text-ink',
 		},
 		size: {
 			sm: 'min-h-8 px-2 py-1',
@@ -146,7 +161,7 @@ export const option = tv({
 	variants: {
 		on: {
 			true: 'border-chalk/60 bg-panel-3 font-semibold text-chalk',
-			false: 'border-line bg-panel-2 text-ink-dim',
+			false: 'border-line bg-panel-2 text-ink-dim hover:border-chalk/40 hover:text-ink',
 		},
 		width: {
 			/** Shares a wrapping row with its siblings. */

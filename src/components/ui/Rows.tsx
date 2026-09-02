@@ -42,7 +42,7 @@ export function Row({
 			className="border-b border-line-soft last:border-b-0 data-[open]:bg-panel-2/40"
 		>
 			<Accordion.Header>
-				<Accordion.Trigger className="group flex min-h-11 w-full items-center gap-2 px-2.5 py-2 text-left transition-colors active:bg-panel-2">
+				<Accordion.Trigger className="group flex min-h-11 w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-panel-2 active:bg-panel-2">
 					<span className="min-w-0 flex-1">{summary}</span>
 					<ChevronDown
 						size={14}
