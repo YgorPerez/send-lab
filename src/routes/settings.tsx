@@ -4,14 +4,14 @@
 //
 // THE SPLIT (#24): PREFERENCES WORK OFFLINE, ACCOUNT ACTIONS DO NOT
 // -----------------------------------------------------------------
-// `prefs` is account data already in the local store, so units, language and
-// notifications save on the device and sync when they can — the same path as a
-// ticked task. Signing out and the API token need the server: sign-out must not
-// be offered offline at all (an offline sign-out would orphan unsynced work), and
-// a token cannot be read from a device that has never seen it. The page says which
-// half a control is in rather than letting an action fail silently in a gym
-// basement: an "Offline" chip in the header, one line of copy, and the account
-// controls dropping their fill.
+// `prefs` is part of the training record and already in the local store, so
+// units, language and notifications save on the device and sync when they can —
+// the same path as a ticked task. Signing out and the API token need the server:
+// sign-out must not be offered offline at all (an offline sign-out would orphan
+// unsynced work), and a token cannot be read from a device that has never seen
+// it. The page says which half a control is in rather than letting an action fail
+// silently in a gym basement: an "Offline" chip in the header, one line of copy,
+// and the account controls dropping their fill.
 //
 // THE RATION: NO `primary` ON THIS SCREEN
 // ---------------------------------------
@@ -27,16 +27,15 @@
 // the moment the switch is turned on, not before.
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useId, useState } from 'react';
 import { readToken, regenerateToken } from '$lib/apiTokenClient';
 import { useOnline } from '$lib/online';
 import * as m from '$lib/paraglide/messages';
-import { getLocale } from '$lib/paraglide/runtime';
-import { APP_LOCALES, type AppLocale, chooseLocale } from '$lib/store/locale';
+import { APP_LOCALES, type AppLocale, chooseLocale, currentLocale } from '$lib/store/locale';
 import { writePrefs } from '$lib/store/prefs';
-import { type Prefs, recordSync, useTrainingRecord } from '$lib/store/record';
+import { type Prefs, recordSync, useActiveAccount, useTrainingRecord } from '$lib/store/record';
 import { AlertDialog } from '../components/ui/AlertDialog';
-import { Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
+import { Bare, Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
 import { Switch } from '../components/ui/Switch';
 import { button, card, chip, option } from '../components/ui/variants';
 import { authClient, signOut } from '../lib/auth-client';
@@ -70,7 +69,9 @@ function Settings() {
 	);
 }
 
-/** One control on its own line: what it is on the left, the control on the right. */
+/** One control on its own line: what it is on the left, the control on the right.
+ *  No horizontal padding of its own — inside a `card` the card supplies it, and
+ *  inside a `Bare` the row sits flush with the rule above it. */
 function ControlRow({
 	id,
 	label,
@@ -81,13 +82,20 @@ function ControlRow({
 	children: ReactNode;
 }) {
 	return (
-		<div className="flex min-h-11 items-center justify-between gap-3 px-3 py-1.5">
+		<div className="flex min-h-11 items-center justify-between gap-3 py-1.5">
 			<span id={id} className="text-[13px] text-ink">
 				{label}
 			</span>
 			{children}
 		</div>
 	);
+}
+
+/** One line saying why a control did not do what was asked — a refused
+ *  permission, a held sign-out, a token the server could not be reached for.
+ *  Gold, because it is a warning about this device rather than a stop. */
+function Caveat({ children }: { children: ReactNode }) {
+	return <p className="text-[12.5px] leading-snug text-gold">{children}</p>;
 }
 
 /**
@@ -105,10 +113,10 @@ function Segmented<T extends string>({
 	value: T;
 	options: readonly { id: T; label: string }[];
 	onChange: (next: T) => void;
-	className?: string;
+	className: string;
 }) {
 	return (
-		<div className={className ?? 'flex gap-1.5'}>
+		<div className={className}>
 			{options.map((o) => (
 				<button
 					key={o.id}
@@ -126,10 +134,6 @@ function Segmented<T extends string>({
 	);
 }
 
-/** Display units. Storage is canonical — kilograms and millimetres, always —
- *  and these choose what the athlete reads. The unit codes are shown as-is in
- *  both locales: `kg` is `kg` in Portuguese, and it is an identifier rather than
- *  copy. */
 const WEIGHT = [
 	{ id: 'kg', label: 'kg' },
 	{ id: 'lb', label: 'lb' },
@@ -139,10 +143,14 @@ const LENGTH = [
 	{ id: 'in', label: 'in' },
 ] as const;
 
+/** Display units. Storage is canonical — kilograms and millimetres, always —
+ *  and these choose what the athlete reads. The unit codes are shown as-is in
+ *  both locales: `kg` is `kg` in Portuguese, and it is an identifier rather than
+ *  copy. Two rows sharing an edge, which is what earns the `card`. */
 function Units({ prefs }: { prefs: Prefs }) {
 	return (
 		<Section label={m.set_units()}>
-			<div className={card({ pad: 'none', class: 'divide-y divide-line-soft' })}>
+			<div className={card({ pad: 'none', class: 'divide-y divide-line-soft [&>*]:px-3' })}>
 				<ControlRow label={m.field_weight()}>
 					<Segmented
 						value={prefs.weight}
@@ -164,21 +172,21 @@ function Units({ prefs }: { prefs: Prefs }) {
 	);
 }
 
-/**
- * The locale, in full. The strip's switch says `EN` / `PT` because it has 60px;
- * this one has the line and says the language's name. Both go through
- * `chooseLocale`, which writes the device and the account (#57) and tells the
- * root to re-render everything.
- *
- * `getLocale()` at render rather than state: the root re-keys the whole subtree
- * on a switch, so this page remounts and reads the new answer.
- */
 /** Message functions, not strings: each reads the locale when called, which is
  *  after the root has re-keyed the tree on a switch. */
 const LANGUAGE_LABEL: Record<AppLocale, () => string> = { 'en-US': m.lang_en, 'pt-BR': m.lang_pt };
 
+/**
+ * The locale, in full. The strip's switch says `EN` / `PT` because it has 60px;
+ * this one has the line and says the language's name. Both go through
+ * `chooseLocale`, which writes the device and the account (#57) and tells the
+ * root to re-render everything — and both read `currentLocale()`, the store's
+ * answer, rather than Paraglide's directly, so there is one place the live
+ * locale comes from. Read at render rather than held: the root re-keys the whole
+ * subtree on a switch, so this page remounts and reads the new answer.
+ */
 function Language() {
-	const locale = getLocale() as AppLocale;
+	const locale = currentLocale();
 	return (
 		<Section label={m.lang_label()}>
 			<Segmented
@@ -199,11 +207,11 @@ function notificationPermission(): NotificationPermission | 'unsupported' {
 
 function Notifications({ notify }: { notify: boolean }) {
 	const [refused, setRefused] = useState<'denied' | 'unsupported' | null>(null);
-	// The switch shows the truth, not the stored intent (#81's rule, applied
-	// early): a preference that says on while the browser says denied is a switch
-	// that lies, and the athlete would wait for a notification that never comes.
-	const granted = notificationPermission() === 'granted';
-	const checked = notify && granted;
+	const labelId = useId();
+	// The stored boolean is the switch — `notify` as it exists (#62, point 4).
+	// Reconciling it against the browser's permission, so a revoked permission
+	// shows as off, is #81's "a switch that lies" and lands with the two switches
+	// that replace this field.
 
 	async function toggle(on: boolean) {
 		setRefused(null);
@@ -225,19 +233,15 @@ function Notifications({ notify }: { notify: boolean }) {
 
 	return (
 		<Section label={m.notify_toggle()}>
-			<div className={card({ pad: 'none' })}>
-				<ControlRow id="notify-label" label={m.set_notify_desc()}>
-					<Switch
-						checked={checked}
-						onCheckedChange={(on) => void toggle(on)}
-						labelledBy="notify-label"
-					/>
+			{/* One row, so no `card`: a box around a single line is the furniture
+			    `Bare` exists to replace. */}
+			<Bare>
+				<ControlRow id={labelId} label={m.set_notify_desc()}>
+					<Switch checked={notify} onCheckedChange={(on) => void toggle(on)} labelledBy={labelId} />
 				</ControlRow>
-			</div>
+			</Bare>
 			{refused ? (
-				<p className="text-[12.5px] leading-snug text-gold">
-					{refused === 'denied' ? m.notify_denied() : m.notify_unsupported()}
-				</p>
+				<Caveat>{refused === 'denied' ? m.notify_denied() : m.notify_unsupported()}</Caveat>
 			) : null}
 		</Section>
 	);
@@ -246,38 +250,46 @@ function Notifications({ notify }: { notify: boolean }) {
 /**
  * The account, and the two things that need the server.
  *
- * `authClient.useSession()` starts pending and, with no network, stays there;
- * the section renders nothing until it resolves rather than guessing. Signed out
- * it is an `Empty`: the one affordance that fills it is signing in.
+ * Keyed on the store's active account, not on the session. Offline, the session
+ * fetch fails and `useSession` reports nobody — but the store trusts the local
+ * record offline (#24, #58) and `__root.tsx` keeps the remembered account for
+ * exactly that reason. Reading the session here would tell a signed-in athlete
+ * in a gym basement that they are signed out, on the same screen whose header
+ * says the account controls need a connection. So: an account in the store is
+ * signed in, and the session only adds the email once it has answered.
+ *
+ * With no account, the section waits for the session rather than guessing, and
+ * signed out it is an `Empty`: the one affordance that fills it is signing in.
  */
 function Account({ online }: { online: boolean }) {
+	const account = useActiveAccount();
 	const { data: session, isPending } = authClient.useSession();
-	if (isPending) return null;
 
-	if (!session?.user) {
+	if (account) {
 		return (
-			<Section label={m.set_account()}>
-				<Empty
-					value={m.set_signed_out()}
-					action={
-						<Link to="/login" className={button({ size: 'md', class: 'min-h-11' })}>
-							{m.btn_sign_in()}
-						</Link>
-					}
-				/>
-			</Section>
+			<>
+				<SignedIn email={session?.user?.email ?? null} online={online} />
+				<ApiToken online={online} />
+			</>
 		);
 	}
+	if (isPending) return null;
 
 	return (
-		<>
-			<SignedIn email={session.user.email} online={online} />
-			<ApiToken online={online} />
-		</>
+		<Section label={m.set_account()}>
+			<Empty
+				value={m.set_signed_out()}
+				action={
+					<Link to="/login" className={button({ size: 'md', class: 'min-h-11' })}>
+						{m.btn_sign_in()}
+					</Link>
+				}
+			/>
+		</Section>
 	);
 }
 
-function SignedIn({ email, online }: { email: string; online: boolean }) {
+function SignedIn({ email, online }: { email: string | null; online: boolean }) {
 	const [busy, setBusy] = useState(false);
 	const [held, setHeld] = useState(false);
 
@@ -305,25 +317,23 @@ function SignedIn({ email, online }: { email: string; online: boolean }) {
 
 	return (
 		<Section label={m.set_account()}>
-			<div className={card({ pad: 'none' })}>
-				<div className="flex min-h-11 flex-wrap items-center justify-between gap-3 px-3 py-2">
-					<div className="min-w-0">
-						<Eyebrow>{m.field_email()}</Eyebrow>
-						<p className="truncate text-[13px] text-ink">{email}</p>
-					</div>
-					<button
-						type="button"
-						disabled={!online || busy}
-						onClick={() => void leave()}
-						className={button({ size: 'md', class: 'min-h-11' })}
-					>
-						{m.btn_sign_out()}
-					</button>
+			<Bare className="flex flex-wrap items-center justify-between gap-3">
+				{/* The email is the session's answer, so offline on a cold load there
+				    is none: the eyebrow stands alone rather than showing a guess. */}
+				<div className="min-w-0">
+					<Eyebrow>{m.field_email()}</Eyebrow>
+					{email ? <p className="truncate text-[13px] text-ink">{email}</p> : null}
 				</div>
-			</div>
-			{held ? (
-				<p className="text-[12.5px] leading-snug text-gold">{m.set_unsynced_holds_signout()}</p>
-			) : null}
+				<button
+					type="button"
+					disabled={!online || busy}
+					onClick={() => void leave()}
+					className={button({ size: 'md', class: 'min-h-11' })}
+				>
+					{m.btn_sign_out()}
+				</button>
+			</Bare>
+			{held ? <Caveat>{m.set_unsynced_holds_signout()}</Caveat> : null}
 		</Section>
 	);
 }
@@ -346,6 +356,9 @@ function configFor(endpoint: string, token: string): string {
 	);
 }
 
+/** What stands in for the token until it is revealed. The `sl_` prefix is the
+ *  one `server/apiToken.ts` mints, repeated here so the masked config reads as
+ *  the real one with the secret covered rather than as a placeholder. */
 const MASKED = `sl_${'•'.repeat(12)}`;
 
 /**
@@ -439,9 +452,7 @@ function ApiToken({ online }: { online: boolean }) {
 				</pre>
 			</div>
 
-			{!online || unreachable ? (
-				<p className="text-[12.5px] leading-snug text-gold">{m.set_token_unavailable()}</p>
-			) : null}
+			{!online || unreachable ? <Caveat>{m.set_token_unavailable()}</Caveat> : null}
 
 			<div className="flex flex-wrap gap-2">
 				<button

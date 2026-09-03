@@ -477,7 +477,7 @@
 	"install_btn": "Install",
 	"install_manual": "To install, open your browser menu and choose “Add to Home screen” (on Brave for Android: tap ⋮ → Add to Home screen).",
 	"mcp_title": "AI access (MCP)",
-	"mcp_desc": "Connect your own AI assistant over MCP. With your token it can read and change everything in your account — the program and its phases, each week's slots, sessions, readiness checks, preferences, saved programs and rehab.",
+	"mcp_desc": "Connect your own AI assistant over MCP. With your token it can read and change everything in your account — the program and its phases, the slots of every training week, sessions, readiness checks, preferences, saved programs and rehab.",
 	"mcp_copied": "Copied",
 	"mcp_agnostic_note": "A standard MCP server — works with any client (Claude, Cursor, VS Code, …) over HTTP with a Bearer token.",
 	"mcp_copy": "Copy",

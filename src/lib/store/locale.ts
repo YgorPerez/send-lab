@@ -25,7 +25,7 @@
 // user-independent, and a locale-prefixed route yields either two shells or a
 // redirect on every cold start.
 import { useLiveQuery } from '@tanstack/react-db';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { getLocale, setLocale } from '$lib/paraglide/runtime';
 import { writePrefs } from './prefs';
 import { recordStore, useActiveAccount } from './record';
@@ -130,13 +130,19 @@ export function useResolvedLocale(): [AppLocale, (next: AppLocale) => void] {
 	const locale = useSyncExternalStore(subscribeLocale, currentLocale, currentLocale);
 
 	const fromAccount = useAccountLocale();
+	const seen = useRef(fromAccount);
 	useEffect(() => {
-		// The account's answer arriving, on a device whose local guess was wrong.
-		// Not written back — this *is* the account's value, and `chooseLocale` is
-		// for a choice the athlete made.
-		if (!fromAccount || fromAccount === locale) return;
-		applyLocale(fromAccount);
-	}, [fromAccount, locale]);
+		// The account's answer *arriving*, on a device whose local guess was wrong.
+		// Only when it changes: for a moment after `chooseLocale` the account still
+		// holds the previous locale — the write waits for the hydrate and then for
+		// the live query — and applying its stale answer on every disagreement
+		// switched the athlete back for one render before switching them forward
+		// again. Not written back either way: this *is* the account's value, and
+		// `chooseLocale` is for a choice the athlete made.
+		if (fromAccount === seen.current) return;
+		seen.current = fromAccount;
+		if (fromAccount && fromAccount !== currentLocale()) applyLocale(fromAccount);
+	}, [fromAccount]);
 
 	return [locale, chooseLocale];
 }

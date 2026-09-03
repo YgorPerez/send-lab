@@ -7,8 +7,8 @@ interface TokenBody {
 	token: string;
 }
 
-async function tokenFrom(response: Response, what: string): Promise<string> {
-	if (!response.ok) throw new Error(`${what} /api/tokens — HTTP ${response.status}`);
+async function tokenFrom(response: Response, method: 'GET' | 'POST'): Promise<string> {
+	if (!response.ok) throw new Error(`${method} /api/tokens — HTTP ${response.status}`);
 	const body = (await response.json()) as TokenBody;
 	return body.token;
 }

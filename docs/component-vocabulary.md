@@ -176,7 +176,7 @@ built after the three training screens, and the one where two rules got tested
 first.
 
 **The split the offline ticket decided is drawn on the page.** Preferences are
-account data already in the local store, so units, language and notifications
+part of the training record and already in the local store, so units, language and notifications
 save on the device and sync when they can — through `store/prefs.ts`'s
 `writePrefs`, which is the one update-or-insert the locale switch also goes
 through. Signing out and the API token need the server. Offline, the header
@@ -185,7 +185,10 @@ account controls drop their fill rather than failing silently. Sign-out flushes
 unsynced work first and is *held* — with the reason on screen — if anything is
 still unsent, because signing out with training on the device is how it is lost.
 `lib/online.ts` is the read half of the `online` event `store/sync.ts` already
-retries on.
+retries on. The account half is keyed on the store's active account rather than
+on the session, for the same reason `__root.tsx` keeps the remembered account
+when the session fetch fails: offline, a signed-in athlete must not be told they
+are signed out.
 
 **The ration held by moving the primary into the dialog.** A settings page has a
 button in every section and none of them is the thing the athlete came to do, so
@@ -206,10 +209,11 @@ screen — and the rail still carries the same three destinations and no more.
 
 Two things the page deliberately does not do. `notify` is rendered as it exists —
 one boolean, local notifications only, permission asked for at the tap and the
-switch showing the browser's answer rather than the stored intent — because
+stored value shown as the switch — because
 [#75](https://github.com/YgorPerez/send-lab/issues/75) replaces the field and
 [#81](https://github.com/YgorPerez/send-lab/issues/81) builds the two switches
-that take its place; no push path is built here. And the unit preferences are
+that take its place, including the one that reconciles the switch against the
+browser's permission; no push path is built here. And the unit preferences are
 recorded but nothing yet converts for display: `format.ts` is the seam that
 grows the conversion back, and it says so.
 
