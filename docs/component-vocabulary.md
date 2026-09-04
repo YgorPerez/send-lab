@@ -63,6 +63,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
 | `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
+| `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`). Promoted out of Settings by #64 when a second screen needed it |
+| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes |
 
 ## The domain pieces — `src/components/`
 
@@ -216,6 +218,85 @@ that take its place, including the one that reconciles the switch against the
 browser's permission; no push path is built here. And the unit preferences are
 recorded but nothing yet converts for display: `format.ts` is the seam that
 grows the conversion back, and it says so.
+
+---
+
+## Welcome
+
+Settled by [#64](https://github.com/YgorPerez/send-lab/issues/64), the second of
+the five unbuilt pages and the first one that writes something other than a
+preference. It answered the ration's hardest case and added the rule that a form
+on this app obeys.
+
+**A step is a screen, so the advance is its `primary`.** A stepper wants a primary
+on every step, which reads as a conflict with the one-per-screen ration until you
+notice that only one step is ever in the tree. So `ui/Stepper.tsx` owns that
+decision — the advance is `primary`, back is `quiet`, and the count is kept by
+construction rather than by remembering. It is a primitive rather than page
+composition for exactly that reason: it owns a decision, not an arrangement
+(ADR 0010). Settings answered the same question the other way, and consistently:
+the primary marks the action the screen exists for, and a list of controls has
+none. `tests/welcome.test.ts` counts the primaries in the rendered `<main>`.
+
+**Onboarding fabricates no answers.** This is [#61](https://github.com/YgorPerez/send-lab/issues/61)'s
+rule pointed at *input* instead of output, and the page it replaces broke it: the
+SvelteKit form opened with a goal, a focus, a level, four days a week and all four
+pieces of gear already selected, and with `niggle` and `synovitis` at `false` —
+which is not "no niggle", it is *nobody asked*. Both of those feed training
+(`niggle` caps finger RPE at 8 and softens every phase; `synovitis` routes to the
+fingers self-check), so a default there is a training decision nobody made. The
+draft therefore types every required answer as nullable, `toBaseline` returns
+`null` while any is missing, and each step's advance is **disabled with the line
+that says what it is waiting for** — Train's rule, and this is where an athlete
+most needs it, because the missing answer is above the fold.
+
+**Four steps, each named for what it decides**: goal and limiter; level, with the
+two grades beside it because the hardest boulder *recalibrates* the level rather
+than merely informing it; the week — days, session length and gear, the three
+answers that decide what can be prescribed at all; and the body, where the two
+finger questions come first under their own heading and the birth date and
+bodyweight sit below them marked optional. `STEP_ANSWERS` in
+`lib/screens/welcome.ts` is both the sequence and the gate, so a step cannot be
+added to the rail without saying what it asks for.
+
+**The proposal is not a fifth step**, and it reads the generated `Program` rather
+than re-deriving the week from the baseline. The two come apart on purpose: the
+generator rests out a weekday whose exercises the athlete's gear cannot support,
+so a six-day answer can produce a one-day week — and the SvelteKit proposal, which
+called `trainingDays(content, assessment)` directly, showed the six. What a
+reported niggle *did* is stated there too, instead of the old offer to switch to
+rehab: the rehab switch lives on Today's injury entry, and the program on screen
+has already been softened.
+
+**Skippable, and resumable.** There is no gate and no redirect: an account with no
+baseline runs the built-in week, which is a real program, and a gate would have to
+be an effect-driven redirect over account data — which offline, before the store
+has hydrated, bounces a returning athlete *with* a baseline into onboarding
+(ADR 0006 excludes loaders for account data for the neighbouring reason). The
+whole entry path is one line on Today under the plan it describes: an `Empty` — the
+one group on that page that genuinely has nothing in it — saying the week is the
+built-in one, or how far a half-finished baseline got, with the one affordance that
+fills it. `quiet`, because Today's one primary is the bodyweight nudge.
+
+The draft is the fourth ephemeral store (`lib/baselineDraft.ts`) and the first one
+**scoped to the account** rather than to something shorter-lived.
+`lib/ephemeral.ts` named the case that would justify it — two athletes sharing a
+device — and this is that case: onboarding is what a second account opens first,
+and its answers are a training history in miniature. It is also the right expiry.
+A baseline draft must not die with the day the way the readiness draft does; an
+athlete who starts on Monday night has not changed their goals by Tuesday. It
+expires when the baseline is written, and when the account changes.
+
+Two things this page deliberately does not do. It writes no bodyweight *reading* —
+`CONTEXT.md` says the baseline captures the first one and every later one is
+logged from Today — and it converts no units: the field says `kg` out loud, because
+`prefs.weight` is recorded and nothing reads it yet. And one thing it inherits
+rather than fixes: `generateProgram` names its phases from `m.prog_phase_*()`, so
+a stored `Program`'s phase names are frozen in whatever language generated it.
+`Phase.name` is typed as athlete-authored free text, which is the category
+ADR 0012 distinguishes a stored *label* from — but a generated name is not
+athlete-authored, and giving it an id is an entity decision that belongs to the
+Program page ([#65](https://github.com/YgorPerez/send-lab/issues/65)).
 
 ---
 
@@ -381,7 +462,7 @@ does not get two columns.**
 | `log` | **two columns** | Two independent lists. Side by side the page is as tall as the longer one instead of their sum, and the summary line — which truncates first in pt-BR — gets a column wider than the whole phone |
 | `week`, `program` | **two columns, expected** | Unbuilt ([#63](https://github.com/YgorPerez/send-lab/issues/63), [#65](https://github.com/YgorPerez/send-lab/issues/65)). A slot grid and a phase editor are the two shapes that most obviously want a second column beside them |
 | `train` | **capped** | Defined by the posture it is used in. Seven loggable fields laid out against 360px, stretched to twice that, put the number being typed an inch from its label. Measured: the wide layout saves it 128px, which is the bottom bar |
-| `login`, `welcome` | **capped** | A form and a stepper. A stepper is one thing at a time by design |
+| `login`, `welcome` | **capped** | A form and a stepper. A stepper is one thing at a time by design. `welcome` is built ([#64](https://github.com/YgorPerez/send-lab/issues/64)) and went through `Pane` as expected |
 | `settings` | **capped** | A list of controls; width adds nothing. Built ([#62](https://github.com/YgorPerez/send-lab/issues/62)) through `Pane` as expected |
 | `studies` | **open** | [#37](https://github.com/YgorPerez/send-lab/issues/37) owns its affordances first |
 
@@ -493,13 +574,26 @@ unit that means anything here.
 | `settings` | **built** ([#62](https://github.com/YgorPerez/send-lab/issues/62)) | `Switch`, `AlertDialog` — both landed, both Base UI | came in at ≈ 1 × `log`, as costed |
 | `week` | blank | a slot grid | ≈ 1 × `train` |
 | `program` | blank | an override field, a phase editor | ≈ 1.5 × `train` |
-| `welcome` | blank | a stepper shell | ≈ 1.5 × `train` |
+| `welcome` | **built** ([#64](https://github.com/YgorPerez/send-lab/issues/64)) | `Stepper` — and `Segmented`, promoted out of Settings | came in at ≈ 3 × `train`, against ≈ 1.5 costed |
 | `studies` | **blocked** by [#37](https://github.com/YgorPerez/send-lab/issues/37) | an evidence badge, which #37 owns | ≈ 1 × `log`, after #37 |
 
 **Roughly five new screens' worth of build, plus four finishing tickets.**
 Settings was first of the five deliberately — cheap, and it yielded the two
 primitives above — so `welcome`'s stepper and `program`'s editors compose against
 sixteen primitives rather than fourteen.
+
+**#64 came in at twice its estimate, and the miss is instructive.** `welcome`
+was costed at ≈ 1.5 × `train` against `train`'s 500 lines (297 in the route, 203
+in its resolver). It landed at ≈ 1,500: 727 in the route, 344 in
+`screens/welcome.ts`, 130 in `store/baseline.ts`, 115 in `lib/baselineDraft.ts`
+and 190 in the two new primitives. Sizing it from the old *components* rather than
+the old route was right and still not enough, because the estimate was counting
+screens. **A page that writes brings a store module and a resolver with it**, and
+`welcome` is the first of the nine to write anything but a preference — so it paid
+for `store/baseline.ts` and for the fourth ephemeral store as well as for its own
+markup. `week` and `program` both write, and both should be read as carrying that
+same third module. The five-screen headline is unchanged; what moves is which of
+the five are cheap.
 
 **The desktop layout does not change these numbers**, which is the whole point of
 how #52 answered it. Two of the five unbuilt pages get a second column (`week`,

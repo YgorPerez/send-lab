@@ -36,8 +36,9 @@ import { writePrefs } from '$lib/store/prefs';
 import { type Prefs, recordSync, useActiveAccount, useTrainingRecord } from '$lib/store/record';
 import { AlertDialog } from '../components/ui/AlertDialog';
 import { Bare, Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
+import { Segmented } from '../components/ui/Segmented';
 import { Switch } from '../components/ui/Switch';
-import { button, card, chip, option } from '../components/ui/variants';
+import { button, card, chip } from '../components/ui/variants';
 import { authClient, signOut } from '../lib/auth-client';
 
 export const Route = createFileRoute('/settings')({ component: Settings });
@@ -96,42 +97,6 @@ function ControlRow({
  *  Gold, because it is a warning about this device rather than a stop. */
 function Caveat({ children }: { children: ReactNode }) {
 	return <p className="text-[12.5px] leading-snug text-gold">{children}</p>;
-}
-
-/**
- * Two choices side by side. `option` rather than a `Picker`: with two values the
- * whole set fits on the line, and a select that opens to show two rows is a
- * control with a step in it for nothing. `aria-pressed`, because each is a
- * toggle button and the pair is the value.
- */
-function Segmented<T extends string>({
-	value,
-	options,
-	onChange,
-	className,
-}: {
-	value: T;
-	options: readonly { id: T; label: string }[];
-	onChange: (next: T) => void;
-	className: string;
-}) {
-	return (
-		<div className={className}>
-			{options.map((o) => (
-				<button
-					key={o.id}
-					type="button"
-					aria-pressed={o.id === value}
-					onClick={() => {
-						if (o.id !== value) onChange(o.id);
-					}}
-					className={option({ on: o.id === value })}
-				>
-					{o.label}
-				</button>
-			))}
-		</div>
-	);
 }
 
 const WEIGHT = [

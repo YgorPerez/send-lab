@@ -14,6 +14,7 @@ import { Route as LogRouteImport } from './routes/log'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TrainRouteImport } from './routes/train'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiMeRouteImport } from './routes/api/me'
 import { Route as ApiStateRouteImport } from './routes/api/state'
 import { Route as ApiTokensRouteImport } from './routes/api/tokens'
@@ -44,6 +45,11 @@ const TrainRoute = TrainRouteImport.update({
   path: '/train',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMeRoute = ApiMeRouteImport.update({
   id: '/api/me',
   path: '/api/me',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/train': typeof TrainRoute
+  '/welcome': typeof WelcomeRoute
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
   '/api/tokens': typeof ApiTokensRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/train': typeof TrainRoute
+  '/welcome': typeof WelcomeRoute
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
   '/api/tokens': typeof ApiTokensRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/train': typeof TrainRoute
+  '/welcome': typeof WelcomeRoute
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
   '/api/tokens': typeof ApiTokensRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/train'
+    | '/welcome'
     | '/api/me'
     | '/api/state'
     | '/api/tokens'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/train'
+    | '/welcome'
     | '/api/me'
     | '/api/state'
     | '/api/tokens'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/train'
+    | '/welcome'
     | '/api/me'
     | '/api/state'
     | '/api/tokens'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
   TrainRoute: typeof TrainRoute
+  WelcomeRoute: typeof WelcomeRoute
   ApiMeRoute: typeof ApiMeRoute
   ApiStateRoute: typeof ApiStateRoute
   ApiTokensRoute: typeof ApiTokensRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrainRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/me': {
       id: '/api/me'
       path: '/api/me'
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
   TrainRoute: TrainRoute,
+  WelcomeRoute: WelcomeRoute,
   ApiMeRoute: ApiMeRoute,
   ApiStateRoute: ApiStateRoute,
   ApiTokensRoute: ApiTokensRoute,

@@ -23,7 +23,7 @@
 // split is the same one `prescription.ts` made for the same reason: everything
 // worth testing is testable without rendering.
 import { useLiveQuery } from '@tanstack/react-db';
-import { useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { DayTypeId } from '$lib/content/types';
 import {
 	type AthleteId,
@@ -365,6 +365,55 @@ export function useActiveAccount(): AthleteId | null {
 		() => active,
 		() => null,
 	);
+}
+
+/**
+ * Whether the account's record has arrived — live.
+ *
+ * **What it is for: telling "the account holds no such row" from "the account
+ * has not answered yet".** Every nullable field of a `TrainingRecord` collapses
+ * those two into one value — `assemble` reads `rows.baseline[0]?.baseline ??
+ * null` — and a screen that reads the absence as an answer is wrong for as long
+ * as `/api/state` takes. `store/prefs.ts` already had to solve this on the write
+ * side, and its reasoning is the same one: before the account has answered there
+ * is always no row, so anything decided in that window is decided from nothing.
+ *
+ * `RecordSync.settled()` is the underlying promise and it resolves on a *failed*
+ * hydrate too, which is what makes this safe offline: the answer is "as much of
+ * the record as this device is ever going to see", not "the network agreed".
+ *
+ * Signed out it is `true` from the first render — there is no account, so there
+ * is nothing to wait for and no server copy that could contradict the device.
+ */
+export function useRecordSettled(): boolean {
+	// Re-read when the account changes: a different athlete's record has not
+	// arrived just because this one's had.
+	const account = useActiveAccount();
+	const [settled, setSettled] = useState(() => recordSync() === null);
+
+	useEffect(() => {
+		// Read off `account` rather than calling `recordSync()` blind, which makes
+		// the dependency below a real one instead of one the linter has to be told
+		// to keep: this effect waits for *this* account's record, and `recordSync()`
+		// returns `null` for no account anyway.
+		const sync = account === null ? null : recordSync();
+		if (sync === null) {
+			setSettled(true);
+			return;
+		}
+		// Back to false first: this is a *different* account's record now, and
+		// carrying the previous one's answer over is the whole failure mode.
+		setSettled(false);
+		let cancelled = false;
+		void sync.settled().then(() => {
+			if (!cancelled) setSettled(true);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [account]);
+
+	return settled;
 }
 
 /**

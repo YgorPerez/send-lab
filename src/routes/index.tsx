@@ -31,6 +31,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, ChevronRight, ExternalLink } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useBaselineDraft } from '$lib/baselineDraft';
 import { type BodyArea, computeReadiness, getContent, hasWellnessAnswer } from '$lib/content';
 import type { Content, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
@@ -48,7 +49,8 @@ import {
 	type Task,
 	type TodayScreen,
 } from '$lib/screens/today';
-import { useTrainingRecord } from '$lib/store/record';
+import { STEP_ANSWERS, stepsAnswered } from '$lib/screens/welcome';
+import { useRecordSettled, useTrainingRecord } from '$lib/store/record';
 import { cn } from '$lib/utils';
 import { ReadinessCheck } from '../components/ReadinessCheck';
 import { RehabStarter, SelfCheckSheet } from '../components/SelfCheck';
@@ -100,6 +102,15 @@ function Today() {
 	// The draft belongs to one day and expires with it; that rule, and the key,
 	// live in `lib/readinessDraft.ts` rather than in this component.
 	const [answers, setAnswers] = useReadinessDraft(t.answers);
+
+	// The onboarding draft, read only. Today does not edit it — it offers the way
+	// into the screen that does (#64) — and it reads the *draft* rather than only
+	// the baseline because the two absences are different: an athlete who has
+	// never onboarded needs to be told what the built-in week is, and one who
+	// stopped halfway needs to be told how far they got.
+	const baselineDraft = useBaselineDraft(record.baseline);
+	// Whether "no baseline" is an answer yet. See the invitation below.
+	const recordSettled = useRecordSettled();
 
 	const [done, setDone] = useState<Record<TaskKey, boolean>>(() =>
 		Object.fromEntries(t.tasks.map((task) => [task.key, task.done])),
@@ -293,6 +304,47 @@ function Today() {
 							missed={missedTaken ? null : t.missed}
 							onTakeMissed={() => setMissedTaken(true)}
 						/>
+
+						{/* WHAT THE PLAN IS BUILT FROM, WHEN IT IS BUILT FROM NOTHING (#64).
+
+						    An account with no baseline is not broken — it runs the built-in
+						    week, which is a real program — so this is not an `Empty` standing
+						    in for an answer the screen could not compute. It is the one group
+						    on this page that genuinely has nothing in it, with the one
+						    affordance that fills it, which is exactly what `Empty` is (#61).
+
+						    It sits under the plan rather than in the input column, because it
+						    is about the plan directly above it: the sentence only makes sense
+						    next to the week it is describing. `quiet`, not `primary` — the
+						    bodyweight nudge holds this screen's one primary, and onboarding
+						    is not what the athlete opened Today to do.
+
+						    AND IT WAITS FOR THE RECORD. `record.baseline` is `null` both when
+						    the account has no baseline and when `/api/state` has not answered
+						    yet, and reading the second as the first tells an athlete who
+						    onboarded months ago — on a new device, or after cleared site data —
+						    that their week is the built-in one, and offers them a redo that
+						    would overwrite it. That is the pre-hydration falsehood `welcome.tsx`
+						    refuses to build a *gate* on, pointed the other way, so it is
+						    refused here too: `useRecordSettled` is the same distinction
+						    `store/prefs.ts` waits for on the write side. */}
+						{record.baseline === null && recordSettled ? (
+							<Empty
+								value={
+									baselineDraft.resumed
+										? m.td_baseline_partial({
+												n: stepsAnswered(baselineDraft.draft),
+												total: STEP_ANSWERS.length,
+											})
+										: m.td_no_baseline()
+								}
+								action={
+									<Link to="/welcome" className={button({ size: 'md', class: 'min-h-11' })}>
+										{baselineDraft.resumed ? m.btn_resume_baseline() : m.btn_set_baseline()}
+									</Link>
+								}
+							/>
+						) : null}
 
 						{/* ---- counters. Three integers need no box: a rule above them and the
 			     section spacing around them group them perfectly well, and three
