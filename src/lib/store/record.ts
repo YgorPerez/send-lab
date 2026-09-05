@@ -23,7 +23,7 @@
 // split is the same one `prescription.ts` made for the same reason: everything
 // worth testing is testable without rendering.
 import { useLiveQuery } from '@tanstack/react-db';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { DayTypeId } from '$lib/content/types';
 import {
 	type AthleteId,
@@ -245,12 +245,12 @@ const stores = new Map<string, RecordStore>();
  *  collections live — a second one would mean two queues over one store, each
  *  flushing rows the other still thinks are unsynced.
  *
- *  Nothing reads this from outside yet. `unsynced()` on a sync is `CONTEXT.md`'s
- *  **unsynced work**, and showing it to the athlete is the one thing #57 leaves
- *  on the table: `sync_saving` / `sync_offline` already exist in both locales,
- *  but where the indicator goes is a component-vocabulary decision and the
- *  browser tier that would measure it has not been re-run since the store
- *  landed. */
+ *  `unsynced()` on a sync is `CONTEXT.md`'s **unsynced work**. Settings reads the
+ *  refused half of it through `useRefusedWork` and gates sign-out on the sendable
+ *  half (#82); the count itself is still not shown anywhere. That is the piece
+ *  #57 left on the table — `sync_saving` / `sync_offline` exist in both locales,
+ *  but where the indicator goes is a component-vocabulary decision and the browser
+ *  tier that would measure it has not been re-run since the store landed. */
 const syncs = new Map<string, RecordSync | null>();
 const listeners = new Set<() => void>();
 
@@ -414,6 +414,47 @@ export function useRecordSettled(): boolean {
 	}, [account]);
 
 	return settled;
+}
+
+/** The unsubscribe for a sync that is not there to subscribe to. */
+const NOT_WATCHING = () => {};
+
+/** `useRefusedWork`'s two snapshots, module-level so their identity is stable
+ *  across renders. The server has no store to ask and no athlete to tell. */
+const anyRefusedWork = () => (recordSync()?.refused().length ?? 0) > 0;
+const noRefusedWork = () => false;
+
+/**
+ * Whether the server has refused any of this account's work — live.
+ *
+ * The refusal is the one failure in the write path with no symptom: it arrives
+ * as a 200 whose report named the row, so nothing throws, nothing retries and the
+ * athlete's device holds training the server has declined. `RecordSync.refused()`
+ * exists to be said out loud, and this is what a screen reads it through.
+ *
+ * Live rather than read once, because almost no flush belongs to the screen
+ * watching it: the debounce fires 250ms after any write anywhere in the app, the
+ * `online` listener fires on reconnect, and a fresh sync replays what the last tab
+ * left behind. A refusal can land while Settings is open and untouched.
+ *
+ * A boolean rather than the list: `useSyncExternalStore` compares snapshots by
+ * value, and `refused()` builds a new array on every call — returning it would
+ * re-render on every check forever. Nothing shows the refusals themselves yet;
+ * when something does, it wants the array memoised against a version counter, not
+ * this.
+ */
+export function useRefusedWork(): boolean {
+	// Re-subscribe when the account changes: that is a different sync, and the
+	// previous athlete's refusals are not this one's. Read off `account` rather
+	// than calling `recordSync()` blind, for `useRecordSettled`'s reason — it makes
+	// the dependency a real one rather than one the linter has to be told to keep.
+	const account = useActiveAccount();
+	const subscribe = useCallback(
+		(notify: () => void) =>
+			(account === null ? undefined : recordSync()?.subscribe(notify)) ?? NOT_WATCHING,
+		[account],
+	);
+	return useSyncExternalStore(subscribe, anyRefusedWork, noRefusedWork);
 }
 
 /**

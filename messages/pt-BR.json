@@ -490,6 +490,7 @@
 	"set_offline_note": "Offline. As preferências ficam salvas neste aparelho e sincronizam quando você voltar a ter conexão; sair e o token da API precisam de rede.",
 	"set_signed_out": "Você não está conectado. As preferências ficam neste aparelho até você entrar.",
 	"set_unsynced_holds_signout": "Ainda há trabalho não sincronizado neste aparelho. Sair espera até que ele seja enviado.",
+	"set_refused_note": "O servidor recusou parte do trabalho não sincronizado deste aparelho, então ele nunca será enviado. Ele fica no aparelho, e sair não espera mais por ele.",
 	"set_token_unavailable": "Não consegui alcançar o servidor. O token fica disponível quando você estiver online.",
 	"notify_denied": "O navegador bloqueou as notificações do Send Lab. Permita nas configurações do site para ativar.",
 	"notify_unsupported": "Este navegador não consegue mostrar notificações.",

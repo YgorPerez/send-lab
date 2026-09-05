@@ -33,7 +33,13 @@ import { useOnline } from '$lib/online';
 import * as m from '$lib/paraglide/messages';
 import { APP_LOCALES, type AppLocale, chooseLocale, currentLocale } from '$lib/store/locale';
 import { writePrefs } from '$lib/store/prefs';
-import { type Prefs, recordSync, useActiveAccount, useTrainingRecord } from '$lib/store/record';
+import {
+	type Prefs,
+	recordSync,
+	useActiveAccount,
+	useRefusedWork,
+	useTrainingRecord,
+} from '$lib/store/record';
 import { AlertDialog } from '../components/ui/AlertDialog';
 import { Bare, Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
@@ -193,7 +199,10 @@ function Notifications({ notify }: { notify: boolean }) {
 		// the athlete just touched, so its purpose is self-evident.
 		const answer = permission === 'granted' ? permission : await Notification.requestPermission();
 		if (answer === 'granted') void writePrefs({ notify: true });
-		else setRefused('denied');
+		// `'default'` is the athlete closing the prompt without answering it (#82).
+		// Nothing is blocked and no site-settings trip would help — tapping the
+		// switch again simply asks again — so the switch stays off and says nothing.
+		else if (answer === 'denied') setRefused('denied');
 	}
 
 	return (
@@ -257,11 +266,24 @@ function Account({ online }: { online: boolean }) {
 function SignedIn({ email, online }: { email: string | null; online: boolean }) {
 	const [busy, setBusy] = useState(false);
 	const [held, setHeld] = useState(false);
+	// Said whether or not the athlete ever tries to leave: a refusal arrives as a
+	// 200 and has no other symptom, and this is the screen it is surfaced for. Live
+	// rather than read at mount, because most flushes are not this screen's doing —
+	// the debounce fires after any write, including the units and language switches
+	// above, and the reconnect fires on its own.
+	const refusedWork = useRefusedWork();
 
-	// Sign-out only after the unsynced work has gone (#24, #58). Flushing first is
-	// the attempt; if anything is still unsent after it — offline after all, or a
-	// refusal that will never send — the sign-out is held and the page says so,
-	// because signing out with training still on the device is how it is lost.
+	// Sign-out only after the unsynced work has gone (#24, #58) — the half of it
+	// that can still go. Flushing first is the attempt; if anything is still
+	// sendable after it, the device is offline after all: the sign-out is held and
+	// the page says so, because signing out with training still on the device is
+	// how it is lost.
+	//
+	// A refusal is not that case, and gating on `unsynced()` — which counts it —
+	// held sign-out on this device forever (#82). It is unsynced work in its final
+	// state (`CONTEXT.md`): no flush can bring that count down, and the rows stay
+	// under this account's prefix after a sign-out either way. So it is said rather
+	// than waited for.
 	async function leave() {
 		setBusy(true);
 		setHeld(false);
@@ -269,7 +291,7 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 			const sync = recordSync();
 			if (sync) {
 				await sync.flush();
-				if (sync.unsynced() > 0) {
+				if (sync.sendable() > 0) {
 					setHeld(true);
 					return;
 				}
@@ -299,6 +321,7 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 				</button>
 			</Bare>
 			{held ? <Caveat>{m.set_unsynced_holds_signout()}</Caveat> : null}
+			{refusedWork ? <Caveat>{m.set_refused_note()}</Caveat> : null}
 		</Section>
 	);
 }
@@ -391,10 +414,14 @@ function ApiToken({ online }: { online: boolean }) {
 			setToken(fresh);
 			// Shown, so it can be copied into the client that just lost the old one.
 			setRevealed(true);
-			setConfirming(false);
 		} catch {
 			setUnreachable(true);
 		} finally {
+			// Closed on both paths (#82). On the failing one the only feedback is
+			// the caveat on the page behind it, so a dialog left open renders the
+			// answer under its own backdrop and the athlete sees the confirm button
+			// re-enable with no message at all.
+			setConfirming(false);
 			setBusy(false);
 		}
 	}
