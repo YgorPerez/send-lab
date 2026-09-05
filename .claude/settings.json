@@ -19,6 +19,20 @@
 		"These require the `serena-hooks` executable on PATH (installed with serena-agent). If Serena is",
 		"not installed the hooks fail harmlessly, but see README.md for the one-time setup."
 	],
+	"extraKnownMarketplaces": {
+		"mattpocock": {
+			"source": {
+				"source": "github",
+				"repo": "mattpocock/skills"
+			}
+		}
+	},
+	"enabledPlugins": {
+		"mattpocock-skills@mattpocock": {
+			"enabled": true,
+			"scope": "project"
+		}
+	},
 	"hooks": {
 		"PreToolUse": [
 			{
