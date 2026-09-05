@@ -92,3 +92,15 @@ export function inScope<T>(stored: Scoped<T> | undefined, scope: string): T | un
 export function ephemeralKey(name: string, version: number): string {
 	return `sendlab:${name}:v${version}`;
 }
+
+/** Whether a storage key is one of these, told apart from a collection's
+ *  `sendlab:<account>:<collection>` by the version segment.
+ *
+ *  Here rather than at the reader, because the shape above is this module's and
+ *  a second copy of it elsewhere is a copy that stops agreeing: the reader is
+ *  `store/collections.ts`'s `heldAccounts()`, which would otherwise report every
+ *  draft as an account and tell a first-run athlete they are a returning one. */
+export function isEphemeralKey(key: string): boolean {
+	const [prefix, name, version, ...rest] = key.split(':');
+	return prefix === 'sendlab' && !!name && /^v\d+$/.test(version ?? '') && rest.length === 0;
+}

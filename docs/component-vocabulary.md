@@ -300,6 +300,76 @@ Program page ([#65](https://github.com/YgorPerez/send-lab/issues/65)).
 
 ---
 
+## Login
+
+Settled by [#66](https://github.com/YgorPerez/send-lab/issues/66), last of the
+nine and deliberately so: it is cheap and it yields no primitives, so building it
+earlier would have bought the pages after it nothing. It composes entirely from
+what was already here — `Pane`, `Bare`, `Eyebrow`, and the `input`, `button` and
+`chip` recipes — which is the ratio #53 predicted holding at the end of the list.
+
+**A destination, never a gate.** No page in this app is auth-blocked, and this
+page is the reason middleware stays declined: offline the service worker serves
+the shell and middleware never runs, so the client has to handle the
+unauthenticated case correctly anyway — an optimistic redirect is the same
+decision implemented twice, and the copy that runs less often is the one that
+rots. `AppShell` keeps its three tabs here like anywhere else, so there is also
+nothing to "continue without an account" *from*; the guest strings the SvelteKit
+page used are gone, along with the one that promised a guest's data would come
+with them into a new account, which the rebuild does not do.
+
+**The page is keyed on the store's active account, not on the session** — the
+same call Settings makes, for the same reason: offline the session fetch fails
+and reports nobody, and telling a signed-in athlete in a gym basement that they
+are signed out is worse here than anywhere. It also means the page never renders
+a pending placeholder: with no account remembered, the form *is* the honest
+answer.
+
+**Three athletes look at this page and need three sentences**, and the hardest
+one is the middle. `#24` decided **session expiry never clears the local store or
+the queue** — only an explicit sign-out, made online and after the queue has
+drained. So an athlete whose session ended still holds every set they logged and
+every write not yet sent, while seeing an app that looks empty, because
+`__root.tsx` points the store at the signed-out namespace the moment a session
+resolves to absent. The session cannot tell that athlete from a first run: it is
+absent for both. What tells them apart is whether this device is still holding a
+record, which is `heldAccounts()` in `store/collections.ts` — a read of the
+`sendlab:<account>:<collection>` keys, since the only pointer to who was here is
+cleared by the same expiry. `resolveLogin` in `lib/screens/login.ts` picks the
+line; `tests/login.test.ts` asserts both, in both locales.
+
+Two things that line got wrong on the first pass, both caught in review and both
+worth keeping written down. It **does not say why** the athlete is signed out —
+the records also survive a deliberate sign-out from Settings, which is the same
+device state reached on purpose, and "your session ended" is false there. And
+**offline is a second notice rather than a replacement**: offline is a fact about
+the form, who is reading is a fact about the device, and letting the first
+suppress the second dropped the reassurance in the one state that most needs it.
+
+**Failures are split on the instruction they carry, not on the status code.**
+Wrong credentials means *type something else*; a server that could not be reached
+means *change nothing and try again*, and saying "check your details" to the
+second is a lie about whose problem it is. They arrive through two channels:
+anything the server answered comes back as a returned `error`, and a request that
+never landed **throws**, because better-auth's client does not set better-fetch's
+`catchAllError` — so `classifyAuthFailure(null)` is the throw. A `5xx` is a third
+case and not the second: `unreachable`'s copy promises **nothing was sent**, and a
+sign-up that 500s after the row is written makes that false.
+
+**Signing out is not on this page.** It lives on Settings, where it flushes the
+queue first and is *held* — with the reason on screen — if anything is still
+unsent. A second sign-out button here without that hold would be a one-tap path
+to losing training, which is the rule's whole point. The signed-in view spends
+its one `primary` on the way back to Today instead.
+
+Two smaller things. The scaffold's `/api/me` went with the debug readout it fed —
+it was the only caller, and an authenticated endpoint nobody calls is not a proof
+of life. And sign-up asks for no name: better-auth requires one, no screen shows a
+display name, and a field with no reader is a question with no answer to give it,
+so the address stands in.
+
+---
+
 ## The idiom
 
 Svelte 5 runes have no direct React equivalent and naive translation produces bad
@@ -462,7 +532,7 @@ does not get two columns.**
 | `log` | **two columns** | Two independent lists. Side by side the page is as tall as the longer one instead of their sum, and the summary line — which truncates first in pt-BR — gets a column wider than the whole phone |
 | `week`, `program` | **two columns, expected** | Unbuilt ([#63](https://github.com/YgorPerez/send-lab/issues/63), [#65](https://github.com/YgorPerez/send-lab/issues/65)). A slot grid and a phase editor are the two shapes that most obviously want a second column beside them |
 | `train` | **capped** | Defined by the posture it is used in. Seven loggable fields laid out against 360px, stretched to twice that, put the number being typed an inch from its label. Measured: the wide layout saves it 128px, which is the bottom bar |
-| `login`, `welcome` | **capped** | A form and a stepper. A stepper is one thing at a time by design. `welcome` is built ([#64](https://github.com/YgorPerez/send-lab/issues/64)) and went through `Pane` as expected |
+| `login`, `welcome` | **capped** | A form and a stepper. A stepper is one thing at a time by design. Both are built ([#66](https://github.com/YgorPerez/send-lab/issues/66), [#64](https://github.com/YgorPerez/send-lab/issues/64)) and both went through `Pane` as expected |
 | `settings` | **capped** | A list of controls; width adds nothing. Built ([#62](https://github.com/YgorPerez/send-lab/issues/62)) through `Pane` as expected |
 | `studies` | **open** | [#37](https://github.com/YgorPerez/send-lab/issues/37) owns its affordances first |
 
@@ -570,7 +640,7 @@ unit that means anything here.
 | `/` Today | **built** | — | finishing: device pass ([#53](https://github.com/YgorPerez/send-lab/issues/53)) |
 | `train` | **built** | — | finishing: device pass |
 | `log` | **built** | — | finishing: device pass |
-| `login` | moved, undesigned | — | small: first-run and error states |
+| `login` | **built** ([#66](https://github.com/YgorPerez/send-lab/issues/66)) | — | costed small; came in at ≈ 1 × `log`, and the overrun is copy |
 | `settings` | **built** ([#62](https://github.com/YgorPerez/send-lab/issues/62)) | `Switch`, `AlertDialog` — both landed, both Base UI | came in at ≈ 1 × `log`, as costed |
 | `week` | blank | a slot grid | ≈ 1 × `train` |
 | `program` | blank | an override field, a phase editor | ≈ 1.5 × `train` |
