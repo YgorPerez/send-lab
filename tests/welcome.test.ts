@@ -1,8 +1,8 @@
-// Onboarding: the answers on their way to a program, and the screen that asks
+// The intake: the answers on their way to a program, and the screen that asks
 // for them.
 //
 // The claim this suite exists to hold is the one the whole page is built around:
-// **onboarding fabricates no answers.** It is easy to state, invisible in a diff,
+// **an intake question has no default** (ADR 0019). It is easy to state, invisible in a diff,
 // and one `useState('boulder')` away from being false again — the SvelteKit form
 // it replaces had exactly that, plus `niggle: false`, which is not "no niggle".
 // So it is asserted twice: on the pure conversion, where an unanswered finger
@@ -17,7 +17,7 @@
 //
 // Rendering is `renderToString` over the real route tree, as in
 // `tests/screens.test.ts` and `tests/emptyStates.test.ts`, and the store is reset
-// and **not** seeded: an account with no baseline is what onboarding is for.
+// and **not** seeded: an account with no baseline is what an intake is for.
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';

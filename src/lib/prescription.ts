@@ -107,7 +107,7 @@ export interface ResolverState {
 	 *  adapted around; `server/record/rows.ts` refuses it as an unknown
 	 *  collection. */
 	readonly sessions: readonly Session[];
-	/** The onboarding intake, or null before it is taken. Read for `level`, which
+	/** The baseline, or null before an intake is taken. Read for `level`, which
 	 *  scales the weekly progression rate. */
 	readonly baseline: Baseline | null;
 }

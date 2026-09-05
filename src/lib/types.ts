@@ -158,7 +158,7 @@ export interface LoggedReadinessCheck {
 	outcome?: number;
 }
 
-// The four closed sets the onboarding intake answers in. Arrays rather than bare
+// The four closed sets an intake answers in. Arrays rather than bare
 // unions for the same reason as the content library's: a `Baseline` arrives over
 // the wire on every hydrate, and the write path checks these at runtime. They stay
 // here rather than moving down beside the content library's own sets — ADR 0013
@@ -176,7 +176,7 @@ export type Level = (typeof LEVELS)[number];
 export const EQUIPMENT = ['hangboard', 'board', 'rings', 'weights'] as const;
 export type Equipment = (typeof EQUIPMENT)[number];
 
-/** The one-off intake taken at onboarding. Shapes the generated program and its
+/** The answers given at an intake. Shapes the generated program and its
  *  progression rate. */
 export interface Baseline {
 	goal: Goal;

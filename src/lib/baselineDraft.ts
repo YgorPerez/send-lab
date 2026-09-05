@@ -1,4 +1,4 @@
-// A half-finished baseline, persisted locally so onboarding can be left and
+// A half-finished baseline, persisted locally so an intake can be left and
 // come back to.
 //
 // The fourth of the ephemeral stores (`lib/ephemeral.ts`) and the same shape as
@@ -24,7 +24,7 @@
 // account-scoped, while naming the case that would change it: two athletes
 // sharing a device.
 //
-// This is that case, and it is not hypothetical here. Onboarding is the one
+// This is that case, and it is not hypothetical here. The intake is the one
 // screen a *second* athlete on a shared device is guaranteed to open, because it
 // is what a new account opens first — and the answers on it are a training
 // history in miniature (a niggle, a grade, a bodyweight). Offering athlete A's

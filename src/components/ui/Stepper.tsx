@@ -1,7 +1,7 @@
 // The stepper shell: a progress rail, one step's worth of content, and the two
 // controls that move between them.
 //
-// A primitive rather than page composition, though onboarding is the only screen
+// A primitive rather than page composition, though the intake is the only screen
 // that uses it, because it owns a decision rather than an arrangement (ADR 0010):
 // it owns the one `primary` on the screen. That is the rule's hardest case and
 // the reason this file exists at all.

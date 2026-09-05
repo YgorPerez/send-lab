@@ -1,4 +1,4 @@
-// Turn an onboarding assessment into a tailored program: which weekdays train
+// Turn a baseline into a tailored program: which weekdays train
 // (vs rest), periodization scaled to experience, and working loads seeded from
 // the baseline tests. Built by trimming/recolouring the built-in week rather
 // than inventing days from scratch.

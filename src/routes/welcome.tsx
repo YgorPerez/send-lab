@@ -1,6 +1,6 @@
 // WELCOME.
 //
-// Onboarding: four questions, then the program they generate, offered before it
+// THE INTAKE: four questions, then the program they generate, offered before it
 // is stored. The `Baseline` this produces is not a profile — it feeds
 // `programGen.ts` and, through `niggle`, the injury path — so two of its thirteen
 // fields are training decisions rather than form inputs, and the shape of the
@@ -38,7 +38,7 @@
 // is not a broken state — and a gate would have to be an effect-driven redirect
 // over account data (ADR 0006 excludes loaders for it), which offline, before the
 // store has hydrated, would bounce a returning athlete *with* a baseline into
-// onboarding. Today says the week is the built-in one and links here; that is the
+// an intake. Today says the week is the built-in one and links here; that is the
 // whole entry path.
 //
 // Resumable: the draft persists, keyed on the account, through
@@ -46,7 +46,7 @@
 // idiom (#53, pattern 2), with the step index stored alongside the answers so it
 // reopens where it stopped. Today reads the same draft and offers to finish it.
 //
-// The athlete is an athlete. Not a user, a client or a patient — onboarding copy
+// The athlete is an athlete. Not a user, a client or a patient — intake copy
 // is where that slips, and every string on this page is second person.
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { type ReactNode, useId, useMemo, useState } from 'react';
@@ -231,7 +231,7 @@ function Welcome() {
  *
  * Three steps in that order, and the order is the whole of it. The draft is the
  * form and the baseline is the record; this is the one moment both exist, and
- * dropping the draft here is what stops a finished onboarding from being offered
+ * dropping the draft here is what stops a finished intake from being offered
  * back to the athlete on Today as unfinished. It is dropped *after* the write
  * resolves, so a write that fails leaves the answers on the device rather than
  * losing them.
@@ -611,7 +611,7 @@ function BodyStep({ draft, patch }: { draft: BaselineDraft; patch: Patch }) {
 /** One step's content: the line saying what this step decides, then the fields.
  *  The line is not decoration — each of the four answers changes something
  *  specific about the generated program, and saying which is what makes an
- *  onboarding question worth answering carefully. */
+ *  intake question worth answering carefully. */
 function StepBody({ help, children }: { help: string; children: ReactNode }) {
 	return (
 		<div className="flex flex-col gap-5">

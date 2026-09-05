@@ -103,10 +103,10 @@ function Today() {
 	// live in `lib/readinessDraft.ts` rather than in this component.
 	const [answers, setAnswers] = useReadinessDraft(t.answers);
 
-	// The onboarding draft, read only. Today does not edit it — it offers the way
+	// The baseline draft, read only. Today does not edit it — it offers the way
 	// into the screen that does (#64) — and it reads the *draft* rather than only
 	// the baseline because the two absences are different: an athlete who has
-	// never onboarded needs to be told what the built-in week is, and one who
+	// never taken an intake needs to be told what the built-in week is, and one who
 	// stopped halfway needs to be told how far they got.
 	const baselineDraft = useBaselineDraft(record.baseline);
 	// Whether "no baseline" is an answer yet. See the invitation below.
@@ -316,13 +316,13 @@ function Today() {
 						    It sits under the plan rather than in the input column, because it
 						    is about the plan directly above it: the sentence only makes sense
 						    next to the week it is describing. `quiet`, not `primary` — the
-						    bodyweight nudge holds this screen's one primary, and onboarding
+						    bodyweight nudge holds this screen's one primary, and an intake
 						    is not what the athlete opened Today to do.
 
 						    AND IT WAITS FOR THE RECORD. `record.baseline` is `null` both when
 						    the account has no baseline and when `/api/state` has not answered
 						    yet, and reading the second as the first tells an athlete who
-						    onboarded months ago — on a new device, or after cleared site data —
+						    took their intake months ago — on a new device, or after cleared site data —
 						    that their week is the built-in one, and offers them a redo that
 						    would overwrite it. That is the pre-hydration falsehood `welcome.tsx`
 						    refuses to build a *gate* on, pointed the other way, so it is

@@ -238,7 +238,7 @@ composition for exactly that reason: it owns a decision, not an arrangement
 the primary marks the action the screen exists for, and a list of controls has
 none. `tests/welcome.test.ts` counts the primaries in the rendered `<main>`.
 
-**Onboarding fabricates no answers.** This is [#61](https://github.com/YgorPerez/send-lab/issues/61)'s
+**An intake question has no default** (ADR 0019). This is [#61](https://github.com/YgorPerez/send-lab/issues/61)'s
 rule pointed at *input* instead of output, and the page it replaces broke it: the
 SvelteKit form opened with a goal, a focus, a level, four days a week and all four
 pieces of gear already selected, and with `niggle` and `synovitis` at `false` —
@@ -271,7 +271,7 @@ has already been softened.
 **Skippable, and resumable.** There is no gate and no redirect: an account with no
 baseline runs the built-in week, which is a real program, and a gate would have to
 be an effect-driven redirect over account data — which offline, before the store
-has hydrated, bounces a returning athlete *with* a baseline into onboarding
+has hydrated, bounces a returning athlete *with* a baseline into an intake
 (ADR 0006 excludes loaders for account data for the neighbouring reason). The
 whole entry path is one line on Today under the plan it describes: an `Empty` — the
 one group on that page that genuinely has nothing in it — saying the week is the
@@ -281,7 +281,7 @@ fills it. `quiet`, because Today's one primary is the bodyweight nudge.
 The draft is the fourth ephemeral store (`lib/baselineDraft.ts`) and the first one
 **scoped to the account** rather than to something shorter-lived.
 `lib/ephemeral.ts` named the case that would justify it — two athletes sharing a
-device — and this is that case: onboarding is what a second account opens first,
+device — and this is that case: the intake is what a second account opens first,
 and its answers are a training history in miniature. It is also the right expiry.
 A baseline draft must not die with the day the way the readiness draft does; an
 athlete who starts on Monday night has not changed their goals by Tuesday. It
@@ -558,7 +558,7 @@ SvelteKit source and of what was actually built here, not in a guess.
 - **The rest is page composition** and does not survive as components:
   `Rehab`, `Periodization`, `SavedPrograms`, `TodayPlan`, `DailyFlags`,
   `ReadinessVerdict`, `ProgramSummary`, `BodyweightNudge`, `AccountSettings`,
-  `LanguageSwitcher`, and the onboarding steps.
+  `LanguageSwitcher`, and the intake steps.
 
 ### What the nine pages cost
 

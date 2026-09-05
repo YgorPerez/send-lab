@@ -28,10 +28,25 @@ is catching up to.
 _Avoid_: state, data, document, account data
 
 **Baseline**:
-The one-off intake taken at onboarding — goal, focus, level, days per week, gear
-on hand, hardest grades, current niggles. Shapes the generated program and its
-progression rate.
-_Avoid_: assessment, profile, onboarding, survey
+The answers the generated program is built from — goal, focus, level, days per
+week, equipment on hand, hardest grades, current niggles. It shapes which
+weekdays train, what may be prescribed on them, and how hard the block pushes.
+_Avoid_: assessment, profile, onboarding, survey, intake form
+
+**Intake**:
+The occasion on which the athlete gives their baseline: before the first
+session, and again whenever they want a different program. Retaking it
+regenerates the program and starts the block again at week one, so an intake is
+not a one-off and the baseline it produces is not a profile the athlete edits a
+field of. `welcome` is the screen that hosts one, the way `train` hosts a
+session — a screen name, not this word.
+_Avoid_: onboarding, setup, wizard, first run, sign-up, assessment
+
+**Equipment**:
+The gear the athlete has to train with — hangboard, board, rings, weights. It
+filters which exercises the generated program may prescribe, so an intake that
+names none of it leaves almost nothing to prescribe.
+_Avoid_: gear, kit, apparatus, hardware
 
 ### Prescribing
 
@@ -204,10 +219,15 @@ _Avoid_: pending, queued, unsaved, outbox, offline changes
 **Draft**:
 What the athlete is part-way through entering, before it is recorded — a
 half-answered readiness check, a session with some sets filled in, a clock they
-have configured but not started. It lives on one device, is never sent to the
-server, and belongs to the thing it was started against: a draft answers to one
-day, one slot, or one protocol, and is discarded rather than offered once that
-has moved on.
+have configured but not started, a baseline they have started and not finished.
+It lives on one device and is never sent to the server.
+
+A draft belongs to the thing it was started against — one day, one slot, one
+protocol, one account — and is discarded rather than offered once that thing has
+moved on. What counts as moving on is the scope's own: a day turns, a slot is
+left, a protocol changes, and an account's baseline draft ends when the baseline
+it was feeding is recorded. The scope is what makes a draft honest; offering one
+outside it is the app remembering something that is no longer true.
 
 Not unsynced work, which is the opposite case in the pair the athlete is most
 likely to confuse: unsynced work is training already *recorded* and certain to
@@ -272,6 +292,22 @@ How a reported symptom presents, from stiff through tender and painful to sharp.
 Distinct from a flag's severity, which is how urgently to act, and from soreness,
 which is one of the daily wellness answers.
 _Avoid_: severity, soreness, pain score
+
+**Niggle**:
+A current low-grade finger or tendon complaint the athlete is still training on.
+Given at the intake, where it is not a note: it caps finger effort in every
+finger exercise the generated program prescribes and softens each phase. Not an
+injury, which stops training rather than capping it, and not a pain level, which
+says how a symptom presents rather than that one is present.
+_Avoid_: tweak, twinge, strain, injury, tendinopathy
+
+**Synovitis**:
+Pain or swelling at a finger joint, **as the athlete reports it** from the
+fist-hook check at intake. It is the one clinical word the glossary keeps, and it
+is kept as a name for what was reported and never as a finding — the same line
+an injury self-check draws when it informs training without diagnosing. What it
+routes to is the fingers self-check, not a conclusion.
+_Avoid_: diagnosis, inflammation, PIP swelling
 
 **Body area**:
 A part of the body that can be hurt: fingers, elbow, shoulder or wrist. One

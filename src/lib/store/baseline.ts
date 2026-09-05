@@ -1,4 +1,4 @@
-// The write half of onboarding: the baseline, and the program it generates.
+// The write half of an intake: the baseline, and the program it generates.
 //
 // The second module of its kind, after `store/prefs.ts`, and it follows that
 // one's rule for the same reason: **wait for the hydrate, then update or
@@ -16,7 +16,7 @@
 // replaces theirs. What must not happen is reaching here *without* the athlete
 // having asked for a redo, and the guard against that is one layer up:
 // `useRecordSettled` is what stops Welcome seeding a blank draft, and Today
-// offering onboarding, on an account whose record has simply not arrived yet.
+// offering an intake, on an account whose record has simply not arrived yet.
 //
 // It is three rows and not one, and they are written in an order that means
 // something.
@@ -68,7 +68,7 @@ const FIRST_WEEK = asWeekId(1);
  * marker readings that used to seed each exercise's working load — and it is
  * empty here because there are none. `CONTEXT.md` marks Marker *Leaving*: the
  * rebuild stopped tracking tested numbers over time, so the only field the old
- * third onboarding step collected that survives is bodyweight, which is not a
+ * third intake step collected that survives is bodyweight, which is not a
  * test. What that costs is a starting load per exercise, and what fills it is the
  * variant's own built-in target plus `autoProgress`, which is where the numbers
  * came from after week one anyway.
@@ -82,13 +82,13 @@ export function programFor(content: Content, baseline: Baseline): Program {
  *
  * Resolves once all three rows are in the store. The caller does not have to
  * await it to show the athlete something — the collections are live — but
- * onboarding does, because what it does next is navigate to a screen that reads
+ * the intake does, because what it does next is navigate to a screen that reads
  * them.
  *
  * The program goes in **before** the baseline, and the order is the point: the
- * baseline is what every screen reads as "this account has been through
- * onboarding", so writing it first would open a frame in which an onboarded
- * account is still running the built-in week.
+ * baseline is what every screen reads as "this account has taken an intake",
+ * so writing it first would open a frame in which an account that has is still
+ * running the built-in week.
  */
 export async function writeBaseline(baseline: Baseline, program: Program): Promise<void> {
 	const sync = recordSync();

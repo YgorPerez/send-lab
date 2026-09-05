@@ -2,7 +2,7 @@
 //
 // Promoted out of `routes/settings.tsx` by #64, which is the promotion rule
 // working as `docs/component-vocabulary.md` describes it: "a second screen needs
-// it". Settings had the only two — units and language — and onboarding has three
+// it". Settings had the only two — units and language — and the intake has three
 // more: days per week, and the two finger questions, where the whole set is `Yes`
 // and `No`.
 //
@@ -19,7 +19,7 @@
 // `aria-pressed`, because each button is a toggle and the pair is the value.
 // `value` may be **null**, which is what an unanswered question looks like:
 // nothing is pressed, and no answer is implied by a default (`screens/welcome.ts`
-// — onboarding fabricates no answers). Settings never passes null; it always has
+// — an intake question has no default). Settings never passes null; it always has
 // a stored preference.
 import { option } from './variants';
 
@@ -55,7 +55,7 @@ export function Segmented<T extends string | number | boolean>({
 					// wrapper, and "hit areas do not shrink — 44px everywhere touched"
 					// is a measured rule (`docs/component-vocabulary.md`), not a
 					// per-screen choice. Settings' rows are already 44px, so it changes
-					// nothing there; onboarding's days-per-week row and both finger
+					// nothing there; the intake's days-per-week row and both finger
 					// questions were 36px without it, which is the whole interaction of
 					// two of its four steps.
 					className={option({ on: o.id === value, class: 'min-h-11' })}

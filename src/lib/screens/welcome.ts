@@ -1,7 +1,7 @@
 // What Welcome reads, and what it hands back.
 //
 // The other three resolvers in this directory read a record and return what a
-// screen shows. This one is the mirror image: onboarding has almost nothing to
+// screen shows. This one is the mirror image: the intake has almost nothing to
 // read — an account with no baseline is the whole point of it — and what it needs
 // pure and testable is the other direction, the athlete's answers on their way to
 // becoming a `Baseline` and a `Program`.
@@ -13,12 +13,12 @@
 //   2. `toBaseline`, the one place a draft becomes the entity.
 //   3. `resolveProposal`, what the athlete is shown *before* any of it is saved.
 //
-// ONBOARDING FABRICATES NO ANSWERS
-// --------------------------------
+// AN INTAKE QUESTION HAS NO DEFAULT (ADR 0019)
+// ---------------------------------------------
 // The rule the whole draft shape exists to keep, and it is #61's rule pointed at
 // input instead of output. #61 found that Today scored a readiness check's
 // *fallbacks* when nothing was answered, and put a verdict made of nothing in
-// front of the athlete. The SvelteKit onboarding form did the same thing one
+// front of the athlete. The SvelteKit intake form did the same thing one
 // layer earlier: it opened with `goal = 'boulder'`, `focus = 'fingers'`,
 // `level = 'advanced'`, four days a week and all four pieces of gear already
 // selected, so an athlete who tapped Next four times got a program built from
@@ -135,7 +135,7 @@ function blank(): BaselineDraft {
 }
 
 /**
- * The draft onboarding opens with.
+ * The draft an intake opens with.
  *
  * Blank for an account with no baseline, and prefilled from the baseline it
  * already has for one redoing it — where nothing is fabricated, because every
