@@ -28,10 +28,7 @@
 		}
 	},
 	"enabledPlugins": {
-		"mattpocock-skills@mattpocock": {
-			"enabled": true,
-			"scope": "project"
-		}
+		"mattpocock-skills@mattpocock": true
 	},
 	"hooks": {
 		"PreToolUse": [
