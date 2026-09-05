@@ -99,7 +99,22 @@ and each is owned rather than merely noticed:
   This is now the oldest live entry on the list.
 - `messages/` — the key `log_workouts`. Note the *text* is already right in both
   locales ("Sessions" / "Treinos"); only the key drifted, which is what makes it
-  the least urgent and the easiest to forget.
+  the least urgent and the easiest to forget. Beside it, `set_assessment_desc`
+  and `set_redo_assessment` say *assessment* in the key and *onboarding* in the
+  English text — the first words on **Baseline**'s and **Intake**'s lists. Found
+  in the 2026-09-05 domain pass on #66, and the fix there is **deletion, not
+  rename**: neither is referenced anywhere in `src/`, and a redo control built
+  later would take the glossary's words. They are two of 267 unused keys of 566,
+  which is a survey of its own and not this list's business — these two are here
+  because they say an avoided word, which is the criterion.
+- ~~`login`'s `first-run` notice and its `login_first_run` message key.~~ **Caught
+  before it shipped**, in the same pass, and it is the entry that shows the audit
+  works at write time rather than only in arrears. *First run* is on **Intake**'s
+  `_Avoid_` list, and the key sat one button away from the control that opens an
+  intake. Renamed to `no-record` / `login_no_record`, with its partner `returning`
+  — itself already the name of a rehab stage (`stage_returning`) — becoming
+  `has-record`. The rename also fixed a claim: the pair named a *person* where the
+  device is all that is known.
 - ~~`content/types.ts` — `DayType.prime` and `DayType.sec`.~~ **Found and done in
   the 2026-09-02 pass**, and it is the entry that says the audit method has a hole.
   Every item above says a word some `_Avoid_` list names, so a grep finds it. These

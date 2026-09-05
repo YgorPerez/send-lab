@@ -2,14 +2,17 @@
 // say when it cannot have it.
 //
 // The claim this suite exists to hold is the one the offline ticket (#24) made
-// and this page can quietly break: **session expiry never clears the local store
-// or the queue.** An athlete whose session ended still has every set they logged
-// on the device, including the writes that have not been sent yet — so a sign-in
-// screen that reads like a fresh install is telling them their training is gone.
-// The page cannot know that from the session, which is absent either way; it
+// and this page can quietly break: **a lapsed sign-in never clears the local
+// store or the queue.** An athlete whose sign-in lapsed still has every set they
+// logged on the device, including the writes that have not been sent yet — so a
+// page that reads like a fresh install is telling them their training is gone.
+// The page cannot know that from the sign-in, which is absent either way; it
 // knows it from the records this device is still holding. `heldAccounts()` is
 // that read and `resolveLogin` is the decision, so both are asserted here rather
 // than left to the copy.
+//
+// *Sign-in*, not *session*, throughout: a session in this app is training
+// (`CONTEXT.md`), which the suite next door is about.
 //
 // The other half is the two failures the athlete can act on, which are opposite
 // instructions: wrong credentials means *type something else*, and an
@@ -36,40 +39,45 @@ import { routeTree } from '../src/routeTree.gen.ts';
 const ACCOUNT = 'acct_1';
 
 describe('what the page says, and to whom', () => {
-	test('a first run is told what an account is for, not that anything is missing', () => {
+	test('a device holding nothing is told what an account is for', () => {
 		expect(resolveLogin({ account: null, online: true, held: [] })).toEqual({
 			signedIn: false,
-			notices: ['first-run'],
+			notices: ['no-record'],
 		});
 	});
 
-	// The one this suite exists for. The session is absent in both cases — that is
+	// The one this suite exists for. The sign-in is absent in both cases — that is
 	// what makes the records on the device the only thing that tells them apart.
-	test('a device still holding a record is a returning athlete, not a first run', () => {
+	//
+	// Named for the device and not for the reader, deliberately: a record here
+	// says *someone* signed in on this device, which is not the same claim as the
+	// athlete now reading being that someone.
+	test('a device still holding a record is told nothing of it was deleted', () => {
 		expect(resolveLogin({ account: null, online: true, held: [ACCOUNT] })).toEqual({
 			signedIn: false,
-			notices: ['returning'],
+			notices: ['has-record'],
 		});
 	});
 
-	// Offline is a fact about the form; who is reading is a fact about the
-	// device. Letting the first replace the second dropped the reassurance in the
-	// one state that most needs it — an expired athlete in a gym basement.
-	test('offline is said as well as, not instead of, who is reading', () => {
+	// Offline is a fact about the form; what is held is a fact about the device.
+	// Letting the first replace the second dropped the reassurance in the one
+	// state that most needs it — a lapsed sign-in in a gym basement.
+	test('offline is said as well as, not instead of, what the device holds', () => {
 		expect(resolveLogin({ account: null, online: false, held: [ACCOUNT] })).toEqual({
 			signedIn: false,
-			notices: ['offline', 'returning'],
+			notices: ['offline', 'has-record'],
 		});
 		expect(resolveLogin({ account: null, online: false, held: [] })).toEqual({
 			signedIn: false,
-			notices: ['offline', 'first-run'],
+			notices: ['offline', 'no-record'],
 		});
 	});
 
-	// Keyed on the store's active account rather than on the session, for the
-	// reason Settings is: offline the session fetch fails and reports nobody, and
-	// telling a signed-in athlete in a gym basement that they are signed out is
-	// the bug that costs the most trust on the page that can least afford it.
+	// Keyed on the store's active account rather than on the sign-in, for the
+	// reason Settings is: offline the sign-in cannot be checked and reports
+	// nobody, and telling a signed-in athlete in a gym basement that they are
+	// signed out is the bug that costs the most trust on the page that can least
+	// afford it.
 	test('an account in the store is signed in, offline or not', () => {
 		for (const online of [true, false]) {
 			expect(resolveLogin({ account: ACCOUNT, online, held: [ACCOUNT] })).toEqual({
@@ -207,19 +215,19 @@ describe('the page itself', () => {
 	 *  function the page calls agrees with a missing translation. */
 	const COPY = {
 		'en-US': {
-			firstRun: 'Send Lab works without an account',
-			returning: 'Nothing on it was deleted',
+			noRecord: 'Send Lab works without an account',
+			hasRecord: 'Nothing on it was deleted',
 			signIn: 'Sign in',
 		},
 		'pt-BR': {
-			firstRun: 'O Send Lab funciona sem conta',
-			returning: 'Nada foi apagado',
+			noRecord: 'O Send Lab funciona sem conta',
+			hasRecord: 'Nada foi apagado',
 			signIn: 'Entrar',
 		},
 	} as const;
 
 	/** A `localStorage` holding one account's collections, so the page reads the
-	 *  device as a returning athlete's. */
+	 *  device as one a record has been kept on. */
 	function holdingARecord(): void {
 		vi.stubGlobal('localStorage', storageOf({ [`sendlab:${ACCOUNT}:sessions`]: '[]' }));
 	}
@@ -244,22 +252,23 @@ describe('the page itself', () => {
 	test.each([
 		'en-US',
 		'pt-BR',
-	] as const)('%s tells a first run what an account is for', async (locale) => {
+	] as const)('%s tells a device holding nothing what an account is for', async (locale) => {
 		const page = mainOf(await render(locale));
-		expect(page).toContain(COPY[locale].firstRun);
-		expect(page).not.toContain(COPY[locale].returning);
+		expect(page).toContain(COPY[locale].noRecord);
+		expect(page).not.toContain(COPY[locale].hasRecord);
 	});
 
-	// The ticket's own sentence, in both locales: an expired athlete's records are
-	// still on the device, and this page must not imply otherwise.
+	// The ticket's own sentence, in both locales: the records of an athlete whose
+	// sign-in lapsed are still on the device, and this page must not imply
+	// otherwise.
 	test.each([
 		'en-US',
 		'pt-BR',
-	] as const)('%s tells a returning athlete nothing was deleted', async (locale) => {
+	] as const)('%s tells a device holding a record that nothing was deleted', async (locale) => {
 		holdingARecord();
 		const page = mainOf(await render(locale));
-		expect(page).toContain(COPY[locale].returning);
-		expect(page).not.toContain(COPY[locale].firstRun);
+		expect(page).toContain(COPY[locale].hasRecord);
+		expect(page).not.toContain(COPY[locale].noRecord);
 	});
 
 	// The signed-in half of the page is deliberately **not** asserted through

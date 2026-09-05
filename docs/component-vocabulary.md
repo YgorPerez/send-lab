@@ -318,33 +318,52 @@ nothing to "continue without an account" *from*; the guest strings the SvelteKit
 page used are gone, along with the one that promised a guest's data would come
 with them into a new account, which the rebuild does not do.
 
-**The page is keyed on the store's active account, not on the session** — the
-same call Settings makes, for the same reason: offline the session fetch fails
-and reports nobody, and telling a signed-in athlete in a gym basement that they
-are signed out is worse here than anywhere. It also means the page never renders
-a pending placeholder: with no account remembered, the form *is* the honest
-answer.
+**The page is keyed on the store's active account, not on the sign-in** — the
+same call Settings makes, for the same reason: offline the sign-in cannot be
+checked and reports nobody, and telling a signed-in athlete in a gym basement
+that they are signed out is worse here than anywhere. It also means the page
+never renders a pending placeholder: with no account remembered, the form *is*
+the honest answer.
+
+**A sign-in is not a session**, and this page is where the two words met.
+`CONTEXT.md` now carries **Sign-in** — the standing proof that a device is acting
+as an account, which lapses on its own, and which a **sign-out** ends
+deliberately — because *session* in this app is training, and the app has a
+`sessionDraft` next door to prove it. `useSession` survives only where
+better-auth's own API spells it that way.
 
 **Three athletes look at this page and need three sentences**, and the hardest
-one is the middle. `#24` decided **session expiry never clears the local store or
-the queue** — only an explicit sign-out, made online and after the queue has
-drained. So an athlete whose session ended still holds every set they logged and
+one is the middle. `#24` decided **a lapsed sign-in never clears the local store
+or the queue** — only an explicit sign-out, made online and after the queue has
+drained. So an athlete whose sign-in lapsed still holds every set they logged and
 every write not yet sent, while seeing an app that looks empty, because
-`__root.tsx` points the store at the signed-out namespace the moment a session
-resolves to absent. The session cannot tell that athlete from a first run: it is
+`__root.tsx` points the store at the signed-out namespace the moment a sign-in
+resolves to absent. The sign-in cannot tell that athlete from a first run: it is
 absent for both. What tells them apart is whether this device is still holding a
 record, which is `heldAccounts()` in `store/collections.ts` — a read of the
 `sendlab:<account>:<collection>` keys, since the only pointer to who was here is
-cleared by the same expiry. `resolveLogin` in `lib/screens/login.ts` picks the
+cleared by the same lapse. `resolveLogin` in `lib/screens/login.ts` picks the
 line; `tests/login.test.ts` asserts both, in both locales.
 
-Two things that line got wrong on the first pass, both caught in review and both
-worth keeping written down. It **does not say why** the athlete is signed out —
-the records also survive a deliberate sign-out from Settings, which is the same
-device state reached on purpose, and "your session ended" is false there. And
-**offline is a second notice rather than a replacement**: offline is a fact about
-the form, who is reading is a fact about the device, and letting the first
-suppress the second dropped the reassurance in the one state that most needs it.
+Three things that line got wrong on the first pass — two caught in review, one in
+the domain pass after it — and all three are the same mistake in different
+clothes: **a notice claiming more than the app knows.**
+
+- It **said why** the athlete was signed out. The records also survive a
+  deliberate sign-out from Settings, which is the same device state reached on
+  purpose, and "your session ended" is false there.
+- **Offline replaced the other notice** instead of joining it. Offline is a fact
+  about the form, what is held is a fact about the device, and suppressing the
+  second dropped the reassurance in the one state that most needs it.
+- The pair was named **`returning` and `first-run`**, which are claims about a
+  *person*. A record on this device says *someone* signed in here — the glossary
+  keeps **Account** as the boundary between two athletes on a shared device
+  precisely because that someone need not be the one now reading. They are
+  `has-record` and `no-record`, named for what `heldAccounts()` actually answers,
+  and the copy says "the account's own record comes back" rather than "yours".
+  `first-run` was the worse half twice over: it is a word **Intake**'s `_Avoid_`
+  list names (ADR 0014), sitting one button away from the control that opens an
+  intake, and *returning* was already the name of a rehab stage.
 
 **Failures are split on the instruction they carry, not on the status code.**
 Wrong credentials means *type something else*; a server that could not be reached

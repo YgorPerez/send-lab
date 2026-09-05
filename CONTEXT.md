@@ -20,6 +20,12 @@ held on the device, as the boundary keeping one athlete's record separate from
 another's on a shared device.
 _Avoid_: user, profile
 
+**Sign-in**:
+The standing proof that a device is acting as an account. It lapses on its own;
+a **sign-out** is the athlete ending it deliberately. Never a *session* — in this
+app a session is training.
+_Avoid_: session, auth session, login, authentication
+
 **Training record**:
 Everything one athlete's account holds — the program, the sessions, the readiness
 checks, the bodyweight series, the baseline. What an account owns, as opposed to
@@ -157,7 +163,8 @@ _Avoid_: overload, ramp, increase
 **Session**:
 The training actually done in one slot on one calendar date. A slot is a plan; a
 session is the history — so it records the day type it ran, rather than being
-read back off whatever the program runs on that weekday now.
+read back off whatever the program runs on that weekday now. Never the
+authenticated one, which is a **sign-in**: this word is the training one.
 _Avoid_: workout, day, entry
 
 **Task**:

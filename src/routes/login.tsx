@@ -19,19 +19,23 @@
 // THE OFFLINE EXCEPTION, AND WHAT IT MUST NOT IMPLY
 // -------------------------------------------------
 // #24 decided every page works offline **except this one** — it needs a server to
-// verify anything. The same ticket decided **session expiry never clears the
+// verify anything. The same ticket decided **a lapsed sign-in never clears the
 // local store or the queue**: only an explicit sign-out, made online and after
 // the queue has drained, clears anything, and that one lives on Settings where
 // it can be held until the queue is empty.
 //
-// So an athlete whose session ended still has every set they logged on this
+// So an athlete whose sign-in lapsed still has every set they logged on this
 // device, including writes that have not been sent. What they *see* is an empty
 // app, because `__root.tsx` points the store at the signed-out namespace the
-// moment a session resolves to absent — the records are untouched under their
+// moment a sign-in resolves to absent — the records are untouched under their
 // own prefix, but nothing on screen says so. This page is where that gets said,
 // and getting it said is most of what this page is for. `screens/login.ts` picks
-// which of the three lines applies; `heldAccounts()` is what tells a returning
-// athlete from a first run, since the session is absent for both.
+// which of the three lines applies; `heldAccounts()` is what tells a device that
+// has held a record from one that has not, since the sign-in is absent for both.
+//
+// *Sign-in*, not *session*: a session in this app is training (`CONTEXT.md`), and
+// `screens/login.ts` carries the distinction in full. `useSession` below is
+// better-auth's own spelling and stays.
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { type FormEvent, useId, useState } from 'react';
 import { useOnline } from '$lib/online';
@@ -55,8 +59,8 @@ export const Route = createFileRoute('/login')({ component: Login });
  *  which is after the root has re-keyed the tree on a switch. */
 const NOTICE: Record<LoginNotice, () => string> = {
 	offline: m.login_offline,
-	returning: m.login_returning,
-	'first-run': m.login_first_run,
+	'has-record': m.login_has_record,
+	'no-record': m.login_no_record,
 };
 
 /** One sentence per failure, and the two that matter are opposite instructions:
@@ -76,15 +80,15 @@ const FAILURE: Record<AuthFailure, () => string> = {
  *  Settings gives its caveats — and dim ink for the two that are information. */
 const NOTICE_TONE: Record<LoginNotice, string> = {
 	offline: 'text-gold',
-	returning: 'text-ink-dim',
-	'first-run': 'text-ink-dim',
+	'has-record': 'text-ink-dim',
+	'no-record': 'text-ink-dim',
 };
 
 function Login() {
-	// The store's active account, not the session (Settings keys on the same
-	// thing, for the same reason): offline the session fetch fails and reports
-	// nobody, and telling a signed-in athlete in a gym basement that they are
-	// signed out is the worst thing this particular page could do.
+	// The store's active account, not the sign-in (Settings keys on the same
+	// thing, for the same reason): offline the sign-in cannot be checked and
+	// reports nobody, and telling a signed-in athlete in a gym basement that they
+	// are signed out is the worst thing this particular page could do.
 	const account = useActiveAccount();
 	const online = useOnline();
 	// Read once, at mount — the idiom for anything that comes out of storage. It
@@ -152,9 +156,9 @@ function Login() {
  * one-tap path to losing training, which is the exact outcome the rule exists to
  * prevent.
  *
- * The email is the session's, so on a cold offline load there is none: the
+ * The email comes with the sign-in, so on a cold offline load there is none: the
  * eyebrow stands alone rather than showing a guess, the same way Settings does
- * it. The store already told us an account is signed in; the session only adds
+ * it. The store already told us an account is signed in; the sign-in only adds
  * the address once it has answered.
  */
 function SignedIn() {
@@ -220,13 +224,13 @@ function SignInForm({
 				return;
 			}
 			// The server's own answer about who just signed in — the most resolved a
-			// session ever gets. Pointing the store at it here rather than waiting
+			// sign-in ever gets. Pointing the store at it here rather than waiting
 			// for `__root.tsx`'s effect is what keeps the next screen from rendering
 			// the signed-out store for a frame; the effect then agrees with it.
 			const accountId = answer.data?.user?.id;
 			if (accountId) setActiveAccount(accountId);
-			// A new account has no baseline, so it goes to the intake; a returning
-			// one goes to Today. Neither is a gate — `welcome` is skippable and Today
+			// A new account has no baseline, so it goes to the intake; an existing one
+			// goes to Today. Neither is a gate — `welcome` is skippable and Today
 			// carries the line back to it (#64).
 			//
 			// `react-doctor` reports `tanstack-start-no-navigate-in-render` on this
