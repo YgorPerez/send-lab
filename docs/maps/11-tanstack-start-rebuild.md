@@ -409,6 +409,34 @@ it loses the sequence that makes it worth keeping.
   its first entry caught *before* shipping. Cost **≈1 × `log`, costed small — the overrun is copy.**
   Gated at both widths in both locales against the built app; **the deployed-preview run this ticket asks
   for is still owed**. `development` @ `b936f35`.
+- [Settings: a refused write holds sign-out forever](https://github.com/YgorPerez/send-lab/issues/82) — the
+  four findings the Settings review left open, and the first is the one that mattered. `SignedIn.leave()`
+  flushed and then held the sign-out while `sync.unsynced() > 0`, but that count is `work.size()`,
+  **refusals included** — and a refusal is unsynced work in its *final* state, so no flush can ever bring
+  it down. One write the server declined, which arrives as a **200** and has no other symptom, and the
+  athlete **could never sign out on that device again**, under copy promising the sign-out would be sent.
+  The gate moves to `RecordSync.sendable()`, the same partition `flush` already sends and the half a flush
+  can still empty, and the refusals get **said instead of waited for** — `set_refused_note`, which is a
+  different claim from `set_unsynced_holds_signout` because "waits until it has been sent" is never true
+  of a refused write. Said whether or not the athlete tries to leave, and therefore **live**: the first
+  pass read the count once at mount on the reasoning that `leave()` was the only flush this screen causes,
+  which was wrong — the debounce fires 250ms after any write including the units and language switches on
+  this very page, the `online` listener fires on reconnect, and a fresh sync replays what the last tab
+  left behind, so a refusal lands while Settings sits open and untouched. `RecordSync.subscribe` reports a
+  settle and `useRefusedWork` reads it through `useSyncExternalStore`, the shape `record.ts` already uses,
+  as a **boolean and not the list**, because `refused()` builds a new array per call and would re-render
+  forever. Three smaller ones, all in shipped code: a **dismissed** permission prompt resolves `'default'`
+  and was reported as a browser block, sending the athlete to site settings to fix nothing, so `'default'`
+  now says nothing at all; `ApiToken.regenerate()` closed its confirm dialog on the success path only, so
+  a failure rendered its one piece of feedback *under* the backdrop, now closed in `finally`; and
+  `useRef(fromAccount)` in `store/locale.ts` seeded the guard from the first render's value, so a first
+  render that yielded the prefs row would seed it with the very value the effect exists to apply and the
+  account's locale would never reach a new device — it works today only because `useLiveQuery().data`
+  happens to be `undefined` on that render, which is exactly the library behaviour the fix stops depending
+  on. **Only the first has a test**, and that is a limit rather than an oversight: the other three are
+  component branches this suite cannot reach, since it renders through `renderToString`, which runs no
+  effects and has no events. This entry supersedes the `Build settings` line above recording these four as
+  outstanding. `development` @ `c94cc77`.
 - [Build week](https://github.com/YgorPerez/send-lab/issues/63) — the fifth page, drawn first as four
   variants under [#60](https://github.com/YgorPerez/send-lab/issues/60) because it was the one page with no
   prototype at any fidelity. The athlete picked **C's day and B's week**, and the splice is what shipped:
