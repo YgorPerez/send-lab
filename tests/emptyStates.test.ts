@@ -111,10 +111,17 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// nodes in a string render, so the reading is `0<!-- -->/<!-- -->6` in the
 			// markup and `0/6` on the screen.
 			expect(week.replaceAll('<!-- -->', '')).toContain('0/6');
-			// Every slot names its state, so the dot's colour is not the only thing
-			// carrying it.
+			// Every slot names its state AND its count, so neither the dot's colour
+			// nor the visible reading is lost to a screen reader — `aria-label`
+			// replaces a button's content rather than adding to it.
 			expect(week).toContain(locale === 'en-US' ? '· Today"' : '· Hoje"');
 			expect(week).toContain(locale === 'en-US' ? '· Rest"' : '· Descanso"');
+			expect(week).toContain('0/4 ·');
+
+			// Nothing is `missed` on an account that has never trained: there is
+			// nothing to have skipped, and the record carries no start date that
+			// would say otherwise.
+			expect(week).not.toContain(locale === 'en-US' ? '· Missed"' : '· Perdido"');
 			// The empty copy stays off the screen while the week has work in it.
 			expect(week).not.toContain(
 				locale === 'en-US' ? 'No day in this week' : 'Nenhum dia desta semana',

@@ -381,6 +381,28 @@ remembered.
 - **An icon-only affordance attached to a much larger element does not read as a
   control.** A 13px expand icon beside a 46px digit was invisible to the athlete.
   It needs its own border and its own row.
+- **A colour's contrast is a property of the pair, not of the palette.** `--flag`
+  at 10px measures **4.34:1 on `--panel-2`** — under the floor — and clears it on
+  `--panel`. Same colour, same size, different surface, different answer. So
+  "`--flag` is a text colour" is not a fact the palette can state once: a token
+  moved onto an inset surface has to be re-measured there. Found by
+  [#63](https://github.com/YgorPerez/send-lab/issues/63)'s slot grid, where
+  `check:contrast` failed the moment a `missed` slot existed.
+- **A mark can carry a colour a label cannot.** The corollary of the rule above,
+  and the way out of it: non-text contrast wants 3:1 where text wants 4.5:1, so a
+  state that will not clear the floor as a 10px number clears it as a dot beside
+  one. At this density, state belongs on a mark.
+- **One cell carries one colour system.** A slot grid wants to show both what a
+  day *is* (the day type's accent) and how it *stands* (its state), and at 44px
+  there is room for one. #60's prototype put the accent in the dot and `Sat`
+  (performance, `--flag`) came out the same red as `Tue` (missed, also `--flag`)
+  — the week could not tell "still to come" from "you missed it". State won,
+  because it is the question the page is opened for; the accent moved to the panel
+  below, attached to the day type's own name.
+- **`aria-label` replaces a control's content, it does not add to it.** A grid
+  cell reading `Thu 1/4` labelled `"Thu · Pinch / Wrist · Today"` says *less* to a
+  screen reader than the unlabelled button did — the count is gone. Whatever the
+  cell shows has to be in the label too.
 
 ---
 
@@ -460,7 +482,8 @@ does not get two columns.**
 |---|---|---|
 | `/` Today | **two columns** | Cut at the screen's own ordering rule: *decision + evidence* left, *input* right. Measured 3222 → 2019px (en-US), 3367 → 2035px (pt-BR) |
 | `log` | **two columns** | Two independent lists. Side by side the page is as tall as the longer one instead of their sum, and the summary line — which truncates first in pt-BR — gets a column wider than the whole phone |
-| `week`, `program` | **two columns, expected** | Unbuilt ([#63](https://github.com/YgorPerez/send-lab/issues/63), [#65](https://github.com/YgorPerez/send-lab/issues/65)). A slot grid and a phase editor are the two shapes that most obviously want a second column beside them |
+| `week` | **two columns** | Built ([#63](https://github.com/YgorPerez/send-lab/issues/63)) through `Panes` as expected: the slot grid and the day it selects are two halves, and the cut is already the phone order. The grid also goes `grid-cols-4` → `lg:grid-cols-7` — four columns is what 360px forces, seven is the shape |
+| `program` | **two columns, expected** | Unbuilt ([#65](https://github.com/YgorPerez/send-lab/issues/65)). A phase editor is the other shape that obviously wants a second column beside it |
 | `train` | **capped** | Defined by the posture it is used in. Seven loggable fields laid out against 360px, stretched to twice that, put the number being typed an inch from its label. Measured: the wide layout saves it 128px, which is the bottom bar |
 | `login`, `welcome` | **capped** | A form and a stepper. A stepper is one thing at a time by design. `welcome` is built ([#64](https://github.com/YgorPerez/send-lab/issues/64)) and went through `Pane` as expected |
 | `settings` | **capped** | A list of controls; width adds nothing. Built ([#62](https://github.com/YgorPerez/send-lab/issues/62)) through `Pane` as expected |
@@ -503,8 +526,8 @@ Both are answered once, and both are free on touch.
 
 ### Measuring it
 
-The three browser checks take `--desktop`, which picks a 1280×900 viewport *and*
-emulates `hover`/`pointer` — width alone is not enough, because under mobile
+The **four** browser checks take `--desktop`, which picks a 1280×900 viewport
+*and* emulates `hover`/`pointer` — width alone is not enough, because under mobile
 emulation Chrome reports `hover: none` and every hover rule is inert.
 
 ```
@@ -512,11 +535,27 @@ pnpm build
 pnpm check:hydration --desktop   # the check that catches a layout chosen in JS
 pnpm check:contrast --desktop
 pnpm check:motion --desktop
+pnpm check:overflow --desktop
 ```
 
-`check:hydration --desktop` is the load-bearing one: a shell that branched on the
-viewport bakes one answer and mismatches at the other width, and nothing else
-reports it.
+Run them at the phone viewport too — the same four commands without `--desktop`,
+which is where `check:overflow` earns its keep.
+
+`check:hydration --desktop` is the load-bearing one for the *layout*: a shell that
+branched on the viewport bakes one answer and mismatches at the other width, and
+nothing else reports it.
+
+**`check:overflow` is the fourth, and it is new** ([#63](https://github.com/YgorPerez/send-lab/issues/63)).
+Until it landed, "no horizontal overflow at 360px" was measured by hand once, with
+a throwaway script, and went stale the moment the next page shipped — which is why
+both [#60](https://github.com/YgorPerez/send-lab/issues/60) and #63 asked for it to
+become real. It asserts `documentElement.scrollWidth` against the viewport on every
+discovered route in **both locales**, and it refuses to pass a page that rendered
+too little: a route whose `main` holds under eight elements fails as *unmeasured*
+rather than passing as narrow, because a page that rendered nothing fits every
+screen. That control exists because [#52](https://github.com/YgorPerez/send-lab/issues/52)
+closed on the opposite lesson — 426 elements where #69 had recorded 1008, "partly
+green-because-empty".
 
 ---
 
@@ -572,7 +611,7 @@ unit that means anything here.
 | `log` | **built** | — | finishing: device pass |
 | `login` | moved, undesigned | — | small: first-run and error states |
 | `settings` | **built** ([#62](https://github.com/YgorPerez/send-lab/issues/62)) | `Switch`, `AlertDialog` — both landed, both Base UI | came in at ≈ 1 × `log`, as costed |
-| `week` | blank | a slot grid | ≈ 1 × `train` |
+| `week` | **built** ([#63](https://github.com/YgorPerez/send-lab/issues/63)), **read-only** | a slot grid — composed from `Panes`/`Section`/`Bare`/`card`/`chip`, so **no new primitive** | came in at ≈ 0.85 × `train` (269 route + 164 resolver against train's 297 + 203), as costed. ADR-0001 says "the Week tab's tick writes it" and that half is **not built**: the page reads `taskDone` and never writes it |
 | `program` | blank | an override field, a phase editor | ≈ 1.5 × `train` |
 | `welcome` | **built** ([#64](https://github.com/YgorPerez/send-lab/issues/64)) | `Stepper` — and `Segmented`, promoted out of Settings | came in at ≈ 3 × `train`, against ≈ 1.5 costed |
 | `studies` | **blocked** by [#37](https://github.com/YgorPerez/send-lab/issues/37) | an evidence badge, which #37 owns | ≈ 1 × `log`, after #37 |

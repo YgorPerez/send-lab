@@ -15,7 +15,7 @@
 import type { StorageApi } from '@tanstack/db';
 import { describe, expect, it } from 'vitest';
 import { computeReadiness, getContent } from '../src/lib/content/index.ts';
-import { asAthleteId, asExerciseId, asWeekdayKey } from '../src/lib/ids.ts';
+import { asAthleteId, asExerciseId, asWeekdayKey, taskKey } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { effectiveVariant, resolveSwapIndex, variantOf } from '../src/lib/prescription.ts';
 import { resolveLog } from '../src/lib/screens/log.ts';
@@ -260,8 +260,8 @@ describe('Week', () => {
 		// Adherence is a share of *scheduled* slots, so rest days are outside it.
 		const rests = WEEK.slots.filter((s) => s.isRestDay).length;
 		expect(rests).toBeGreaterThan(0);
-		expect(WEEK.scheduled).toBe(7 - rests);
-		expect(WEEK.trained).toBeLessThanOrEqual(WEEK.scheduled);
+		expect(WEEK.scheduledSlots).toBe(7 - rests);
+		expect(WEEK.trainedSlots).toBeLessThanOrEqual(WEEK.scheduledSlots);
 		// Every scheduled slot has work, and every task carries a slot-unique key.
 		const keys = WEEK.slots.flatMap((s) => s.tasks.map((t) => t.key));
 		expect(new Set(keys).size).toBe(keys.length);
@@ -326,7 +326,7 @@ describe('Week', () => {
 		expect(sunday?.isRestDay).toBe(false);
 		expect(sunday?.tasks.length).toBeGreaterThan(0);
 		// It is now scheduled, so it counts toward adherence where it did not.
-		expect(w.scheduled).toBe(WEEK.scheduled + 1);
+		expect(w.scheduledSlots).toBe(WEEK.scheduledSlots + 1);
 	});
 
 	// The five states, and the one distinction the page exists to make: `missed`
@@ -345,6 +345,33 @@ describe('Week', () => {
 		for (const slot of WEEK.slots) {
 			if (slot.isRestDay) expect(slot.state).toBe('rest');
 		}
+	});
+
+	// The fix for a fresh account reading its first week's past days as `missed`.
+	// `missed` accuses the athlete of skipping work; on an account that has never
+	// trained there is nothing to have skipped, and the record carries no block
+	// start date to say otherwise (ADR-0001 records that same absence).
+	it('accuses nobody on an account that has never trained', () => {
+		const empty = readTrainingRecord(createRecordStore(ACCOUNT, undefined, memoryStorage()));
+		const w = resolveWeek(content, empty, NOW);
+
+		expect(w.slots.map((s) => s.state)).not.toContain('missed');
+		// Still an honest read: the days are scheduled and none of them are done.
+		expect(w.trainedSlots).toBe(0);
+		expect(w.scheduledSlots).toBeGreaterThan(0);
+		// Today is still today, and the days behind it are simply still to come.
+		expect(w.slots.filter((s) => s.state === 'today')).toHaveLength(1);
+		expect(w.slots.some((s) => s.state === 'ahead')).toBe(true);
+
+		// And the guard is not a blanket off-switch: one tick is evidence enough
+		// that the athlete started, and the past days go back to being missable.
+		const started = {
+			...empty,
+			taskDone: {
+				[taskKey(empty.currentWeek, asWeekdayKey('Mon'), asExerciseId('recruit'))]: true,
+			},
+		};
+		expect(resolveWeek(content, started, NOW).slots.map((s) => s.state)).toContain('missed');
 	});
 
 	it('resolves the same answer twice from the same store', () => {

@@ -30,6 +30,15 @@
 // evidence. #52 closed on exactly this trap — 426 elements where #69 had
 // recorded 1008, "partly green-because-empty" — so a route whose `main` holds
 // fewer than `MIN_ELEMENTS` fails as unmeasured rather than passing as narrow.
+//
+// USAGE
+//   pnpm build && pnpm check:overflow
+//   pnpm check:overflow --url=https://send-lab-git-<branch>-….vercel.app
+//   pnpm check:overflow --routes=/week,/train
+//   pnpm check:overflow --desktop           # the wide layout, 1280px
+//
+// Not in `pnpm verify`, for the same reason `check:contrast` and `check:motion`
+// are not: it needs Chrome and a completed build.
 import { discoverLocales, discoverRoutes, fail, open, parseArgs, viewport } from './browser.ts';
 
 const args = parseArgs();
@@ -50,8 +59,28 @@ const LOCALES = (args.get('locales') ?? discoverLocales().join(',')).split(',').
 interface Reading {
 	scrollWidth: number;
 	elements: number;
-	/** The element whose right edge sticks out furthest, so a failure names the
-	 *  thing to fix rather than only the page it is on. */
+	/**
+	 * The element to blame, so a failure names the thing to fix rather than only
+	 * the page it is on.
+	 *
+	 * SCANNED OVER `main`, WHICH IS NARROWER THAN THE ASSERTION ON PURPOSE.
+	 * `documentElement.scrollWidth` covers the shell too, so scanning only `main`
+	 * looks like a gap — it was raised as one in review. It is not, and the wider
+	 * scan was tried and measured before this comment was written.
+	 *
+	 * With a deliberate 900px child inside `main`, a `body *` scan reports **30**
+	 * overflowing elements, not one: `AppShell`'s header and nav are `fixed
+	 * inset-x-0`, so they stretch to the document's new width, and every
+	 * right-aligned thing inside them (the locale switch, its buttons, their
+	 * icons, their `<path>`s) moves out past the viewport with them. The widest is
+	 * always the header; filtering to leaves only swaps that for an `svg` `<path>`.
+	 * Both name the chrome. Neither names the 900px div.
+	 *
+	 * The shell cannot overflow on its own — it is `fixed` and full-width by
+	 * construction — so every real failure originates in `main`, and scanning
+	 * there is what names it. The assertion stays on the whole document; only the
+	 * blame is scoped.
+	 */
 	widest: { tag: string; text: string; right: number } | null;
 }
 

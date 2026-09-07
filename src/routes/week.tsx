@@ -41,6 +41,7 @@
 // the same string.
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import type { VariantProps } from 'tailwind-variants';
 import { getContent } from '$lib/content';
 import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
@@ -49,6 +50,9 @@ import { resolveWeek, type SlotState, type WeekSlot } from '$lib/screens/week';
 import { useTrainingRecord } from '$lib/store/record';
 import { Bare, Empty, Panes, Section } from '../components/ui/primitives';
 import { card, chip } from '../components/ui/variants';
+
+/** `chip`'s own tone set, read off the recipe. */
+type ChipTone = NonNullable<VariantProps<typeof chip>['tone']>;
 
 export const Route = createFileRoute('/week')({ component: Week });
 
@@ -69,13 +73,35 @@ const STATE_DOT: Record<SlotState, { background: string; boxShadow?: string }> =
 };
 
 /** The chip tone for the day panel's load label, so the panel repeats the state
- *  the grid gave rather than restating the day type's accent a second time. */
-const STATE_TONE: Record<SlotState, 'ok' | 'warn' | 'stop' | 'neutral' | 'ghost'> = {
+ *  the grid gave rather than restating the day type's accent a second time.
+ *
+ *  Typed off `chip` itself rather than re-listing its tones: a second copy of a
+ *  closed set is a second thing to keep in step, and a tone dropped from the
+ *  recipe should fail here rather than compile. */
+const STATE_TONE: Record<SlotState, ChipTone> = {
 	trained: 'ok',
 	today: 'warn',
 	missed: 'stop',
 	ahead: 'neutral',
 	rest: 'ghost',
+};
+
+/**
+ * The count's colour, per state — the fourth thing keyed by `SlotState` and the
+ * one that was a ternary cascade. Three `Record`s and one `? :` chain is the same
+ * dispatch written two ways, and the cascade is the one that silently keeps
+ * compiling when a state is added.
+ *
+ * Never `text-flag` for `missed`: the signature vermilion at 10px on `--panel-2`
+ * measures **4.34:1**, under the floor, though it clears it on `--panel`. The
+ * surface decides, so `missed` rides the dot and the number stays chalk.
+ */
+const STATE_COUNT_CLASS: Record<SlotState, string> = {
+	trained: 'text-teal',
+	today: 'text-chalk',
+	missed: 'text-chalk',
+	ahead: 'text-chalk',
+	rest: 'text-ink-faint',
 };
 
 /** State as a word, for the cell's accessible name. The visual rule is "mark
@@ -132,7 +158,7 @@ function Week() {
 						label={m.sec_week()}
 						meta={
 							<span className="num">
-								{w.trained}/{w.scheduled}
+								{w.trainedSlots}/{w.scheduledSlots}
 							</span>
 						}
 					>
@@ -156,7 +182,7 @@ function Week() {
 						    seven rest days. No action on it yet: `program` is what fills a
 						    week and it is unbuilt (#65), and an affordance that goes
 						    nowhere is worse than none. */}
-						{w.scheduled === 0 ? <Empty value={m.wk_nothing_scheduled()} /> : null}
+						{w.scheduledSlots === 0 ? <Empty value={m.wk_nothing_scheduled()} /> : null}
 					</Section>
 				}
 				secondary={slot ? <DayPanel slot={slot} /> : null}
@@ -175,15 +201,21 @@ function Week() {
  */
 function SlotCell({ slot, on, onSelect }: { slot: WeekSlot; on: boolean; onSelect: () => void }) {
 	const done = slot.tasks.filter((t) => t.done).length;
+
 	return (
 		<button
 			type="button"
 			onClick={onSelect}
 			aria-pressed={on}
-			// The name a screen reader gets: the weekday, what it runs, and how it
-			// stands. The dot carries the last of those visually and nothing else
-			// would say it.
-			aria-label={`${slot.weekdayLabel} · ${slot.day.type} · ${STATE_LABEL[slot.state]()}`}
+			// The name a screen reader gets. `aria-label` REPLACES the button's
+			// content rather than adding to it, so everything visible has to be in
+			// here: the first version named the weekday, the day type and the state
+			// and silently dropped the count — the one reading this file's own header
+			// calls "what the page gets opened for". The dot's colour is the only
+			// other thing that would go unsaid, which is why the state is a word.
+			aria-label={`${slot.weekdayLabel} · ${slot.day.type} · ${
+				slot.isRestDay ? STATE_LABEL.rest() : `${done}/${slot.tasks.length}`
+			} · ${STATE_LABEL[slot.state]()}`}
 			className={`flex min-h-[64px] flex-col justify-between rounded-md border p-1.5 text-left transition-colors ${
 				on ? 'border-chalk/60 bg-panel-3' : 'border-line bg-panel-2 hover:border-chalk/40'
 			}`}
@@ -198,17 +230,7 @@ function SlotCell({ slot, on, onSelect }: { slot: WeekSlot; on: boolean; onSelec
 					style={STATE_DOT[slot.state]}
 				/>
 			</span>
-			{/* Never `text-flag`: 4.34:1 at 10px on this panel. See the head of the
-			    file — the dot is what reports `missed`. */}
-			<span
-				className={`num text-[10px] ${
-					slot.state === 'trained'
-						? 'text-teal'
-						: slot.state === 'rest'
-							? 'text-ink-faint'
-							: 'text-chalk'
-				}`}
-			>
+			<span className={`num text-[10px] ${STATE_COUNT_CLASS[slot.state]}`}>
 				{slot.isRestDay ? '—' : `${done}/${slot.tasks.length}`}
 			</span>
 		</button>

@@ -89,7 +89,8 @@ rather than existing: below 1024px there is not room for the rail plus two
 columns of the 360px measure these screens were designed against (200 + 2×360 +
 gutters ≈ 992px, and `lg` is the first stop above it), so a tablet gets the phone
 layout at a comfortable width. Adding a third case would double what
-`check:contrast`, `check:motion` and `check:hydration` have to cover, for a device
+`check:contrast`, `check:motion`, `check:hydration` and `check:overflow` have to
+cover, for a device
 the single athlete does not own. Reversible: it is one more breakpoint in
 `Panes` and `AppShell` if a tablet ever appears.
 

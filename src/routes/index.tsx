@@ -210,13 +210,17 @@ function Today() {
 				    contradicts that claim rather than extending it. This reading was
 				    already the week affordance on this screen and already sat in the
 				    right place; it becomes the control.
-				    It gets a border and its own hit area because it is one. "An
-				    icon-only affordance attached to a much larger element does not read
-				    as a control" is the measured rule, and a bare span promoted to a
-				    link is the same mistake with no icon at all. */}
+				    It goes through the `button` recipe like every other actionable
+				    `<Link>` in a route, which is what the recipes exist for — "the same
+				    button has to be able to be … an `<a>`". Hand-rolling the classes
+				    here also undershot the hit area at 36px, where every sibling link
+				    is 44px. */}
 				<Link
 					to="/week"
-					className="num inline-flex min-h-9 shrink-0 items-center rounded-md border border-line px-2 text-[11px] text-ink-faint transition-colors hover:border-chalk/40 hover:text-ink"
+					className={button({
+						size: 'sm',
+						class: 'num min-h-11 shrink-0 text-[11px] text-ink-faint',
+					})}
 				>
 					{m.week_label({ n: t.weekNumber })}
 				</Link>

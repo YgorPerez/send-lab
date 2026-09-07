@@ -24,7 +24,7 @@
 // the weekday's built-in default.
 
 import { phaseId } from '$lib/content/logic';
-import type { Content, PhaseId } from '$lib/content/types';
+import type { Content, DayType, PhaseId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { weekdayLabel } from '$lib/format';
 import {
@@ -62,7 +62,7 @@ export interface WeekSlot {
 	weekdayLabel: string;
 	/** What this slot runs, after overrides. Its `type` carries the athlete's
 	 *  custom focus name where one is set; its `id` is untouched by that. */
-	day: ReturnType<typeof resolveDay>;
+	day: DayType;
 	/** The slot's tasks, in prescription order. The same shape Today and Train
 	 *  use — one task, one `TaskKey`, one tick (ADR-0001). */
 	tasks: Task[];
@@ -84,11 +84,15 @@ export interface WeekScreen {
 	today: WeekdayKey;
 	slots: WeekSlot[];
 	/** Adherence, in **slots**: how many of the week's scheduled slots were
-	 *  trained. Counted by `weekCompletion` rather than here, because this is the
-	 *  number progression scales itself against and a second implementation of it
-	 *  is a second answer. */
-	trained: number;
-	scheduled: number;
+	 *  trained, and how many there were. Counted by `weekCompletion` rather than
+	 *  here, because this is the number progression scales itself against and a
+	 *  second implementation of it is a second answer.
+	 *
+	 *  Named `…Slots` rather than `trained`/`scheduled`, because `WeekSlot.trained`
+	 *  is a boolean one field away and `w.trained` beside `slot.trained` read
+	 *  identically while meaning different things. */
+	trainedSlots: number;
+	scheduledSlots: number;
 }
 
 /** Everything Week reads, resolved against the record. */
@@ -103,6 +107,29 @@ export function resolveWeek(content: Content, record: TrainingRecord, now: numbe
 	// second copy of "the days, in order" is a second thing to keep in step.
 	const order = content.builtInWeek.map((d) => d.k);
 	const todayIndex = order.indexOf(today);
+	const completion = weekCompletion(content, record, week);
+
+	// HAS THE ATHLETE EVER TRAINED?
+	//
+	// `missed` claims the athlete had the chance to train a slot and did not, and
+	// on a brand-new account that claim is false for every past day of week 1 —
+	// the first visit rendered three days in `--stop` before the athlete had done
+	// anything at all.
+	//
+	// There is no block start date to test against, and that absence is recorded
+	// rather than accidental: ADR-0001 hit the same wall ("slots are keyed by
+	// *(week, weekday)* and sessions by *calendar date*, and the app has no anchor
+	// between the two: there is no start date"). Adding one is a schema change
+	// across the store, the wire and the server — not a screen's decision.
+	//
+	// So the honest proxy is whether the record holds any evidence of training at
+	// all. Before the first tick and the first session, nothing has been missed and
+	// every scheduled slot is simply still to come. The known limit: an athlete who
+	// logs their first session on a Thursday does see that week's Monday as missed.
+	// That is a weaker claim than a start date would support and a much better one
+	// than accusing every new account on sight.
+	const hasStarted =
+		record.sessions.length > 0 || Object.values(record.taskDone).some((done) => done === true);
 
 	const slots = content.builtInWeek.map((entry, index): WeekSlot => {
 		// The boundary where calendar position becomes an identity. `entry.k` is
@@ -128,7 +155,13 @@ export function resolveWeek(content: Content, record: TrainingRecord, now: numbe
 			day: resolveDay(content, record, week, weekday),
 			tasks,
 			trained,
-			state: slotState(scheduled.length === 0, trained, index, todayIndex),
+			state: slotState({
+				isRest: scheduled.length === 0,
+				trained,
+				index,
+				todayIndex,
+				hasStarted,
+			}),
 			isRestDay: scheduled.length === 0,
 		};
 	});
@@ -139,26 +172,40 @@ export function resolveWeek(content: Content, record: TrainingRecord, now: numbe
 		phase: content.phases[phaseId(weekNumber, record.program.weeks)],
 		today,
 		slots,
-		...weekCompletion(content, record, week),
+		trainedSlots: completion.trained,
+		scheduledSlots: completion.scheduled,
 	};
+}
+
+/** What `slotState` needs to place one slot. An object rather than four
+ *  positional arguments, two of which are booleans — `slotState(true, false, …)`
+ *  at the call site says nothing about which flag is which. */
+interface Placement {
+	isRest: boolean;
+	trained: boolean;
+	/** The slot's position in the built-in week. */
+	index: number;
+	/** Today's position in it, or `-1` if today is somehow not in the week. */
+	todayIndex: number;
+	/** Whether the record holds any evidence of training at all. */
+	hasStarted: boolean;
 }
 
 /**
  * Which of the five a slot is in.
  *
- * `todayIndex` is `-1` when the calendar weekday is somehow not in the built-in
- * week, which cannot happen through `weekdayKeyOf` but is cheap to survive: every
- * scheduled slot then reads `ahead`, which is the honest answer when the page
- * does not know where "now" sits.
+ * Two guards on `missed`, and both are about not accusing the athlete of
+ * something the record cannot support. `hasStarted` is the first: nothing is
+ * missed on an account that has never trained. `todayIndex >= 0` is the second —
+ * it is `-1` only if the calendar weekday is not in the built-in week, which
+ * cannot happen through `weekdayKeyOf` but is cheap to survive, and every
+ * scheduled slot then reads `ahead`, the honest answer when the page does not
+ * know where "now" sits.
  */
-function slotState(
-	isRest: boolean,
-	trained: boolean,
-	index: number,
-	todayIndex: number,
-): SlotState {
+function slotState({ isRest, trained, index, todayIndex, hasStarted }: Placement): SlotState {
 	if (isRest) return 'rest';
 	if (index === todayIndex) return 'today';
 	if (trained) return 'trained';
-	return todayIndex >= 0 && index < todayIndex ? 'missed' : 'ahead';
+	const behindToday = todayIndex >= 0 && index < todayIndex;
+	return behindToday && hasStarted ? 'missed' : 'ahead';
 }
