@@ -710,6 +710,14 @@ Settings was first of the five deliberately — cheap, and it yielded the two
 primitives above — so `welcome`'s stepper and `program`'s editors compose against
 sixteen primitives rather than fourteen.
 
+That sentence is the estimate as it was made, kept for the record. **Four of the
+five have since landed** — `settings` ([#62](https://github.com/YgorPerez/send-lab/issues/62)),
+`welcome` ([#64](https://github.com/YgorPerez/send-lab/issues/64)),
+`week` ([#63](https://github.com/YgorPerez/send-lab/issues/63)) and
+`login` ([#66](https://github.com/YgorPerez/send-lab/issues/66)) — leaving
+`program` ([#65](https://github.com/YgorPerez/send-lab/issues/65)) as the last
+one to build and `studies` behind [#37](https://github.com/YgorPerez/send-lab/issues/37).
+
 **#64 came in at twice its estimate, and the miss is instructive.** `welcome`
 was costed at ≈ 1.5 × `train` against `train`'s 500 lines (297 in the route, 203
 in its resolver). It landed at ≈ 1,500: 727 in the route, 344 in
