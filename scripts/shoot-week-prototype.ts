@@ -10,7 +10,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fail, open, parseArgs, root } from './browser.ts';
 
-const VARIANTS = ['A', 'B', 'C'];
+const VARIANTS = ['D', 'A', 'B', 'C'];
 const LOCALES = ['en-US', 'pt-BR'];
 const OUT = join(root, '.prototype-shots');
 

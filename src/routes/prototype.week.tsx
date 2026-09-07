@@ -508,10 +508,129 @@ function VariantC({ slots, completion }: { slots: Slot[]; completion: string }) 
 	);
 }
 
+// ------------------------------------------------------------------ variant D
+//
+// THE MASH-UP, and the one the athlete asked for: **B's grid selecting C's day**.
+//
+// C won on the day and B won on the week, which is the split the two variants
+// were actually testing. C's strip is seven 44px targets carrying a single dot,
+// so it can say *how a day stands* and never *how much is left in it* — the
+// count is the thing a week view is asked for and the strip has nowhere to put
+// it. B's cell already carries weekday, state and count in 79px and is measured
+// clean. So the selector is B's cell and the panel below is C's, unchanged: a day
+// type promoted to the section heading, its load as a chip, and the tasks as 44px
+// rows with their `TaskKey`s on them.
+//
+// It also settles the one thing C could not. #52 recorded `week` as **two
+// columns, expected** — and C is a `Pane`, capped at 560px, spending none of the
+// width the desktop layout was built to hand it. Going through `Panes` puts the
+// grid beside the day rather than above it, and the cut is contiguous in the
+// phone order (grid, then day), so `display: contents` below `lg` leaves the
+// phone screen untouched. The wide screen earns *more visible at once*, which is
+// the answer #52's second question wanted from this page.
+//
+// One `lg:` utility on top of that: the grid goes four columns to **seven** on a
+// wide screen. A week is a row of seven days and always was; four columns is what
+// 360px forces, not what the shape wants.
+
+function VariantD({ slots, completion }: { slots: Slot[]; completion: string }) {
+	const [selected, setSelected] = useState<WeekdayKey>(TODAY);
+	const slot = slots.find((s) => s.weekday === selected) ?? slots[0];
+	return (
+		<Panes
+			primary={
+				<Section label="Week 5" meta={<span className="num">{completion}</span>}>
+					<div className="grid grid-cols-4 gap-1.5 lg:grid-cols-7">
+						{slots.map((s) => {
+							const on = s.weekday === selected;
+							return (
+								<button
+									key={s.weekday}
+									type="button"
+									onClick={() => setSelected(s.weekday)}
+									className={`flex min-h-[64px] flex-col justify-between rounded-md border p-1.5 text-left transition-colors ${
+										on
+											? 'border-chalk/60 bg-panel-3'
+											: 'border-line bg-panel-2 hover:border-chalk/40'
+									}`}
+								>
+									<span className="flex items-center justify-between gap-1">
+										<span className={`microlabel ${on ? 'text-chalk' : 'text-ink-dim'}`}>
+											{s.label}
+										</span>
+										<span
+											aria-hidden
+											className="size-1.5 shrink-0 rounded-full"
+											style={STATE_DOT[s.state]}
+										/>
+									</span>
+									{/* Never `text-flag` here — 4.34:1 on `--panel-2` at 10px. The
+									    dot carries `missed`; see the note in variant B. */}
+									<span
+										className={`num text-[10px] ${
+											s.state === 'trained'
+												? 'text-teal'
+												: s.state === 'rest'
+													? 'text-ink-faint'
+													: 'text-chalk'
+										}`}
+									>
+										{s.tasks.length === 0
+											? '—'
+											: `${s.tasks.filter((t) => t.done).length}/${s.tasks.length}`}
+									</span>
+								</button>
+							);
+						})}
+					</div>
+				</Section>
+			}
+			secondary={
+				slot ? (
+					<Section
+						label={slot.day.type}
+						meta={<span className={chip({ tone: STATE_TONE[slot.state] })}>{slot.day.load}</span>}
+					>
+						<Bare className="flex flex-col gap-1.5">
+							<span className="text-[13px] text-ink">{slot.day.headline}</span>
+							<span className="text-[12px] text-ink-dim">{slot.day.subhead}</span>
+						</Bare>
+						{slot.tasks.length > 0 ? (
+							<div className={card({ pad: 'none' })}>
+								{slot.tasks.map((task, i) => (
+									<div
+										key={task.key}
+										className={`flex min-h-11 items-center gap-2.5 px-3 ${
+											i > 0 ? 'border-t border-line-soft' : ''
+										}`}
+									>
+										<span
+											className={`num text-[11px] ${task.done ? 'text-teal' : 'text-ink-faint'}`}
+										>
+											{task.done ? '✓' : '·'}
+										</span>
+										<span className="flex-1 text-[13px] text-ink">{task.name}</span>
+										<span className="num text-[9px] text-ink-faint">{task.key}</span>
+									</div>
+								))}
+							</div>
+						) : (
+							<Bare>
+								<p className="text-[13px] text-ink-dim">{slot.day.subhead}</p>
+							</Bare>
+						)}
+					</Section>
+				) : null
+			}
+		/>
+	);
+}
+
 // ------------------------------------------------------------------ the route
 
-const VARIANTS = ['A', 'B', 'C'] as const;
+const VARIANTS = ['D', 'A', 'B', 'C'] as const;
 const VARIANT_NAME: Record<string, string> = {
+	D: 'Grid and day — the mash-up',
 	A: 'Seven rows',
 	B: 'Four-column grid',
 	C: 'Strip and day',
@@ -528,7 +647,7 @@ function WeekPrototype() {
 	);
 
 	const { variant } = Route.useSearch();
-	const current = VARIANTS.includes(variant as (typeof VARIANTS)[number]) ? variant : 'A';
+	const current = VARIANTS.includes(variant as (typeof VARIANTS)[number]) ? variant : 'D';
 
 	return (
 		<div className="flex flex-col gap-7">
@@ -540,6 +659,7 @@ function WeekPrototype() {
 			{current === 'A' ? <VariantA slots={slots} /> : null}
 			{current === 'B' ? <VariantB slots={slots} /> : null}
 			{current === 'C' ? <VariantC slots={slots} completion={`${trained}/${scheduled}`} /> : null}
+			{current === 'D' ? <VariantD slots={slots} completion={`${trained}/${scheduled}`} /> : null}
 
 			<PrototypeSwitcher current={current} />
 		</div>

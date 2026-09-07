@@ -11,7 +11,7 @@
 // `scrollWidth: 412` on its own tells you the page overflows and not what did it.
 import { fail, open, parseArgs } from './browser.ts';
 
-const VARIANTS = ['A', 'B', 'C'];
+const VARIANTS = ['D', 'A', 'B', 'C'];
 const LOCALES = ['en-US', 'pt-BR'];
 const WIDTH = 360;
 
