@@ -228,9 +228,15 @@ _Avoid_: missed work, backlog, catch-up
 Training the athlete has recorded on this device that has not yet reached the
 server. Safe to keep training on — reads come from the device — but it exists in
 one place only, and an uninstalled app may have it deleted by the browser after
-a week idle. Work that can never be sent is unsynced work in its final state,
-not a separate thing.
+a week idle. Work the server has declined is **refused work** — unsynced work in
+its final state, not a separate thing.
 _Avoid_: pending, queued, unsaved, outbox, offline changes
+
+**Refused work**:
+Unsynced work the server has declined to store — its final state, and the one
+kind of it that finding a signal does not fix. Always both words: a refused
+*sign-in* is a different event, and the bare word is ambiguous between them.
+_Avoid_: rejected work, failed write, dead letter, sync error, conflict, refusal
 
 **Draft**:
 What the athlete is part-way through entering, before it is recorded — a
@@ -246,9 +252,10 @@ it was feeding is recorded. The scope is what makes a draft honest; offering one
 outside it is the app remembering something that is no longer true.
 
 Not unsynced work, which is the opposite case in the pair the athlete is most
-likely to confuse: unsynced work is training already *recorded* and certain to
-reach the server, while a draft is training not recorded at all and never will
-be. Losing unsynced work loses history; losing a draft costs a re-entry.
+likely to confuse: unsynced work is training already *recorded* that the server
+does not have yet and may never get, while a draft is training not recorded at
+all and never will be. Losing unsynced work loses history; losing a draft costs a
+re-entry.
 _Avoid_: pending, partial, autosave, unsaved, in-flight
 
 ### Readiness
