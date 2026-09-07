@@ -72,6 +72,8 @@ const COPY = {
 		held: 'held · readiness',
 		question: 'How did you sleep?',
 		finish: 'Finish &amp; log session',
+		microcycle: 'Microcycle',
+		thursday: 'Thu',
 	},
 	'pt-BR': {
 		noCheck: 'Nenhum check de prontidão hoje ainda',
@@ -84,6 +86,8 @@ const COPY = {
 		held: 'segurado · prontidão',
 		question: 'Como foi seu sono?',
 		finish: 'Concluir e registrar treino',
+		microcycle: 'Microciclo',
+		thursday: 'Qui',
 	},
 } as const;
 
@@ -91,6 +95,32 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 	const copy = COPY[locale];
 
 	describe(`${locale}, empty account`, () => {
+		// Week (#63) has no empty state on a fresh account, and that is the point.
+		// A week always has seven slots, and an account with no program of its own
+		// falls back to the built-in week — so the honest read is a full schedule
+		// with nothing ticked, not a box drawn round nothing. The copy that *would*
+		// fire (`wk_nothing_scheduled`) needs an athlete who rests every day.
+		test('Week shows the built-in week rather than an empty box', async () => {
+			const week = await render('/week', THURSDAY, locale);
+			expect(week).toContain(copy.microcycle);
+			expect(week).toContain(copy.thursday);
+			// Scheduled, and none of it trained: six of seven days carry work in the
+			// built-in week, and a fresh account has ticked nothing.
+			//
+			// Comments stripped first: React puts `<!-- -->` between adjacent text
+			// nodes in a string render, so the reading is `0<!-- -->/<!-- -->6` in the
+			// markup and `0/6` on the screen.
+			expect(week.replaceAll('<!-- -->', '')).toContain('0/6');
+			// Every slot names its state, so the dot's colour is not the only thing
+			// carrying it.
+			expect(week).toContain(locale === 'en-US' ? '· Today"' : '· Hoje"');
+			expect(week).toContain(locale === 'en-US' ? '· Rest"' : '· Descanso"');
+			// The empty copy stays off the screen while the week has work in it.
+			expect(week).not.toContain(
+				locale === 'en-US' ? 'No day in this week' : 'Nenhum dia desta semana',
+			);
+		});
+
 		test('Today says there is no check yet, rather than scoring the fallbacks', async () => {
 			const today = await render('/', THURSDAY, locale);
 			expect(today).toContain(copy.noCheck);

@@ -115,6 +115,30 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(log).toContain(locale === 'en-US' ? 'Max / Tissue' : 'Máx / Tecido');
 		});
 
+		// Week (#63). The one screen whose whole point is the separation ADR-0003
+		// protects, so this is the assertion that matters most in the pt-BR pass:
+		// the seven weekday *labels* localize, and the seven weekday *keys* they are
+		// selected by do not. A page that stored the label would render identically
+		// in en-US and fail here.
+		test('renders the week as seven slots, labelled in the locale', async () => {
+			const week = await render('/week');
+			expect(week.length).toBeGreaterThan(2000);
+
+			// The labels, localized. `Seg`..`Dom` against `Mon`..`Sun`.
+			const labels =
+				locale === 'en-US'
+					? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+					: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+			for (const label of labels) expect(week).toContain(label);
+
+			// The selected slot is Thursday's, and its day type is resolved rather
+			// than named by the weekday (ADR-0002).
+			expect(week).toContain(locale === 'en-US' ? 'Pull' : 'Puxada');
+			// The heading rank, and the week's own reading.
+			expect(week).toContain(locale === 'en-US' ? 'Microcycle' : 'Microciclo');
+			expect(week).toContain(locale === 'en-US' ? 'Week 5' : 'Semana 5');
+		});
+
 		// `/` is Today now, so sign-in has its own route.
 		//
 		// Only the chrome is asserted. `/login` gates its body on

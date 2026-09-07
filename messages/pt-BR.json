@@ -559,5 +559,11 @@
 	"ce_delete_confirm": "Excluir este exercício personalizado? Ele será removido de qualquer dia que o use.",
 	"sync_saving": "Salvando…",
 	"sync_saved": "Sincronizado",
-	"sync_offline": "Offline"
+	"sync_offline": "Offline",
+	"wk_nothing_scheduled": "Nenhum dia desta semana tem trabalho agendado. Seu <b>programa</b> é o que preenche.",
+	"wk_state_trained": "Treinado",
+	"wk_state_missed": "Perdido",
+	"wk_state_today": "Hoje",
+	"wk_state_ahead": "Agendado",
+	"wk_state_rest": "Descanso"
 }

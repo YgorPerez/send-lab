@@ -204,9 +204,22 @@ function Today() {
 					</h1>
 					<p className="num mt-1 truncate text-[11px] text-ink-faint">{t.dateLabel}</p>
 				</div>
-				<span className="num shrink-0 text-[11px] text-ink-faint">
+				{/* THE WAY IN TO WEEK (#63). The page needs one, and it is not a fourth
+				    tab: #52 settled that the bar carries exactly three destinations —
+				    the three places the athlete goes on a training day — and a fourth
+				    contradicts that claim rather than extending it. This reading was
+				    already the week affordance on this screen and already sat in the
+				    right place; it becomes the control.
+				    It gets a border and its own hit area because it is one. "An
+				    icon-only affordance attached to a much larger element does not read
+				    as a control" is the measured rule, and a bare span promoted to a
+				    link is the same mistake with no icon at all. */}
+				<Link
+					to="/week"
+					className="num inline-flex min-h-9 shrink-0 items-center rounded-md border border-line px-2 text-[11px] text-ink-faint transition-colors hover:border-chalk/40 hover:text-ink"
+				>
 					{m.week_label({ n: t.weekNumber })}
-				</span>
+				</Link>
 			</header>
 
 			{/* THE CUT (#52).

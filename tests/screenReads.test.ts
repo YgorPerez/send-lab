@@ -15,12 +15,13 @@
 import type { StorageApi } from '@tanstack/db';
 import { describe, expect, it } from 'vitest';
 import { computeReadiness, getContent } from '../src/lib/content/index.ts';
-import { asAthleteId, asExerciseId } from '../src/lib/ids.ts';
+import { asAthleteId, asExerciseId, asWeekdayKey } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { effectiveVariant, resolveSwapIndex, variantOf } from '../src/lib/prescription.ts';
 import { resolveLog } from '../src/lib/screens/log.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
+import { resolveWeek } from '../src/lib/screens/week.ts';
 import { createRecordStore } from '../src/lib/store/collections.ts';
 import { readTrainingRecord } from '../src/lib/store/record.ts';
 import { seedRecordStore } from '../src/lib/store/seed.ts';
@@ -56,6 +57,7 @@ const REC = record();
 const TODAY = resolveToday(content, REC, NOW);
 const TRAIN = resolveTrain(content, REC, NOW);
 const LOG = resolveLog(content, REC, 'en-US');
+const WEEK = resolveWeek(content, REC, NOW);
 
 describe('Today', () => {
 	it('lands on a verdict that actually caps the session, so held work is on screen', () => {
@@ -246,6 +248,107 @@ describe('the screens are resolved, not fabricated', () => {
 	it('resolves the same answer twice from the same store', () => {
 		expect(JSON.stringify(resolveToday(content, REC, NOW))).toBe(JSON.stringify(TODAY));
 		expect(JSON.stringify(resolveTrain(content, REC, NOW))).toBe(JSON.stringify(TRAIN));
+	});
+});
+
+// Week (#63). The screen the identity rules are hardest on, so what is asserted
+// here is mostly that the two halves of a slot stay two halves.
+describe('Week', () => {
+	it('reads the whole week as slots, with adherence counted in slots', () => {
+		expect(WEEK.slots).toHaveLength(7);
+		expect(WEEK.weekNumber).toBe(5);
+		// Adherence is a share of *scheduled* slots, so rest days are outside it.
+		const rests = WEEK.slots.filter((s) => s.isRestDay).length;
+		expect(rests).toBeGreaterThan(0);
+		expect(WEEK.scheduled).toBe(7 - rests);
+		expect(WEEK.trained).toBeLessThanOrEqual(WEEK.scheduled);
+		// Every scheduled slot has work, and every task carries a slot-unique key.
+		const keys = WEEK.slots.flatMap((s) => s.tasks.map((t) => t.key));
+		expect(new Set(keys).size).toBe(keys.length);
+		expect(keys.every((k) => k.startsWith('w5-'))).toBe(true);
+	});
+
+	// THE ADR-0003 ASSERTION, and the reason this suite is worth its length.
+	//
+	// The English weekday labels are byte-identical to the stable keys, so in
+	// en-US alone every one of these passes whether the resolver kept them apart
+	// or not. Resolving the same record in pt-BR is the only way to see it: the
+	// labels move and the keys must not.
+	it('localizes the weekday label and never the weekday key', () => {
+		const ptWeek = resolveWeek(getContent('pt-BR'), REC, NOW);
+
+		expect(WEEK.slots.map((s) => s.weekdayLabel)).toEqual([
+			'Mon',
+			'Tue',
+			'Wed',
+			'Thu',
+			'Fri',
+			'Sat',
+			'Sun',
+		]);
+		expect(ptWeek.slots.map((s) => s.weekdayLabel)).toEqual([
+			'Seg',
+			'Ter',
+			'Qua',
+			'Qui',
+			'Sex',
+			'Sáb',
+			'Dom',
+		]);
+
+		// The keys are the same objects of identity in both locales.
+		expect(ptWeek.slots.map((s) => s.weekday)).toEqual(WEEK.slots.map((s) => s.weekday));
+		expect(ptWeek.today).toBe(WEEK.today);
+		// And so are the task keys, which is what a tick is stored against.
+		expect(ptWeek.slots.flatMap((s) => s.tasks.map((t) => t.key))).toEqual(
+			WEEK.slots.flatMap((s) => s.tasks.map((t) => t.key)),
+		);
+		// The *names* do move, because they are derived at render (ADR 0012).
+		expect(ptWeek.slots.some((s) => s.day.type !== WEEK.slots[0].day.type)).toBe(true);
+	});
+
+	// ADR-0002: a slot's day type is resolved, not read off its weekday. Asserted
+	// by moving one and watching the day type follow the slot rather than the
+	// calendar position.
+	it('resolves a slot day type through the program, not from the weekday', () => {
+		const moved = {
+			...REC,
+			program: {
+				...REC.program,
+				template: { ...REC.program.template, [asWeekdayKey('Sun')]: { dayType: 'pull' as const } },
+			},
+		};
+		const w = resolveWeek(content, moved, NOW);
+		const sunday = w.slots.find((s) => s.weekday === asWeekdayKey('Sun'));
+
+		// Sunday's built-in day type is `rest`; the program says otherwise, and the
+		// slot runs what the program says.
+		expect(sunday?.isRestDay).toBe(false);
+		expect(sunday?.tasks.length).toBeGreaterThan(0);
+		// It is now scheduled, so it counts toward adherence where it did not.
+		expect(w.scheduled).toBe(WEEK.scheduled + 1);
+	});
+
+	// The five states, and the one distinction the page exists to make: `missed`
+	// and `ahead` are both "scheduled and not trained".
+	it('tells a slot behind today from one ahead of it', () => {
+		const byDay = new Map(WEEK.slots.map((s) => [s.weekdayLabel, s.state]));
+		// NOW is a Thursday.
+		expect(byDay.get('Thu')).toBe('today');
+		for (const past of ['Mon', 'Tue', 'Wed']) {
+			expect(['trained', 'missed', 'rest']).toContain(byDay.get(past));
+		}
+		for (const future of ['Fri', 'Sat', 'Sun']) {
+			expect(['ahead', 'rest']).toContain(byDay.get(future));
+		}
+		// A rest slot is never missed, whichever side of today it falls.
+		for (const slot of WEEK.slots) {
+			if (slot.isRestDay) expect(slot.state).toBe('rest');
+		}
+	});
+
+	it('resolves the same answer twice from the same store', () => {
+		expect(JSON.stringify(resolveWeek(content, REC, NOW))).toBe(JSON.stringify(WEEK));
 	});
 });
 

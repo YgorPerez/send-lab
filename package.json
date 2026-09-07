@@ -26,6 +26,7 @@
 		"check:contrast": "tsx scripts/check-contrast.ts",
 		"check:hydration": "tsx scripts/check-hydration.ts",
 		"check:motion": "tsx scripts/check-motion.ts",
+		"check:overflow": "tsx scripts/check-overflow.ts",
 		"doctor": "react-doctor --no-telemetry",
 		"fallow": "fallow dead-code",
 		"fallow:health": "fallow health",

@@ -14,6 +14,7 @@ import { Route as LogRouteImport } from './routes/log'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TrainRouteImport } from './routes/train'
+import { Route as WeekRouteImport } from './routes/week'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiMeRouteImport } from './routes/api/me'
 import { Route as ApiStateRouteImport } from './routes/api/state'
@@ -43,6 +44,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const TrainRoute = TrainRouteImport.update({
   id: '/train',
   path: '/train',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WeekRoute = WeekRouteImport.update({
+  id: '/week',
+  path: '/week',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/train': typeof TrainRoute
+  '/week': typeof WeekRoute
   '/welcome': typeof WelcomeRoute
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/train': typeof TrainRoute
+  '/week': typeof WeekRoute
   '/welcome': typeof WelcomeRoute
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/train': typeof TrainRoute
+  '/week': typeof WeekRoute
   '/welcome': typeof WelcomeRoute
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/train'
+    | '/week'
     | '/welcome'
     | '/api/me'
     | '/api/state'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/train'
+    | '/week'
     | '/welcome'
     | '/api/me'
     | '/api/state'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/train'
+    | '/week'
     | '/welcome'
     | '/api/me'
     | '/api/state'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
   TrainRoute: typeof TrainRoute
+  WeekRoute: typeof WeekRoute
   WelcomeRoute: typeof WelcomeRoute
   ApiMeRoute: typeof ApiMeRoute
   ApiStateRoute: typeof ApiStateRoute
@@ -195,6 +208,13 @@ declare module '@tanstack/react-router' {
       path: '/train'
       fullPath: '/train'
       preLoaderRoute: typeof TrainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/week': {
+      id: '/week'
+      path: '/week'
+      fullPath: '/week'
+      preLoaderRoute: typeof WeekRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/welcome': {
@@ -241,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
   TrainRoute: TrainRoute,
+  WeekRoute: WeekRoute,
   WelcomeRoute: WelcomeRoute,
   ApiMeRoute: ApiMeRoute,
   ApiStateRoute: ApiStateRoute,
@@ -250,12 +271,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
