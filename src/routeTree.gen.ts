@@ -18,6 +18,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiMeRouteImport } from './routes/api/me'
 import { Route as ApiStateRouteImport } from './routes/api/state'
 import { Route as ApiTokensRouteImport } from './routes/api/tokens'
+import { Route as PrototypeWeekRouteImport } from './routes/prototype.week'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -65,6 +66,11 @@ const ApiTokensRoute = ApiTokensRouteImport.update({
   path: '/api/tokens',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrototypeWeekRoute = PrototypeWeekRouteImport.update({
+  id: '/prototype/week',
+  path: '/prototype/week',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
   '/api/tokens': typeof ApiTokensRoute
+  '/prototype/week': typeof PrototypeWeekRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
   '/api/tokens': typeof ApiTokensRoute
+  '/prototype/week': typeof PrototypeWeekRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/api/me': typeof ApiMeRoute
   '/api/state': typeof ApiStateRoute
   '/api/tokens': typeof ApiTokensRoute
+  '/prototype/week': typeof PrototypeWeekRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/state'
     | '/api/tokens'
+    | '/prototype/week'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/state'
     | '/api/tokens'
+    | '/prototype/week'
     | '/api/auth/$'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/api/me'
     | '/api/state'
     | '/api/tokens'
+    | '/prototype/week'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -157,6 +169,7 @@ export interface RootRouteChildren {
   ApiMeRoute: typeof ApiMeRoute
   ApiStateRoute: typeof ApiStateRoute
   ApiTokensRoute: typeof ApiTokensRoute
+  PrototypeWeekRoute: typeof PrototypeWeekRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -225,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTokensRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/prototype/week': {
+      id: '/prototype/week'
+      path: '/prototype/week'
+      fullPath: '/prototype/week'
+      preLoaderRoute: typeof PrototypeWeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -245,17 +265,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMeRoute: ApiMeRoute,
   ApiStateRoute: ApiStateRoute,
   ApiTokensRoute: ApiTokensRoute,
+  PrototypeWeekRoute: PrototypeWeekRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
