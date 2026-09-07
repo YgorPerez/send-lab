@@ -63,6 +63,17 @@ nothing is indistinguishable from a working one until the device goes offline.
   production-secret assertion is a runtime check. The build prerenders `/_shell.html` by fetching `/`
   from the built server bundle, so a module-level throw would make the shell unbuildable in CI and in
   previews — and the shell is user-independent by construction, so it must never need a credential.
+- **`pnpm routes` and `pnpm build` used to disagree about `routeTree.gen.ts`, and
+  now do not.** The file ends with a `declare module '@tanstack/react-start'`
+  block registering the router's type and `ssr: true`. The Start vite plugin
+  writes it; `tsr generate` strips it. Because `pnpm verify` runs `pnpm run
+  routes`, *verify stripped it* — and a file committed after a green verify
+  shipped without it. Nothing went red on the way: it is a type augmentation, so
+  `tsgo` passes either way and the app builds and runs, losing only the router's
+  type inside every `@tanstack/react-start` API. It cost two commits before
+  `pnpm routes` was made idempotent (`tsr generate &&
+  tsx scripts/restore-route-registration.ts`), with
+  `tests/routeRegistration.test.ts` asserting the committed file still carries it.
 - **`/_shell.html` is the deploy artefact that matters.** It is what the service worker precaches and
   what an installed app cold-starts from. `pnpm check:sw` asserts it exists, is precached, and
   contains nothing account-specific.

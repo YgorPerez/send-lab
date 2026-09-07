@@ -13,7 +13,7 @@
 		"build:sw": "tsx scripts/build-service-worker.ts",
 		"preview": "vite preview",
 		"paraglide": "tsx scripts/compile-messages.ts",
-		"routes": "tsr generate",
+		"routes": "tsr generate && tsx scripts/restore-route-registration.ts",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
