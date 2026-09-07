@@ -86,10 +86,24 @@ export interface RecordSync {
 	/** Rows written locally that the server has not acknowledged, including the
 	 *  ones it never will. `CONTEXT.md`'s **unsynced work**. */
 	unsynced(): number;
+	/** The other half of that count: rows a `flush` could still deliver. What a
+	 *  screen asks when it wants to *wait* for the work — `unsynced()` includes
+	 *  the refusals, and no amount of flushing will ever bring that count down. */
+	sendable(): number;
 	/** The work in its final state: writes the server refused, which will not be
 	 *  retried. Surfaced so a screen can say so — the whole hazard of a refusal is
 	 *  that it arrives as a 200 and is otherwise invisible. */
 	refused(): RefusedWrite[];
+	/** Be told when a batch has settled: what was delivered is gone, and what was
+	 *  refused is final. Returns the unsubscribe.
+	 *
+	 *  The reason a screen showing either count needs this rather than one read at
+	 *  mount — most flushes are not the screen's doing. The debounce fires 250ms
+	 *  after any write on any page, the `online` listener fires on reconnect, and
+	 *  the constructor replays whatever the last tab left behind. A refusal can
+	 *  therefore arrive while the athlete is looking straight at the screen that
+	 *  exists to report it. */
+	subscribe(notify: () => void): () => void;
 }
 
 /**
@@ -111,6 +125,10 @@ export function createRecordSync(
 	const work = createUnsyncedWork(account, storage);
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let inFlight: Promise<void> | null = null;
+
+	/** Told after every settle, so a screen reporting the work does not have to
+	 *  guess when it changed. */
+	const watchers = new Set<() => void>();
 
 	/** The store this sync hydrated, so reconnecting can re-read as well as
 	 *  re-send. Without it only half of coming back online happens: the local
@@ -156,6 +174,10 @@ export function createRecordSync(
 			} finally {
 				inFlight = null;
 			}
+			// Outside the `try`, and only for a request that landed: a watcher that
+			// throws is a screen's bug, and reporting it as a deferred write would
+			// blame the network for it and hide it behind a `console.warn`.
+			if (delivered) for (const notify of watchers) notify();
 		})();
 
 		await inFlight;
@@ -203,7 +225,12 @@ export function createRecordSync(
 		flush,
 		settled: () => settled,
 		unsynced: () => work.size(),
+		sendable: () => work.sendable().length,
 		refused: () => work.refused(),
+		subscribe(notify) {
+			watchers.add(notify);
+			return () => void watchers.delete(notify);
+		},
 	};
 }
 

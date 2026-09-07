@@ -446,6 +446,68 @@ describe('a write the server refuses', () => {
 		expect(createRecordSync(ACCOUNT, fakeTransport().transport, cells).refused()).toHaveLength(1);
 		error.mockRestore();
 	});
+
+	it('is not something a sign-out can wait for', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const fake = fakeTransport();
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
+
+		sync.push([{ collection: 'sessions', key: 'bad', row: { at: 'x' }, at: T1 }]);
+		fake.reject([{ collection: 'sessions', key: 'bad', reason: 'unknown collection' }]);
+		await settle();
+
+		// The distinction #82 turns on. A refusal stays counted as unsynced work,
+		// so a sign-out gated on `unsynced()` is held on this device forever — a
+		// flush cannot clear a row the server has already declined. `sendable()` is
+		// the half that a flush can still empty, and the only half worth waiting on.
+		expect(sync.unsynced()).toBe(1);
+		expect(sync.sendable()).toBe(0);
+		await sync.flush();
+		expect(sync.sendable()).toBe(0);
+		error.mockRestore();
+	});
+
+	it('tells a watching screen the moment it lands', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const fake = fakeTransport();
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
+
+		// What Settings holds. Read once at mount it would still say `false` here:
+		// this flush is the debounce's, fired by a write the screen did not make.
+		const seen: boolean[] = [];
+		const stop = sync.subscribe(() => seen.push(sync.refused().length > 0));
+
+		sync.push([{ collection: 'sessions', key: 'bad', row: { at: 'x' }, at: T1 }]);
+		fake.reject([{ collection: 'sessions', key: 'bad', reason: 'unknown collection' }]);
+		await settle();
+		expect(seen).toEqual([true]);
+
+		stop();
+		sync.push([{ collection: 'prefs', key: 'only', row: { weight: 'kg' }, at: T1 + 1 }]);
+		await settle();
+		expect(seen).toEqual([true]);
+		error.mockRestore();
+	});
+
+	it('does not hide the work still worth sending behind it', async () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const fake = fakeTransport();
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
+
+		sync.push([{ collection: 'sessions', key: 'bad', row: { at: 'x' }, at: T1 }]);
+		fake.reject([{ collection: 'sessions', key: 'bad', reason: 'unknown collection' }]);
+		await settle();
+
+		// A second write, this time with nobody to send it to: the sign-out must
+		// still be held, because this one is still going to reach the server.
+		fake.setFailing(true);
+		sync.push([{ collection: 'taskDone', key: 'good', row: { done: true }, at: T1 + 1 }]);
+		await settle();
+
+		expect(sync.unsynced()).toBe(2);
+		expect(sync.sendable()).toBe(1);
+		error.mockRestore();
+	});
 });
 
 describe('signing out', () => {

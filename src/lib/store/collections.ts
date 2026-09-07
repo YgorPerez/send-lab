@@ -65,6 +65,7 @@
 // a write durable; this is the online path only.
 import { createCollection, localStorageCollectionOptions, type StorageApi } from '@tanstack/db';
 import type { DayTypeId } from '$lib/content/types';
+import { isEphemeralKey } from '$lib/ephemeral';
 import type { AthleteId, ExerciseId, SlotKey, TaskKey, WeekId } from '$lib/ids';
 import type { UnsyncedWrite } from '$lib/recordWire';
 import type {
@@ -94,6 +95,58 @@ const PREFIX = 'sendlab:';
  *  athlete's rows end up under another's prefix, and `tests/ids.test.ts` refuses
  *  the assertion that would create one. */
 const NO_ACCOUNT = 'signed-out';
+
+/**
+ * The accounts whose records this device is still holding.
+ *
+ * Read off the storage keys, because nothing else lists them: the collections
+ * are namespaced `sendlab:<account>:<collection>` and the only pointer anywhere
+ * is `sendlab:account`, which names the *active* one and is cleared the moment a
+ * session resolves to absent. So after an expiry there is no record of who was
+ * here except the records themselves — which is precisely what `login` has to
+ * know, since #24 decided expiry clears neither the store nor the queue and the
+ * page must not imply otherwise.
+ *
+ * `NO_ACCOUNT` is excluded on purpose. Training logged with nobody signed in is
+ * real and is kept, but it is not an account and signing in opens the account's
+ * own record rather than carrying it over.
+ *
+ * Plain strings, and deliberately not `AthleteId`s: these are storage segments
+ * this module read back off the device, not identities anything vouched for, and
+ * `lib/ids.ts` is the only door that mints one (`tests/ids.test.ts` refuses the
+ * assertion that would open a second). The only question asked of them here is
+ * whether there are any.
+ */
+export function heldAccounts(): readonly string[] {
+	const found = new Set<string>();
+	for (const key of storageKeys()) {
+		if (!key.startsWith(PREFIX) || isEphemeralKey(key)) continue;
+		const [account, collection, ...rest] = key.slice(PREFIX.length).split(':');
+		if (!account || !collection || rest.length > 0) continue;
+		if (account === NO_ACCOUNT) continue;
+		found.add(account);
+	}
+	return [...found];
+}
+
+/** Every key in `localStorage`, or none where there is no usable one.
+ *
+ *  `storageOverride()` below already answers exactly that question — it hands
+ *  back a substitute precisely when the real `localStorage` cannot be used (no
+ *  `window`, storage denied, or the jsdom shape whose methods are not functions)
+ *  — so this asks it rather than repeating the guard.
+ *
+ *  A substitute means there is nothing to enumerate: the collections are in a
+ *  `Map` that outlives nothing. That reads as "no account held", which is the
+ *  safer of the two answers to be wrong about, because it promises nothing. */
+function storageKeys(): string[] {
+	try {
+		if (typeof window === 'undefined' || storageOverride() !== undefined) return [];
+		return Object.keys(window.localStorage);
+	} catch {
+		return [];
+	}
+}
 
 /** Everything `collectionOptions` decides, as one value. `getKey` is the only
  *  thing a factory still supplies for itself — it is the one part that differs.

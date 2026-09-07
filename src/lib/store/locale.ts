@@ -130,7 +130,14 @@ export function useResolvedLocale(): [AppLocale, (next: AppLocale) => void] {
 	const locale = useSyncExternalStore(subscribeLocale, currentLocale, currentLocale);
 
 	const fromAccount = useAccountLocale();
-	const seen = useRef(fromAccount);
+	// Seeded `null`, not with the first render's answer (#82). The prefs collection
+	// is localStorage-backed with `startSync: true` — "the rows are in memory the
+	// moment the collection exists" — so a first render that yields the row would
+	// seed `seen` with the very value the effect exists to apply, and the account's
+	// locale would never be applied at boot. It works out today only because
+	// `useLiveQuery().data` happens to be `undefined` on that render, which is a
+	// property of the library rather than one this guard should depend on.
+	const seen = useRef<AppLocale | null>(null);
 	useEffect(() => {
 		// The account's answer *arriving*, on a device whose local guess was wrong.
 		// Only when it changes: for a moment after `chooseLocale` the account still
