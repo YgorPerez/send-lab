@@ -27,10 +27,10 @@ import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import {
 	builtInDayType,
 	carryForward,
+	carryForwardFromYesterday,
 	dayTemplate,
 	effectiveVariant,
 	isSlotTrained,
-	missedYesterday,
 	phaseForWeek,
 	prefillLoadKg,
 	programOverride,
@@ -732,7 +732,7 @@ describe('what went untrained yesterday', () => {
 	const THURSDAY = [ex('pull'), ex('slopdens'), ex('abra'), ex('antag')];
 
 	test('offers everything yesterday scheduled and nothing trained', () => {
-		expect(missedYesterday(content, state({ currentWeek: W5 }), FRIDAY)).toEqual({
+		expect(carryForwardFromYesterday(content, state({ currentWeek: W5 }), FRIDAY)).toEqual({
 			weekday: THU,
 			exerciseIds: THURSDAY,
 		});
@@ -746,7 +746,7 @@ describe('what went untrained yesterday', () => {
 			currentWeek: W5,
 			taskDone: { [taskKey(W5, THU, ex('pull'))]: true },
 		});
-		expect(missedYesterday(content, s, FRIDAY)).toEqual({
+		expect(carryForwardFromYesterday(content, s, FRIDAY)).toEqual({
 			weekday: THU,
 			exerciseIds: [ex('slopdens'), ex('abra'), ex('antag')],
 		});
@@ -757,13 +757,13 @@ describe('what went untrained yesterday', () => {
 			currentWeek: W5,
 			taskDone: Object.fromEntries(THURSDAY.map((id) => [taskKey(W5, THU, id), true])),
 		});
-		expect(missedYesterday(content, s, FRIDAY)).toBeNull();
+		expect(carryForwardFromYesterday(content, s, FRIDAY)).toBeNull();
 	});
 
 	// A rest day scheduled nothing, so nothing about it was missed. Offering it
 	// would ask the athlete to catch up on resting.
 	test('offers nothing when yesterday was a rest day', () => {
-		expect(missedYesterday(content, state({ currentWeek: W5 }), MONDAY)).toBeNull();
+		expect(carryForwardFromYesterday(content, state({ currentWeek: W5 }), MONDAY)).toBeNull();
 	});
 
 	// ADR-0003. `main` returned `{ label, exIds }`, where `label` was the day's
@@ -771,7 +771,7 @@ describe('what went untrained yesterday', () => {
 	// result feeds a key. The weekday key is what comes back, in either locale.
 	test('returns the weekday key, never its localized label', () => {
 		const s = state({ currentWeek: W5 });
-		expect(missedYesterday(content, s, FRIDAY)?.weekday).toBe('Thu');
+		expect(carryForwardFromYesterday(content, s, FRIDAY)?.weekday).toBe('Thu');
 
 		overwriteGetLocale(() => 'pt-BR');
 		try {
@@ -779,7 +779,7 @@ describe('what went untrained yesterday', () => {
 			// the weekday rather than of the day type: ADR 0016 split them, and a
 			// weekday label reached through a day type was the conflation itself.
 			expect(weekdayLabel(getContent('pt-BR'), asWeekdayKey('Thu'))).toBe('Qui');
-			expect(missedYesterday(getContent('pt-BR'), s, FRIDAY)?.weekday).toBe('Thu');
+			expect(carryForwardFromYesterday(getContent('pt-BR'), s, FRIDAY)?.weekday).toBe('Thu');
 		} finally {
 			overwriteGetLocale(() => 'en-US');
 		}

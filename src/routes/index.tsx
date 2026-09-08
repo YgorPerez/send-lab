@@ -2,7 +2,7 @@
 //
 // The screen that decides whether "dense and calm" survives contact with a phone.
 // It carries, in one scroll: the read, the five wellness dimensions behind it,
-// the plan and the work the read holds back, the carry-forward from a missed day,
+// the plan and the work the read holds back, yesterday's carry-forward,
 // three counters, a fourteen-point trend, the watch-outs with their advice, a
 // nine-question readiness check, the bodyweight nudge, and two injury entry
 // points.
@@ -116,7 +116,7 @@ function Today() {
 		Object.fromEntries(t.tasks.map((task) => [task.key, task.done])),
 	);
 	const [outcome, setOutcome] = useState<number | null>(null);
-	const [missedTaken, setMissedTaken] = useState(false);
+	const [carryForwardTaken, setCarryForwardTaken] = useState(false);
 	const [bodyweight, setBodyweight] = useState('');
 	const [bodyweightLogged, setBodyweightLogged] = useState(false);
 	const [selfCheckOpen, setSelfCheckOpen] = useState(false);
@@ -318,8 +318,8 @@ function Today() {
 							done={done}
 							heldSet={heldSet}
 							onToggle={(key) => setDone((p) => ({ ...p, [key]: !p[key] }))}
-							missed={missedTaken ? null : t.missed}
-							onTakeMissed={() => setMissedTaken(true)}
+							carryForward={carryForwardTaken ? null : t.carryForward}
+							onTakeCarryForward={() => setCarryForwardTaken(true)}
 						/>
 
 						{/* WHAT THE PLAN IS BUILT FROM, WHEN IT IS BUILT FROM NOTHING (#64).
@@ -588,8 +588,8 @@ function PlanCard({
 	done,
 	heldSet,
 	onToggle,
-	missed,
-	onTakeMissed,
+	carryForward,
+	onTakeCarryForward,
 }: {
 	day: TodayScreen['day'];
 	phase: TodayScreen['phase'];
@@ -598,8 +598,8 @@ function PlanCard({
 	done: Record<TaskKey, boolean>;
 	heldSet: ReadonlySet<ExerciseId>;
 	onToggle: (key: TaskKey) => void;
-	missed: TodayScreen['missed'];
-	onTakeMissed: () => void;
+	carryForward: TodayScreen['carryForward'];
+	onTakeCarryForward: () => void;
 }) {
 	return (
 		<Section
@@ -681,18 +681,18 @@ function PlanCard({
 
 				{/* Carry-forward lives inside the plan rather than as a banner above it:
 				    it is one more thing that could be trained today. */}
-				{missed ? (
+				{carryForward ? (
 					<div className="flex items-center gap-2 border-t border-line px-3 py-2">
 						<span className="min-w-0 flex-1 text-[12px] leading-snug text-ink-dim">
-							{m.td_missed({ day: missed.weekdayLabel })}
-							<span className="text-ink-faint"> · {missed.labels.join(' · ')}</span>
+							{m.td_carry_forward({ day: carryForward.weekdayLabel })}
+							<span className="text-ink-faint"> · {carryForward.labels.join(' · ')}</span>
 						</span>
 						<button
 							type="button"
-							onClick={onTakeMissed}
+							onClick={onTakeCarryForward}
 							className={button({ size: 'md', class: 'min-h-11 shrink-0' })}
 						>
-							{m.td_missed_do()}
+							{m.td_carry_forward_do()}
 						</button>
 					</div>
 				) : null}

@@ -86,6 +86,30 @@ and each is owned rather than merely noticed:
   renamed, because its extra field was a localized label welded onto a domain type
   (ADR 0012).
 - `lib/stats.ts` — parameters and prose, no behaviour. Cosmetic and contained.
+- ~~`missedYesterday`, `TodayScreen.missed`, and the keys `td_missed` /
+  `td_missed_do`.~~ **Done in the 2026-09-08 domain-modeling pass**, and it is
+  the entry where both directions of the audit were needed to see one defect.
+  *Missed work* is the first phrase on **Carry-forward**'s `_Avoid_` list, so the
+  first direction found the names — but it could not say what was wrong with them,
+  because the glossary had no word for the other sense the code was also using.
+  `SlotState` (`lib/screens/week.ts`) had minted `'missed'` for **a slot**, which
+  the glossary never named, and the two senses were indistinguishable in a grep.
+
+  What settled it was a scenario rather than a reading: **a slot can be `trained`
+  and populate `TodayScreen.missed` at the same time.** ADR 0001 makes one tick
+  enough to call a slot trained, while `carryForwardFromYesterday` hands forward
+  every task *not* ticked — so an athlete who does one of Wednesday's two
+  exercises gets `Wed:trained` on Week and a non-null `missed` on Today, off the
+  same record. Measured against the seeded account, not argued. The field was
+  therefore not merely saying an avoided word; it was making a claim about the
+  slot that the value it holds does not support.
+
+  So the pass did both halves: `CONTEXT.md` gained **Missed** (a state of a slot,
+  never of work) and **Carry-forward** gained the sentence that keeps them apart,
+  and the names moved onto the terms — `carryForwardFromYesterday`,
+  `TodayScreen.carryForward`, `td_carry_forward`. `SlotState`'s `'missed'` is
+  unchanged and now defined rather than invented. Nothing persisted, so nothing
+  migrated.
 - `resolveDay` (`lib/prescription.ts`) and `applyEditDay` (`server/programOps.ts`)
   — both say *day* for something that is not a weekday: `resolveDay` returns a
   **day type**, `applyEditDay` edits a **weekday template**, and *day* is on both

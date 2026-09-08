@@ -54,7 +54,7 @@ export function formatEdge(r: Range): string {
  * The localized name of a weekday, from the content library's built-in week.
  *
  * The last label helper still living in `main`'s `plan.ts` (#69). It exists
- * because the resolver deliberately does *not* return one: `missedYesterday`
+ * because the resolver deliberately does *not* return one: `carryForwardFromYesterday`
  * hands back a `WeekdayKey` and the caller labels it here, where `main` returned
  * the label beside the ids and sent a display string travelling as data
  * (ADR-0003). Falls back to the key, which is wrong in pt-BR and visible — better

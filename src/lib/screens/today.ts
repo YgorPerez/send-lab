@@ -33,7 +33,7 @@ import { displayDate } from '$lib/displayDate';
 import { weekdayLabel } from '$lib/format';
 import type { ExerciseId, TaskKey, WeekdayKey, WeekId } from '$lib/ids';
 import { taskKey, weekdayKeyOf, weekNumberOf } from '$lib/ids';
-import { missedYesterday, resolveDay, trainableExerciseIds } from '$lib/prescription';
+import { carryForwardFromYesterday, resolveDay, trainableExerciseIds } from '$lib/prescription';
 import { capByVerdict } from '$lib/readinessPlan';
 import {
 	acwr,
@@ -131,7 +131,11 @@ export interface TodayScreen {
 		/** Nothing logged today, so the nudge is showing (ADR 0009). */
 		promptToday: boolean;
 	};
-	missed: CarryForward | null;
+	/** Work handed forward from yesterday, or null. Named for what it holds and
+	 *  not for the slot it came from: a slot the athlete part-trained is
+	 *  **trained** and still fills this in, so `missed` was a claim the value
+	 *  does not make (ADR 0014). */
+	carryForward: CarryForward | null;
 	/** The injury self-check reachable from a body-area flag, and its last result.
 	 *
 	 *  Null when the library has no instrument to offer. `content.selfChecks` is
@@ -187,7 +191,7 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 		done: record.taskDone[taskKey(week, weekday, exercise)] ?? doneExercises.has(exercise),
 	}));
 
-	const missed = missedYesterday(content, record, now);
+	const carried = carryForwardFromYesterday(content, record, now);
 	const latestBodyweight = record.bodyweight[record.bodyweight.length - 1] ?? null;
 
 	return {
@@ -222,12 +226,12 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 			latestKg: latestBodyweight?.kg ?? null,
 			promptToday: !record.bodyweight.some((b) => isoDayOf(b.at) === iso),
 		},
-		missed: missed
+		carryForward: carried
 			? {
-					weekday: missed.weekday,
-					weekdayLabel: weekdayLabel(content, missed.weekday),
-					exercises: missed.exerciseIds,
-					labels: missed.exerciseIds.map((id) => content.exercises[id]?.name ?? id),
+					weekday: carried.weekday,
+					weekdayLabel: weekdayLabel(content, carried.weekday),
+					exercises: carried.exerciseIds,
+					labels: carried.exerciseIds.map((id) => content.exercises[id]?.name ?? id),
 				}
 			: null,
 		selfCheck: selfCheckEntry(content, record),

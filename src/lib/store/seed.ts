@@ -259,7 +259,7 @@ function history(content: Content, locale: string, now: number, missedDaysAgo: n
 /**
  * The training day that went untrained and is offered again today.
  *
- * Yesterday, and only yesterday — the same day `missedYesterday` looks at, so the
+ * Yesterday, and only yesterday — the same day `carryForwardFromYesterday` looks at, so the
  * day the scenario leaves untrained is the day Today offers back. Null when
  * yesterday was a rest day, which is the honest answer: a rest day scheduled
  * nothing to miss.

@@ -17,7 +17,12 @@ import { describe, expect, it } from 'vitest';
 import { computeReadiness, getContent } from '../src/lib/content/index.ts';
 import { asAthleteId, asExerciseId, asWeekdayKey, taskKey } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
-import { effectiveVariant, resolveSwapIndex, variantOf } from '../src/lib/prescription.ts';
+import {
+	effectiveVariant,
+	resolveSwapIndex,
+	trainableExerciseIds,
+	variantOf,
+} from '../src/lib/prescription.ts';
 import { resolveLog } from '../src/lib/screens/log.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
@@ -80,7 +85,7 @@ describe('Today', () => {
 		expect(TODAY.trendPoints).toHaveLength(14);
 		expect(TODAY.bodyweight.promptToday).toBe(true);
 		expect(TODAY.bodyweight.latestKg).toBe(71.9);
-		expect(TODAY.missed).not.toBeNull();
+		expect(TODAY.carryForward).not.toBeNull();
 		expect(TODAY.selfCheck?.instrument.questions.length).toBeGreaterThan(0);
 		expect(TODAY.selfCheck?.last).not.toBeNull();
 		expect(TODAY.stats.total).toBeGreaterThan(0);
@@ -372,6 +377,31 @@ describe('Week', () => {
 			},
 		};
 		expect(resolveWeek(content, started, NOW).slots.map((s) => s.state)).toContain('missed');
+	});
+
+	// The two concepts this file used to conflate, and the reason `TodayScreen`
+	// says `carryForward` rather than `missed`. ADR 0001 makes **one** tick enough
+	// to call a slot **trained**, while carry-forward hands on every task that was
+	// *not* ticked — so a part-trained slot is trained and still owes work. A
+	// reader who took `carryForward` as "the missed slot's work" would be wrong
+	// about the case the athlete hits most: starting a session and not finishing it.
+	it('hands work forward from a slot it also calls trained', () => {
+		const wed = asWeekdayKey('Wed');
+		const scheduled = trainableExerciseIds(content, REC, REC.currentWeek, wed);
+		expect(scheduled.length, 'Wednesday must run more than one exercise').toBeGreaterThan(1);
+
+		// Exactly one of Wednesday's exercises done, on the day before NOW.
+		const part = {
+			...REC,
+			taskDone: { ...REC.taskDone, [taskKey(REC.currentWeek, wed, scheduled[0])]: true },
+		};
+
+		const slot = resolveWeek(content, part, NOW).slots.find((s) => s.weekday === wed);
+		expect(slot?.state, 'one tick is enough (ADR 0001)').toBe('trained');
+
+		const carried = resolveToday(content, part, NOW).carryForward;
+		expect(carried?.weekday).toBe(wed);
+		expect(carried?.exercises).toEqual(scheduled.slice(1));
 	});
 
 	it('resolves the same answer twice from the same store', () => {

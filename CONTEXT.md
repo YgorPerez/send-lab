@@ -200,6 +200,13 @@ exercises the athlete added off-script, which count toward training rather than
 against it. The one question adherence and carry-forward both ask.
 _Avoid_: completed, done, logged
 
+**Missed**:
+A scheduled slot whose day has passed untrained — the app's claim that the
+athlete had the chance and did not take it, which is why it is never said of an
+account with no training behind it at all. A state of a slot and never of work:
+what a missed slot hands forward is carry-forward.
+_Avoid_: failed, incomplete, no-show, skipped
+
 **Adherence**:
 The share of a training week's scheduled slots that were trained. Scales how far
 progression carries into later weeks.
@@ -211,8 +218,10 @@ what they demand. Held, not cancelled.
 _Avoid_: skipped, dropped, deferred
 
 **Carry-forward**:
-Scheduled work that went untrained — skipped or held — offered again on the next
-training day.
+Scheduled work that went untrained — missed or held — offered again on the next
+training day. It is *work*, and never a slot's state: a slot the athlete
+part-trained is **trained** and still hands its untouched exercises forward, so
+carry-forward is read from the tasks rather than off a slot.
 _Avoid_: missed work, backlog, catch-up
 
 **Unsynced work**:

@@ -40,7 +40,7 @@
 //
 // It resolves, and it does not format. Every localized label the resolver's
 // answers need — the weekday's name, the variant's name — is in `format.ts`,
-// which is why `missedYesterday` hands back a `WeekdayKey` and not a label.
+// which is why `carryForwardFromYesterday` hands back a `WeekdayKey` and not a label.
 import type {
 	Content,
 	DayType,
@@ -545,7 +545,7 @@ export function effectiveVariant(
  * travelling as data, out of a function whose result then keys a slot (ADR-0003).
  * The label is `weekdayLabel(content, weekday)` at render.
  */
-export function missedYesterday(
+export function carryForwardFromYesterday(
 	content: Content,
 	state: ResolverState,
 	nowMs: number,
