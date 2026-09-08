@@ -110,17 +110,37 @@ and each is owned rather than merely noticed:
   `TodayScreen.carryForward`, `td_carry_forward`. `SlotState`'s `'missed'` is
   unchanged and now defined rather than invented. Nothing persisted, so nothing
   migrated.
-- `resolveDay` (`lib/prescription.ts`) and `applyEditDay` (`server/programOps.ts`)
-  — both say *day* for something that is not a weekday: `resolveDay` returns a
-  **day type**, `applyEditDay` edits a **weekday template**, and *day* is on both
-  terms' `_Avoid_` lists. #72 found these while renaming its own four and
-  deliberately did **not** take them, on the grounds that `resolveDay`'s `day` was
-  the content library's `Day`/`days`/`dayTemplate` family. **That blocker is gone**:
-  ADR 0016 split `Day` into `DayType` and `BuiltInWeekday`, so `resolveDay` now
-  returns a `DayType` and the name is plainly wrong rather than ambiguously wrong.
-  Unblocked, still not taken — deliberately, since 0016 was a shape change and
-  mixing a rename across the same nine modules is how both become unreviewable.
-  This is now the oldest live entry on the list.
+- ~~`resolveDay` (`lib/prescription.ts`) and `applyEditDay`
+  (`server/programOps.ts`).~~ **Done in the 2026-09-08 domain-modeling pass**, on
+  the athlete's instruction, after being the oldest live entry on this list for
+  three tickets. Both said *day* for something that is not a weekday, and *day* is
+  on both terms' `_Avoid_` lists. #72 found them and deliberately declined, on the
+  grounds that `resolveDay`'s `day` was the content library's
+  `Day`/`days`/`dayTemplate` family; ADR 0016 then split `Day` into `DayType` and
+  `BuiltInWeekday`, which unblocked it and still left it untaken, since mixing a
+  rename into a shape change across the same nine modules is how both become
+  unreviewable.
+
+  `applyEditDay` → **`applyEditWeekdayTemplate`**, free of charge: nothing but its
+  own test imported it, so there was no wire or tool contract to move.
+
+  `resolveDay` cost more, and the cost is the thing to record. Its true name,
+  `resolveDayType`, **was already taken** — by the function returning a
+  `DayTypeId`. Picking some third name for the object-returning one to avoid
+  disturbing the id-returning one is exactly the adapter reasoning this ADR
+  rejects: a worse name chosen to make a rename smaller. So the pair moved
+  together, onto the distinction the codebase already spells everywhere else:
+
+  | returns | was | is |
+  |---|---|---|
+  | `DayTypeId` | `resolveDayType` | `resolveDayTypeId` |
+  | `DayType` | `resolveDay` | `resolveDayType` |
+
+  **`resolveDayType` therefore changed meaning, not spelling**, and a diff across
+  that commit reads as a no-op where it is not. That is the one genuine cost here,
+  and the mitigation is that the two return types do not substitute, so the
+  compiler catches every stale call. Recorded in `prescription.ts`'s own header for
+  the reader who arrives by `git log` rather than by this list.
 - `messages/` — the key `log_workouts`. Note the *text* is already right in both
   locales ("Sessions" / "Treinos"); only the key drifted, which is what makes it
   the least urgent and the easiest to forget. Beside it, `set_assessment_desc`

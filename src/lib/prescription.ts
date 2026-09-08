@@ -18,9 +18,17 @@
 // superseded by `ids.ts`, which brands it.
 //
 // `setDayPlan` is quoted as history and has no counterpart here: the concept it
-// wrote is `slotDayType`, renamed by #72 under ADR 0014. `resolveDay` is not
-// history — it is live below, and its `day` is the content library's `Day`,
-// which #72 left alone. ADR 0014's audit list owns that one.
+// wrote is `slotDayType`, renamed by #72 under ADR 0014. `main`'s `resolveDay` is
+// live below under a truer name — ADR 0014's audit list carried it for three
+// tickets, and the 2026-09-08 pass took it once ADR 0016 had split `Day` into
+// `DayType` and `BuiltInWeekday` and left the old name plainly rather than
+// ambiguously wrong.
+//
+// **The pair below changed meaning, not just spelling.** `resolveDayType` used to
+// be the function that returns an **id**; that one is now `resolveDayTypeId`, and
+// the name it vacated belongs to the one returning the **day type**. A diff across
+// that commit reads as a no-op and is not, so the compiler is the thing to trust:
+// the two return `DayTypeId` and `DayType`, which do not substitute.
 //
 // STATE IS AN ARGUMENT
 // --------------------
@@ -127,18 +135,20 @@ export function dayTemplate(content: Content, dayType: DayTypeId): DayType {
 }
 
 /**
- * The day type a slot actually runs: per-slot override → program template →
- * the weekday's built-in default.
+ * The **id** of the day type a slot actually runs: per-slot override → program
+ * template → the weekday's built-in default.
  *
- * Called `resolveDayType`, not `main`'s `resolveDayKey`: a "day key" was the
- * exact overload ADR-0002 closed and #55 finished removing, and this function
- * returns a day type.
+ * Not `main`'s `resolveDayKey`: a "day key" was the exact overload ADR-0002 closed
+ * and #55 finished removing. The `Id` suffix is the second half of the same
+ * distinction — this returns the identity, `resolveDayType` below returns the day
+ * type, and ADR-0003 is the reason those are two different things rather than one
+ * with two shapes.
  *
  * Exported since ADR 0017: a session records the day type it actually ran, and
  * stamping that at the moment it is logged is this question asked once, rather
  * than re-asked of the current program every time the history is rendered.
  */
-export function resolveDayType(
+export function resolveDayTypeId(
 	content: Content,
 	state: ResolverState,
 	week: WeekId,
@@ -152,19 +162,23 @@ export function resolveDayType(
 }
 
 /**
- * The day a slot will actually run, after overrides.
+ * The day type a slot will actually run, after overrides.
+ *
+ * Named for what it returns. It was `resolveDay`, which said *day* for a **day
+ * type** — a weekday says when and a day type says what (ADR 0016), and *day* is
+ * on both terms' `_Avoid_` lists in `CONTEXT.md`.
  *
  * A custom focus name replaces the day type's *localized label* and leaves its
  * `id` alone: the name is what the athlete calls this day, the id is what the
  * protocol is. Overwriting the id with the name is the overload ADR-0002 closed.
  */
-export function resolveDay(
+export function resolveDayType(
 	content: Content,
 	state: ResolverState,
 	week: WeekId,
 	weekday: WeekdayKey,
 ): DayType {
-	const base = dayTemplate(content, resolveDayType(content, state, week, weekday));
+	const base = dayTemplate(content, resolveDayTypeId(content, state, week, weekday));
 	const name = state.program.template[weekday]?.name;
 	return name ? { ...base, type: name } : base;
 }
@@ -179,7 +193,7 @@ export function resolveExerciseIds(
 	return (
 		state.slotExercises[slotKey(week, weekday)] ??
 		state.program.template[weekday]?.exercises ??
-		resolveDay(content, state, week, weekday).ex.map(asExerciseId)
+		resolveDayType(content, state, week, weekday).ex.map(asExerciseId)
 	);
 }
 

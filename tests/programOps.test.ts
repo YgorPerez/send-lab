@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { asExerciseId, asWeekdayKey, overrideKey } from '../src/lib/ids';
 import {
-	applyEditDay,
+	applyEditWeekdayTemplate,
 	applySetOverride,
 	applySetPhases,
 	DAY_TYPE_IDS,
@@ -35,24 +35,24 @@ test('applySetPhases normalizes, clamps, and validates', () => {
 	assert.throws(() => applySetPhases(p, [42]));
 });
 
-test('applyEditDay validates weekday + exercise ids and accepts custom ids', () => {
+test('applyEditWeekdayTemplate validates weekday + exercise ids and accepts custom ids', () => {
 	const p = defaultProgram();
 	const id = EXERCISE_IDS[0];
 	const Mon = asWeekdayKey('Mon');
 	const Wed = asWeekdayKey('Wed');
-	applyEditDay(p, 'Mon', 'pinch-wrist', [id]);
+	applyEditWeekdayTemplate(p, 'Mon', 'pinch-wrist', [id]);
 	const mon = p.template[Mon];
 	assert.ok(mon, 'editing a weekday materializes its template entry');
 	assert.equal(mon.dayType, 'pinch-wrist');
 	assert.deepEqual(mon.exercises, [id]);
 
-	assert.throws(() => applyEditDay(p, 'Funday'));
-	assert.throws(() => applyEditDay(p, 'Mon', undefined, ['nope_not_real']));
+	assert.throws(() => applyEditWeekdayTemplate(p, 'Funday'));
+	assert.throws(() => applyEditWeekdayTemplate(p, 'Mon', undefined, ['nope_not_real']));
 	// a weekday key is no longer a valid protocol reference (ADR-0002)
-	assert.throws(() => applyEditDay(p, 'Mon', 'Tue'));
+	assert.throws(() => applyEditWeekdayTemplate(p, 'Mon', 'Tue'));
 
 	// a custom id is accepted when passed via extraIds
-	applyEditDay(p, 'Wed', undefined, ['my_custom'], ['my_custom']);
+	applyEditWeekdayTemplate(p, 'Wed', undefined, ['my_custom'], ['my_custom']);
 	const wed = p.template[Wed];
 	assert.ok(wed, 'editing a weekday materializes its template entry');
 	assert.deepEqual(wed.exercises, ['my_custom']);

@@ -33,7 +33,7 @@ import { displayDate } from '$lib/displayDate';
 import { weekdayLabel } from '$lib/format';
 import type { ExerciseId, TaskKey, WeekdayKey, WeekId } from '$lib/ids';
 import { taskKey, weekdayKeyOf, weekNumberOf } from '$lib/ids';
-import { carryForwardFromYesterday, resolveDay, trainableExerciseIds } from '$lib/prescription';
+import { carryForwardFromYesterday, resolveDayType, trainableExerciseIds } from '$lib/prescription';
 import { capByVerdict } from '$lib/readinessPlan';
 import {
 	acwr,
@@ -202,7 +202,7 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 		week,
 		weekNumber,
 		phase: content.phases[phaseId(weekNumber, record.program.weeks)],
-		day: resolveDay(content, record, week, weekday),
+		day: resolveDayType(content, record, week, weekday),
 		tasks,
 		isRestDay: tasks.length === 0,
 		answers: todayCheck?.answers ?? {},

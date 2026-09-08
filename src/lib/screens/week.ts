@@ -35,7 +35,12 @@ import {
 	weekdayKeyOf,
 	weekNumberOf,
 } from '$lib/ids';
-import { isSlotTrained, resolveDay, trainableExerciseIds, weekCompletion } from '$lib/prescription';
+import {
+	isSlotTrained,
+	resolveDayType,
+	trainableExerciseIds,
+	weekCompletion,
+} from '$lib/prescription';
 import type { TrainingRecord } from '$lib/store/record';
 import type { Task } from './today';
 
@@ -152,7 +157,7 @@ export function resolveWeek(content: Content, record: TrainingRecord, now: numbe
 		return {
 			weekday,
 			weekdayLabel: weekdayLabel(content, weekday),
-			day: resolveDay(content, record, week, weekday),
+			day: resolveDayType(content, record, week, weekday),
 			tasks,
 			trained,
 			state: slotState({

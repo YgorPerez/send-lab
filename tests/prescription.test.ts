@@ -36,7 +36,7 @@ import {
 	programOverride,
 	programVariantIndex,
 	type ResolverState,
-	resolveDay,
+	resolveDayType,
 	resolveExerciseIds,
 	resolveSwapIndex,
 	variantOf,
@@ -109,7 +109,7 @@ describe('which day type a slot runs', () => {
 	test('a weekday runs its built-in day type when nothing is customized', () => {
 		expect(builtInDayType(content, THU)).toBe('pull');
 		expect(builtInDayType(content, SUN)).toBe('rest');
-		expect(resolveDay(content, state(), W5, THU).id).toBe('pull');
+		expect(resolveDayType(content, state(), W5, THU).id).toBe('pull');
 	});
 
 	test('looks a day type up by its stable id, not by its calendar position', () => {
@@ -121,8 +121,8 @@ describe('which day type a slot runs', () => {
 
 	test('the program template overrides the built-in day type, in every week', () => {
 		const s = state({ program: program({ template: { [THU]: { dayType: 'endurance' } } }) });
-		expect(resolveDay(content, s, W5, THU).id).toBe('endurance');
-		expect(resolveDay(content, s, W6, THU).id).toBe('endurance');
+		expect(resolveDayType(content, s, W5, THU).id).toBe('endurance');
+		expect(resolveDayType(content, s, W6, THU).id).toBe('endurance');
 	});
 
 	test('a per-slot day type overrides the template, for that one slot', () => {
@@ -130,11 +130,11 @@ describe('which day type a slot runs', () => {
 			program: program({ template: { [THU]: { dayType: 'endurance' } } }),
 			slotDayType: { [slotKey(W5, THU)]: 'max-tissue' },
 		});
-		expect(resolveDay(content, s, W5, THU).id).toBe('max-tissue');
+		expect(resolveDayType(content, s, W5, THU).id).toBe('max-tissue');
 		// The same weekday, one week over, is untouched by the slot override.
-		expect(resolveDay(content, s, W6, THU).id).toBe('endurance');
+		expect(resolveDayType(content, s, W6, THU).id).toBe('endurance');
 		// And so is a different weekday in the overridden week.
-		expect(resolveDay(content, s, W5, MON).id).toBe('limit-power');
+		expect(resolveDayType(content, s, W5, MON).id).toBe('limit-power');
 	});
 
 	test("a custom focus name replaces the day type's label but never its identity", () => {
@@ -143,7 +143,7 @@ describe('which day type a slot runs', () => {
 		const s = state({
 			program: program({ template: { [THU]: { dayType: 'pull', name: 'Board night' } } }),
 		});
-		const day = resolveDay(content, s, W5, THU);
+		const day = resolveDayType(content, s, W5, THU);
 		expect(day.type).toBe('Board night');
 		expect(day.id).toBe('pull');
 	});

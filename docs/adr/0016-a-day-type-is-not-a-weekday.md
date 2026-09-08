@@ -103,11 +103,13 @@ changes what a session *is* and belongs to whoever owns that.
 > approximation visible; recording it is what made the glossary's "a session is the
 > history" true of the type.
 
-**ADR 0014's deferred rename is unblocked but not taken.** `resolveDay` now
-returns a `DayType` and `dayTemplate` returns one too, so both names are now
-plainly wrong rather than ambiguously wrong. That rename is still ADR 0014's, and
-doing it in the same change as the split would have mixed a shape change with a
-naming change across the same nine modules.
+**ADR 0014's deferred rename was unblocked here and taken later.** `resolveDay`
+now returns a `DayType` and `dayTemplate` returns one too, so both names became
+plainly wrong rather than ambiguously wrong. Keeping the rename out of this change
+was deliberate — mixing a shape change with a naming change across the same nine
+modules is how both become unreviewable — and it was done in the 2026-09-08
+domain-modeling pass, three tickets later. See ADR 0014's audit list for what the
+names became, including the one that changed meaning rather than spelling.
 
 **The glossary was right the whole time.** Nothing in `CONTEXT.md` moved except an
 addition. This is the direction ADR 0014 fixed — the storage moves to the

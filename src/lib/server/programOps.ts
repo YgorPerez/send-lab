@@ -59,10 +59,12 @@ export function applySetAutoProgress(program: Program, enabled: unknown): void {
 const isKnown = (id: string, extraIds: string[]) =>
 	EXERCISE_IDS.includes(id) || extraIds.includes(id);
 
-/** Set a weekday's day-type (a day-type id) and/or its ordered exercise list.
+/** Set a weekday template's day type and/or its ordered exercise list.
+ *  Named for what it edits: a **weekday template** is one weekday's entry in the
+ *  program, and *day* is on that term's `_Avoid_` list (ADR 0014, ADR 0016).
  *  `extraIds` are the user's custom exercise ids, also accepted alongside the
  *  built-in library. */
-export function applyEditDay(
+export function applyEditWeekdayTemplate(
 	program: Program,
 	weekday: unknown,
 	dayType?: unknown,
