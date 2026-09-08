@@ -274,11 +274,10 @@ const stores = new Map<string, RecordStore>();
  *
  *  `unsynced()` on a sync is `CONTEXT.md`'s **unsynced work**. Settings reads the
  *  refused half of it through `useRefusedWork` and gates sign-out on the sendable
- *  half (#82); the top strip reads the sendable half through `useSendableWork`
- *  and says "Sending…" while it is not zero (#83). The third of ADR 0008's states
- *  — the unmissable message when a write has been *refused* — is still nowhere:
- *  `useRefusedWork` is read by Settings alone, which is not a screen the athlete
- *  opens mid-set. */
+ *  half (#82); the top strip reads both — the sendable half through
+ *  `useSendableWork` to say "Sending…" while it is not zero (#83), and the refused
+ *  half to carry ADR 0008's third state, the unmissable notice, on every screen
+ *  (#84). All three of the ADR's visible states now have a surface. */
 const syncs = new Map<string, RecordSync | null>();
 const listeners = new Set<() => void>();
 
@@ -515,13 +514,15 @@ function useSyncWatch(): (notify: () => void) => () => void {
  * Live rather than read once, because almost no flush belongs to the screen
  * watching it: the debounce fires 250ms after any write anywhere in the app, the
  * `online` listener fires on reconnect, and a fresh sync replays what the last tab
- * left behind. A refusal can land while Settings is open and untouched.
+ * left behind. A refusal can land while Settings is open and untouched — or, since
+ * #84, while the athlete is mid-set on Train and the strip is what has to say so.
  *
  * A boolean rather than the list: `useSyncExternalStore` compares snapshots by
  * value, and `refused()` builds a new array on every call — returning it would
- * re-render on every check forever. Nothing shows the refusals themselves yet;
- * when something does, it wants the array memoised against a version counter, not
- * this.
+ * re-render on every check forever. Nothing shows the refusals themselves yet, and
+ * #84 deliberately does not either — a refusal is identified by collection and row
+ * key, which mean nothing to the athlete. When something maps those to domain
+ * nouns it wants the array memoised against a version counter, not this.
  */
 export function useRefusedWork(): boolean {
 	return useSyncExternalStore(useSyncWatch(), anyRefusedWork, noRefusedWork);

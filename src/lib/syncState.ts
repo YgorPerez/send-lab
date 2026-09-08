@@ -8,10 +8,14 @@
 // be turning the indicator back into furniture.
 //
 // The third state — an unmissable message when a write has been **refused** — is
-// deliberately not one of the answers. It is not a smaller or larger version of
-// "sending": refused work can never be sent, so it needs a message the athlete has
-// to act on rather than a token in the strip, and it must not be counted as work
-// in flight. See `sendable` below.
+// now one of the answers, and it is the one that breaks the shape of the other
+// two: they are facts about work in flight, and **refused work** is not in flight.
+// It is spelled `'refused-work'` in both words, which `CONTEXT.md` requires of
+// that term and ADR 0014 binds to the name: `screens/login.ts` already has a bare
+// `'refused'` and it means a refused *sign-in*, which is a different event.
+// It is therefore neither a smaller nor a larger version of "sending", it is not
+// counted as work waiting (see `sendable` below), and it is the only state here
+// that nothing in the reading can take away.
 //
 // Pure, and separated from the component that renders it, for the reason
 // `prescription.ts` and `screens/login.ts` give: a decision worth asserting is
@@ -25,7 +29,7 @@
  * nothing has been sent yet, and that stretch is squarely part of what the
  * athlete means by "is it saved".
  */
-export type SyncState = 'offline' | 'offline-unsent' | 'sending' | null;
+export type SyncState = 'refused-work' | 'offline' | 'offline-unsent' | 'sending' | null;
 
 export interface SyncReading {
 	/** `lib/online.ts` — the browser's own answer, optimistic by nature. */
@@ -39,6 +43,16 @@ export interface SyncReading {
 	 * furniture, and a false promise besides.
 	 */
 	readonly sendable: number;
+	/**
+	 * Whether the server has **refused** any of this device's work —
+	 * `RecordSync.refused()`, through `useRefusedWork`.
+	 *
+	 * A boolean rather than the count, because nothing above this counts them:
+	 * refused work is identified by collection and row key, which mean nothing to
+	 * the athlete, and mapping those to domain nouns ("Thursday's session") is
+	 * #84's declared non-goal. What the strip can say is *that* it happened.
+	 */
+	readonly refused: boolean;
 }
 
 /**
@@ -62,8 +76,32 @@ export interface SyncReading {
  * is *unmissable*, and this is not that. And it is still not furniture: it needs
  * both a dead connection and work that has not gone, and it stands down to plain
  * `'offline'` the moment the work drains.
+ *
+ * **Refused work outranks all three, and nothing in the reading takes it back.**
+ * That is the ADR's own order of severities — an indicator yields to an
+ * unmissable message — and it is what "the same slot at a different weight"
+ * costs (#84): while refused work stands, the strip is not also reporting the
+ * connection. The alternative was two tokens competing for one slot on a 360px
+ * phone, which is the *second parallel surface* #84 ruled out in its first
+ * paragraph.
+ *
+ * The consequence is worth stating rather than discovering: while refused work
+ * stands, this function does not answer `'offline'` or `'sending'` at all. There
+ * is exactly one thing that ends it, and it is not something the athlete can be
+ * told to do — `unsynced.ts`'s `add()` replaces an entry when the *same row* is
+ * written again, dropping its refusal, because a refusal is a fact about content
+ * and not a ban on the key. So the notice lasts until the athlete happens to edit
+ * that one row, which for an appended session is never.
+ *
+ * That is the right trade only because refused work is the app's most serious
+ * state and essentially never happens — and it is the strongest argument for the
+ * ticket that maps refused work back to a domain noun and lets the athlete deal
+ * with it deliberately.
  */
-export function resolveSyncState({ online, sendable }: SyncReading): SyncState {
+export function resolveSyncState({ online, sendable, refused }: SyncReading): SyncState {
+	// First, and unconditionally. Everything below this line is a fact about work
+	// that is still going to arrive.
+	if (refused) return 'refused-work';
 	if (!online) return sendable > 0 ? 'offline-unsent' : 'offline';
 	return sendable > 0 ? 'sending' : null;
 }
