@@ -50,7 +50,7 @@ import { heldAccounts } from '$lib/store/collections';
 import { setActiveAccount, useActiveAccount } from '$lib/store/record';
 import { cn } from '$lib/utils';
 import { Bare, Eyebrow, Pane } from '../components/ui/primitives';
-import { button, chip, input } from '../components/ui/variants';
+import { button, input } from '../components/ui/variants';
 import { authClient, signIn, signUp } from '../lib/auth-client';
 
 export const Route = createFileRoute('/login')({ component: Login });
@@ -110,11 +110,14 @@ function Login() {
 		// One pane at every width (#52): a sign-in form is two fields and a button,
 		// and a second column is earned rather than granted.
 		<Pane>
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
+			{/* The "Offline" chip is in the top strip now (#83), on every screen
+			    rather than on the two that said it for themselves. `login_offline`
+			    below is what this page adds to it: sign-in is the one thing here
+			    that a connection is required for. */}
+			<header className="pt-1.5">
 				<h1 className="h-screen-title">
 					{screen.signedIn ? m.set_account() : signup ? m.signup_title() : m.login_title()}
 				</h1>
-				{online ? null : <span className={chip({ tone: 'warn' })}>{m.sync_offline()}</span>}
 			</header>
 
 			{screen.signedIn ? (

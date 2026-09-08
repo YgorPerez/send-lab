@@ -247,10 +247,11 @@ const stores = new Map<string, RecordStore>();
  *
  *  `unsynced()` on a sync is `CONTEXT.md`'s **unsynced work**. Settings reads the
  *  refused half of it through `useRefusedWork` and gates sign-out on the sendable
- *  half (#82); the count itself is still not shown anywhere. That is the piece
- *  #57 left on the table — `sync_saving` / `sync_offline` exist in both locales,
- *  but where the indicator goes is a component-vocabulary decision and the browser
- *  tier that would measure it has not been re-run since the store landed. */
+ *  half (#82); the top strip reads the sendable half through `useSendableWork`
+ *  and says "Saving…" while it is not zero (#83). The third of ADR 0008's states
+ *  — the unmissable message when a write has been *refused* — is still nowhere:
+ *  `useRefusedWork` is read by Settings alone, which is not a screen the athlete
+ *  opens mid-set. */
 const syncs = new Map<string, RecordSync | null>();
 const listeners = new Set<() => void>();
 
@@ -345,8 +346,13 @@ export function resetRecordStore(): void {
  *  answered yet" — writing a fabricated default row before the answer arrives
  *  would beat the athlete's real one under last-write-wins. */
 export function recordSync(): RecordSync | null {
+	// Signed out there is no sync by construction, and since #83 this is read from
+	// the top strip on every screen — including `/login`, where building the
+	// signed-out account's fifteen collections to be told `null` is fifteen
+	// collections nobody asked for.
+	if (active === null) return null;
 	recordStore();
-	return syncs.get(active ?? '') ?? null;
+	return syncs.get(active) ?? null;
 }
 
 function subscribe(notify: () => void): () => void {
@@ -419,10 +425,31 @@ export function useRecordSettled(): boolean {
 /** The unsubscribe for a sync that is not there to subscribe to. */
 const NOT_WATCHING = () => {};
 
-/** `useRefusedWork`'s two snapshots, module-level so their identity is stable
+/** The two work hooks' snapshots, module-level so their identity is stable
  *  across renders. The server has no store to ask and no athlete to tell. */
 const anyRefusedWork = () => (recordSync()?.refused().length ?? 0) > 0;
 const noRefusedWork = () => false;
+const sendableWork = () => recordSync()?.sendable() ?? 0;
+const noSendableWork = () => 0;
+
+/**
+ * A subscription to the active account's sync, re-made when the account changes.
+ *
+ * Shared by both hooks below rather than written twice, because the subtlety is
+ * the same one in both and it is not visible at the call site: that is a
+ * *different* sync after a sign-in, and a subscription left on the previous one
+ * reports the previous athlete's work. `account` is read rather than
+ * `recordSync()` called blind, for `useRecordSettled`'s reason — it makes the
+ * dependency a real one rather than one the linter has to be told to keep.
+ */
+function useSyncWatch(): (notify: () => void) => () => void {
+	const account = useActiveAccount();
+	return useCallback(
+		(notify: () => void) =>
+			(account === null ? undefined : recordSync()?.subscribe(notify)) ?? NOT_WATCHING,
+		[account],
+	);
+}
 
 /**
  * Whether the server has refused any of this account's work — live.
@@ -444,17 +471,35 @@ const noRefusedWork = () => false;
  * this.
  */
 export function useRefusedWork(): boolean {
-	// Re-subscribe when the account changes: that is a different sync, and the
-	// previous athlete's refusals are not this one's. Read off `account` rather
-	// than calling `recordSync()` blind, for `useRecordSettled`'s reason — it makes
-	// the dependency a real one rather than one the linter has to be told to keep.
-	const account = useActiveAccount();
-	const subscribe = useCallback(
-		(notify: () => void) =>
-			(account === null ? undefined : recordSync()?.subscribe(notify)) ?? NOT_WATCHING,
-		[account],
-	);
-	return useSyncExternalStore(subscribe, anyRefusedWork, noRefusedWork);
+	return useSyncExternalStore(useSyncWatch(), anyRefusedWork, noRefusedWork);
+}
+
+/**
+ * How much unsynced work this device is still holding for the server — live.
+ *
+ * **`sendable()`, not `unsynced()`.** The two differ by the refused work, and
+ * that difference is the whole reason this hook is a separate one rather than a
+ * number added to `useRefusedWork`: refused work can never be delivered, so a
+ * count including it never returns to zero, and the "Saving…" it drives would
+ * become the permanent status ADR 0008 spent a paragraph refusing. What this
+ * counts is work that is still going to reach the server.
+ *
+ * Live for the same reason the refusals are, and one more that is stronger here:
+ * since #83 the sync reports the *push* as well as the settle, so the count rises
+ * the instant a task is ticked anywhere in the app rather than a debounce later.
+ * A screen reading it once at mount would show the athlete a number that was true
+ * before they trained.
+ *
+ * A number rather than a boolean, though the strip only asks whether it is zero:
+ * `sendable()` already returns one, `useSyncExternalStore` compares it by value
+ * so nothing re-renders on an unchanged count, and the shape that has to be
+ * avoided is the *array* one — see `useRefusedWork`.
+ *
+ * Signed out it is `0` from the first render, and on the server too: there is no
+ * account, so there is no sync and nothing that could be waiting.
+ */
+export function useSendableWork(): number {
+	return useSyncExternalStore(useSyncWatch(), sendableWork, noSendableWork);
 }
 
 /**

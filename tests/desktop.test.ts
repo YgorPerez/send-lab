@@ -37,9 +37,19 @@ import { describe, expect, test } from 'vitest';
 
 const root = process.cwd();
 
-/** Everything that renders above the route's own `Outlet` — the tree the build
- *  bakes into `/_shell.html`. Two files, and it should stay two. */
-const SHELL = ['src/routes/__root.tsx', 'src/components/AppShell.tsx'];
+/** The files that decide what `/_shell.html` *looks like* — the tree the build
+ *  bakes into it, minus the parts that render nothing until the client has
+ *  hydrated. It was two files until #83 put the sync state in the strip: that one
+ *  is empty in the baked artefact, but it is a real element in the strip a moment
+ *  later, and a `lg:`-versus-JS decision inside it would bake the same wrong
+ *  answer as one in `AppShell` itself. `Menu.tsx` and `UpdatePrompt.tsx` are
+ *  scanned by the assertions further down instead, which are about what they
+ *  render rather than what they measure. */
+const SHELL = [
+	'src/routes/__root.tsx',
+	'src/components/AppShell.tsx',
+	'src/components/SyncStatus.tsx',
+];
 
 /**
  * A source file with its prose taken out.
@@ -131,6 +141,7 @@ describe('the shell does not read the viewport', () => {
 	test('the files it scans are the ones that render the shell', () => {
 		expect(code('src/routes/__root.tsx')).toContain('<AppShell');
 		expect(code('src/components/AppShell.tsx')).toContain('export function AppShell');
+		expect(code('src/components/AppShell.tsx')).toContain('<SyncStatus');
 	});
 });
 
@@ -183,6 +194,35 @@ describe('the chrome is one nav and one main, below the shell', () => {
 		expect(trigger, 'the menu trigger was not found at all').toContain('Popover.Trigger');
 		expect(trigger, 'the menu trigger is smaller than the strip it sits in').toContain('h-11');
 		expect(menu, 'the menu rows are under the 44px mid-set floor').toContain('min-h-11');
+	});
+
+	// ADR 0008's states have to be readable from every screen, and the strip is
+	// the only surface every screen has — so this is where they go, and a page
+	// that says "Offline" for itself is the shape #83 replaced rather than a
+	// second opinion. The chip is beside the wordmark on purpose: the strip is
+	// `justify-between`, so a token that appears and disappears in the left group
+	// moves nothing, while the same token in the right group would slide the
+	// locale switch and the menu sideways on every tick.
+	test('the strip carries the sync state, on the anchored side', () => {
+		// With the boot locale, like everything else in the strip: `m.*()` reads
+		// the locale at call time and the strip renders in `en-US` until the app
+		// has hydrated, so a component reading the ambient one would be the single
+		// element in the strip in the other language.
+		expect(shell, 'the sync state is not given the strip’s locale').toContain(
+			'<SyncStatus locale={locale} />',
+		);
+		const header = /<header[\s\S]*?<\/header>/.exec(shell)?.[0] ?? '';
+		expect(header, 'the sync state left the strip').toContain('<SyncStatus');
+		expect(
+			header.indexOf('<SyncStatus'),
+			'the sync state is on the right, where its appearing moves the controls',
+		).toBeLessThan(header.indexOf('<LocaleSwitch'));
+
+		for (const page of ['src/routes/settings.tsx', 'src/routes/login.tsx']) {
+			expect(code(page), `${page} says the sync state a second time`).not.toContain(
+				'm.sync_offline()',
+			);
+		}
 	});
 
 	// `topbar` is lifted out of the root snapshot by name so the strip holds still

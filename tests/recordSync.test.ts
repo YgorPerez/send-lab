@@ -480,12 +480,72 @@ describe('a write the server refuses', () => {
 		sync.push([{ collection: 'sessions', key: 'bad', row: { at: 'x' }, at: T1 }]);
 		fake.reject([{ collection: 'sessions', key: 'bad', reason: 'unknown collection' }]);
 		await settle();
-		expect(seen).toEqual([true]);
+		// Two notifications, not one. The push is a change to the work as much as
+		// the settle is, so the first says "a row is waiting, nothing refused yet"
+		// and the second says what became of it. #83 widened this; the test below
+		// is why.
+		expect(seen).toEqual([false, true]);
 
 		stop();
 		sync.push([{ collection: 'prefs', key: 'only', row: { weight: 'kg' }, at: T1 + 1 }]);
 		await settle();
-		expect(seen).toEqual([true]);
+		expect(seen).toEqual([false, true]);
+		error.mockRestore();
+	});
+
+	// #83. The strip says "Saving…" while work is waiting, and work starts
+	// waiting at the *push* — a sync that only spoke after a settle would leave
+	// the athlete's device silent for the whole window that matters most: the
+	// 250ms debounce, and then indefinitely while there is no signal to settle
+	// against. A settle-only contract is not a smaller version of this; offline
+	// it never fires at all.
+	it('reports a change when a write is queued, not only when a batch settles', async () => {
+		const fake = fakeTransport();
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		fake.setFailing(true);
+		const sync = createRecordSync(ACCOUNT, fake.transport, memory());
+
+		const seen: number[] = [];
+		const stop = sync.subscribe(() => seen.push(sync.sendable()));
+
+		sync.push([{ collection: 'taskDone', key: 'w1-Thu:pull', row: { done: true }, at: T1 }]);
+		// Before the debounce has even been given a chance to fire.
+		expect(seen).toEqual([1]);
+
+		// The flush lands on no network. The work is unchanged and still waiting,
+		// so there is nothing new to say.
+		await settle();
+		expect(seen).toEqual([1]);
+
+		// And the settle still reports itself, which is the half #82 added.
+		fake.setFailing(false);
+		await sync.flush();
+		expect(seen).toEqual([1, 0]);
+
+		stop();
+		warn.mockRestore();
+	});
+
+	// A watcher is a screen's callback, and `push` runs inside the collection's
+	// write handler — which TanStack DB awaits before it persists, and rolls the
+	// mutation back if it rejects. So a throw here would un-tick the task the
+	// athlete just ticked. It is contained and reported instead.
+	it('does not let a throwing watcher roll back the write that woke it', () => {
+		const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const sync = createRecordSync(ACCOUNT, fakeTransport().transport, memory());
+
+		sync.subscribe(() => {
+			throw new Error('a screen bug');
+		});
+		const seen: number[] = [];
+		sync.subscribe(() => seen.push(sync.sendable()));
+
+		expect(() =>
+			sync.push([{ collection: 'taskDone', key: 'w1-Thu:pull', row: { done: true }, at: T1 }]),
+		).not.toThrow();
+		// And the watcher behind it still hears about it.
+		expect(seen).toEqual([1]);
+		expect(error).toHaveBeenCalled();
 		error.mockRestore();
 	});
 

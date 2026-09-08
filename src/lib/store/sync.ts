@@ -94,11 +94,18 @@ export interface RecordSync {
 	 *  retried. Surfaced so a screen can say so — the whole hazard of a refusal is
 	 *  that it arrives as a 200 and is otherwise invisible. */
 	refused(): RefusedWrite[];
-	/** Be told when a batch has settled: what was delivered is gone, and what was
-	 *  refused is final. Returns the unsubscribe.
+	/** Be told whenever the unsynced work changes: a write was queued, or a batch
+	 *  settled and what was delivered is gone and what was refused is final.
+	 *  Returns the unsubscribe.
+	 *
+	 *  **Every change, not only the settles.** It reported settles alone until
+	 *  #83, which was enough for the refusals #82 added it for and wrong for the
+	 *  strip: work starts waiting at the `push`, and a device with no signal never
+	 *  reaches a settle at all — so a settle-only contract is silent for exactly
+	 *  the stretch the athlete needs told about.
 	 *
 	 *  The reason a screen showing either count needs this rather than one read at
-	 *  mount — most flushes are not the screen's doing. The debounce fires 250ms
+	 *  mount — most of these are not the screen's doing. The debounce fires 250ms
 	 *  after any write on any page, the `online` listener fires on reconnect, and
 	 *  the constructor replays whatever the last tab left behind. A refusal can
 	 *  therefore arrive while the athlete is looking straight at the screen that
@@ -126,9 +133,33 @@ export function createRecordSync(
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let inFlight: Promise<void> | null = null;
 
-	/** Told after every settle, so a screen reporting the work does not have to
-	 *  guess when it changed. */
+	/** Told after every change to the work, so a screen reporting it does not have
+	 *  to guess when it changed. */
 	const watchers = new Set<() => void>();
+
+	/**
+	 * Tell every watcher the work moved.
+	 *
+	 * Each one in its own `try`, which is not defensive habit: `push` is called
+	 * from inside the collection's write handler, TanStack DB awaits that handler
+	 * before it persists, and a rejection rolls the mutation back — so an
+	 * exception thrown by a *screen* would un-tick the task the athlete just
+	 * ticked. Reported rather than swallowed, and reported as what it is: the
+	 * subscriber's bug, not a network failure, which is the one thing the settle
+	 * path was careful not to blame it on.
+	 */
+	function announce(): void {
+		for (const notify of watchers) {
+			try {
+				notify();
+			} catch (error) {
+				console.error(
+					'a sync watcher threw. This is the subscriber’s bug, not the network’s:',
+					error,
+				);
+			}
+		}
+	}
 
 	/** The store this sync hydrated, so reconnecting can re-read as well as
 	 *  re-send. Without it only half of coming back online happens: the local
@@ -177,7 +208,8 @@ export function createRecordSync(
 			// Outside the `try`, and only for a request that landed: a watcher that
 			// throws is a screen's bug, and reporting it as a deferred write would
 			// blame the network for it and hide it behind a `console.warn`.
-			if (delivered) for (const notify of watchers) notify();
+			// `announce` is what keeps that distinction now that `push` shares it.
+			if (delivered) announce();
 		})();
 
 		await inFlight;
@@ -218,8 +250,14 @@ export function createRecordSync(
 
 	return {
 		push(writes) {
+			if (writes.length === 0) return;
 			work.add(writes);
 			schedule();
+			// After the work is recorded, not before: a watcher reads `sendable()`
+			// and `refused()` off this sync, and telling it about a write that is
+			// not in the sequence yet would have it report the count from a moment
+			// that never existed.
+			announce();
 		},
 		hydrate,
 		flush,

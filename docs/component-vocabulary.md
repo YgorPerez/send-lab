@@ -72,6 +72,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 |---|---|
 | `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
+| `SyncStatus` | Whether work is still on this device: `Offline`, `Saving…`, or nothing at all |
 | `Timer` | The tick, the wake lock, and the two faces of the clock |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
@@ -182,9 +183,11 @@ first.
 part of the training record and already in the local store, so units, language and notifications
 save on the device and sync when they can — through `store/prefs.ts`'s
 `writePrefs`, which is the one update-or-insert the locale switch also goes
-through. Signing out and the API token need the server. Offline, the header
-carries a warn `chip`, one line says which half needs a connection, and the
-account controls drop their fill rather than failing silently. Sign-out flushes
+through. Signing out and the API token need the server. Offline, one line says
+which half needs a connection and the account controls drop their fill rather than
+failing silently — the warn `chip` that used to head the page as well is in the
+top strip since [#83](https://github.com/YgorPerez/send-lab/issues/83), on every
+screen instead of this one. Sign-out flushes
 unsynced work first and is *held* — with the reason on screen — if anything is
 still unsent, because signing out with training on the device is how it is lost.
 `lib/online.ts` is the read half of the `online` event `store/sync.ts` already
@@ -521,6 +524,54 @@ Two things differ from #20's sketch, both deliberate:
   type" — which reopens the exact overload [ADR-0002](adr/0002-day-types-have-identity-independent-of-weekdays.md)
   closed. A weekday alone is calendar position; the pairing of a weekday with a
   training week is a **slot**.
+
+---
+
+## What the strip says about unsent work
+
+Settled by [#83](https://github.com/YgorPerez/send-lab/issues/83), which is the
+first time [ADR 0008](adr/0008-offline-writes-are-a-queue-not-a-sync.md)'s visible
+states got a surface. Two of the three are built: **Offline**, and **Saving…**
+while unsynced work is waiting. The third — the unmissable message when a write
+has been *refused* — is not, and `useRefusedWork` is still read only by Settings.
+
+**The strip is the slot, and the reason is the requirement.** The ADR asks the
+athlete to be able to tell from *any* screen that training has not left the
+device, and the top strip is the only surface every screen has. It already carried
+the two things that belong to the app rather than to a page; this is a third of
+that kind, and it is the last one that qualifies — anything else that wants to
+live here is a page's business.
+
+**Beside the wordmark, not beside the controls.** The strip is
+`justify-between`, so the left group is anchored left and the right group right. A
+token that appears and disappears on the left moves nothing; the same token on the
+right would slide the locale switch and the menu sideways every time a task is
+ticked. `tests/desktop.test.ts` holds the order.
+
+**Nothing on screen is the normal state, and it is the part that is easy to
+lose.** The ADR is explicit that the old app's always-on saved/saving status is
+"noise on a phone used mid-set", so the rule is a pure function
+(`lib/syncState.ts`) with its own suite, and the assertion that matters is the
+negative one. Two consequences that look like details and are not:
+
+- **It counts `sendable()`, never `unsynced()`.** They differ by the refused work,
+  which can never be delivered — so a count including it never returns to zero and
+  "Saving…" becomes the permanent furniture the ADR refused. Refused work is the
+  third state's problem, not this one's.
+- **Offline outranks Saving…** Both are true at once in a gym basement, and
+  "Saving…" over a dead connection reads as *it is on its way*.
+
+**A page no longer says it for itself.** Settings and sign-in each carried their
+own `Offline` chip, which was the same shape as the Settings gear before `Menu`
+existed: a one-off invented because there was nowhere for it to live. Both are
+gone; what each page keeps is its own half of the answer — not *that* the device
+is offline, but which of that page's controls stops working.
+
+**It renders nothing on the server**, by construction rather than by care, because
+`AppShell` is baked into `/_shell.html` (ADR 0006). Both hooks are
+`useSyncExternalStore` with a server snapshot meaning "all is well", which is also
+the snapshot React uses for the render that hydrates. `UpdatePrompt` reaches the
+same place a different way.
 
 ---
 

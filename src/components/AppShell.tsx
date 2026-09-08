@@ -42,6 +42,7 @@ import * as m from '$lib/paraglide/messages';
 import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
 import { Menu } from './Menu';
+import { SyncStatus } from './SyncStatus';
 import { UpdatePrompt } from './UpdatePrompt';
 
 /**
@@ -110,15 +111,23 @@ export function AppShell({
 		// so `main` centres itself inside what is left — the content column is
 		// centred in the usable width rather than in the window.
 		<div className="min-h-dvh bg-bg">
-			{/* Full width on both, including across the rail. The wordmark and the
-			    locale switch are the two things that belong to the app rather than to
-			    a screen, and splitting them either side of the rail's edge would put
-			    the app's own name inside the navigation. */}
+			{/* Full width on both. The wordmark, the sync state and the locale switch
+			    are what belongs to the app rather than to a screen — the third of
+			    them because ADR 0008 requires the athlete to see unsent work from
+			    *any* screen, and this is the only surface every screen has. */}
 			<header
 				className="fixed inset-x-0 top-0 z-20 flex h-11 items-center justify-between gap-2 border-b border-line bg-bg/95 px-3 backdrop-blur lg:px-5"
 				style={{ viewTransitionName: 'topbar' }}
 			>
-				<span className="eyebrow">Send Lab</span>
+				{/* The wordmark is anchored left, so the sync state is put beside it
+				    rather than beside the controls: appearing and disappearing there
+				    moves nothing, where the same token on the right would slide the
+				    locale switch and the menu sideways every time a task is ticked
+				    (#83). */}
+				<div className="flex min-w-0 items-center gap-2">
+					<span className="eyebrow">Send Lab</span>
+					<SyncStatus locale={locale} />
+				</div>
 				<div className="flex items-center gap-2">
 					<LocaleSwitch locale={locale} onChange={onLocaleChange} />
 					{/* The app's whole navigation. It replaces the Settings gear rather

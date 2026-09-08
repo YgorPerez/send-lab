@@ -10,8 +10,10 @@
 // sign-out must not be offered offline at all (an offline sign-out would orphan
 // unsynced work), and a token cannot be read from a device that has never seen
 // it. The page says which half a control is in rather than letting an action fail
-// silently in a gym basement: an "Offline" chip in the header, one line of copy,
-// and the account controls dropping their fill.
+// silently in a gym basement: one line of copy, and the account controls dropping
+// their fill. The "Offline" chip that used to head this page went to the top
+// strip with #83, where it is on every screen; what is left here is the half only
+// this page can say, which is *which of these controls* the connection decides.
 //
 // THE RATION: NO `primary` ON THIS SCREEN
 // ---------------------------------------
@@ -44,7 +46,7 @@ import { AlertDialog } from '../components/ui/AlertDialog';
 import { Bare, Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { Switch } from '../components/ui/Switch';
-import { button, card, chip } from '../components/ui/variants';
+import { button, card } from '../components/ui/variants';
 import { authClient, signOut } from '../lib/auth-client';
 
 export const Route = createFileRoute('/settings')({ component: Settings });
@@ -59,9 +61,13 @@ function Settings() {
 	return (
 		// One pane at every width (#52): a list of controls, and width adds nothing.
 		<Pane>
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
+			{/* The "Offline" chip that used to sit here moved into the top strip
+			    (#83), where it is on every screen instead of the two that happened
+			    to need it. What stays is the line below it, which is this page's own
+			    half of the answer: not *that* the device is offline, but which of
+			    these controls that stops working. */}
+			<header className="pt-1.5">
 				<h1 className="h-screen-title">{m.sec_settings()}</h1>
-				{online ? null : <span className={chip({ tone: 'warn' })}>{m.sync_offline()}</span>}
 			</header>
 
 			{online ? null : (
