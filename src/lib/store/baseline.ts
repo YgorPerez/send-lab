@@ -64,17 +64,29 @@ const FIRST_WEEK = asWeekId(1);
  * athlete is shown the week the program actually runs, not a second derivation of
  * the same answers that could disagree with it (`screens/welcome.ts`).
  *
- * The second argument to `generateProgram` is the baseline **tests** — the
- * marker readings that used to seed each exercise's working load — and it is
- * empty here because there are none. `CONTEXT.md` marks Marker *Leaving*: the
- * rebuild stopped tracking tested numbers over time, so the only field the old
- * third intake step collected that survives is bodyweight, which is not a
- * test. What that costs is a starting load per exercise, and what fills it is the
- * variant's own built-in target plus `autoProgress`, which is where the numbers
- * came from after week one anyway.
+ * **It prescribes no starting load, on six of the seven weighted exercises.**
+ * `generateProgram` used to seed one per exercise from the baseline **tests** —
+ * the marker readings — and `CONTEXT.md` marks Marker *Leaving*: the rebuild
+ * stopped tracking tested numbers, so the only field the old third intake step
+ * collected that survives is bodyweight, which is not a test. #87 deleted the
+ * table once nothing could feed it.
+ *
+ * What fills the gap is nothing, and that is worth saying plainly because the
+ * comment here used to claim otherwise. It read "the variant's own built-in
+ * target plus `autoProgress`", and neither half holds. Exactly one variant in the
+ * library carries a `loadKg` (`pull`, `content/exercises.ts`), so the built-in
+ * target covers one exercise in seven. And `autoProgress` is a flag, not a
+ * number: what it switches on is `loadPct`, which resolves `progression.ts`'s
+ * weekly rate to a *percentage* and scales the prescribed range by it. A
+ * percentage of nothing is nothing, so progression cannot move load on the other
+ * six at all.
+ *
+ * [#88](https://github.com/YgorPerez/send-lab/issues/88) is what closes it: Train
+ * asks at first contact and stores the answer in its own collection, keyed
+ * exercise *and* variant. Until then the athlete meets an empty load field.
  */
 export function programFor(content: Content, baseline: Baseline): Program {
-	return generateProgram(content, baseline, {});
+	return generateProgram(content, baseline);
 }
 
 /**

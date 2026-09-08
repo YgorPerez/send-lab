@@ -22,7 +22,9 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+import { exerciseParams } from '../src/lib/content/exercises.ts';
 import { getContent } from '../src/lib/content/index.ts';
+import { parseOverrideKey } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import {
 	type BaselineDraft,
@@ -255,6 +257,27 @@ describe('the baseline reaches the program', () => {
 		expect(Object.values(withNiggle.overrides).some((o) => o?.rpe === 8)).toBe(true);
 		// And it softens the block as a whole rather than only one exercise.
 		expect(withNiggle.phases[0].intensity).toBeLessThan(without.phases[0].intensity);
+	});
+
+	// Which exercises it caps, and not merely that it caps one. The assertion
+	// above is a `some`, so it would still pass if the cap leaked onto every
+	// exercise in the day — and leaking is the failure generation's override loop
+	// can actually have, because it walks all of a day's exercises and filters.
+	// #87 rewrote that loop when it took the working load out of it, leaving the
+	// niggle cap as the only override generation writes; this is what holds the
+	// filter.
+	test('the niggle cap lands on finger work and nowhere else', () => {
+		const withNiggle = programFor(content, { ...ANSWERED, niggle: true });
+		const capped = Object.entries(withNiggle.overrides)
+			.filter(([, o]) => o?.rpe === 8)
+			.map(([key]) => parseOverrideKey(key)?.exercise);
+		expect(capped.length).toBeGreaterThan(0);
+		for (const exercise of capped) {
+			expect(exercise).toBeDefined();
+			// `region` is exercise params rather than a label, so this reads the
+			// same in either locale (ADR 0003).
+			expect(exerciseParams[exercise as string]?.variants[0]?.region).toContain('fingers');
+		}
 	});
 
 	// The ticket's claim about `equipment`: it filters which exercises the

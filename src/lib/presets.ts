@@ -42,5 +42,5 @@ function assessmentFor(p: Preset): Baseline {
 /** Build the full program for a preset id (null if unknown). */
 export function buildPreset(content: Content, id: string): Program | null {
 	const p = PRESETS.find((x) => x.id === id);
-	return p ? generateProgram(content, assessmentFor(p), {}) : null;
+	return p ? generateProgram(content, assessmentFor(p)) : null;
 }

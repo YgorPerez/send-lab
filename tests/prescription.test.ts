@@ -17,11 +17,9 @@ import {
 	asExerciseId,
 	asWeekdayKey,
 	asWeekId,
-	type ExerciseId,
 	overrideKey,
 	slotKey,
 	taskKey,
-	weekdayKeyOf,
 } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import {
@@ -32,7 +30,6 @@ import {
 	effectiveVariant,
 	isSlotTrained,
 	phaseForWeek,
-	prefillLoadKg,
 	programOverride,
 	programVariantIndex,
 	type ResolverState,
@@ -42,7 +39,7 @@ import {
 	variantOf,
 	weekCompletion,
 } from '../src/lib/prescription.ts';
-import type { Baseline, Level, Phase, Program, Session } from '../src/lib/types.ts';
+import type { Baseline, Level, Phase, Program } from '../src/lib/types.ts';
 
 // The resolver is locale-blind — it deals in ids — but the content is not.
 // `getContent` takes the locale explicitly now (#56), so these suites name the
@@ -407,114 +404,6 @@ describe('whether a slot was trained, and how much of a week was', () => {
 		const s = state({ slotExercises: { [slotKey(W5, THU)]: [ex('no_such_exercise')] } });
 		expect(isSlotTrained(content, s, W5, THU)).toBe(false);
 		expect(weekCompletion(content, s, W5)).toEqual({ trained: 0, scheduled: SCHEDULED - 1 });
-	});
-});
-
-/** A session logging one variant of one exercise. Each set is a load and whether
- *  the athlete actually completed it. */
-function loggedSession(
-	at: string,
-	exercise: ExerciseId,
-	variant: number,
-	sets: { loadKg: number; done: boolean }[],
-): Session {
-	return {
-		at,
-		weekday: weekdayKeyOf(at),
-		// These fixtures assert on load and completion, not on what was scheduled,
-		// so one day type throughout keeps the noise out. That it must be stated at
-		// all is ADR 0017 working: a session records what it ran.
-		dayType: 'pull',
-		exercises: [
-			{
-				exercise,
-				variant,
-				sets: sets.map(({ loadKg, done }) => ({
-					loadKg,
-					edgeMm: null,
-					workSec: null,
-					reps: null,
-					restSec: null,
-					rpe: null,
-					grip: null,
-					done,
-				})),
-			},
-		],
-		note: '',
-	};
-}
-
-/** Completed sets, at the loads given. */
-const did = (...loads: number[]) => loads.map((loadKg) => ({ loadKg, done: true }));
-/** Sets that were prefilled and never trained. */
-const didNot = (...loads: number[]) => loads.map((loadKg) => ({ loadKg, done: false }));
-
-describe('the load a set is prefilled with', () => {
-	const PULL = ex('pull');
-	const pull = content.exercises[PULL];
-
-	test("takes the prescription's midpoint when it prescribes one", () => {
-		// content/exercises.ts: pull's default variant prescribes 30-45kg, whose
-		// midpoint is 37.5 and rounds to 38.
-		expect(pull.variants[0].loadKg).toEqual({ min: 30, max: 45 });
-		expect(prefillLoadKg(state(), PULL, 0, pull.variants[0])).toBe(38);
-	});
-
-	// `main` seeded this from a tested marker - 0.9 x the athlete's max hang, and
-	// so on. Markers are *Leaving* (CONTEXT.md) and the rebuild does not track
-	// them, so the seed comes from what the athlete actually lifted instead.
-	test('falls back to the heaviest completed load in the last session', () => {
-		expect(pull.variants[1].loadKg).toBeUndefined();
-		// Sessions are newest-first, the order the log screen reads in.
-		const s = state({
-			sessions: [
-				loggedSession('2026-08-19', PULL, 1, did(40, 42.5)),
-				loggedSession('2026-08-12', PULL, 1, did(35)),
-			],
-		});
-		expect(prefillLoadKg(s, PULL, 1, pull.variants[1])).toBe(43);
-	});
-
-	// The circular one. Today's session is already on screen with its sets
-	// prefilled, so counting an untouched set would let one prefill seed the next
-	// and the number would climb on its own, without the athlete lifting anything.
-	test('ignores sets that were prefilled and never completed', () => {
-		const s = state({
-			sessions: [
-				loggedSession('2026-08-19', PULL, 1, didNot(80)),
-				loggedSession('2026-08-12', PULL, 1, did(35)),
-			],
-		});
-		expect(prefillLoadKg(s, PULL, 1, pull.variants[1])).toBe(35);
-	});
-
-	// A swapped variant is different work. Seeding a one-arm ladder from weighted
-	// pull-ups is worse than seeding nothing, and it is the same exercise id, so
-	// only the variant index tells them apart.
-	test("ignores another variant's history for the same exercise", () => {
-		const s = state({ sessions: [loggedSession('2026-08-19', PULL, 0, did(45))] });
-		expect(prefillLoadKg(s, PULL, 1, pull.variants[1])).toBeNull();
-		expect(prefillLoadKg(s, PULL, 0, pull.variants[1])).toBe(45);
-	});
-
-	// A prefill that remembers a peak forever fights a deload, and the athlete
-	// would have to correct it down every session for three weeks.
-	test('reads the most recent session rather than the heaviest ever', () => {
-		const s = state({
-			sessions: [
-				loggedSession('2026-08-19', PULL, 1, did(30)),
-				loggedSession('2026-08-12', PULL, 1, did(50)),
-			],
-		});
-		expect(prefillLoadKg(s, PULL, 1, pull.variants[1])).toBe(30);
-	});
-
-	test('is null when nothing prescribes a load and nothing recorded one', () => {
-		expect(prefillLoadKg(state(), PULL, 1, pull.variants[1])).toBeNull();
-		// Another exercise's history is not this exercise's.
-		const s = state({ sessions: [loggedSession('2026-08-19', ex('maxhang'), 1, did(40))] });
-		expect(prefillLoadKg(s, PULL, 1, pull.variants[1])).toBeNull();
 	});
 });
 

@@ -49,15 +49,7 @@
 // It resolves, and it does not format. Every localized label the resolver's
 // answers need — the weekday's name, the variant's name — is in `format.ts`,
 // which is why `carryForwardFromYesterday` hands back a `WeekdayKey` and not a label.
-import type {
-	Content,
-	DayType,
-	DayTypeId,
-	Exercise,
-	Range,
-	Variant,
-	VariantParams,
-} from '$lib/content/types';
+import type { Content, DayType, DayTypeId, Exercise, Range, Variant } from '$lib/content/types';
 import { isoDay } from '$lib/dates';
 import {
 	asExerciseId,
@@ -373,53 +365,6 @@ export function weekCompletion(
 		if (isSlotTrained(content, state, week, weekday)) trained += 1;
 	}
 	return { trained, scheduled };
-}
-
-// ---------------------------------------------------------------- prefills
-
-/**
- * A sensible starting load (kg) for a set: the prescription's midpoint if it has
- * one, else the heaviest load the athlete actually completed the last time they
- * trained this variant, else null.
- *
- * `main` filled the second branch from a **marker** — 0.9 × the athlete's tested
- * max hang for `maxhang`, 0.6 for `recruit`, and so on down a table of seven.
- * `CONTEXT.md` marks Marker *Leaving* and the rebuild does not track tested
- * numbers, so that table had no data source left and the whole branch would have
- * ported as dead code. The athlete's own logged history replaces it: measured
- * rather than tested, and this exercise rather than a fraction of a different one.
- *
- * Three things it is careful about, each of which returns a plausible number when
- * got wrong:
- *
- *   * **Completed sets only.** A prefilled set that was never trained still
- *     carries the load that was prefilled into it, so counting it would let one
- *     prefill seed the next and the number would drift on its own.
- *   * **The variant that was trained**, matched on `LoggedExercise.variant`. A
- *     swapped variant is different work — seeding weighted pull-ups from a
- *     one-arm ladder is worse than seeding nothing. A variant with no completed
- *     history prefills blank, which is honest.
- *   * **The most recent session, not the best ever.** Seeding from a peak would
- *     fight every deload, and the athlete would correct it down for three weeks.
- */
-export function prefillLoadKg(
-	state: ResolverState,
-	exercise: ExerciseId,
-	variant: number,
-	spec: VariantParams,
-): number | null {
-	if (spec.loadKg) return Math.round((spec.loadKg.min + spec.loadKg.max) / 2);
-	// `sessions` is newest-first, so the first match is the most recent.
-	for (const session of state.sessions) {
-		const logged = session.exercises.find((e) => e.exercise === exercise && e.variant === variant);
-		if (!logged) continue;
-		const loads = logged.sets
-			.filter((set) => set.done)
-			.map((set) => set.loadKg)
-			.filter((load): load is number => load != null);
-		if (loads.length) return Math.round(Math.max(...loads));
-	}
-	return null;
 }
 
 // ------------------------------------------------------- the prescription itself

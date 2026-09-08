@@ -1,9 +1,16 @@
-// Turn a baseline into a tailored program: which weekdays train
-// (vs rest), periodization scaled to experience, and working loads seeded from
-// the baseline tests. Built by trimming/recolouring the built-in week rather
-// than inventing days from scratch.
+// Turn a baseline into a tailored program: which weekdays train (vs rest),
+// periodization scaled to experience, and an RPE cap on finger work when the
+// athlete reports a niggle. Built by trimming/recolouring the built-in week
+// rather than inventing days from scratch.
+//
+// It seeds no working load. It used to, from a table of marker readings, and #87
+// deleted that table once nothing fed it: the marker itself is still here
+// (`MetricId`, and every exercise's `metricIds`), but the rebuild's intake
+// stopped collecting a tested max, so the table had no source left to read.
+// What prescribes a starting load instead is #88; `store/baseline.ts`'s
+// `programFor` records what its absence costs in the meantime.
 import { exerciseParams } from './content/exercises';
-import { type Content, type MetricId, REST_DAY_TYPE } from './content/types';
+import { type Content, REST_DAY_TYPE } from './content/types';
 import { asExerciseId, asWeekdayKey, overrideKey } from './ids';
 import * as m from './paraglide/messages';
 import { dayTemplate } from './prescription';
@@ -61,13 +68,6 @@ function sessionCap(min: number | null): number {
 	return Number.POSITIVE_INFINITY;
 }
 
-// Baseline test (kg) → working load as a fraction of the tested max, per exercise.
-const LOAD_FROM_BASELINE: Record<string, { metric: MetricId; factor: number }> = {
-	maxhang: { metric: 'maxhang', factor: 0.9 },
-	pull: { metric: 'pull', factor: 0.9 },
-	pinch: { metric: 'pinch', factor: 0.9 },
-};
-
 // A current finger niggle caps finger-exercise effort at this RPE.
 const NIGGLE_RPE_CAP = 8;
 
@@ -119,12 +119,8 @@ export function trainingDays(content: Content, a: Baseline): string[] {
 	return content.builtInWeek.filter((d) => keep.has(d.k)).map((d) => d.k);
 }
 
-/** Build a program tailored to the assessment + baseline tests. */
-export function generateProgram(
-	content: Content,
-	a: Baseline,
-	baselines: Partial<Record<MetricId, number | null>>,
-): Program {
+/** Build a program tailored to the baseline. */
+export function generateProgram(content: Content, a: Baseline): Program {
 	const restKey = REST_DAY_TYPE;
 	const keep = new Set(trainingDays(content, a));
 	const have = new Set(a.equipment);
@@ -158,17 +154,17 @@ export function generateProgram(
 		}
 		if (ex.length !== type.ex.length)
 			template[weekday.k] = { dayType: weekday.dayType, exercises: ex.map(asExerciseId) };
-		// Per-exercise overrides: seed working load from the baseline test, and
-		// cap finger effort when there's a niggle.
-		for (const exId of ex) {
-			const t: Override = {};
-			const map = LOAD_FROM_BASELINE[exId];
-			const v = map ? baselines[map.metric] : null;
-			if (map && v != null) t.loadKg = Math.round(v * map.factor);
-			if (a.niggle && isFingerExercise(exId)) t.rpe = NIGGLE_RPE_CAP;
-			if (Object.keys(t).length)
-				overrides[overrideKey(asWeekdayKey(weekday.k), asExerciseId(exId))] = t;
-		}
+		// Per-exercise overrides: cap finger effort when there's a niggle. It is the
+		// only one generation writes. A working load is deliberately not among them —
+		// #88 gives it its own collection keyed exercise *and* variant, which
+		// `OverrideKey` (`weekday:exercise`) cannot spell.
+		if (a.niggle)
+			for (const exId of ex) {
+				if (!isFingerExercise(exId)) continue;
+				overrides[overrideKey(asWeekdayKey(weekday.k), asExerciseId(exId))] = {
+					rpe: NIGGLE_RPE_CAP,
+				};
+			}
 	}
 
 	// Periodization scaled to the calibrated level; a niggle softens intensity.
