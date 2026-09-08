@@ -40,3 +40,23 @@ export async function writePrefs(patch: Partial<Prefs>): Promise<void> {
 		prefs.insert({ id: SINGLETON_KEY, ...NO_PREFS, ...patch });
 	}
 }
+
+/**
+ * Record preferences that are not already what they would be set to.
+ *
+ * For a value the *device* supplies rather than the athlete — the time zone —
+ * where the write happens on every boot and would otherwise re-send a row that
+ * has not changed. The comparison has to happen after the hydrate or it is a
+ * comparison against nothing, which is why it lives here beside the wait rather
+ * than in the caller repeating it.
+ */
+export async function writePrefsIfChanged(patch: Partial<Prefs>): Promise<void> {
+	const sync = recordSync();
+	if (sync) await sync.settled();
+
+	const row = recordStore().prefs.get(SINGLETON_KEY);
+	if (row && Object.entries(patch).every(([field, value]) => row[field as keyof Prefs] === value)) {
+		return;
+	}
+	await writePrefs(patch);
+}

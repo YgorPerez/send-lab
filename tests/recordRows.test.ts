@@ -30,6 +30,18 @@ overwriteGetLocale(() => 'en-US');
 /** A fixed Thursday, so the scenario's "today" is a training day. */
 const NOW = new Date('2026-08-13T09:30:00').getTime();
 
+/** A whole preferences row, as `store/prefs.ts` writes one. Shared, because
+ *  every assertion below is about one field of it differing. */
+const PREFS = {
+	id: SINGLETON_KEY,
+	weight: 'kg',
+	length: 'mm',
+	cueNotices: false,
+	dailyNotice: false,
+	timeZone: null,
+	locale: null,
+} as const;
+
 /** A `StorageApi` backed by a `Map` — the collections persist nowhere. */
 function memory() {
 	const cells = new Map<string, string>();
@@ -153,13 +165,13 @@ describe('the key is cross-checked against the row', () => {
 	});
 
 	it('refuses a singleton filed under anything but its fixed key', () => {
-		const row = { id: 'only', weight: 'kg', length: 'mm', notify: false, locale: null };
+		const row = { ...PREFS, id: 'only' };
 		expect(sanitizeRow('prefs', 'only', row).ok).toBe(true);
 		expect(sanitizeRow('prefs', 'mine', row).ok).toBe(false);
 	});
 
 	it('refuses a singleton whose `id` is not the fixed key', () => {
-		const row = { id: 'mine', weight: 'kg', length: 'mm', notify: false, locale: null };
+		const row = { ...PREFS, id: 'mine' };
 		expect(sanitizeRow('prefs', 'only', row).ok).toBe(false);
 	});
 
@@ -220,7 +232,7 @@ describe("the server's keyOf is the collection's getKey", () => {
 				previous: seeded.program,
 			},
 		},
-		prefs: { id: SINGLETON_KEY, weight: 'kg', length: 'mm', notify: false, locale: null },
+		prefs: PREFS,
 		swaps: { exercise: PULL, variant: 1 },
 		slotDayType: { slot: slotKey(WEEK, THU), dayType: 'pull' },
 		slotExercises: { slot: slotKey(WEEK, THU), exercises: [PULL] },
@@ -261,5 +273,64 @@ describe("the server's keyOf is the collection's getKey", () => {
 		// its schema says so instead of looking like a key bug.
 		const check = sanitizeRow(name, clientKey, row);
 		expect(check.ok ? null : check.reason).toBeNull();
+	});
+});
+
+describe('preferences carry two switches and a time zone', () => {
+	// #75 replaced one `notify` boolean with `cueNotices`, `dailyNotice` and
+	// `timeZone`, moving the TypeScript type, this schema and the value on the wire
+	// together (ADR 0014). There is no back-fill and no read-both-keys shim to test
+	// because there was nothing to back-fill: `record_row` on production held **0
+	// rows** when this landed, re-measured rather than inherited from #72.
+	const full = {
+		...PREFS,
+		cueNotices: true,
+		dailyNotice: true,
+		timeZone: 'America/Sao_Paulo',
+		locale: 'pt-BR',
+	};
+
+	it('accepts a row carrying all three', () => {
+		const check = sanitizeRow('prefs', SINGLETON_KEY, full);
+		expect(check.ok ? check.row : check.reason).toEqual(full);
+	});
+
+	it('reads an account that has never reported a zone as absent', () => {
+		// Absent, not `UTC`: a stored `UTC` is indistinguishable from an athlete who
+		// really is in London, and the daily job has to be able to tell those apart.
+		const check = sanitizeRow('prefs', SINGLETON_KEY, { ...full, timeZone: null });
+		expect(check.ok && (check.row as { timeZone: unknown }).timeZone).toBeNull();
+	});
+
+	it.each(['cueNotices', 'dailyNotice', 'timeZone'])('refuses a row missing %s', (field) => {
+		const { [field]: _gone, ...without } = full as Record<string, unknown>;
+		const check = sanitizeRow('prefs', SINGLETON_KEY, without);
+		expect(check.ok).toBe(false);
+		expect(check.ok === false && check.reason).toContain(field);
+	});
+
+	it('refuses the row the old field made', () => {
+		const { cueNotices: _c, dailyNotice: _d, timeZone: _t, ...rest } = full;
+		expect(sanitizeRow('prefs', SINGLETON_KEY, { ...rest, notify: false }).ok).toBe(false);
+	});
+
+	it('does not carry `notify` on to storage', () => {
+		// A client that sends both is not refused — the row it sends is a valid one
+		// — but the dead field must not be written, or the next reader has two names
+		// for the same setting to choose between.
+		const check = sanitizeRow('prefs', SINGLETON_KEY, { ...full, notify: true });
+		expect(check.ok && check.row).toEqual(full);
+	});
+
+	it('is the same row in both directions', () => {
+		// The write path checks the row; the hydrate hands back the JSON that check
+		// stored, and `store/record.ts` reads it straight into the collection. So the
+		// shape has to survive the trip unchanged — and re-checking what came back is
+		// the cheapest way to say that in one assertion.
+		const written = sanitizeRow('prefs', SINGLETON_KEY, full);
+		expect(written.ok).toBe(true);
+		const hydrated: unknown = JSON.parse(JSON.stringify(written.ok && written.row));
+		expect(hydrated).toEqual(full);
+		expect(sanitizeRow('prefs', SINGLETON_KEY, hydrated).ok).toBe(true);
 	});
 });

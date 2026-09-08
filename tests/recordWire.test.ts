@@ -133,3 +133,44 @@ describe('an empty batch', () => {
 		expect(parsed({ writes: [] })).toEqual({ ok: true, writes: [], rejected: [] });
 	});
 });
+
+describe('a preferences write', () => {
+	// The envelope's half of #75. `rows.ts` decides what a preferences row is;
+	// this suite's question is only whether one survives the batch parser intact,
+	// in the shape the hydrate will hand back.
+	const PREFS = {
+		id: 'only',
+		weight: 'kg',
+		length: 'mm',
+		cueNotices: true,
+		dailyNotice: false,
+		timeZone: 'America/Sao_Paulo',
+		locale: 'pt-BR',
+	};
+	const write = (row: unknown) => ({ collection: 'prefs', key: 'only', row, at: T1 });
+
+	it('carries the two switches and the time zone through', () => {
+		const batch = parsed({ writes: [write(PREFS)] });
+		expect(batch.rejected).toEqual([]);
+		expect(batch.writes[0]?.row).toEqual(PREFS);
+	});
+
+	it('carries an absent time zone as absent', () => {
+		const batch = parsed({ writes: [write({ ...PREFS, timeZone: null })] });
+		expect(batch.writes[0]?.row).toEqual({ ...PREFS, timeZone: null });
+	});
+
+	it('rejects the row the old `notify` boolean made, by name', () => {
+		const { cueNotices: _c, dailyNotice: _d, timeZone: _t, ...rest } = PREFS;
+		const batch = parsed({ writes: [tick('a'), write({ ...rest, notify: false })] });
+		// One bad row, and the tick beside it still lands — the same rule as any
+		// other malformed row, which is the point of checking it here too.
+		expect(batch.writes.map((w) => w.collection)).toEqual(['taskDone']);
+		expect(batch.rejected[0]).toMatchObject({ collection: 'prefs', key: 'only' });
+	});
+
+	it('hands on the checked row, without the dead field', () => {
+		const batch = parsed({ writes: [write({ ...PREFS, notify: true })] });
+		expect(batch.writes[0]?.row).toEqual(PREFS);
+	});
+});

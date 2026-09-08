@@ -1,0 +1,21 @@
+{
+	// The service worker's own program.
+	//
+	// `src/sw.ts` is the one file in `src/` that does not run in a document: it
+	// needs `WebWorker` where every other file needs `DOM`, and TypeScript cannot
+	// hold both libs in one program without each file being able to reach the
+	// other's globals — which is how a worker ends up referring to `window` and
+	// failing at run time instead of at the gate. So it is excluded from
+	// `tsconfig.json` and checked here, and `pnpm check` runs both.
+	//
+	// Everything but the two globals lists is inherited, so strictness cannot
+	// drift between the app and the one file the app cannot typecheck.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"lib": ["ES2023", "WebWorker"],
+		// `vite/client` and `node` both pull `DOM` back in behind the lib swap.
+		"types": []
+	},
+	"include": ["src/sw.ts"],
+	"exclude": []
+}

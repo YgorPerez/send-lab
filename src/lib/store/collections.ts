@@ -279,19 +279,49 @@ export interface RehabRow {
 	rehab: Rehab;
 }
 
-/** Display units, notification opt-in, and the athlete's language.
+/** Display units, the two notification switches, the athlete's language, and
+ *  where in the world their day starts.
  *
  *  `locale` is account data rather than a cookie (ADR 0006): `/mcp` authenticates
  *  by bearer token and never reads cookies, so localized MCP output cannot come
  *  from anything the browser sets, and this is what carries the choice to a
  *  second device. Null means follow the device. Its resolution order is
  *  `store/locale.ts`'s: the device on boot, the account once it hydrates, and a
- *  switch writes both. */
+ *  switch writes both.
+ *
+ *  **`cueNotices` and `dailyNotice` were one boolean called `notify`** (#75). It
+ *  gated nothing at all, and it was about to gate two capabilities that share
+ *  neither a permission story nor a failure mode: one is a local notification
+ *  raised by this device with no server anywhere in it, the other is a push the
+ *  server sends to a subscription this device registered. One switch cannot mean
+ *  both, so there are two, and both default to off — turning either on is the
+ *  gesture that asks the OS for permission.
+ *
+ *  **`timeZone` is the field nobody had noticed was missing.** Preferences carry
+ *  units and a locale and nothing that says when the athlete's day *starts*, so a
+ *  daily job running at a fixed UTC hour would compute a "today" that is the
+ *  athlete's yesterday or tomorrow. An IANA zone, captured from the browser on
+ *  boot by `store/timeZone.ts`. Null is **absent**, not a guess: an account that
+ *  has never reported one is a fact the server should be able to read, and
+ *  defaulting it to `UTC` would look identical to an athlete who really is in
+ *  London. */
 export interface PrefsRow {
 	id: typeof ONLY;
 	weight: 'kg' | 'lb';
 	length: 'mm' | 'in';
-	notify: boolean;
+	/** Raise a notification when the timer's segment changes and the app is
+	 *  backgrounded. Local to this device; works with no signal. */
+	cueNotices: boolean;
+	/** Receive the one morning push naming today's day type. Needs the server.
+	 *
+	 *  **Nothing reads this yet, on purpose.** #75 is the prefactor: the switch is
+	 *  #81's and the job that sends the push is #80's, and neither can be built on
+	 *  a boolean that also means the timer. A field with no reader is normally a
+	 *  question with no answer — this one is the answer arriving first. */
+	dailyNotice: boolean;
+	/** IANA zone — `America/Sao_Paulo`. Null means the account has never
+	 *  reported one. */
+	timeZone: string | null;
 	locale: string | null;
 }
 

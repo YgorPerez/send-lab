@@ -213,13 +213,15 @@ the same call.
 locale switch: the two are the same kind of thing — about the app, not about a
 screen — and the rail still carries the same three destinations and no more.
 
-Two things the page deliberately does not do. `notify` is rendered as it exists —
-one boolean, local notifications only, permission asked for at the tap and the
-stored value shown as the switch — because
-[#75](https://github.com/YgorPerez/send-lab/issues/75) replaces the field and
-[#81](https://github.com/YgorPerez/send-lab/issues/81) builds the two switches
-that take its place, including the one that reconciles the switch against the
-browser's permission; no push path is built here. And the unit preferences are
+Two things the page deliberately does not do. **One switch, for two fields.**
+[#75](https://github.com/YgorPerez/send-lab/issues/75) split `notify` into
+`cueNotices` and `dailyNotice`, and the page renders only the first: permission is
+asked for at the tap, the stored boolean is the switch, and the daily half has no
+push path behind it until
+[#81](https://github.com/YgorPerez/send-lab/issues/81), which also builds the
+reconciliation against the browser's permission. A switch that turns on nothing is
+the dishonesty the split was made to end, so the second one waits for the
+machinery it needs. And the unit preferences are
 recorded but nothing yet converts for display: `format.ts` is the seam that
 grows the conversion back, and it says so.
 
