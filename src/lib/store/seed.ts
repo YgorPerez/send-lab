@@ -182,8 +182,8 @@ function loggedSet(prescription: Variant, seed: number): LoggedSet {
 	const s = prefilledSet(prescription);
 	if (s.loadKg != null) s.loadKg = Math.max(0, s.loadKg + jitter(seed, 2));
 	if (s.reps != null) s.reps = Math.max(1, s.reps + jitter(seed, 1));
-	const rated = midOf(prescription.rpe);
-	if (rated != null) s.rpe = Math.min(10, Math.max(4, rated + jitter(seed + 1, 1)));
+	const midRpe = midOf(prescription.rpe);
+	if (midRpe != null) s.rpe = Math.min(10, Math.max(4, midRpe + jitter(seed + 1, 1)));
 	s.done = true;
 	return s;
 }
@@ -302,10 +302,11 @@ function todaySession(
 			sets[0].done = true;
 			// The done set is rated and the staged one is not, which is the state
 			// the Train screen is opened in: one answer given, one column still
-			// waiting. It reads `?? ` no longer — `prefilledSet` leaves `rpe` null
-			// now (#89) — but the coalesce stays, because what this line means is
-			// "the athlete rated it if they had not already", not "overwrite".
-			sets[0].rpe = sets[0].rpe ?? 7;
+			// waiting. It read `sets[0].rpe ?? 7` until `prefilledSet` stopped
+			// answering (#89), which left the fallback as the only branch and every
+			// scenario at a flat 7 — so it takes the midpoint the way `loggedSet`
+			// above does, and 7 is what a variant prescribing no effort range gets.
+			sets[0].rpe = midOf(prescription.rpe) ?? 7;
 		}
 		return { exercise, variant: 0, sets };
 	});

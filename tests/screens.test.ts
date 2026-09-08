@@ -125,7 +125,9 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			const train = await render('/train');
 			const inputs = [...train.matchAll(/<input[^>]*id="[^"]*-rpe"[^>]*>/g)].map((m) => m[0]);
 			expect(inputs.length).toBeGreaterThan(0);
-			const word = locale === 'en-US' ? 'target' : 'alvo';
+			// *Target* is the first word on **Prescription**'s `_Avoid_` list, so the
+			// copy says what the glossary says (ADR 0014).
+			const word = locale === 'en-US' ? 'prescribed' : 'prescrito';
 			for (const tag of inputs) {
 				expect(tag.toLowerCase()).toContain(word);
 				// The range itself, not just the word: "8" or "8–9".

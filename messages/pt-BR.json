@@ -316,7 +316,7 @@
 	"field_reps": "Reps",
 	"field_rest": "Descanso (s)",
 	"field_rpe": "RPE",
-	"field_rpe_target": "RPE — alvo {range}",
+	"field_rpe_presc": "RPE — prescrito {range}",
 	"field_grip": "Pegada",
 	"presc_sets": "Séries",
 	"presc_reps": "Reps",

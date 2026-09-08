@@ -74,7 +74,7 @@ export function SetEditor({
 	index,
 	set,
 	fields,
-	targetRpe,
+	prescribedRpe,
 	onChange,
 }: {
 	exerciseId: ExerciseId;
@@ -84,15 +84,21 @@ export function SetEditor({
 	/**
 	 * The prescribed effort range, shown in the RPE column beside the input.
 	 *
-	 * A display, not data: `prescription.rpe` is one range per variant and the
-	 * phase scales it per *week*, so every set of a task carries the same target
-	 * and none of them stores it. It is here rather than only in `TaskCard`'s
-	 * prescription row because judging one number against another is not
-	 * something anyone does across a card boundary mid-set — and since `rpe` is
-	 * the one column that no longer opens prefilled (#89), this is the column
-	 * where an athlete has nothing at all to go on without it.
+	 * A display, not data: `prescription.rpe` is one range per *variant*, moved
+	 * only by an override, so every set of a task carries the same one and none
+	 * of them stores it. Unlike the load, nothing scales it — `effectiveVariant`
+	 * puts the phase's intensity into `loadKg` and its volume into
+	 * `sets`/`rounds`, and never touches `rpe`.
+	 *
+	 * It is here rather than only in `TaskCard`'s prescription band because
+	 * judging one number against another is not something anyone does across a
+	 * card boundary mid-set — and since `rpe` is the one column that no longer
+	 * opens prefilled (#89), it is the column with nothing at all in it to go on.
+	 *
+	 * Named for the glossary: *target* is the first word on **Prescription**'s
+	 * `_Avoid_` list (`CONTEXT.md`), and ADR 0014 binds that on names.
 	 */
-	targetRpe?: Range | null;
+	prescribedRpe?: Range;
 	onChange: (next: LoggedSet) => void;
 }) {
 	return (
@@ -116,20 +122,19 @@ export function SetEditor({
 			<div className="grid grid-cols-4 gap-1.5">
 				{fields.map((f) => {
 					const id = `${exerciseId}-${index}-${f}`;
-					// Only the effort column takes a target, and only when the variant
-					// prescribes one. `shrink-0` on the range and `truncate` on the
-					// label is the priority order said out loud: at 74px the column
-					// gives up its own name before it gives up the number. Colour and
-					// not `opacity` separates the two — at 9px there is no room
-					// between de-emphasised and unreadable.
-					const target = f === 'rpe' && targetRpe ? formatRange(targetRpe) : null;
+					// Only the effort column carries what was asked for, and only when
+					// the variant prescribes it. `shrink-0` on the range and `truncate`
+					// on the label is the priority order said out loud: at 74px the
+					// column gives up its own name before it gives up the number.
+					// Colour and not `opacity` separates the two — at 9px there is no
+					// room between de-emphasised and unreadable — and `--chalk` is
+					// already what a prescribed value is drawn in one band above.
+					const presc = f === 'rpe' && prescribedRpe ? formatRange(prescribedRpe) : null;
 					return (
 						<label key={f} className="flex min-w-0 flex-col gap-0.5" htmlFor={id}>
 							<span className="flex min-w-0 items-baseline gap-1">
 								<span className="microlabel truncate">{FIELD_LABEL[f]()}</span>
-								{target ? (
-									<span className="microlabel num shrink-0 text-chalk">{target}</span>
-								) : null}
+								{presc ? <span className="microlabel num shrink-0 text-chalk">{presc}</span> : null}
 							</span>
 							{f === 'grip' ? (
 								<Picker
@@ -143,12 +148,14 @@ export function SetEditor({
 							) : (
 								<input
 									id={id}
-									// The label now reads "RPE 8–9", which is the accessible name
-									// a screen reader would announce for the field — so the field
-									// says what the sighted column says *and* which of the two
-									// numbers is the ask. Everything shown is still in the label
-									// (the vocabulary's `aria-label` rule).
-									aria-label={target ? m.field_rpe_target({ range: target }) : undefined}
+									// The wrapping `<label>` now reads "RPE 8–9", and that text is
+									// what a screen reader would announce as this field's name —
+									// two numbers with nothing to say which is the ask. So the
+									// name is given in words instead. It still carries everything
+									// the column shows, which is the vocabulary's `aria-label`
+									// rule: the attribute replaces a control's content rather than
+									// adding to it.
+									aria-label={presc ? m.field_rpe_presc({ range: presc }) : undefined}
 									className={input({ class: cn(CELL, 'py-0') })}
 									type="number"
 									inputMode="decimal"

@@ -1,9 +1,9 @@
 // What a set logs, and what it starts as.
 //
 // A **set** is one logged effort within a session (`CONTEXT.md`) and the entity
-// is `LoggedSet`. This module holds the two decisions that surround it: which of
-// its seven fields an exercise actually shows, and what a fresh row is prefilled
-// with.
+// is `LoggedSet`. This module holds the three decisions that surround it: which
+// of its seven fields an exercise actually shows, what a *first* row is prefilled
+// with, and what a *later* row starts as.
 //
 // It exists because both were written twice — `routes/train.tsx` and
 // `prototype-fixtures.ts` each carried a private `fieldsFor` and `prefilledSet`,
@@ -66,9 +66,9 @@ export function fieldsFor(prescription: Variant | undefined): SetField[] {
  * done, it is a *reading*, and the only instrument for it is the athlete. Filled
  * from `midOf(prescription.rpe)`, a `recruit` row opened at 9 because 8–9 was
  * what was asked for, and an untouched 9 became indistinguishable from a 9 they
- * felt — #61's bug class, one screen over (#89, decided on #40). The target is
- * still shown, beside the input rather than in place of the answer: `SetEditor`
- * takes a `targetRpe`.
+ * felt — #61's bug class, one screen over (#89, decided on #40). What was asked
+ * for is still shown, beside the input rather than in place of the answer:
+ * `SetEditor` takes a `prescribedRpe`.
  */
 export function prefilledSet(prescription: Variant): LoggedSet {
 	return {
@@ -81,4 +81,28 @@ export function prefilledSet(prescription: Variant): LoggedSet {
 		grip: prescription.grip ?? null,
 		done: false,
 	};
+}
+
+/**
+ * What the *second* set of a task opens as: the one before it, again.
+ *
+ * A later row starts from the athlete's own last row rather than from the
+ * prescription, because by then their edits are the better default — the load
+ * they actually pulled, on the edge they actually used, is what the next set is
+ * most likely to be too. Two fields refuse to come along, and for the same
+ * reason: neither is a plan.
+ *
+ * `done` is obvious. **`rpe` is the one `prefilledSet` leaves empty (#89), and
+ * carrying it would put the prefill straight back** — one rung further from the
+ * prescription and no better sourced. An effort rating is a reading of *that*
+ * set, and the third set of a hard hangboard exercise is precisely where it stops
+ * matching the first; a row that opens holding set 1's 8 and is never touched
+ * stores an 8 nobody felt, which is the whole of what this ticket removed.
+ *
+ * Here rather than inline in the route, where it was, because "what a later row
+ * starts as" is the same decision `prefilledSet` makes for the first one — and
+ * the route is where it could not be tested.
+ */
+export function nextSet(previous: LoggedSet): LoggedSet {
+	return { ...previous, rpe: null, done: false };
 }

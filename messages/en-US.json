@@ -316,7 +316,7 @@
 	"field_reps": "Reps",
 	"field_rest": "Rest (s)",
 	"field_rpe": "RPE",
-	"field_rpe_target": "RPE — target {range}",
+	"field_rpe_presc": "RPE — prescribed {range}",
 	"field_grip": "Grip",
 	"presc_sets": "Sets",
 	"presc_reps": "Reps",
