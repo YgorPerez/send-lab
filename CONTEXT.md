@@ -28,7 +28,8 @@ _Avoid_: session, auth session, login, authentication
 
 **Training record**:
 Everything one athlete's account holds — the program, the sessions, the readiness
-checks, the bodyweight series, the baseline. What an account owns, as opposed to
+checks, the bodyweight series, the baseline, the preferences. What an account
+owns, as opposed to
 the account itself, which is the identity that owns it; and what a second device
 is catching up to.
 _Avoid_: state, data, document, account data
@@ -53,6 +54,27 @@ The gear the athlete has to train with — hangboard, board, rings, weights. It
 filters which exercises the generated program may prescribe, so an intake that
 names none of it leaves almost nothing to prescribe.
 _Avoid_: gear, kit, apparatus, hardware
+
+**Preferences**:
+What the athlete has chosen about how the app reads and behaves — display units,
+locale, time zone, and whether each notice reaches them. Part of the training
+record and carried between devices with it, rather than a setting belonging to
+one phone. **Settings** is the screen that edits them; the preferences are what
+it edits.
+_Avoid_: profile, user settings, app config
+
+**Locale**:
+Which of the app's languages the athlete reads it in. It belongs to the account
+and not to the device, so a second phone and anything reading the account on the
+athlete's behalf answer in the same language; unset means follow whatever device
+is in hand.
+_Avoid_: lang, translation
+
+**Display unit**:
+The unit a weight or a length is *read* in — kilograms or pounds, millimetres or
+inches. A choice about reading only: what gets recorded is always the canonical
+unit, so changing this never changes a stored number.
+_Avoid_: measurement, unit system
 
 ### Prescribing
 
@@ -295,6 +317,14 @@ today, carrying that day type's headline. Read from the program rather than from
 what has been trained, so it is true on a device that has not synced in a week —
 and a rest day sends nothing rather than sending that there is nothing.
 _Avoid_: reminder, digest, alert, morning push
+
+**Nudge**:
+A standing invitation on a screen to record something the app cannot know on its
+own — today's bodyweight, the one the athlete meets daily. It asks, and being
+ignored is a normal outcome; it never claims anything is wrong or overdue, which
+is what separates it from a flag. Never the verb: a calibration *nudging* a score
+is arithmetic, and this is a piece of a screen.
+_Avoid_: callout, nag, reminder
 
 **Time zone**:
 Where the athlete's day starts — the IANA zone their device reports, held on the
