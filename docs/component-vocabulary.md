@@ -70,7 +70,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 
 | Name | Owns |
 |---|---|
-| `AppShell` | The chrome: top strip, three tabs, locale switch, the view-transition names |
+| `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
+| `Menu` | The app's whole navigation — every destination, behind one control in the strip |
 | `Timer` | The tick, the wake lock, and the two faces of the clock |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
@@ -535,11 +536,21 @@ gets the phone layout at a comfortable width. The number is derived rather than
 picked — a rail (200px) beside two columns of the 360px measure these screens were
 designed against, plus gutters, first fits at ≈992px, and `lg` is the next stop up.
 
-**The chrome.** The three tabs move from the bottom edge to a 200px left rail
-under the same top strip, and carry the **same three destinations**. `main` goes
-from `max-w-[520px]` to `max-w-[1000px]`. All of it is `lg:` utilities on the one
-`<nav>` and the one `<main>` that already exist — see the ADR for why that is a
-constraint rather than a style, and `tests/desktop.test.ts` for what enforces it.
+**The chrome.** `main` goes from `max-w-[520px]` to `max-w-[1000px]`, centred at
+both widths, and that is now the whole of it — see the ADR for why keeping the
+difference in CSS is a constraint rather than a style, and `tests/desktop.test.ts`
+for what enforces it.
+
+> **Amended 2026-09-08.** This paragraph used to read "the three tabs move from the
+> bottom edge to a 200px left rail". **There is no tab bar and no rail.** #52's
+> claim that the app has exactly three destinations held while it had three pages
+> and produced one-offs as the rest arrived — a lone Settings gear in the strip, a
+> `week` chip in Today's header — until the athlete went looking for `week`, could
+> not find it, and asked for a menu and for the bar to go. Every destination now
+> lives in `Menu`, one control in the top strip, at both widths. The rail went with
+> the bar because it *was* the bar restyled. See
+> [ADR 0018](adr/0018-the-desktop-layout-is-css-below-the-shell.md)'s own
+> amendment; the decision that ADR records is unaffected.
 
 **`Panes` is the only place a page's desktop width is decided.** Every page
 composes through it, including the ones that stay one column:

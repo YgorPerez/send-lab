@@ -134,31 +134,33 @@ describe('the shell does not read the viewport', () => {
 	});
 });
 
-describe('the rail is the tab bar restyled', () => {
+describe('the chrome is one nav and one main, below the shell', () => {
 	const shell = code('src/components/AppShell.tsx');
 
-	// One of each. Two navs behind a media query would also work as CSS and is
-	// still wrong, for reasons that outlive the layout: assistive technology sees
-	// both, the second one's links are duplicate landmarks, and a duplicated
+	const menu = code('src/components/Menu.tsx');
+
+	// One of each, still — the navigation moved into `Menu.tsx`, it did not
+	// multiply. Two navs behind a media query would also work as CSS and is still
+	// wrong, for reasons that outlive any layout: assistive technology sees both,
+	// the second one's links are duplicate landmarks, and a duplicated
 	// `view-transition-name` is one of the three ways a transition silently skips
-	// (#43).
-	test('there is exactly one <nav> and one <main>', () => {
-		expect(shell.match(/<nav[\s>]/g) ?? []).toHaveLength(1);
-		expect(shell.match(/<main[\s>]/g) ?? []).toHaveLength(1);
+	// (#43). What changed is only which file each lives in.
+	test('there is exactly one <nav> and one <main> across the chrome', () => {
+		expect(shell.match(/<main[\s>]/g) ?? [], 'the shell should own the one <main>').toHaveLength(1);
+		expect(
+			shell.match(/<nav[\s>]/g) ?? [],
+			'the shell should own no <nav>: the tab bar is gone and the menu holds the navigation',
+		).toHaveLength(0);
+		expect(menu.match(/<nav[\s>]/g) ?? [], 'the menu should own the one <nav>').toHaveLength(1);
 	});
 
 	// The positive half. Without it, a shell that had quietly lost its desktop
-	// layout altogether would pass every assertion above. The widths are asserted
-	// as *plausible* numbers rather than as exact ones — the point is that a rail
-	// and a widened measure exist, not that they are 200 and 1000 forever.
-	test('both layouts are on those elements, at usable sizes', () => {
-		const nav = /<nav[\s>][\s\S]*?>/.exec(shell)?.[0] ?? '';
-		expect(nav, 'the nav is not pinned to the bottom edge on a phone').toContain('bottom-0');
-		const rail = Number(/lg:w-\[(\d+)px\]/.exec(nav)?.[1] ?? 0);
-		expect(rail, 'the nav does not become a left rail wide enough for a label').toBeGreaterThan(
-			120,
-		);
-
+	// layout altogether would pass every assertion above. The rail's half of this
+	// went with the rail; `main`'s two measures are what is left, and they are
+	// asserted as *plausible* numbers rather than exact ones — the point is that a
+	// phone measure and a widened one both exist, not that they are 520 and 1000
+	// forever.
+	test('main still carries both measures, at usable sizes', () => {
 		const main = /<main[\s>][\s\S]*?>/.exec(shell)?.[0] ?? '';
 		expect(main, 'main has lost the phone measure').toContain('max-w-[520px]');
 		const wide = Number(/lg:max-w-\[(\d+)px\]/.exec(main)?.[1] ?? 0);
@@ -167,17 +169,33 @@ describe('the rail is the tab bar restyled', () => {
 		);
 	});
 
-	// `topbar` and `tabbar` are lifted out of the root snapshot by name so the
-	// chrome holds still while the screen under it is replaced (#54). The rail is
-	// the same element, so it inherits that for free — but only while it *is* the
-	// same element. `tests/motion.test.ts` asserts the other side of this pairing:
-	// that `app.css` declares exactly these three names and no fourth.
-	test('the chrome still carries the three view-transition names', () => {
-		for (const name of ['topbar', 'tabbar', 'screen']) {
+	// The navigation is reachable and big enough to be. This replaces the rail
+	// assertion, and it guards the thing that actually broke when the bar was
+	// removed: the app's only nav control shrinking into the corner. The trigger
+	// fills the strip's height and the rows are the mid-set size, because `train`
+	// is reached from this menu during a session now.
+	test('the menu is the navigation, at the mid-set size', () => {
+		expect(shell, 'the shell no longer renders the menu').toContain('<Menu locale={locale} />');
+		// To the closing tag, not to the first `>`: the trigger's `render` prop
+		// contains a self-closing `<button />`, so a lazy match to `>` stops before
+		// the className this is about.
+		const trigger = /<Popover\.Trigger[\s\S]*?<\/Popover\.Trigger>/.exec(menu)?.[0] ?? '';
+		expect(trigger, 'the menu trigger was not found at all').toContain('Popover.Trigger');
+		expect(trigger, 'the menu trigger is smaller than the strip it sits in').toContain('h-11');
+		expect(menu, 'the menu rows are under the 44px mid-set floor').toContain('min-h-11');
+	});
+
+	// `topbar` is lifted out of the root snapshot by name so the strip holds still
+	// while the screen under it is replaced (#54). `tabbar` was the second name
+	// until the tab bar was removed. `tests/motion.test.ts` asserts the other side
+	// of this pairing: that `app.css` declares exactly these names and no other.
+	test('the chrome still carries its view-transition names', () => {
+		for (const name of ['topbar', 'screen']) {
 			expect(shell, `viewTransitionName: '${name}' is gone from the shell`).toContain(
 				`viewTransitionName: '${name}'`,
 			);
 		}
+		expect(shell, "'tabbar' outlived the tab bar").not.toContain("viewTransitionName: 'tabbar'");
 	});
 });
 

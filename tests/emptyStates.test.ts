@@ -53,6 +53,15 @@ async function render(path: string, day: Date, locale: 'en-US' | 'pt-BR'): Promi
 	return renderToString(createElement(RouterProvider, { router } as never));
 }
 
+/** Just the screen: everything inside `<main>`, with the shell stripped off. For
+ *  assertions whose subject is the page rather than the chrome around it. */
+function screenOf(html: string): string {
+	const start = html.indexOf('<main');
+	const end = html.indexOf('</main>');
+	expect(start, 'no <main> in the render').toBeGreaterThan(-1);
+	return html.slice(start, end);
+}
+
 /** The `<button …>` tag enclosing a label, for asserting on its attributes. */
 function openingTagOf(html: string, label: string): string {
 	const at = html.indexOf(label);
@@ -164,7 +173,12 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(log).toContain(copy.noChecks);
 			expect(log).toContain(copy.noSessions);
 			// No rows, so no accordion: the empty list is copy, not an empty box.
-			expect(log).not.toContain('aria-expanded');
+			//
+			// Scoped to `<main>`, not the whole document. The assertion is about the
+			// *screen*, and the shell is not the screen — the menu's trigger carries
+			// `aria-expanded` on every page, which would fail a test whose subject is
+			// the Log list.
+			expect(screenOf(log)).not.toContain('aria-expanded');
 		});
 	});
 }

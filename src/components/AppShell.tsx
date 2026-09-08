@@ -1,45 +1,47 @@
-// The chrome: a thin top strip, and three destinations that are a bottom tab bar
-// on a phone and a left rail on a wide screen.
+// The chrome: a thin top strip, and nothing else.
 //
-// Replacing the ten-item hamburger is half of this direction. Three tabs is not
-// a shortened menu — it is the claim that the app has exactly three places the
-// athlete goes on a training day, and that everything else (week, settings,
-// studies) is reached *from* one of them rather than sitting beside them. If
-// that claim is wrong, the tab bar is where it shows. **The rail carries the
-// same three and no more** (#52): a wide screen has room for the other six, and
-// putting them there would make desktop a different app, with a second
-// information architecture to keep in step with the phone's.
+// WHAT WAS HERE, AND WHY IT IS NOT
+// --------------------------------
+// Until #52's decision was reopened this file carried three destinations as a
+// bottom tab bar on a phone and a 200px left rail on a wide screen. Three tabs
+// was not a shortened menu — it was the claim that the app has exactly three
+// places the athlete goes on a training day, and that everything else is reached
+// *from* one of them rather than sitting beside them. The file said, of that
+// claim: "if that claim is wrong, the tab bar is where it shows."
 //
-// ONE DOM, TWO STYLESHEETS
-// ------------------------
-// The rail is the tab bar restyled, not a second tree. There is exactly one
-// `<nav>` and one `<main>` in this file, and every desktop difference is a `lg:`
-// utility on them. That is not tidiness — it is ADR 0006. This component is what
-// the build bakes into `/_shell.html`, the artefact the service worker precaches
-// and serves on a cold start, and a layout chosen *here* (a `matchMedia` read, a
-// width in state) would make that one artefact viewport-specific: either two
-// shells to keep in sync, or one shell that is wrong for half the loads and
-// corrects itself after hydration — which is #70's mismatch with a new cause.
-// `tests/desktop.test.ts` asserts nobody reintroduces the viewport read.
+// It showed. As the other six pages arrived the claim held only by producing
+// one-offs: `settings` became a lone gear in this strip, and `week` a chip in
+// Today's header, each invented because there was nowhere for it to live. The
+// athlete went looking for `week`, could not find it, and asked for a menu — then
+// for the bar to go with it. Both are now in `Menu.tsx`, which is the app's whole
+// navigation.
 //
-// Both bars are fixed and carry their own `view-transition-name`, which lifts
-// them out of the root snapshot so they hold still while the screen under them is
-// replaced (#54: a fixed bar survives a view transition intact). The names are
-// paired with the `::view-transition-group` rules in `app.css`; changing one
-// without the other silently re-animates the chrome. The rail keeps `tabbar`
-// unchanged — it is the same element, so it holds still for the same reason.
-import { Link } from '@tanstack/react-router';
-import { Dumbbell, House, ScrollText, Settings } from 'lucide-react';
+// The rail went with the bar, necessarily: it *was* the bar restyled, one element
+// under two stylesheets, so there was nothing left to restyle. A wide screen now
+// centres `main` across its own measure rather than sitting beside a 200px
+// gutter.
+//
+// WHAT SURVIVES UNCHANGED
+// -----------------------
+// ADR 0006, which is the reason any of this is shaped the way it is. This
+// component is what the build bakes into `/_shell.html`, the artefact the service
+// worker precaches and serves on a cold start, so it **must stay
+// user-independent and must not read the viewport**: a layout chosen here (a
+// `matchMedia` read, a width in state) makes that one artefact viewport-specific
+// — either two shells to keep in sync, or one that is wrong for half the loads
+// and corrects itself after hydration, which is #70's mismatch with a new cause.
+// `tests/desktop.test.ts` still asserts nobody reintroduces the read; what it no
+// longer asserts is a `<nav>` that no longer exists.
+//
+// The strip is still fixed and still carries `view-transition-name: 'topbar'`,
+// which lifts it out of the root snapshot so it holds still while the screen
+// under it is replaced (#54). There are two such names now, not three: `tabbar`
+// left with the bar, and `tests/motion.test.ts` counts them.
 import type { ReactNode } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
-
-const TABS = [
-	{ to: '/', label: m.nav_today, Icon: House },
-	{ to: '/train', label: m.nav_train, Icon: Dumbbell },
-	{ to: '/log', label: m.nav_log, Icon: ScrollText },
-] as const;
+import { Menu } from './Menu';
 
 /**
  * Locale, switched in place.
@@ -106,7 +108,7 @@ export function AppShell({
 		// The rail's width is padding on the frame rather than a margin on `main`,
 		// so `main` centres itself inside what is left — the content column is
 		// centred in the usable width rather than in the window.
-		<div className="min-h-dvh bg-bg lg:pl-[200px]">
+		<div className="min-h-dvh bg-bg">
 			{/* Full width on both, including across the rail. The wordmark and the
 			    locale switch are the two things that belong to the app rather than to
 			    a screen, and splitting them either side of the rail's edge would put
@@ -118,20 +120,11 @@ export function AppShell({
 				<span className="eyebrow">Send Lab</span>
 				<div className="flex items-center gap-2">
 					<LocaleSwitch locale={locale} onChange={onLocaleChange} />
-					{/* Settings is reached from the strip, not from the tabs (#62): the
-					    tabs are the three places the athlete goes on a training day, and
-					    this is the one place they go to change how the app behaves. It
-					    sits with the locale switch because the two are the same kind of
-					    thing — about the app, not about a screen. Explicit `{ locale }` on
-					    the label for the reason the tab labels give. */}
-					<Link
-						to="/settings"
-						aria-label={m.nav_settings({}, { locale })}
-						className="flex size-9 items-center justify-center rounded-md border border-line text-ink-faint transition-colors hover:text-ink"
-						activeProps={{ className: 'bg-panel-3 text-chalk' }}
-					>
-						<Settings size={16} strokeWidth={1.8} />
-					</Link>
+					{/* The app's whole navigation. It replaces the Settings gear rather
+					    than sitting beside it: the gear was a one-off because there was
+					    nowhere for Settings to live, and a menu that held everything
+					    *except* Settings would leave the same shape behind. */}
+					<Menu locale={locale} />
 				</div>
 			</header>
 
@@ -141,52 +134,11 @@ export function AppShell({
 			    Which pages spend it on a second column and which cap themselves back
 			    down is the page's own call; `Panes` is where they say so. */}
 			<main
-				className="mx-auto w-full max-w-[520px] px-3 pt-[52px] pb-[76px] lg:max-w-[1000px] lg:px-5 lg:pt-[60px] lg:pb-14"
+				className="mx-auto w-full max-w-[520px] px-3 pt-[52px] pb-14 lg:max-w-[1000px] lg:px-5 lg:pt-[60px]"
 				style={{ viewTransitionName: 'screen' }}
 			>
 				{children}
 			</main>
-
-			<nav
-				className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 backdrop-blur lg:top-11 lg:right-auto lg:w-[200px] lg:border-t-0 lg:border-r"
-				style={{ viewTransitionName: 'tabbar' }}
-			>
-				<div className="mx-auto flex max-w-[520px] lg:mx-0 lg:max-w-none lg:flex-col lg:gap-0.5 lg:p-2.5">
-					{TABS.map(({ to, label, Icon }) => (
-						<Link
-							key={to}
-							to={to}
-							// 48px tall on a phone and still 44px in the rail. A pointer is
-							// precise enough for less, but a second set of sizes is a second
-							// thing to keep in step and the athlete gains nothing from it
-							// (#52, question 6). `hover:` is free on touch — Tailwind 4 emits
-							// it inside `@media (hover: hover)`.
-							className="relative flex min-h-12 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-ink-faint transition-colors hover:text-ink lg:min-h-11 lg:flex-none lg:flex-row lg:justify-start lg:gap-2.5 lg:rounded-md lg:px-2.5 lg:py-2 lg:hover:bg-panel-2"
-							activeOptions={{ exact: to === '/' }}
-							activeProps={{ className: 'text-chalk' }}
-						>
-							{({ isActive }: { isActive: boolean }) => (
-								<>
-									<span
-										className={cn(
-											'absolute inset-x-4 top-0 h-[2px] rounded-full transition-opacity lg:inset-x-auto lg:inset-y-1.5 lg:left-0 lg:h-auto lg:w-[2px]',
-											isActive ? 'bg-flag opacity-100' : 'opacity-0',
-										)}
-									/>
-									<Icon size={18} strokeWidth={isActive ? 2.2 : 1.7} />
-									{/* Explicit `{ locale }`, not the implicit `getLocale()` the
-									    function falls back to: Paraglide's own runtime locale
-									    updates the instant `localStorage` is read, before React's
-									    hydration-deferred `locale` prop (#70) catches up, and the
-									    two disagreeing is a text hydration mismatch on every
-									    pt-BR load. */}
-									<span className="eyebrow">{label({}, { locale })}</span>
-								</>
-							)}
-						</Link>
-					))}
-				</div>
-			</nav>
 		</div>
 	);
 }

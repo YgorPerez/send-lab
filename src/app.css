@@ -368,8 +368,9 @@
    The corner flicker on the transitioning panel is a known device artefact,
    not something to design around.
    ------------------------------------------------------------------------- */
-::view-transition-group(topbar),
-::view-transition-group(tabbar) {
+/* `tabbar` left with the tab bar. The strip is the only chrome that has to hold
+   still now, so this is one name where it was two. */
+::view-transition-group(topbar) {
 	animation: none;
 }
 

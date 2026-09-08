@@ -138,7 +138,22 @@ const STOP_WATCHING = `(() => {
   return window.__motion ?? [];
 })()`;
 
-/** Follow the tab-bar link to `href`, which is what triggers a view transition. */
+/**
+ * Open the menu, which is where the navigation lives.
+ *
+ * It used to be a tab bar rendered on every page, so a link was in the DOM to
+ * click. The menu's rows are inside a closed popover and do not exist until the
+ * trigger is pressed, so reaching a destination is now two steps rather than one.
+ */
+const OPEN_MENU = `(() => {
+  const trigger = [...document.querySelectorAll('header button')]
+    .find((b) => /menu/i.test(b.getAttribute('aria-label') ?? ''));
+  if (!trigger) return false;
+  trigger.click();
+  return true;
+})()`;
+
+/** Follow the menu's link to `href`, which is what triggers a view transition. */
 const navigateTo = (href: string) =>
 	`(() => {
     const link = document.querySelector('nav a[href=${JSON.stringify(href)}]');
@@ -160,14 +175,29 @@ async function observe(session: Session): Promise<{ declared: Timed[]; ran: Time
 	// The navigation that produces a view transition. `/` → `/train` is the one
 	// the athlete makes most and the one the `screen` crossfade is written for.
 	await session.goto(`${session.origin}/`);
+
+	// Two steps, because the navigation is behind a menu now. Opening it is not
+	// watched: the popover's own open animation is not the transition this is
+	// measuring, and starting the watch before it would time the wrong thing.
+	const opened = await session.evaluate<boolean>(OPEN_MENU);
+	if (!opened) {
+		fail(
+			'could not find the menu trigger in the top strip.\n' +
+				'  The navigation lives in the menu since the tab bar was removed, so this\n' +
+				'  check has to open it before it can follow a link. If the trigger moved or\n' +
+				'  lost its `aria-label`, update the selector here.',
+		);
+	}
+	await new Promise((r) => setTimeout(r, 300));
+
 	await session.evaluate(WATCH);
 	const navigated = await session.evaluate<boolean>(navigateTo('/train'));
 	if (!navigated) {
 		fail(
-			'could not find the /train tab to navigate with.\n' +
+			'could not find the /train link to navigate with.\n' +
 				'  This check needs a real client-side navigation — that is the only way a\n' +
 				'  view transition happens, and view transitions are the mechanism it exists\n' +
-				'  to measure. If the tab bar moved, update the selector here.',
+				'  to measure. The menu opened but did not contain the link.',
 		);
 	}
 	await new Promise((r) => setTimeout(r, 900));

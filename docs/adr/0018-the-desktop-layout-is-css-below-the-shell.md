@@ -9,9 +9,31 @@ The breakpoint is one, at Tailwind's `lg` (1024px), and the two layouts are:
 
 | | Phone | Wide |
 |---|---|---|
-| Navigation | three tabs on the bottom edge | the same three as a 200px left rail |
-| Measure | `max-w-[520px]`, centred | `max-w-[1000px]` beside the rail |
+| Navigation | ~~three tabs on the bottom edge~~ a menu in the top strip | ~~the same three as a 200px left rail~~ the same menu |
+| Measure | `max-w-[520px]`, centred | `max-w-[1000px]`, centred |
 | Panes | one | two, on the pages that earn it |
+
+> **Amended 2026-09-08 — the tab bar and the rail are gone, and this decision is
+> not.** The navigation row above is struck through rather than rewritten,
+> because what changed is *what the chrome contains*, not *how the two layouts are
+> chosen*, which is what this ADR decides. Everything below still holds: one DOM,
+> every difference a `lg:` utility, no viewport read anywhere, and above all none
+> in the shell.
+>
+> What changed is that #52's three destinations stopped being three. That claim —
+> "exactly three places the athlete goes on a training day" — held while there
+> were three pages, and produced one-offs as the other six arrived: `settings`
+> became a lone gear in the top strip and `week` a chip in Today's header, each
+> invented because there was nowhere for it to live. The athlete went looking for
+> `week`, could not find it, and asked for a menu, then for the bar to go with it.
+> Prototyped four ways on `proto/menu` and decided on the dropdown.
+>
+> The rail went with the bar necessarily: this ADR's own claim is that the rail
+> *is* the tab bar restyled, one element under two stylesheets, so once the bar
+> was gone there was nothing left to restyle. A wide screen now centres `main` on
+> its own measure instead of sitting beside a 200px gutter — which is a smaller
+> difference between the layouts than before, and therefore a stronger case for
+> this ADR rather than a weaker one.
 
 ## Why this needed deciding
 
@@ -43,14 +65,19 @@ start stays a file read.
 
 ## Consequences
 
-- **`AppShell` has exactly one `<nav>` and one `<main>`.** The rail is the tab bar
-  restyled. Two navs behind a media query would also work as CSS and is still
-  wrong: assistive technology sees both, the second one's links are duplicate
-  landmarks, and a duplicated `view-transition-name` is one of the three ways a
-  view transition silently skips (#43). Keeping one element is also what lets the
-  rail inherit `tabbar`'s hold-still rule unchanged.
+- **The chrome has exactly one `<nav>` and one `<main>`.** Two navs behind a media
+  query would also work as CSS and is still wrong: assistive technology sees both,
+  the second one's links are duplicate landmarks, and a duplicated
+  `view-transition-name` is one of the three ways a view transition silently skips
+  (#43). *Amended: since the tab bar was removed, `AppShell` owns the one `<main>`
+  and no `<nav>`, and `Menu.tsx` owns the one `<nav>`. The count is unchanged and
+  so is the reason for it; only the file moved.* The rail used to inherit
+  `tabbar`'s hold-still rule by being the same element as the tab bar — with both
+  gone, `topbar` is the only chrome name left, and `app.css` and
+  `tests/motion.test.ts` were changed together to say so.
 - **`tests/desktop.test.ts` enforces both halves** — no viewport read in
-  `__root.tsx` or `AppShell.tsx`, and one nav and one main. It is a source scan
+  `__root.tsx` or `AppShell.tsx`, and one nav and one main *across the two chrome
+  files*. It is a source scan
   because the failure is invisible in a diff: a `useMediaQuery` in a layout
   component looks like exactly the right thing to write.
 - **`pnpm check:hydration --desktop` is the runtime half**, and it is the check
