@@ -81,7 +81,7 @@ function RootComponent() {
 	// **Only once the session has resolved.** `useSession` starts pending and, with
 	// no network, *stays* unresolved — and a session that is merely unknown is not
 	// a signed-out athlete. Acting on the pending null swapped the store for the
-	// signed-out namespace on every boot, and offline it stayed there: fifteen
+	// signed-out namespace on every boot, and offline it stayed there: sixteen
 	// empty collections, and whatever the athlete logged next filed somewhere that
 	// never syncs. `store/record.ts` remembers the last account so the offline
 	// launch opens the right one in the meantime.

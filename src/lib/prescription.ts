@@ -56,6 +56,8 @@ import {
 	asWeekdayKey,
 	asWeekId,
 	type ExerciseId,
+	type LoadKey,
+	loadKey,
 	overrideKey,
 	type SlotKey,
 	slotKey,
@@ -68,7 +70,8 @@ import {
 } from '$lib/ids';
 import { progressionFactor, SYNERGY, weeklyRate } from '$lib/progression';
 import { adherenceRatio, pendingExercises } from '$lib/readinessPlan';
-import type { Baseline, Level, Override, Phase, Program, Session } from '$lib/types';
+import type { Baseline, Level, Override, Phase, Program, Session, WorkingLoad } from '$lib/types';
+import { loadRange } from '$lib/workingLoad';
 
 /**
  * The account state the resolver reads — and nothing more.
@@ -110,6 +113,18 @@ export interface ResolverState {
 	/** The baseline, or null before an intake is taken. Read for `level`, which
 	 *  scales the weekly progression rate. */
 	readonly baseline: Baseline | null;
+	/**
+	 * The load each weighted exercise is actually trained at, keyed exercise
+	 * **and variant** (`maxhang@0`) — `CONTEXT.md`'s **working load**.
+	 *
+	 * A sixteenth collection and not `program.overrides`, for ADR 0020's three
+	 * reasons. `effectiveVariant` reads it as the load the exercise runs at —
+	 * which is what finally gives `progression.ts`'s study-backed weekly rates
+	 * something to multiply on the six weighted exercises that prescribe no load
+	 * of their own. It does not multiply it *yet*: the glossary scales a working
+	 * load only once it has **settled**, and settling is #91's.
+	 */
+	readonly workingLoads: Readonly<Partial<Record<LoadKey, WorkingLoad>>>;
 }
 
 // ------------------------------------------------------------------ day types
@@ -442,14 +457,53 @@ function loadPct(
 }
 
 /**
+ * The working load an exercise runs at a variant, or `undefined` before the
+ * athlete has answered for it.
+ *
+ * **No week and no weekday**, which is the whole of ADR 0020 in a signature: a
+ * working load is a property of the exercise and the variant and of nothing
+ * else, so the same exercise scheduled Wednesday and Saturday is one answer
+ * rather than two that can disagree.
+ *
+ * The variant index is an argument rather than re-resolved from the state,
+ * because the two differ exactly when it matters: Train lets the athlete swap a
+ * variant mid-session without writing the swap, and re-resolving here would hand
+ * that task the *stored* variant's load — 30kg of weighted pull-ups on a one-arm
+ * ladder.
+ */
+export function workingLoadFor(
+	state: ResolverState,
+	exercise: ExerciseId,
+	variantIndex: number,
+): WorkingLoad | undefined {
+	return state.workingLoads[loadKey(exercise, variantIndex)];
+}
+
+/**
  * The prescription a slot actually runs — `CONTEXT.md`'s **prescription**: the
  * built-in variant with the program's overrides applied, its load progressed and
  * scaled for the week, and its volume scaled by the phase.
  *
- * The order is not interchangeable. An override sets an *absolute* target, so it
- * collapses a range to a fixed value first; progression and phase scaling then
- * act on whatever that left. Scaling first and overriding second would let a
- * deload week silently discard the number the athlete typed.
+ * The order is not interchangeable. The **working load** replaces the variant's
+ * built-in `loadKg` — it is the load this exercise is actually trained at, which
+ * is a stronger statement than the library's suggestion. An override then sets
+ * an *absolute* target over the top, collapsing a range to a fixed value.
+ * Progression and phase scaling act last, on whatever that left, because scaling
+ * first would let a deload week silently discard the number the athlete typed —
+ * and load scaling is skipped entirely where a working load supplied the number,
+ * for the reason spelled out at that line.
+ *
+ * The override still wins over the working load, and that is legacy rather than
+ * a live conflict: **no override in the rebuild has ever carried a `loadKg`**
+ * (#87 deleted the only thing that seeded one), and ADR 0020 forbids #65's
+ * override editor from growing a load field. If one is ever found in a stored
+ * program it was put there deliberately, so it stands.
+ *
+ * `variantIndex` travels beside `base` because `base` is `variantOf(ex, index)`
+ * and the working load is keyed on the index. Re-deriving it from the state here
+ * would be wrong exactly where it matters: Train lets a variant be swapped
+ * mid-session without writing the swap, and the stored index is then not the one
+ * on screen.
  *
  * Returns `base` itself when nothing modifies it, so an untouched prescription
  * costs no allocation on a screen that renders one per task.
@@ -458,15 +512,19 @@ export function effectiveVariant(
 	content: Content,
 	state: ResolverState,
 	base: Variant,
+	variantIndex: number,
 	week: WeekId,
 	weekday: WeekdayKey,
 	exercise: ExerciseId,
 ): Variant {
 	const override = programOverride(state, weekday, exercise);
 	const phase = phaseForWeek(state, week);
-	if (!override && !phase && !state.program.autoProgress) return base;
+	const working = workingLoadFor(state, exercise, variantIndex);
+	if (!override && !phase && !working && !state.program.autoProgress) return base;
 
 	const v: Variant = { ...base };
+	// Before the override, so an override that carries a load still wins over it.
+	if (working) v.loadKg = loadRange(working);
 	if (override) {
 		if (override.sets != null) v.sets = fixedRange(override.sets);
 		if (override.reps != null) v.reps = fixedRange(override.reps);
@@ -476,7 +534,18 @@ export function effectiveVariant(
 		if (override.restSec != null) v.restSec = fixedRange(override.restSec);
 		if (override.rpe != null) v.rpe = fixedRange(override.rpe);
 	}
-	if (v.loadKg) v.loadKg = scaleRange(v.loadKg, loadPct(content, state, week, exercise, phase));
+	// Progression moves the library's number and leaves the athlete's alone.
+	//
+	// `CONTEXT.md` is explicit that a working load is *settling* until two
+	// consecutive on-target sessions agree, "after which progression scales it" —
+	// and settling is [#91](https://github.com/YgorPerez/send-lab/issues/91)'s to
+	// build, so every working load stored today is unsettled by definition. What
+	// that buys immediately is the thing first contact needs: an athlete who says
+	// 40kg in week 5 is prescribed 40kg, not 40 compounded by four weeks they
+	// trained this exercise without a load at all.
+	if (v.loadKg && !working) {
+		v.loadKg = scaleRange(v.loadKg, loadPct(content, state, week, exercise, phase));
+	}
 	if (phase) {
 		// A floor of 1: a prescription of zero sets is not a lighter week, it is no
 		// exercise at all.

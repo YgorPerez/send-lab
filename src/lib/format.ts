@@ -21,6 +21,8 @@ import type { Content, Cost, Exercise, Grip, Quality, Range, Region } from '$lib
 import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { variantOf } from '$lib/prescription';
+import type { Confidence } from '$lib/strength';
+import type { WorkingLoadSource } from '$lib/types';
 
 /** "4" for a fixed value, "4–6" for a range. */
 export function formatRange(r: Range): string {
@@ -110,6 +112,36 @@ const REGION_LABEL: Record<Region, () => string> = {
  *  Not a body area, which is the axis *injury* runs along (ADR 0013). */
 export function regionLabel(r: string): string {
 	return REGION_LABEL[r as Region]?.() ?? r;
+}
+
+const CONFIDENCE_LABEL: Record<Confidence, () => string> = {
+	high: m.conf_high,
+	med: m.conf_med,
+	low: m.conf_low,
+};
+
+/** How far to trust an estimate, said out loud.
+ *
+ *  The three messages predate the rebuild and had no caller — the SvelteKit app
+ *  showed a marker's confidence beside a tracked number, and markers left. They
+ *  are read again for the opposite direction: the confidence of the *estimate*
+ *  behind a suggested load (#90). It is shown rather than swallowed, because a
+ *  prediction from a 6mm edge is not the same claim as one from 20mm. */
+export function confidenceLabel(c: Confidence): string {
+	return CONFIDENCE_LABEL[c]?.() ?? c;
+}
+
+const WORKING_LOAD_SOURCE_LABEL: Record<WorkingLoadSource, () => string> = {
+	tested: m.wl_from_tested,
+	usual: m.wl_from_usual,
+	predicted: m.wl_from_predicted,
+	floor: m.wl_from_floor,
+};
+
+/** Where a stored working load's number came from — the rung of the ladder the
+ *  athlete answered on, as a phrase that completes "from …". */
+export function workingLoadSourceLabel(source: WorkingLoadSource): string {
+	return WORKING_LOAD_SOURCE_LABEL[source]?.() ?? source;
 }
 
 const QUALITY_LABEL: Record<Quality, () => string> = {

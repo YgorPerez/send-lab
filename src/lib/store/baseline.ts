@@ -81,9 +81,14 @@ const FIRST_WEEK = asWeekId(1);
  * percentage of nothing is nothing, so progression cannot move load on the other
  * six at all.
  *
- * [#88](https://github.com/YgorPerez/send-lab/issues/88) is what closes it: Train
- * asks at first contact and stores the answer in its own collection, keyed
- * exercise *and* variant. Until then the athlete meets an empty load field.
+ * [#88](https://github.com/YgorPerez/send-lab/issues/88) closed it, and it closed
+ * it *after* this point rather than here: Train asks at first contact and stores
+ * the answer in its own collection, keyed exercise and variant (ADR 0020). So a
+ * generated program still prescribes no starting load — that is correct, and it
+ * is what a program can honestly say before the athlete has stood in front of the
+ * hangboard. What has changed is that the empty field is now a **question**
+ * rather than a gap, and once it is answered `effectiveVariant` reads the answer
+ * as the load the exercise runs at.
  */
 export function programFor(content: Content, baseline: Baseline): Program {
 	return generateProgram(content, baseline);

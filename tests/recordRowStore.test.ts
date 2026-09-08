@@ -183,8 +183,8 @@ describe('one account cannot read or overwrite another', () => {
 describe('a hydrate is shaped like the store', () => {
 	it('names every collection, empty ones included', async () => {
 		const record = await readRecordIn(db, ATHLETE);
-		expect(Object.keys(record.rows)).toHaveLength(15);
-		expect(Object.keys(record.deleted)).toHaveLength(15);
+		expect(Object.keys(record.rows)).toHaveLength(16);
+		expect(Object.keys(record.deleted)).toHaveLength(16);
 		expect(record.rows.sessions).toEqual([]);
 		expect(record.rows.prefs).toEqual([]);
 		expect(Object.values(record.rows).every((rows) => rows.length === 0)).toBe(true);

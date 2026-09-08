@@ -77,12 +77,15 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `TaskCard` | One task mid-session: header, prescription, sets |
 | `ReadinessCheck` | Nine questions, their rationale, and the study behind each |
 | `SelfCheckSheet` / `RehabStarter` | The injury self-check and the rehab switch |
+| `WorkingLoadAsk` | The ladder put at first contact with a weighted exercise, and what the athlete is told about the two numbers under its third rung |
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
 `ids.ts` (identity), `protocol.ts` (the timer's arithmetic), `cues.ts`
 (its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
-exercise shows, and what a fresh row is prefilled with), and `prescription.ts`
-(what a slot runs, and at what numbers).
+exercise shows, and what a fresh row is prefilled with), `prescription.ts`
+(what a slot runs, and at what numbers), `workingLoad.ts` (which exercises carry
+a working load and what to start one at) and `strength.ts` (the size→20mm
+conversion, run backwards to predict a load).
 
 ### Page and screen are the same thing
 
@@ -107,7 +110,7 @@ above and reads from exactly two things:
 
 | Layer | Lives in | What it is |
 |---|---|---|
-| The store | `src/lib/store/` | Fifteen keyed row sets (ADR 0007), and `useTrainingRecord()`, which assembles them into one `TrainingRecord` |
+| The store | `src/lib/store/` | Sixteen keyed row sets (ADR 0007), and `useTrainingRecord()`, which assembles them into one `TrainingRecord` |
 | The screen resolver | `src/lib/screens/` | `resolveToday` / `resolveTrain` / `resolveLog` — pure functions of `(content, record, now)` |
 
 What the three built screens do with it, which is idiom 2 and idiom 3 one layer

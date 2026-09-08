@@ -23,13 +23,21 @@ import {
 	type TaskKey,
 	taskKey,
 } from '$lib/ids';
-import { fieldsFor, midOf, prefilledSet } from '$lib/loggedSet';
+import { midOf, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { Protocol } from '$lib/protocol';
-import { libraryTask, type PrescribedTask, resolveTrain } from '$lib/screens/train';
+import {
+	atVariant,
+	libraryTask,
+	type PrescribedTask,
+	resolveTrain,
+	withWorkingLoad,
+} from '$lib/screens/train';
 import { restoredSession, useSessionDraft } from '$lib/sessionDraft';
 import { useTrainingRecord } from '$lib/store/record';
+import { writeWorkingLoad } from '$lib/store/workingLoad';
+import type { WorkingLoad, WorkingLoadSource } from '$lib/types';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
@@ -110,16 +118,45 @@ function Train() {
 	const update = (key: TaskKey, fn: (t: PrescribedTask) => PrescribedTask) =>
 		setTasks((prev) => prev.map((t) => (t.key === key ? fn(t) : t)));
 
+	// The swap and the answer both go through `atVariant`, which is where "what
+	// this task is at this variant" is decided once. The inline version here got
+	// three of its four fields right and left `workingLoad` and the question
+	// pointing at the variant the athlete had just swapped away from.
 	const selectVariant = (key: TaskKey, index: number) =>
-		update(key, (t) => {
-			const ex = content.exercises[t.exercise];
-			const next = ex?.variants[index] ?? t.prescription;
-			return { ...t, variantIndex: index, prescription: next, fields: fieldsFor(next) };
-		});
+		update(key, (t) => atVariant(content, record, t, index));
+
+	/**
+	 * The athlete answered the working-load question.
+	 *
+	 * The card takes the answer at the tap and the row is written behind it —
+	 * **the same row**, `at` included, so the two cannot disagree. Waiting for the
+	 * write would leave the question on screen across a hydrate the athlete has no
+	 * reason to know about, mid-set, with chalk on their fingers.
+	 *
+	 * It deliberately does not re-resolve the whole screen. `screen` is frozen at
+	 * mount so the targets cannot move under a session in progress, and this is
+	 * one task's answer rather than a new prescription for the day.
+	 */
+	const answerLoad = (task: PrescribedTask, addedKg: number, source: WorkingLoadSource) => {
+		const load: WorkingLoad = {
+			exercise: task.exercise,
+			variant: task.variantIndex,
+			addedKg,
+			source,
+			at: Date.now(),
+		};
+		update(task.key, (t) => withWorkingLoad(t, load));
+		void writeWorkingLoad(load);
+	};
 
 	const addExercise = (raw: string) => {
 		const exercise = asExerciseId(raw);
-		const next = libraryTask(content, exercise, taskKey(screen.week, screen.weekday, exercise));
+		const next = libraryTask(
+			content,
+			record,
+			exercise,
+			taskKey(screen.week, screen.weekday, exercise),
+		);
 		if (next) setTasks((prev) => [...prev, next]);
 	};
 
@@ -199,6 +236,7 @@ function Train() {
 									sets: x.sets.map((s, j) => (j === i ? next : s)),
 								}))
 							}
+							onAnswerLoad={(kg, source) => answerLoad(t, kg, source)}
 							onAddSet={() =>
 								update(t.key, (x) => ({
 									...x,

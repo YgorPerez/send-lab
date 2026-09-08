@@ -73,6 +73,7 @@ function state(patch: Partial<ResolverState> = {}): ResolverState {
 		slotDayType: {},
 		slotExercises: {},
 		taskSwaps: {},
+		workingLoads: {},
 		taskDone: {},
 		sessions: [],
 		baseline: null,
@@ -428,14 +429,14 @@ describe('the prescription a slot actually runs', () => {
 
 	test('returns the built-in variant untouched when nothing modifies it', () => {
 		const b = base();
-		expect(effectiveVariant(content, state(), b, W5, THU, PULL)).toBe(b);
+		expect(effectiveVariant(content, state(), b, 0, W5, THU, PULL)).toBe(b);
 	});
 
 	test('an override collapses a prescribed range to a fixed value', () => {
 		const s = state({
 			program: program({ overrides: { [overrideKey(THU, PULL)]: { sets: 5, reps: 3 } } }),
 		});
-		const v = effectiveVariant(content, s, base(), W5, THU, PULL);
+		const v = effectiveVariant(content, s, base(), 0, W5, THU, PULL);
 		expect(v.sets).toEqual({ min: 5, max: 5 });
 		expect(v.reps).toEqual({ min: 3, max: 3 });
 		// A field with no override keeps the built-in range.
@@ -450,7 +451,7 @@ describe('the prescription a slot actually runs', () => {
 				overrides: { [overrideKey(THU, PULL)]: { loadKg: 60 } },
 			}),
 		});
-		const v = effectiveVariant(content, s, base(), W5, THU, PULL);
+		const v = effectiveVariant(content, s, base(), 0, W5, THU, PULL);
 		// 60 x 0.90 = 54.
 		expect(v.loadKg).toEqual({ min: 54, max: 54 });
 		// pull prescribes 4-6 sets; x 0.50 = 2-3.
@@ -464,18 +465,18 @@ describe('the prescription a slot actually runs', () => {
 				phases: [{ name: 'Taper', weeks: 8, intensity: 100, volume: 10, deload: false }],
 			}),
 		});
-		expect(effectiveVariant(content, state(), base(), W5, THU, PULL).sets).toEqual({
+		expect(effectiveVariant(content, state(), base(), 0, W5, THU, PULL).sets).toEqual({
 			min: 4,
 			max: 6,
 		});
 		// 4 x 0.10 rounds to 0, and no sets at all is not a prescription.
-		expect(effectiveVariant(content, s, base(), W5, THU, PULL).sets).toEqual({ min: 1, max: 1 });
+		expect(effectiveVariant(content, s, base(), 0, W5, THU, PULL).sets).toEqual({ min: 1, max: 1 });
 	});
 
 	test('week 1 progresses nothing, because no week has been built yet', () => {
 		const s = state({ program: program({ autoProgress: true }) });
 		// buildWeeksThrough(1) = 1, so the exponent is 0 and the factor is exactly 1.
-		const v = effectiveVariant(content, s, base(), asWeekId(1), THU, PULL);
+		const v = effectiveVariant(content, s, base(), 0, asWeekId(1), THU, PULL);
 		expect(v.loadKg).toEqual({ min: 30, max: 45 });
 	});
 
@@ -488,7 +489,7 @@ describe('the prescription a slot actually runs', () => {
 		});
 		// Nothing ticked, so weeks 1 and 2 each score adherence 1 and
 		// buildWeeksThrough(3) = 3. 1.014 ^ 2 = 1.028196; 60 x that = 61.69 -> 62.
-		const v = effectiveVariant(content, s, base(), asWeekId(3), THU, PULL);
+		const v = effectiveVariant(content, s, base(), 0, asWeekId(3), THU, PULL);
 		expect(v.loadKg).toEqual({ min: 62, max: 62 });
 	});
 
@@ -513,7 +514,7 @@ describe('the prescription a slot actually runs', () => {
 		// adherence 3/6 = 0.5, so buildWeeksThrough(3) = 1 + 0.5 + 1 = 2.5.
 		// 1.014 ^ 1.5 = 1.0210733; 60 x that = 61.26 -> 61, a kilo short of the
 		// fully-adherent 62 above.
-		const v = effectiveVariant(content, half, base(), asWeekId(3), THU, PULL);
+		const v = effectiveVariant(content, half, base(), 0, asWeekId(3), THU, PULL);
 		expect(v.loadKg).toEqual({ min: 61, max: 61 });
 	});
 
@@ -530,7 +531,7 @@ describe('the prescription a slot actually runs', () => {
 		});
 		// Week 3 is the deload, and auto-progression must not apply to it: 60 x 0.70
 		// = 42, and the fixed 5 sets scale by volume to 5 x 0.60 = 3.
-		const v = effectiveVariant(content, s, base(), asWeekId(3), THU, PULL);
+		const v = effectiveVariant(content, s, base(), 0, asWeekId(3), THU, PULL);
 		expect(v.loadKg).toEqual({ min: 42, max: 42 });
 		expect(v.sets).toEqual({ min: 3, max: 3 });
 	});
@@ -545,7 +546,7 @@ describe('the prescription a slot actually runs', () => {
 		});
 		// elite halves the base rate: 2 x 0.5 / 100 = 0.010.
 		// 1.010 ^ 2 = 1.0201; 60 x that = 61.21 -> 61.
-		expect(effectiveVariant(content, s, base(), asWeekId(3), THU, PULL).loadKg).toEqual({
+		expect(effectiveVariant(content, s, base(), 0, asWeekId(3), THU, PULL).loadKg).toEqual({
 			min: 61,
 			max: 61,
 		});
@@ -567,11 +568,11 @@ describe('the prescription a slot actually runs', () => {
 		});
 		const abraBase = content.exercises[ABRA].variants[0];
 		// With maxhang: rate 0.042, 1.042 ^ 2 = 1.085764, 60 x that = 65.15 -> 65.
-		expect(effectiveVariant(content, withPartner, abraBase, asWeekId(3), THU, ABRA).loadKg).toEqual(
-			{ min: 65, max: 65 },
-		);
+		expect(
+			effectiveVariant(content, withPartner, abraBase, 0, asWeekId(3), THU, ABRA).loadKg,
+		).toEqual({ min: 65, max: 65 });
 		// Without it: rate 0.021, 1.021 ^ 2 = 1.042441, 60 x that = 62.55 -> 63.
-		expect(effectiveVariant(content, without, abraBase, asWeekId(3), THU, ABRA).loadKg).toEqual({
+		expect(effectiveVariant(content, without, abraBase, 0, asWeekId(3), THU, ABRA).loadKg).toEqual({
 			min: 63,
 			max: 63,
 		});

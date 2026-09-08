@@ -42,7 +42,7 @@ import type { StorageApi } from '@tanstack/db';
 import type { UnsyncedWrite, WriteRejection } from '$lib/recordWire';
 
 /** Where one account's unsynced work is kept. Same `sendlab:<account>:` shape as
- *  the fifteen collections, and the account segment is what keeps two athletes on
+ *  the sixteen collections, and the account segment is what keeps two athletes on
  *  one device from replaying each other's writes. */
 export const UNSYNCED_KEY = (account: string): string => `sendlab:${account}:unsynced`;
 

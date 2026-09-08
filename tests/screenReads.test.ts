@@ -228,6 +228,7 @@ describe('the screens are resolved, not fabricated', () => {
 					content,
 					REC,
 					variantOf(exercise, variantIndex),
+					variantIndex,
 					REC.currentWeek,
 					TRAIN.weekday,
 					item.exercise,

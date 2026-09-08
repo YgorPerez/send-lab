@@ -17,22 +17,31 @@ import { weekdayLabel } from '$lib/format';
 import {
 	asExerciseId,
 	type ExerciseId,
+	loadKey,
 	type TaskKey,
 	taskKey,
 	type WeekdayKey,
 	type WeekId,
 	weekdayKeyOf,
 } from '$lib/ids';
-import { fieldsFor, prefilledSet, type SetField } from '$lib/loggedSet';
+import { fieldsFor, midOf, prefilledSet, type SetField } from '$lib/loggedSet';
 import {
 	effectiveVariant,
 	resolveSwapIndex,
 	trainableExerciseIds,
 	variantOf,
+	workingLoadFor,
 } from '$lib/prescription';
 import type { Task } from '$lib/screens/today';
 import type { TrainingRecord } from '$lib/store/record';
-import type { LoggedSet } from '$lib/types';
+import type { LoggedSet, WorkingLoad } from '$lib/types';
+import {
+	currentBodyweightKg,
+	isWeightedExercise,
+	type LoadSuggestion,
+	loadRange,
+	suggestLoad,
+} from '$lib/workingLoad';
 
 /**
  * A task with its **prescription** resolved, and the sets logged against it.
@@ -64,6 +73,26 @@ export interface PrescribedTask extends Task {
 	sets: LoggedSet[];
 	/** Has interval timings the rest timer can run. */
 	timed: boolean;
+	/**
+	 * The load this exercise is actually trained at, at this variant, or `null`
+	 * before the athlete has answered for it.
+	 *
+	 * It is already inside `prescription.loadKg` — `effectiveVariant` reads it as
+	 * the base the week's progression scales — so the card does not need this to
+	 * render a number. It is carried so the card can say **where the number came
+	 * from**, which a range cannot: a tested max and a guess are not the same
+	 * evidence (#29).
+	 */
+	workingLoad: WorkingLoad | null;
+	/**
+	 * The question to put at first contact, or `null` when there is none to put:
+	 * this is not a weighted exercise, or it already has a working load.
+	 *
+	 * Non-null is exactly "the athlete has never said what to load this with",
+	 * which is the condition [#88](https://github.com/YgorPerez/send-lab/issues/88)
+	 * asks the screen to notice.
+	 */
+	ask: LoadSuggestion | null;
 }
 
 export interface TrainScreen {
@@ -120,6 +149,7 @@ function scheduledTask(
 		content,
 		record,
 		variantOf(ex, variantIndex),
+		variantIndex,
 		week,
 		weekday,
 		exercise,
@@ -129,7 +159,39 @@ function scheduledTask(
 		sets,
 		// A task is trained once one of its sets is (ADR-0001, **Trained**).
 		done: sets?.some((set) => set.done) ?? false,
+		workingLoad: workingLoadFor(record, exercise, variantIndex) ?? null,
+		ask: loadAsk(record, exercise, variantIndex, prescription),
 	});
+}
+
+/**
+ * The question to put at first contact with a weighted exercise, or `null`.
+ *
+ * Exported because Train has to re-ask it twice more than the resolver runs:
+ * when the athlete **swaps the variant** mid-session — a different variant is a
+ * different working load, and the old one's answer does not carry over — and
+ * when they **answer it**, which is what makes the question go away without a
+ * reload.
+ *
+ * The level falls back to `intermediate` and **not** to `loadPct`'s `advanced`.
+ * That fallback scales a percentage and this one puts weight on a finger, so the
+ * two absences are not worth the same guess: an account with no baseline gets
+ * the lightest rung of a ladder it is about to be shown anyway.
+ */
+export function loadAsk(
+	record: TrainingRecord,
+	exercise: ExerciseId,
+	variantIndex: number,
+	prescription: Variant | undefined,
+): LoadSuggestion | null {
+	if (!isWeightedExercise(exercise)) return null;
+	if (record.workingLoads[loadKey(exercise, variantIndex)]) return null;
+	return suggestLoad(
+		exercise,
+		record.baseline?.level ?? 'intermediate',
+		prescription,
+		currentBodyweightKg(record.bodyweight, record.baseline),
+	);
 }
 
 /**
@@ -147,12 +209,111 @@ function scheduledTask(
  */
 export function libraryTask(
 	content: Content,
+	record: TrainingRecord,
 	exercise: ExerciseId,
 	key: TaskKey,
 ): PrescribedTask | null {
 	const ex = content.exercises[exercise];
 	if (!ex) return null;
-	return task(ex, exercise, key, 0, ex.variants[0], {});
+	// The working load *does* carry over, unlike everything else here. It is keyed
+	// exercise and variant and carries no slot at all (ADR 0020), so an athlete
+	// who adds a max hang off-script is loading the same fingers on the same edge
+	// as the one their program schedules — and being asked again would be the app
+	// forgetting an answer it holds.
+	const base = ex.variants[0];
+	return task(ex, exercise, key, 0, loadedVariant(record, exercise, 0, base), {
+		workingLoad: workingLoadFor(record, exercise, 0) ?? null,
+		ask: loadAsk(record, exercise, 0, base),
+	});
+}
+
+/**
+ * A built-in variant with the athlete's working load laid over its `loadKg`.
+ *
+ * The same substitution `effectiveVariant` makes, without the slot: a task that
+ * nothing scheduled has no weekday for an override or a week for a progression
+ * to apply against, but it is still the same exercise on the same edge, and the
+ * working load is keyed on neither of those.
+ */
+function loadedVariant(
+	record: TrainingRecord,
+	exercise: ExerciseId,
+	variantIndex: number,
+	base: Variant,
+): Variant {
+	const load = workingLoadFor(record, exercise, variantIndex);
+	return load ? { ...base, loadKg: loadRange(load) } : base;
+}
+
+/**
+ * The task as it reads once a working load is known for it: the number in the
+ * prescription, the provenance beside it, and no question left to ask.
+ *
+ * Exported so the screen can apply the athlete's answer to the card at the tap,
+ * rather than waiting for the write to land and the record to come back round.
+ * Both paths therefore agree by construction: the substitution itself is
+ * `loadRange`, which `effectiveVariant` and `loadedVariant` also go through.
+ */
+export function withWorkingLoad(task: PrescribedTask, load: WorkingLoad): PrescribedTask {
+	return {
+		...task,
+		prescription: { ...task.prescription, loadKg: loadRange(load) },
+		// **The sets on screen take it too, and this is the point of asking here.**
+		// Without it the athlete answers "+20kg" standing at the hangboard and the
+		// load column of the set they are about to log keeps whatever it opened
+		// with until *next* session — which would make first contact a form that
+		// files paperwork.
+		//
+		// Two rows are left alone, and the second is the one that is easy to miss.
+		// A **completed** set is history. And a set the athlete has typed their own
+		// number into is their answer for that set — but "has a number in it" is
+		// not the test, because `prefilledSet` opens every row at the
+		// prescription's own midpoint. On `pull`, the one variant in the library
+		// carrying a built-in `loadKg`, that midpoint is 38kg, so a naive
+		// not-null check would leave the athlete looking at the library's number
+		// one second after telling the app they load it with 20.
+		sets: task.sets.map((set) =>
+			set.done || (set.loadKg != null && set.loadKg !== midOf(task.prescription.loadKg))
+				? set
+				: { ...set, loadKg: load.addedKg },
+		),
+		workingLoad: load,
+		ask: null,
+	};
+}
+
+/**
+ * The same task at a different variant — what a mid-session swap produces.
+ *
+ * Here rather than in the route for `libraryTask`'s reason: what a task *is* at
+ * a given variant is one decision, and the route was making three-quarters of it
+ * inline. It carries the athlete's logged sets across untouched, because swapping
+ * the variant does not un-train the sets already done.
+ *
+ * It arrives at the **built-in** variant plus the working load, not at a
+ * re-resolved prescription. That is the behaviour the route already had, and it
+ * is deliberate rather than incidental: the swap is not written to the store, so
+ * `effectiveVariant` would resolve the override and the progression of the
+ * variant the athlete just swapped *away* from.
+ */
+export function atVariant(
+	content: Content,
+	record: TrainingRecord,
+	task: PrescribedTask,
+	variantIndex: number,
+): PrescribedTask {
+	const ex = content.exercises[task.exercise];
+	const base = ex?.variants[variantIndex] ?? task.prescription;
+	const prescription = loadedVariant(record, task.exercise, variantIndex, base);
+	return {
+		...task,
+		variantIndex,
+		prescription,
+		fields: fieldsFor(prescription),
+		timed: prescription.workSec != null,
+		workingLoad: workingLoadFor(record, task.exercise, variantIndex) ?? null,
+		ask: loadAsk(record, task.exercise, variantIndex, base),
+	};
 }
 
 /** The shape both kinds of task share, once the variant and its numbers are
@@ -163,7 +324,12 @@ function task(
 	key: TaskKey,
 	variantIndex: number,
 	prescription: Variant,
-	logged: { sets?: LoggedSet[]; done?: boolean },
+	logged: {
+		sets?: LoggedSet[];
+		done?: boolean;
+		workingLoad?: WorkingLoad | null;
+		ask?: LoadSuggestion | null;
+	},
 ): PrescribedTask {
 	return {
 		key,
@@ -180,8 +346,15 @@ function task(
 		})),
 		prescription,
 		fields: fieldsFor(prescription),
+		// `prefilledSet` reads `prescription.loadKg`, which `effectiveVariant` has
+		// already filled from the working load and scaled for the week — so the
+		// next session's load comes off the athlete's own answer rather than off
+		// `midOf` of a range six of the seven weighted exercises do not have
+		// (#88).
 		sets: logged.sets ?? [prefilledSet(prescription)],
 		timed: prescription.workSec != null,
+		workingLoad: logged.workingLoad ?? null,
+		ask: logged.ask ?? null,
 	};
 }
 

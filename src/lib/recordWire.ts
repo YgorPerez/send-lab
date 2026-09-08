@@ -8,7 +8,7 @@
 // seam is the drift ADR 0014 exists to stop", one file away from doing it.
 //
 // It cannot live in `store/collections.ts`, because the server would then import a
-// module that builds fifteen `localStorage` collections at load; it cannot live in
+// module that builds sixteen `localStorage` collections at load; it cannot live in
 // `server/record/`, because the client would import the server. So it lives below
 // both, which is the direction ADR 0013 already established for a shared closed
 // set: it moves down, never up.
