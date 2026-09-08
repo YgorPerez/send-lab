@@ -17,3 +17,13 @@
 // locale-prefixed route yields either two shells or a redirect on every cold
 // start.
 export const PARAGLIDE_STRATEGY = ['localStorage', 'preferredLanguage', 'baseLocale'] as const;
+
+/** Where the `localStorage` strategy above persists the athlete's choice.
+ *
+ *  Paraglide's own key, named here because two gate modules write it from
+ *  outside the app: `scripts/browser.ts` sets the locale a screen is measured
+ *  in, and `scripts/seeded-record.ts` reads it back *inside* the page to decide
+ *  which locale's training record to install. It belongs beside the strategy
+ *  that decides storage is where the choice lives — if that order ever drops
+ *  `localStorage`, this is the line that stops making sense. */
+export const LOCALE_KEY = 'PARAGLIDE_LOCALE';

@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
@@ -6,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
 import { defineConfig } from 'vite';
 import { serveInlangPluginsLocally } from './scripts/inlang-local-plugins.ts';
+import { libAlias } from './scripts/lib-alias.ts';
 import { PARAGLIDE_STRATEGY } from './scripts/paraglide-strategy.ts';
 
 // `paraglideVitePlugin` fetches the inlang plugins from a CDN on every dev/build
@@ -18,10 +18,11 @@ serveInlangPluginsLocally();
 export default defineConfig({
 	resolve: {
 		// Vite does not read tsconfig `paths`, so the alias the domain modules were
-		// written against has to be declared here as well. Kept identical in
-		// `vitest.config.ts`, which cannot load this file (the Start plugin has no
-		// place in a jsdom test run).
-		alias: { $lib: fileURLToPath(new URL('./src/lib', import.meta.url)) },
+		// written against has to be handed over here as well. It is one declaration
+		// in `scripts/lib-alias.ts`, shared with `vitest.config.ts` — which cannot
+		// load this file, since the Start plugin has no place in a jsdom test run —
+		// and with the gates' own module loader.
+		alias: libAlias(),
 	},
 	plugins: [
 		tailwindcss(),
