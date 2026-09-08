@@ -125,6 +125,29 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(log).toContain(locale === 'en-US' ? 'Max / Tissue' : 'Máx / Tecido');
 		});
 
+		// #89. The prescribed range is displayed twice on purpose: once in the
+		// task header, as one line of the prescription, and once in the set row's
+		// own RPE column, because judging one number against another across a card
+		// boundary is not something a person does mid-set. What is asserted here
+		// is the second one — that every RPE input carries its target, in the
+		// locale, and says it is a target rather than a value.
+		test('puts the prescribed RPE beside the RPE input, not only in the header', async () => {
+			const train = await render('/train');
+			const inputs = [...train.matchAll(/<input[^>]*id="[^"]*-rpe"[^>]*>/g)].map((m) => m[0]);
+			expect(inputs.length).toBeGreaterThan(0);
+			// *Target* is the first word on **Prescription**'s `_Avoid_` list, so the
+			// copy says what the glossary says (ADR 0014).
+			const word = locale === 'en-US' ? 'prescribed' : 'prescrito';
+			for (const tag of inputs) {
+				expect(tag.toLowerCase()).toContain(word);
+				// The range itself, not just the word: "8" or "8–9".
+				expect(tag).toMatch(new RegExp(`${word}[^"]*\\d`, 'i'));
+			}
+			// And it is legible, not only announced — the range is in the column
+			// label the athlete is looking at.
+			expect(train).toMatch(/RPE<\/span>\s*<span[^>]*>\d/);
+		});
+
 		// Week (#63). The one screen whose whole point is the separation ADR-0003
 		// protects, so this is the assertion that matters most in the pt-BR pass:
 		// the seven weekday *labels* localize, and the seven weekday *keys* they are

@@ -1,12 +1,14 @@
 // What a set logs, and what it starts as.
 //
-// The two functions under test were written twice — once in `train.tsx` and once
-// in `prototype-fixtures.ts` — and the copies had already drifted on which range
-// `restSec` falls back to. #56 collapsed them into one module, and these are the
-// assertions that keep the survivor honest.
+// `fieldsFor` and `prefilledSet` were written twice — once in `train.tsx` and
+// once in `prototype-fixtures.ts` — and the copies had already drifted on which
+// range `restSec` falls back to. #56 collapsed them into one module, and these
+// are the assertions that keep the survivor honest. `nextSet` arrived the same
+// way: inline in the route until #89 gave it something to decide.
 import { describe, expect, it } from 'vitest';
 import type { Variant } from '../src/lib/content/types.ts';
-import { fieldsFor, midOf, prefilledSet } from '../src/lib/loggedSet.ts';
+import { fieldsFor, midOf, nextSet, prefilledSet } from '../src/lib/loggedSet.ts';
+import type { LoggedSet } from '../src/lib/types.ts';
 
 /** A variant is params + prose; only the params matter here. */
 function variant(params: Partial<Variant>): Variant {
@@ -62,7 +64,7 @@ describe('fieldsFor', () => {
 });
 
 describe('prefilledSet', () => {
-	it('fills every field from the prescription midpoint', () => {
+	it('fills every field from the prescription midpoint — except the effort rating', () => {
 		const set = prefilledSet(
 			variant({
 				loadKg: { min: 20, max: 30 },
@@ -80,7 +82,11 @@ describe('prefilledSet', () => {
 			workSec: 7,
 			reps: 6,
 			restSec: 150,
-			rpe: 9, // 8 + 9 = 17, halved = 8.5, rounded = 9
+			// Not `midOf(rpe)`. Every other field here is a *plan* the athlete
+			// edits; the effort rating is a *reading* only they can give, and a row
+			// that opens at the prescribed midpoint cannot tell an untouched 9 from
+			// a 9 they felt (#89, decided on #40).
+			rpe: null,
 			grip: 'pinch',
 			done: false,
 		});
@@ -97,10 +103,45 @@ describe('prefilledSet', () => {
 		).toBe(3);
 	});
 
+	it('never answers the effort rating, however tight the prescribed range', () => {
+		// A fixed range is the tempting case — "RPE 8" looks like the answer rather
+		// than the ask — and it is still the app rating the athlete's set for them.
+		expect(prefilledSet(variant({ rpe: { min: 8, max: 8 } })).rpe).toBeNull();
+		expect(prefilledSet(variant({ rpe: { min: 8, max: 9 } })).rpe).toBeNull();
+		expect(prefilledSet(variant({})).rpe).toBeNull();
+	});
+
 	it('starts undone, with nothing the prescription did not say', () => {
 		const set = prefilledSet(variant({ reps: { min: 5, max: 5 } }));
 		expect(set.done).toBe(false);
 		expect(set.loadKg).toBeNull();
 		expect(set.grip).toBeNull();
+	});
+});
+
+describe('nextSet', () => {
+	const logged = (over: Partial<LoggedSet> = {}): LoggedSet => ({
+		...prefilledSet(variant({ loadKg: { min: 20, max: 20 }, reps: { min: 5, max: 5 } })),
+		rpe: 8,
+		done: true,
+		...over,
+	});
+
+	it('carries the numbers the athlete gave forward', () => {
+		const next = nextSet(logged({ loadKg: 32, edgeMm: 18, reps: 4, restSec: 200, grip: 'pinch' }));
+		expect(next.loadKg).toBe(32);
+		expect(next.edgeMm).toBe(18);
+		expect(next.reps).toBe(4);
+		expect(next.restSec).toBe(200);
+		expect(next.grip).toBe('pinch');
+	});
+
+	it('leaves the effort rating and the tick behind', () => {
+		// The set the athlete is about to do has not been done or felt yet. Carrying
+		// the rating over would put #89's prefill straight back — one rung further
+		// from the prescription and no better sourced.
+		const next = nextSet(logged({ rpe: 8, done: true }));
+		expect(next.rpe).toBeNull();
+		expect(next.done).toBe(false);
 	});
 });
