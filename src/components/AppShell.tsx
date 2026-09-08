@@ -34,6 +34,7 @@ import type { ReactNode } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
+import { PrototypeMenu, PrototypeMenuSwitcher } from './PrototypeMenu';
 
 const TABS = [
 	{ to: '/', label: m.nav_today, Icon: House },
@@ -118,20 +119,15 @@ export function AppShell({
 				<span className="eyebrow">Send Lab</span>
 				<div className="flex items-center gap-2">
 					<LocaleSwitch locale={locale} onChange={onLocaleChange} />
-					{/* Settings is reached from the strip, not from the tabs (#62): the
-					    tabs are the three places the athlete goes on a training day, and
-					    this is the one place they go to change how the app behaves. It
-					    sits with the locale switch because the two are the same kind of
-					    thing — about the app, not about a screen. Explicit `{ locale }` on
-					    the label for the reason the tab labels give. */}
-					<Link
-						to="/settings"
-						aria-label={m.nav_settings({}, { locale })}
-						className="flex size-9 items-center justify-center rounded-md border border-line text-ink-faint transition-colors hover:text-ink"
-						activeProps={{ className: 'bg-panel-3 text-chalk' }}
-					>
-						<Settings size={16} strokeWidth={1.8} />
-					</Link>
+					{/* PROTOTYPE (throwaway, `proto/menu`). The Settings gear is replaced
+					    by the menu that holds it, plus `week`, `program` and `studies` —
+					    the destinations that are not training-day ones. The gear became a
+					    one-off because there was nowhere for it to live, and `week`'s chip
+					    in Today's header is the same mistake a second time; the missing
+					    menu is what produced both. The tab bar is untouched: #52's three
+					    destinations are a claim about a training day, which this does not
+					    contradict. See `PrototypeMenu.tsx`. */}
+					<PrototypeMenu locale={locale} />
 				</div>
 			</header>
 
@@ -146,6 +142,9 @@ export function AppShell({
 			>
 				{children}
 			</main>
+
+			{/* PROTOTYPE (throwaway). Cycles `?menu=`; also ← / →. */}
+			<PrototypeMenuSwitcher />
 
 			<nav
 				className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 backdrop-blur lg:top-11 lg:right-auto lg:w-[200px] lg:border-t-0 lg:border-r"
