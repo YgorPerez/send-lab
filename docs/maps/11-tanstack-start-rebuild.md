@@ -469,3 +469,51 @@ it loses the sequence that makes it worth keeping.
   [`proto/week-slot-grid`](https://github.com/YgorPerez/send-lab/tree/proto/week-slot-grid) @ `19b42e3`,
   out of `development` and never merged. Gated locally at both viewports in both locales; **the deployed-preview
   run this ticket asks for is still owed**, which is why #63 stays open. `development` @ `d597c92`.
+
+- [Prescribed load on Train once `metrics[]` is dropped](https://github.com/YgorPerez/send-lab/issues/40)
+  — **a probed working load, not a marker.** Nothing replaces the marker as a *prediction*; what replaces
+  it is a number the app asks for at first contact and then probes toward over the first few sessions.
+  The ticket's items 1 and 2 were already answered by [#69](https://github.com/YgorPerez/send-lab/issues/69)
+  **on paper and by nothing in the running app**: `prefillLoadKg` was ported with the marker branch
+  replaced by the athlete's own logged history — heaviest *completed* load, most recent session, same
+  exercise *and variant* — and **never wired in**, so it sits at nine references in
+  `tests/prescription.test.ts` and zero in `src/`. What Train actually uses is `prefilledSet`, which fills
+  `loadKg` from `midOf(prescription.loadKg)` alone, and **exactly one variant in the library carries one**
+  (`pull`, `content/exercises.ts:295`). So the empty weight field the ticket predicted for six of seven
+  weighted exercises is what ships. Item 4's sweep: the surviving reader is `LOAD_FROM_BASELINE`
+  (`programGen.ts`, three entries down from seven, all `0.9`), and it is **dead** — both callers pass `{}`
+  and the intake collects no tested max, `STEP_ANSWERS` being four steps of which none is a test. **The
+  cost nobody had priced** is not the prefill: `autoProgress` resolves to an intensity *percentage* that
+  scales prescription ranges, so with no base load `progression.ts`'s study-backed weekly rates have
+  nothing to multiply and **the progression engine has been silently unable to progress load on six of the
+  seven weighted exercises** — `store/baseline.ts`'s claim that "the variant's own built-in target plus
+  `autoProgress`" fills the gap describes a fallback that does not exist. The decision: **ask in Train at
+  first contact, not the intake** (answerable when asked, and ADR 0019 forbids prefilling the seven
+  required fields the intake alternative would need); **a ladder** of tested max → the load the athlete
+  usually uses → a suggestion showing **both a predicted number and the safe floor**, each labelled for
+  what it is; stored in a **sixteenth collection keyed exercise + variant**, *not* `program.overrides`,
+  because `OverrideKey` is `weekday:exercise` and carries no variant, because the probe would fight
+  [#65](https://github.com/YgorPerez/send-lab/issues/65)'s hand-editing over one field, and because a
+  self-reported usual load written as a session would fabricate history that never happened; the signal is
+  **target RPE against actual RPE, never the same field** — `prefilledSet` fills `rpe` with the prescribed
+  midpoint today, so a silent comparison would read its own prefill, which is
+  [#61](https://github.com/YgorPerez/send-lab/issues/61)'s bug class and the trap `prefillLoadKg`'s
+  completed-sets-only rule already guards; and it **converges on two consecutive on-target sessions**
+  rather than a fixed count (a counter is wrong in both directions), hands the base to `autoProgress`, and
+  **re-opens on sustained drift**. **Item 3's claim ledger moves both ways**: deleting `LOAD_FROM_BASELINE`
+  retires three unsourced `0.9` multipliers, but the athlete chose the predicted number *after* its cost
+  was priced, so the **per-level target index behind it is a new unsourced multiplier that
+  [#29](https://github.com/YgorPerez/send-lab/issues/29) must cite or grade** — three out, one in, and the
+  one coming in is at least anchored on Amca et al. through `strength.ts`'s edge correction and its
+  existing confidence grade. That module comes back from the dead inverted (57 lines, no importers today),
+  which contradicts `CONTEXT.md`'s Strength index entry reading *"Leaving: dropped with Marker"* — the
+  index survives as the estimate behind a suggested load, not as something tracked over time. `pinch`
+  needs a **nonzero** safe floor wherever the floor is set, because there the added load is the entire
+  load. Graduated into six tickets, three of them immediately takeable:
+  [#87](https://github.com/YgorPerez/send-lab/issues/87) (delete the residue),
+  [#88](https://github.com/YgorPerez/send-lab/issues/88) (the collection and first contact, blocked by
+  #87), [#89](https://github.com/YgorPerez/send-lab/issues/89) (target RPE beside actual, unblocked),
+  [#90](https://github.com/YgorPerez/send-lab/issues/90) (the prediction, unblocked),
+  [#91](https://github.com/YgorPerez/send-lab/issues/91) (the probe, blocked by #88 and #89) and
+  [#92](https://github.com/YgorPerez/send-lab/issues/92) (re-open on drift, blocked by #91). No code
+  landed here — the decision is the deliverable.
