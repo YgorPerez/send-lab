@@ -243,6 +243,10 @@ describe("the server's keyOf is the collection's getKey", () => {
 		selfCheckLog: seeded.selfCheckLog[0],
 		bodyweight: seeded.bodyweight[0],
 		savedPrograms: { name: 'Base 8', program: seeded.program },
+		// The one row whose key is not one of its own fields spelled straight out:
+		// `loadKey` joins two of them, so this is the sample that actually exercises
+		// the cross-check rather than confirming an identity.
+		workingLoads: { exercise: PULL, variant: 2, addedKg: 32, source: 'usual', at: NOW },
 	};
 
 	// Without this the table below could silently stop covering a collection, and

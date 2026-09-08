@@ -227,6 +227,56 @@ export interface Override {
 	rpe?: number;
 }
 
+/**
+ * Where a working load's number came from — the rung of the ladder the athlete
+ * answered on.
+ *
+ * Stored with the number because **a measurement and a recollection are not the
+ * same evidence** ([#29](https://github.com/YgorPerez/send-lab/issues/29) grades
+ * them differently), and because the load search reads it: a number the athlete
+ * measured deserves less moving than one the app suggested.
+ *
+ * Closed and ordered by how much it is worth. Every one of them is a **working
+ * load** — what the exercise is trained at — and they differ only in how the
+ * number was arrived at. `tested` is one the athlete has actually measured at
+ * this variant; `usual` is a recollection of what they normally load, which is
+ * honest and is not history — writing it as a session would fabricate training
+ * that never happened (ADR 0020); `predicted` is `strength.ts`'s estimate, which
+ * carries its own confidence; `floor` is the conservative starting point the
+ * load search exists to move.
+ *
+ * **None of them is a tested max**, and the glossary keeps those apart: a max is
+ * what an exercise can be tested at, a working load is what it is trained at, and
+ * the fraction between them is per-exercise and unsourced (#87 deleted the last
+ * table of them). So the first rung asks for the load, not the max.
+ */
+export const WORKING_LOAD_SOURCES = ['tested', 'usual', 'predicted', 'floor'] as const;
+export type WorkingLoadSource = (typeof WORKING_LOAD_SOURCES)[number];
+
+/**
+ * The load an exercise is actually trained at, held per exercise **and variant**.
+ *
+ * `CONTEXT.md`'s **working load**, and explicitly **not an `Override`**
+ * (ADR 0020): an override is addressed by the weekday it applies to and a
+ * working load is not addressed by a weekday at all, and the Program page edits
+ * the one while the load search rewrites the other.
+ *
+ * It is what `progression.ts`'s weekly rates scale — an exercise without one
+ * does not progress, because a percentage of nothing is nothing.
+ */
+export interface WorkingLoad {
+	exercise: ExerciseId;
+	/** Which variant it is the load for, as an index into `variants`. 30kg on
+	 *  weighted pull-ups says nothing about a one-arm ladder. */
+	variant: number;
+	/** Added load in kg. Zero is a real answer on an edge — bodyweight-only on a
+	 *  20mm hang is a genuine prescription — and never one on a pinch block. */
+	addedKg: number;
+	source: WorkingLoadSource;
+	/** Epoch ms when the athlete answered. There is no stored label (ADR-0003). */
+	at: number;
+}
+
 /** A stretch of consecutive weeks inside a block, carrying its own intensity and
  *  volume multipliers. A deload is a phase, not a separate concept. */
 export interface Phase {

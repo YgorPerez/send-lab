@@ -20,15 +20,17 @@ import {
 	formatRange,
 	formatSecondsRange,
 	gripLabel,
+	workingLoadSourceLabel,
 } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
 import type { PrescribedTask } from '$lib/screens/train';
-import type { LoggedSet } from '$lib/types';
+import type { LoggedSet, WorkingLoadSource } from '$lib/types';
 import { cn } from '$lib/utils';
 import { SetEditor } from './SetRows';
 import { Picker } from './ui/Picker';
 import { Eyebrow, Prose } from './ui/primitives';
 import { button, chip } from './ui/variants';
+import { WorkingLoadAsk } from './WorkingLoadAsk';
 
 /**
  * The prescription, as a wrapping row of label/value pairs.
@@ -104,6 +106,7 @@ export function TaskCard({
 	onUseTimer,
 	onChangeSet,
 	onAddSet,
+	onAnswerLoad,
 }: {
 	task: PrescribedTask;
 	/** The timer is currently pointed at this task. */
@@ -112,6 +115,9 @@ export function TaskCard({
 	onUseTimer: () => void;
 	onChangeSet: (index: number, next: LoggedSet) => void;
 	onAddSet: () => void;
+	/** What to do when the athlete answers the working-load question. Only ever
+	 *  called for a task carrying an `ask`. */
+	onAnswerLoad: (addedKg: number, source: WorkingLoadSource) => void;
 }) {
 	// Two-axis exercises (tool × speed) get two pickers; everything else gets one
 	// list. Mirrors the SvelteKit picker, which is the behaviour reference.
@@ -196,7 +202,35 @@ export function TaskCard({
 			<div className="border-t border-line-soft px-3 py-2">
 				<Eyebrow className="mb-1">{m.train_target()}</Eyebrow>
 				<Prescription prescription={task.prescription} />
+				{/* Where the load in that row came from. The number is already in the
+				    prescription — `effectiveVariant` reads the working load as the base
+				    the week's progression scales — and a range cannot say whether it
+				    was measured or guessed. #29 grades those differently, so the card
+				    says which. */}
+				{task.workingLoad ? (
+					<div className="mt-1.5">
+						<span className={chip({ tone: 'ghost' })}>
+							{m.wl_title()} · {workingLoadSourceLabel(task.workingLoad.source)}
+						</span>
+					</div>
+				) : null}
 			</div>
+
+			{/* First contact with a weighted exercise, and only then: `ask` is
+			    non-null exactly when the athlete has never said what to load this
+			    variant with (#88). Above the sets, because it is what the first set's
+			    load column is waiting on — and skippable, because ADR 0019's rule
+			    that a question may not answer itself cuts both ways. */}
+			{task.ask ? (
+				<div className="border-t border-line-soft px-3 py-2">
+					<WorkingLoadAsk
+						exercise={task.exercise}
+						prescribesLoad={task.prescription.loadKg != null}
+						suggestion={task.ask}
+						onAnswer={onAnswerLoad}
+					/>
+				</div>
+			) : null}
 
 			<div className="flex flex-col gap-1.5 border-t border-line-soft px-3 py-2">
 				{task.sets.map((s, i) => (

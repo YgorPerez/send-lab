@@ -96,7 +96,7 @@ export const appStateTable = sqliteTable('app_state', {
 /**
  * The training record, one row per row (#57).
  *
- * ADR 0007 split the account document into fifteen keyed collections because the
+ * ADR 0007 split the account document into sixteen keyed collections because the
  * granularity the athlete's offline writes have to merge at is the row. This is
  * that split at the storage layer: without it, last-write-wins-per-row is only
  * true inside one client, and two devices ticking two different tasks still

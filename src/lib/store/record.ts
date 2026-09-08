@@ -2,7 +2,7 @@
 //
 // **Training record** is a `CONTEXT.md` term: everything one athlete's account
 // holds. An account is the identity that owns it; this is the thing owned, which
-// is why the store below is a `RecordStore` and not an account one. The collections below it are fifteen keyed row sets
+// is why the store below is a `RecordStore` and not an account one. The collections below it are sixteen keyed row sets
 // (ADR 0007); every screen and every domain module above it wants maps and
 // arrays. This module is the one place that turns one into the other, so nothing
 // upstream has to know that `taskDone` is rows rather than an object.
@@ -29,6 +29,8 @@ import {
 	type AthleteId,
 	asWeekId,
 	type ExerciseId,
+	type LoadKey,
+	loadKey,
 	parseAthleteId,
 	type SlotKey,
 	type TaskKey,
@@ -42,6 +44,7 @@ import type {
 	SavedProgram,
 	SelfCheck,
 	Session,
+	WorkingLoad,
 } from '$lib/types';
 import {
 	type BaselineRow,
@@ -150,6 +153,7 @@ export function readTrainingRecord(store: RecordStore): TrainingRecord {
 		selfCheckLog: store.selfCheckLog.toArray,
 		bodyweight: store.bodyweight.toArray,
 		savedPrograms: store.savedPrograms.toArray,
+		workingLoads: store.workingLoads.toArray,
 	});
 }
 
@@ -176,6 +180,7 @@ interface Rows {
 	selfCheckLog: readonly SelfCheck[];
 	bodyweight: readonly BodyweightReading[];
 	savedPrograms: readonly SavedProgram[];
+	workingLoads: readonly WorkingLoad[];
 }
 
 function assemble(rows: Rows): TrainingRecord {
@@ -221,6 +226,15 @@ function assemble(rows: Rows): TrainingRecord {
 		selfCheckLog: [...rows.selfCheckLog].sort((a, b) => b.at - a.at),
 		bodyweight: [...rows.bodyweight].sort((a, b) => a.at - b.at),
 		savedPrograms: rows.savedPrograms,
+		// The whole row, not just the kilograms: which rung of the ladder the
+		// number came from is read beside it (#29 grades a test and a guess
+		// differently), and a map of bare numbers would drop it one layer above
+		// the collection that carefully stores it.
+		workingLoads: byKey<WorkingLoad, LoadKey, WorkingLoad>(
+			rows.workingLoads,
+			(r) => loadKey(r.exercise, r.variant),
+			(r) => r,
+		),
 	};
 }
 
@@ -236,7 +250,7 @@ function assemble(rows: Rows): TrainingRecord {
  *
  * The session is a network call, and offline it simply fails — so without this,
  * a cold start with no network reads the signed-out store, shows the athlete
- * fifteen empty collections, and files whatever they log next somewhere that
+ * sixteen empty collections, and files whatever they log next somewhere that
  * never syncs. Remembering the id is what makes an offline launch open the right
  * record. It is cleared when the session resolves to *absent*, which is a real
  * sign-out, and never when it merely fails to resolve.
@@ -301,7 +315,7 @@ export function setActiveAccount(accountId: string | null): void {
  *
  * Built on first use rather than at module scope: on the server there is no
  * `localStorage` and the collections fall back to an in-memory store, and there
- * is nothing to gain from constructing fifteen of them while rendering a shell
+ * is nothing to gain from constructing sixteen of them while rendering a shell
  * that reads none of them (ADR 0006 — the shell is the only thing prerendered,
  * and it must stay account-independent).
  *
@@ -361,7 +375,7 @@ export function resetRecordStore(): void {
 export function recordSync(): RecordSync | null {
 	// Signed out there is no sync by construction, and since #83 this is read from
 	// the top strip on every screen — including `/login`, where building the
-	// signed-out account's fifteen collections to be told `null` is fifteen
+	// signed-out account's sixteen collections to be told `null` is sixteen
 	// collections nobody asked for.
 	if (active === null) return null;
 	recordStore();
@@ -450,7 +464,7 @@ const noSendableWork = () => 0;
  * to build one.
  *
  * The distinction from `recordSync()` is which phase may call it. `recordSync()`
- * builds on a miss — fifteen collections and a `hydrate` — and both of those are
+ * builds on a miss — sixteen collections and a `hydrate` — and both of those are
  * side effects, which `useSyncExternalStore` forbids in a `getSnapshot`: the
  * snapshot is read during render, more than once, and by React's own tearing
  * check. It got away with it while `useRefusedWork` was read by Settings alone,
@@ -544,7 +558,7 @@ export function useSendableWork(): number {
 /**
  * The training record, live.
  *
- * Fifteen subscriptions rather than one: each collection notifies on its own, so
+ * Sixteen subscriptions rather than one: each collection notifies on its own, so
  * ticking a task re-renders without the sessions, the readiness log or the
  * bodyweight series being re-read. That granularity is the thing ADR 0007 bought.
  *
@@ -553,7 +567,7 @@ export function useSendableWork(): number {
  * is whether the rows have an account to belong to.
  */
 export function useTrainingRecord(): TrainingRecord {
-	// Re-read when the account changes: signing in swaps all fifteen collections
+	// Re-read when the account changes: signing in swaps all sixteen collections
 	// for a different athlete's, and every `useLiveQuery` below has to re-subscribe
 	// rather than keep reporting the store it first saw.
 	const account = useActiveAccount();
@@ -573,6 +587,7 @@ export function useTrainingRecord(): TrainingRecord {
 	const selfCheckLog = useLiveQuery(() => s.selfCheckLog, [account]).data;
 	const bodyweight = useLiveQuery(() => s.bodyweight, [account]).data;
 	const savedPrograms = useLiveQuery(() => s.savedPrograms, [account]).data;
+	const workingLoads = useLiveQuery(() => s.workingLoads, [account]).data;
 
 	return useMemo(
 		() =>
@@ -592,6 +607,7 @@ export function useTrainingRecord(): TrainingRecord {
 				selfCheckLog: selfCheckLog ?? [],
 				bodyweight: bodyweight ?? [],
 				savedPrograms: savedPrograms ?? [],
+				workingLoads: workingLoads ?? [],
 			}),
 		[
 			currentWeek,
@@ -609,6 +625,7 @@ export function useTrainingRecord(): TrainingRecord {
 			selfCheckLog,
 			bodyweight,
 			savedPrograms,
+			workingLoads,
 		],
 	);
 }

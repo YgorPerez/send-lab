@@ -342,14 +342,14 @@ function applyRecord(
 	}
 }
 
-/** `RecordStore` is a fixed set of fifteen; anything else is a collection this
+/** `RecordStore` is a fixed set of sixteen; anything else is a collection this
  *  build does not know about, and there is nowhere to put it. */
 function sinkFor(store: RecordStore, name: string): RowSink | undefined {
 	return (store as unknown as Record<string, RowSink | undefined>)[name];
 }
 
 /** The slice of a collection a hydrate uses. Named rather than reached for
- *  through `RecordStore`'s fifteen distinct generic instantiations, which have no
+ *  through `RecordStore`'s sixteen distinct generic instantiations, which have no
  *  common supertype to write down. */
 interface RowSink {
 	getKeyFromItem(row: unknown): string | number;
@@ -358,7 +358,7 @@ interface RowSink {
 		key: string | number,
 		config: { metadata: typeof HYDRATED },
 		// The draft's type differs per collection, and this is the one place where
-		// all fifteen are handled uniformly.
+		// all sixteen are handled uniformly.
 		// biome-ignore lint/suspicious/noExplicitAny: see above
 		callback: (draft: any) => void,
 	): unknown;

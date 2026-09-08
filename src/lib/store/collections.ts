@@ -66,7 +66,14 @@
 import { createCollection, localStorageCollectionOptions, type StorageApi } from '@tanstack/db';
 import type { DayTypeId } from '$lib/content/types';
 import { isEphemeralKey } from '$lib/ephemeral';
-import type { AthleteId, ExerciseId, SlotKey, TaskKey, WeekId } from '$lib/ids';
+import {
+	type AthleteId,
+	type ExerciseId,
+	loadKey,
+	type SlotKey,
+	type TaskKey,
+	type WeekId,
+} from '$lib/ids';
 import type { UnsyncedWrite } from '$lib/recordWire';
 import type {
 	Baseline,
@@ -77,6 +84,7 @@ import type {
 	SavedProgram,
 	SelfCheck,
 	Session,
+	WorkingLoad,
 } from '$lib/types';
 
 /** One key per collection: the document is split in storage, not only in memory.
@@ -181,7 +189,7 @@ export type PushWrites = (writes: readonly UnsyncedWrite[]) => void;
 
 /** The shape of a mutation, as much of it as a handler here reads. Written out
  *  rather than imported: the library's own type is generic over the row and all
- *  fifteen collections share this one handler. */
+ *  sixteen collections share this one handler. */
 interface Mutated {
 	readonly key: unknown;
 	readonly modified?: unknown;
@@ -336,6 +344,7 @@ export interface RecordStore {
 	readonly selfCheckLog: ReturnType<typeof selfCheckLogCollection>;
 	readonly bodyweight: ReturnType<typeof bodyweightCollection>;
 	readonly savedPrograms: ReturnType<typeof savedProgramsCollection>;
+	readonly workingLoads: ReturnType<typeof workingLoadsCollection>;
 }
 
 /**
@@ -512,6 +521,26 @@ const bodyweightCollection = (o: CollectionOptions) =>
 	);
 
 /**
+ * Keyed by exercise **and** variant — `maxhang@0`, minted by `ids.ts` rather
+ * than concatenated here.
+ *
+ * The sixteenth collection, and the one that had to argue for itself: by the
+ * glossary's own words a working load is a stored deviation from a built-in
+ * target and should therefore be an `Override`, and ADR 0020 is why it is not.
+ * The short version is that `OverrideKey` is `weekday:exercise` and cannot spell
+ * a variant, that the load search and the Program page would then be two writers
+ * on one field, and that a self-reported usual load written as history would be
+ * training that never happened.
+ */
+const workingLoadsCollection = (o: CollectionOptions) =>
+	createCollection(
+		localStorageCollectionOptions<WorkingLoad, string>({
+			...o,
+			getKey: (row) => loadKey(row.exercise, row.variant),
+		}),
+	);
+
+/**
  * Keyed by the athlete's own name for the program.
  *
  * **This is a display string used as an identity, and ADR 0003 argues against
@@ -538,7 +567,7 @@ const savedProgramsCollection = (o: CollectionOptions) =>
  * server render. It does **not** cover a `window` whose `localStorage` is present
  * but not functional — which is exactly what jsdom under Vitest hands over, and
  * what Safari hands over in private browsing with storage denied. Left
- * unguarded, every one of the fifteen collections logs a stack trace on
+ * unguarded, every one of the sixteen collections logs a stack trace on
  * construction and then works anyway, which is the shape of failure that gets
  * ignored rather than fixed.
  *
@@ -607,6 +636,7 @@ export function createRecordStore(
 		selfCheckLog: selfCheckLogCollection(options('selfCheckLog')),
 		bodyweight: bodyweightCollection(options('bodyweight')),
 		savedPrograms: savedProgramsCollection(options('savedPrograms')),
+		workingLoads: workingLoadsCollection(options('workingLoads')),
 	};
 }
 

@@ -10,13 +10,13 @@
 // ADR 0007 made the unit of the write a **row**, so the guard changes with it:
 //
 //   * **A bad row is rejected, not coerced.** Rejecting one row keeps the other
-//     fourteen collections and every other row in this one, so the reason a
+//     fifteen collections and every other row in this one, so the reason a
 //     document sanitizer had to guess is gone. Coercion at this granularity would
 //     be worse than useless — it would silently store a *different* row than the
 //     athlete's device sent, under the key the athlete's device chose, and the
 //     next hydrate would read the lie back as fact.
 //   * **There is no default document.** Absence is representable per key now: a
-//     brand-new account is fifteen empty collections, and the client already has
+//     brand-new account is sixteen empty collections, and the client already has
 //     its own answer for each one (`store/record.ts`'s `NO_PROGRAM`, `NO_PREFS`,
 //     `FIRST_WEEK`). A server-side skeleton would be a second copy of those
 //     defaults, one HTTP hop away from the first.
@@ -55,6 +55,7 @@ import { SELF_CHECK_BANDS } from '$lib/content/logic';
 import { BODY_AREAS, DAY_TYPE_IDS, GRIPS, REHAB_STAGES, VERDICT_IDS } from '$lib/content/types';
 import {
 	type ExerciseId,
+	loadKey,
 	type OverrideKey,
 	parseExerciseId,
 	parseOverrideKey,
@@ -67,7 +68,7 @@ import {
 	type WeekdayKey,
 	type WeekId,
 } from '$lib/ids';
-import { EQUIPMENT, FOCUSES, GOALS, LEVELS } from '$lib/types';
+import { EQUIPMENT, FOCUSES, GOALS, LEVELS, WORKING_LOAD_SOURCES } from '$lib/types';
 
 /** The fixed key every singleton collection files its one row under. Mirrors
  *  `SINGLETON_KEY` in `store/collections.ts`; declared again rather than imported
@@ -154,6 +155,22 @@ const loggedReadinessCheck = z.object({
 
 const bodyweightReading = z.object({ at: epochMs, kg: z.number() });
 
+/** A working load: the number, and which rung of the ladder it came from.
+ *
+ *  `addedKg` carries no range guard, and that is this module's rule rather than
+ *  an omission — it checks **shape, never plausibility**. Zero is a real answer
+ *  on an edge; what must never be zero is a *suggested* `pinch` load, and that
+ *  is a suggestion rule (`lib/workingLoad.ts`). An athlete who really does pinch
+ *  with nothing added is telling the truth, and a guard here would refuse the
+ *  row rather than argue with them. */
+const workingLoad = z.object({
+	exercise: id.exercise,
+	variant: z.number().int().min(0),
+	addedKg: z.number(),
+	source: z.enum(WORKING_LOAD_SOURCES),
+	at: epochMs,
+});
+
 const override = z.object({
 	variant: z.number().int().min(0).optional(),
 	sets: z.number().optional(),
@@ -220,7 +237,7 @@ const rehab = z.object({
  *
  *  `keyOf` is the server's copy of the collection's `getKey`, and
  *  `tests/recordRows.test.ts` holds them together two ways: the registry names
- *  exactly the fifteen collections `createRecordStore()` builds, and each one's
+ *  exactly the sixteen collections `createRecordStore()` builds, and each one's
  *  two derivations are run over the same row and required to agree. The second
  *  assertion arrived late: for two tickets only the *names* were checked, so a
  *  `getKey` could move without its twin and nothing failed. */
@@ -239,7 +256,7 @@ function singleton<Row extends { id: typeof ONLY }>(row: z.ZodType<Row>): Collec
 	return spec(row, () => ONLY);
 }
 
-// The registry is heterogeneous by construction — fifteen row types under one
+// The registry is heterogeneous by construction — sixteen row types under one
 // map — and the variance is contained here. Everything public below takes
 // `unknown` in and hands `unknown` out, so no caller ever sees an `any`.
 // biome-ignore lint/suspicious/noExplicitAny: see above
@@ -287,6 +304,11 @@ const COLLECTIONS: Readonly<Record<string, CollectionSpec<any>>> = {
 	// the full note: `SavedProgram` has no id to key on, and minting one is the
 	// Program page ticket's to do.
 	savedPrograms: spec(z.object({ name: z.string().min(1), program }), (r) => r.name),
+	// The sixteenth (#88). Keyed exercise **and** variant, through `ids.ts`'s own
+	// minting function rather than an interpolation spelled here — the client
+	// picks the key and this re-derives it, so a second spelling would reject
+	// every working load the athlete ever answers (ADR 0020).
+	workingLoads: spec(workingLoad, (r) => loadKey(r.exercise, r.variant)),
 };
 
 /** Every collection name the write path accepts, in the order a hydrate returns

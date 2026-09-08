@@ -101,6 +101,22 @@ export type ProtocolKey = Identity<'ProtocolKey'>;
  */
 export type OverrideKey = Identity<'OverrideKey'>;
 
+/**
+ * The key of one working load: this exercise, at this variant. Shaped
+ * `maxhang@0`.
+ *
+ * `@` rather than a second `:`, matching `ProtocolKey`, so it cannot be parsed
+ * as an override key whose weekday happens to be an exercise id.
+ *
+ * **Deliberately not an `OverrideKey`.** A working load is a property of the
+ * exercise *and the variant*, and carries no weekday at all — the same exercise
+ * scheduled Wednesday and Saturday is one working load and two override keys.
+ * ADR 0020 is the full argument, and it is why this is a fourth key shape rather
+ * than a widened `OverrideKey`: that one is a persisted, wire-visible identity,
+ * so widening it rewrites every stored program.
+ */
+export type LoadKey = Identity<'LoadKey'>;
+
 /** The seven weekday keys, in ISO week order. */
 export const WEEKDAY_KEYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
@@ -300,6 +316,28 @@ export function parseOverrideKey(value: unknown): OverrideParts | null {
 	const weekday = parseWeekdayKey(value.slice(0, separator));
 	const exercise = parseExerciseId(value.slice(separator + 1));
 	return weekday && exercise ? { weekday, exercise } : null;
+}
+
+// ------------------------------------------------------------ working load
+
+/**
+ * The key of one working load: this exercise, at this variant.
+ *
+ * Built rather than concatenated at the call site, for the reason every other
+ * key here is — and with more riding on it than most, because the server
+ * re-derives the same shape in `server/record/rows.ts` and compares the two. A
+ * second spelling costs the athlete a *rejected write* rather than a lookup that
+ * quietly misses.
+ *
+ * **No `parseLoadKey`, deliberately**, and `ProtocolKey` is the precedent: a
+ * parser belongs to a brand that arrives from untrusted input, and nothing hands
+ * this one back. The stored row carries `exercise` and `variant` as fields and
+ * the server re-derives the key from those, so there is no string to read a load
+ * key out of. Adding one would be tested code with no caller — which is exactly
+ * what #87 deleted.
+ */
+export function loadKey(exercise: ExerciseId, variantIndex: number): LoadKey {
+	return `${exercise}@${variantIndex}` as LoadKey;
 }
 
 // ------------------------------------------------------------------ athlete

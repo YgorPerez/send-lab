@@ -90,6 +90,27 @@ the seven weighted exercises the study-backed rates have been multiplying nothin
 since the rebuild began. `store/baseline.ts`'s `programFor` says so at the point
 where a reader would otherwise assume a fallback covers it.
 
+**A tested max is not a working load, so the ladder never asks for one.** The
+tempting reading of tier 1 — and the one the ticket's own wording invites — is
+"what is your max on this". It is wrong for the same reason the middle tier is
+not a session: a max is what an exercise can be *tested* at and a working load is
+what it is *trained* at, and on `density` (twenty-to-forty second hangs, to
+failure) those differ by a lot in the direction that hurts fingers.
+
+Turning one into the other needs a **per-exercise fraction**, which is exactly
+the `0.9 / 0.6 / 0.5 / 0.4` table [#87](https://github.com/YgorPerez/send-lab/issues/87)
+deleted, and #40 authorised precisely one new unsourced multiplier — spent on the
+per-level target index. So every rung asks the same question, *what do you load
+this with*, and `WorkingLoadSource.tested` records only that the number was
+**measured** rather than recalled. That is the difference
+[#29](https://github.com/YgorPerez/send-lab/issues/29) grades; it is not a
+difference in what kind of number was stored.
+
+This is recorded here rather than in its own ADR because it is the same trap one
+level down: someone restoring a max-to-load conversion would be restoring the
+table #87 deleted, and would find nothing saying so. `CONTEXT.md`'s **Marker**
+entry carries the rule where it will actually be read.
+
 **`pinch` needs a nonzero floor.** Tier 3 is bodyweight-only for the hangs, which
 is a genuine prescription on a 20mm edge. On a pinch block the added load *is* the
 entire load, and a pinch block with nothing on it is not a set.

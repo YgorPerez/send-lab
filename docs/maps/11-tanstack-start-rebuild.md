@@ -563,3 +563,105 @@ it loses the sequence that makes it worth keeping.
   `programFor`'s doc while being defined nowhere — and **Strength index** moved from `_Leaving_: dropped
   with Marker` to `_Changing_`, a contradiction the entry above had named and left unfixed. `pnpm verify`
   green: 409 tests, 32 files. #88 unblocked. `development` @ `6c9c7f1`, glossary and ADR at `95bfebb`.
+
+- [The working load: first contact asks, and it sticks](https://github.com/YgorPerez/send-lab/issues/88)
+  · [The predicted load beside the safe floor](https://github.com/YgorPerez/send-lab/issues/90) —
+  **the tracer bullet, and the number beside it.** Built together because whichever landed second owed
+  the side-by-side, and doing them apart would have meant building that layout twice. A **sixteenth
+  collection**, `workingLoads`, keyed `exercise@variant` through a fourth branded key in `ids.ts` — row
+  spec, outbox path and `/api/state` key, all routine after #56/#57/#58 and none of them free. The
+  database needed no DDL: `record_row` is generic over `(account, collection, rowKey)`, so a collection
+  is a registry entry rather than a migration. `parseLoadKey` refuses a `:`, which is the same
+  structural guard `parseSlotKey` carries — a `ProtocolKey` is `w1-Thu:pull@0` and would otherwise split
+  cleanly here and read back as an exercise called `w1-Thu:pull`.
+
+  **Three things came out of building it that the ticket had not priced.** First, `effectiveVariant`
+  needed the **variant index as an argument**, not re-derived from the state: Train lets the athlete
+  swap a variant mid-session *without writing the swap*, so a resolver that looked the index up would
+  hand that task the load of the variant they had just swapped away from — 30kg of weighted pull-ups on
+  a one-arm ladder, which is the exact failure ADR 0020's first reason is about, reappearing one layer
+  down. Twelve test call sites and one screen moved with it. Second, **progression does not scale a
+  working load yet, and that is the glossary's own rule rather than a shortcut**: `CONTEXT.md` says a
+  working load is *settling* until two consecutive on-target sessions agree, "after which progression
+  scales it", and settling is [#91](https://github.com/YgorPerez/send-lab/issues/91)'s. Without that
+  reading an athlete who answers 40kg in week 5 is prescribed 40 compounded by four weeks they trained
+  the exercise with no load at all. `pull`'s built-in range still progresses, so the skip is about the
+  athlete's answer and not about the scaling being switched off. Third, the working load **does** carry
+  onto an off-script task: it is keyed exercise and variant and carries no slot, so `libraryTask` reads
+  it, and being asked again would be the app forgetting an answer it holds.
+
+  **#90's claim went in graded rather than cited, deliberately.** The per-level target index is our own
+  judgment — 120 / 135 / 150 as a 20mm-equivalent % of bodyweight, plus 8 / 12 / 16 kg on an 80mm block
+  for `pinch`, one claim over five constants — and #29's rule is that a number may be graded *"no
+  evidence — our judgment"* and may never arrive with **nothing** attached. Finding a paper that is
+  nearly about them would have been the fabrication that map exists to prevent, so `TARGET_INDEX_EVIDENCE`
+  is `judgment`, it travels on every `LoadPrediction`, and the chip on screen says it. The Amca-anchored
+  half is graded separately and **not** collapsed into it: reporting one confidence for both would have
+  swallowed whichever grade was weaker, and the ticket's whole point is that a prediction off a 6mm edge
+  is not the same claim as one off 20mm. The screen shows two chips because there are two claims.
+
+  **The estimate's first real answer was a surprise worth keeping.** `maxhang` variant 0 prescribes a
+  **10mm** edge, and at `edgeFactor`'s existing calibration bodyweight alone already converts to a
+  20mm-equivalent index above every target — so the prediction goes *negative*, and clamps to the floor.
+  Both numbers are still shown and still labelled; they simply agree, which is the honest answer for a
+  10mm max hang and is pinned by a test rather than tuned away. `strength.ts` returns the raw negative
+  and `workingLoad.ts` does the clamping, so the estimate stays honest and the suggestion stays usable.
+
+  ADR 0019 binds the intake and this is not the intake, but the question is shaped by it anyway: the
+  number field opens empty, neither typed rung comes up pressed, and the two suggestions are **buttons
+  rather than prefills** — a suggestion dropped into the input comes back as though the athlete typed
+  it, and #29 grades those differently. `pinch`'s floor is 5kg and never zero (ADR 0020's consequence),
+  and `repeaters` is **out** of the seven weighted exercises — see the domain pass below for why that is
+  a list and not a rule.
+
+  **Four things the review caught, all of them the same mistake in different clothes — a sentence that
+  was true of six exercises out of seven, or of the model but not the screen.** *The answer has to reach
+  the set the athlete is standing in front of*: `withWorkingLoad` rewrote the prescription and left
+  `task.sets` alone, so answering "+20kg" at the hangboard filled nothing until the next session — first
+  contact as a form that files paperwork. And the obvious fix was wrong too: "leave any row that already
+  has a number" leaves `pull`'s row showing the library's 38kg one second after the athlete said 20,
+  because `prefilledSet` opens *every* row on the prescription's midpoint. The test is whether the number
+  is still that midpoint. *The copy was untrue on `pull`* for the same reason — "leave it and the load
+  field stays empty" is false where a variant carries a built-in `loadKg`, so the hint is conditional
+  now. *A clamped estimate must not be tappable*: on a 10mm edge the prediction lands on the floor, and
+  offering it as its own rung would file the **floor** under `source: 'predicted'` — provenance being
+  the entire point of the collection — so `LoadSuggestion.atFloor` states the estimate and withholds the
+  button. *And an account with no bodyweight* now reads why there is no estimate rather than reading one
+  rung and inferring nothing. Two standards findings landed with them: the tier list is
+  `option({ width: 'full' })` and not `Segmented`, which the vocabulary reserves for short fixed tokens
+  ("What I usually use" is prose, and "O que costumo usar" is longer); and `parseLoadKey` was **deleted**
+  before it shipped — no production caller, and `ProtocolKey` is the standing precedent for a brand with
+  no parser. Shipping it would have been #87's own finding committed fresh.
+
+  Three things go beyond the letter of the tickets and are kept deliberately: the **provenance is
+  displayed**, not merely recorded, because a load the athlete cannot tell is a guess is the thing #29
+  exists to stop; **an off-script added exercise reads the working load**, since it is keyed exercise and
+  variant and carries no slot, and asking again would be the app forgetting an answer it holds; and the
+  mid-session variant swap moved out of `routes/train.tsx` into `atVariant`, which is what the
+  `variantIndex` change above made necessary. `pnpm verify` green: 443 tests, 33 files; `pnpm build`,
+  `check:contrast`, `check:motion` and `check:overflow` green against the local build. **The
+  deployed-preview run both tickets ask for (`--url=…`) is still owed** — the local build renders an
+  empty account, so the floor rung is measured and the prediction's two chips are not, which is #63's
+  gap in a second place.
+
+  **A domain pass over the model afterwards found two glossary claims the build had quietly falsified,
+  and one product question hiding under a tier name.** *`Weighted exercise` did not define its own
+  members*: the entry said the line was "answered by grade or time alone", and it is not — `density` is
+  twenty-to-forty second hangs and is one of the seven, `repeaters` is 7s-on/3s-off and is not, and
+  `intensityPct` separates them the *wrong* way, being on `repeaters` and not on `maxhang`. Nothing in
+  the data picks the seven out; the membership is provenance, inherited from what
+  `PREFILL_FROM_METRIC` addressed. The entry now says it is an enumerated set, like `BODY_AREAS`, so
+  changing it reads as the product decision it is. *`Strength index` described a mechanism nobody built*
+  — "predict a working load from a number the athlete already knows" — when `predictLoad` reads their
+  **level** and bodyweight, the tested-max conversion being the one path deliberately skipped.
+
+  And the one that mattered: **tier 1 asked for a tested max and stored it, unconverted, as a working
+  load**, which the glossary's own words forbid — a max is what an exercise can be tested at, a working
+  load is what it is trained at, and `CONTEXT.md`'s **Marker** entry even called the tested max "an
+  input". Nothing consumed it as one. Converting needs a per-exercise fraction, i.e. the table #87
+  deleted and #40 declined to re-authorise, so the resolution is that **every rung asks the same
+  question** — *what do you load this with* — and `tested` records that the number was **measured**
+  rather than recalled. The rung is now "A load I measured", not "Tested max". Recorded as a consequence
+  on **ADR 0020** rather than as a new ADR: it is the same trap one level down, and someone restoring a
+  max-to-load conversion would otherwise find nothing saying why it is not there. #91 and #92 are what
+  remain of #40. `development` @ `TBD`.

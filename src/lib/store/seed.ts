@@ -193,6 +193,7 @@ function planOnly(week: WeekId): ResolverState {
 		slotDayType: {},
 		slotExercises: {},
 		taskSwaps: {},
+		workingLoads: {},
 		taskDone: {},
 		sessions: [],
 		baseline: SCENARIO_BASELINE,
