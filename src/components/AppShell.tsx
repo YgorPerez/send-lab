@@ -42,6 +42,7 @@ import * as m from '$lib/paraglide/messages';
 import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
 import { Menu } from './Menu';
+import { UpdatePrompt } from './UpdatePrompt';
 
 /**
  * Locale, switched in place.
@@ -139,6 +140,11 @@ export function AppShell({
 			>
 				{children}
 			</main>
+
+			{/* Nothing until a new version is actually waiting, and nothing at all on
+			    the server — see the file for why the prerendered shell must not carry
+			    it. It sits in the space the tab bar left. */}
+			<UpdatePrompt locale={locale} />
 		</div>
 	);
 }

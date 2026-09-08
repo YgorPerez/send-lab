@@ -572,5 +572,7 @@
 	"wk_state_missed": "Perdido",
 	"wk_state_today": "Hoje",
 	"wk_state_ahead": "Agendado",
-	"wk_state_rest": "Descanso"
+	"wk_state_rest": "Descanso",
+	"app_update_ready": "Uma nova versão está pronta.",
+	"app_update_reload": "Recarregar"
 }

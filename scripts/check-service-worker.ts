@@ -8,7 +8,8 @@
 // the device goes offline — which, for this app, is the feature.
 //
 // It also asserts the shell is in the manifest, because that single entry is
-// what an installed app cold-starts from.
+// what an installed app cold-starts from, and that the worker still listens for
+// the message the update prompt sends it.
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { clientOutputDir } from './output-dir.ts';
@@ -50,4 +51,29 @@ for (const marker of ['"email"', '"userId"', 'sessionToken']) {
 	if (shell.includes(marker)) fail(`shell contains ${marker} — it must be user-independent`);
 }
 
-console.log(`check:sw — ok (${entries} precached entries, ${(bytes / 1024).toFixed(1)} kB worker)`);
+// The update prompt's other half.
+//
+// `components/UpdatePrompt.tsx` posts `{ type: 'SKIP_WAITING' }` to the waiting
+// worker, and the worker takes over only because workbox's generated code
+// listens for that exact type. The string is **not ours to name**: nothing in
+// `src/` defines it, `tests/appUpdate.test.ts` can only assert we send what we
+// think we send, and if a workbox upgrade renamed it every one of those
+// assertions would stay green while the button did nothing at all.
+//
+// The worker is generated with `skipWaiting: false` on purpose (a swap under a
+// live session is #24's and #27's problem), so the listener is the *only* way an
+// update ever reaches the athlete. This is the one place both halves are visible
+// at once.
+if (!source.includes('SKIP_WAITING')) {
+	fail(
+		"the worker does not listen for 'SKIP_WAITING' — the update prompt's button\n" +
+			'  would post a message nothing acts on, and every deploy would stay\n' +
+			'  undeliverable until the athlete closed every tab. See\n' +
+			'  src/components/UpdatePrompt.tsx and src/lib/appUpdate.ts.',
+	);
+}
+
+console.log(
+	`check:sw — ok (${entries} precached entries, ${(bytes / 1024).toFixed(1)} kB worker, ` +
+		'listens for SKIP_WAITING)',
+);

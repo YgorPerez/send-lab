@@ -572,5 +572,7 @@
 	"wk_state_missed": "Missed",
 	"wk_state_today": "Today",
 	"wk_state_ahead": "Scheduled",
-	"wk_state_rest": "Rest"
+	"wk_state_rest": "Rest",
+	"app_update_ready": "A new version is ready.",
+	"app_update_reload": "Reload"
 }
