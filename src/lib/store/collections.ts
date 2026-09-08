@@ -590,6 +590,36 @@ export function storageOverride(): StorageApi | undefined {
 	return broken ? memoryStorage() : undefined;
 }
 
+/**
+ * Where something that persists **beside** the collections has to put itself.
+ *
+ * `storageOverride()` answers a *library* question — "does this device need a
+ * substitute for the default?" — and `undefined` is its most common answer,
+ * meaning "the default is fine". TanStack DB's default is `localStorage`, so for
+ * the collections that `undefined` is durable storage. For anything with no
+ * library under it, the same `undefined` is **memory**, and nothing says so at the
+ * call site.
+ *
+ * #58's unsynced work took that default and ran in memory on every healthy
+ * device: the rows survived inside their collections, so the app looked correct,
+ * and the record that they had not been sent did not outlive the tab — which is
+ * the whole of what #58 was for. That is **#96**, filed off #83's own browser
+ * measurement, and it is what made #84's notice vanish on the next app open.
+ *
+ * #96 offered two ways out and this is the second: the unsynced work resolves its
+ * own storage rather than inheriting the collections' sentinel. `storageOverride`
+ * keeps its meaning, which the collections and the library both depend on, and
+ * the overloading stops here — once, beside the decision it belongs to.
+ */
+export function deviceStorage(): StorageApi | undefined {
+	// A device whose storage is broken gets the same substitute the collections
+	// get, rather than nothing: the two halves must agree about what survives a
+	// reload, which is the reason `storageOverride` is exported at all.
+	const substitute = storageOverride();
+	if (substitute) return substitute;
+	return typeof window === 'undefined' ? undefined : window.localStorage;
+}
+
 /** A `StorageApi` backed by nothing but a `Map`. */
 function memoryStorage(): StorageApi {
 	const cells = new Map<string, string>();

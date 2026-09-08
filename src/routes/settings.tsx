@@ -282,10 +282,13 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 	const [busy, setBusy] = useState(false);
 	const [held, setHeld] = useState(false);
 	// Said whether or not the athlete ever tries to leave: a refusal arrives as a
-	// 200 and has no other symptom, and this is the screen it is surfaced for. Live
-	// rather than read at mount, because most flushes are not this screen's doing —
-	// the debounce fires after any write, including the units and language switches
-	// above, and the reconnect fires on its own.
+	// 200 and has no other symptom. Since #84 this is no longer the *only* place it
+	// is said — the strip carries the notice on every screen, because a surface the
+	// athlete has to go looking for is not a surface — and what this keeps is the
+	// detail: which control the refusal changes, and that sign-out no longer waits
+	// for the work. Live rather than read at mount, because most flushes are not
+	// this screen's doing — the debounce fires after any write, including the units
+	// and language switches above, and the reconnect fires on its own.
 	const refusedWork = useRefusedWork();
 
 	// Sign-out only after the unsynced work has gone (#24, #58) — the half of it

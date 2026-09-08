@@ -13,7 +13,13 @@ are individually small and collectively easy to erode. This records them togethe
 account data, `localStorage` only for ephemeral UI. Offline writes make that
 impossible — you cannot read a plan from a server the phone cannot reach — so the
 client now holds a **complete replica of account data**, in `localStorage`, and
-pending writes in IndexedDB. The rule that replaces it: Turso remains canonical
+pending writes in IndexedDB. (In the event, #58 put the unsynced work in
+`localStorage` too — one key, `sendlab:<account>:unsynced` — so both halves share
+that budget. The departure was never argued on the record, and #96 is what showed
+the queue had in fact been reaching *neither* store: the sentinel that means "use
+the default" for the collections meant "there is no storage" for the work beside
+them, so every real device kept the record of what had not been sent for exactly as
+long as the tab.) The rule that replaces it: Turso remains canonical
 and is the only durable copy; whatever the client holds is a replica the browser
 may evict without warning; and ephemeral UI state stays local-only and never
 syncs. The boundary between the two halves is unchanged — does this belong to the
@@ -67,6 +73,17 @@ drains, and the athlete is told something did not save.
 while all is well; an indicator when offline or when writes are queued; an
 unmissable message when a write has permanently failed. The always-on saved/saving
 status the old app carried is noise on a phone used mid-set.
+
+These turned out to be three **severities** rather than three labels sharing a
+surface, and that is worth writing down because it is not what the sentence above
+says. #83 put the indicator in the top strip — the only surface every screen has —
+and #84 escalated the third out of that same slot at a greater weight rather than
+opening a second one beside it, on the grounds that two notices competing in a
+44px strip on a 360px phone is how both get ignored. So one thing is said at a
+time, and the most serious thing wins. What that costs is stated where it is
+decided (`lib/syncState.ts`, and `docs/component-vocabulary.md` for the surface):
+a device holding refused work stops reporting its connection until the athlete
+happens to write that same row again, which for an appended session is never.
 
 **Every page works offline except sign-in**, which needs the server to verify
 anything at all. Settings splits: preferences work offline because they are account

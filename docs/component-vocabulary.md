@@ -72,7 +72,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 |---|---|
 | `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
-| `SyncStatus` | Whether work is still on this device: `Offline`, `Sending…`, or nothing at all |
+| `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refusal notice |
 | `Timer` | The tick, the wake lock, and the two faces of the clock |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
@@ -541,16 +541,25 @@ Two things differ from #20's sketch, both deliberate:
 
 Settled by [#83](https://github.com/YgorPerez/send-lab/issues/83), which is the
 first time [ADR 0008](adr/0008-offline-writes-are-a-queue-not-a-sync.md)'s visible
-states got a surface. Two of the three are built. The third — the unmissable
-message when a write has been *refused* — is not, and `useRefusedWork` is still
-read only by Settings.
+states got a surface, and completed by
+[#84](https://github.com/YgorPerez/send-lab/issues/84), which built the third of
+them. All three are now here, and they are three **severities** rather than three
+labels — which is why the last one is not a chip. ADR 0008 carries the same
+correction, since its own sentence reads as three labels sharing a surface.
 
-| device | work waiting | the strip says | tone |
-|---|---|---|---|
-| online | none | nothing at all | — |
-| online | some | `Sending…` | neutral |
-| offline | none | `Offline` | warn |
-| offline | some | `Offline · not sent` | warn |
+Measuring the third one on the built app is also what turned up **#96**: the
+unsynced work had been running in memory on every healthy browser, so refused work
+did not survive a reload and an *unmissable* notice vanished on the next app open.
+`collections.ts`'s `deviceStorage()` is the fix and `tests/recordSync.test.ts`
+holds it.
+
+| refused work | device | work waiting | the strip says | weight |
+|---|---|---|---|---|
+| none | online | none | nothing at all | — |
+| none | online | some | `Sending…` | neutral chip |
+| none | offline | none | `Offline` | warn chip |
+| none | offline | some | `Offline · not sent` | warn chip |
+| **some** | either | either | `sync_refused_work`, a whole sentence | filled `--flag`, and the wordmark stands down |
 
 **Offline has two labels, and that is the ticket's first sentence rather than a
 fourth state.** "The athlete can tell whether the training they just recorded has
@@ -558,9 +567,9 @@ left the device" — under a single `Offline`, logging a set in a gym basement
 changed nothing on screen, so the one question the strip exists to answer went
 unanswered in the one place it is asked. Both labels are one indicator at one
 severity, which is what the ADR's three states are about: its third is
-*unmissable*, and a chip is not that. `offline-unsent` needs both a dead
-connection and work that has not gone, and stands down to plain `Offline` the
-moment the work drains.
+*unmissable*, and a chip is not that — see below for what it is instead.
+`offline-unsent` needs both a dead connection and work that has not gone, and
+stands down to plain `Offline` the moment the work drains.
 
 **The strip is the slot, and the reason is the requirement.** The ADR asks the
 athlete to be able to tell from *any* screen that training has not left the
@@ -568,6 +577,59 @@ device, and the top strip is the only surface every screen has. It already carri
 the two things that belong to the app rather than to a page; this is a third of
 that kind, and it is the last one that qualifies — anything else that wants to
 live here is a page's business.
+
+**The third state is escalated out of that slot, not given one beside it.** ADR
+0008's states differ in severity — silent, an indicator, "an unmissable message
+when a write has permanently failed" — so refused work gets *the same slot at a
+different weight*: a filled vermilion bar carrying a real sentence, taking the
+strip's whole left side, with the wordmark standing down for it. Five consequences,
+each of which was the alternative:
+
+- **Not a chip.** A 10px token is not the third severity, and this file said so
+  before the state was built. At 360px a token beside the wordmark has ~138px,
+  which is not a sentence in either locale; without the wordmark the notice has
+  214px, and both locales fit in two lines inside the 44px strip (measured).
+- **Not a second surface.** Two tokens competing in one strip is what the ticket
+  ruled out in its first paragraph, so `resolveSyncState` returns one state and
+  refused work outranks the other two. The price is real and recorded there: while
+  refused work stands, the strip is not also reporting the connection. Exactly one
+  thing ends it and it is not something the athlete can be asked to do —
+  `unsynced.ts`'s `add()` drops a refusal when the *same row* is written again, so
+  for an appended session the notice never stands down. The right trade only
+  because refused work is the app's most serious state and essentially never
+  happens.
+- **The one exception to the rationed accent fill.** `button`'s `primary` is
+  otherwise the only filled vermilion on a screen, and this is the app's second
+  use of it. What is reused is the *measured pair* — `text-bg` on `bg-flag` at
+  6.44:1, where white would be 3.11:1 — and not the recipe: `button` owns a
+  control's shape and the notice is not a control.
+- **Not dismissible, and not a link.** A control in the shell is a control on every
+  screen, and there is nothing at the other end of it the athlete can do about
+  refused work yet. Settings keeps the detail (`set_refused_note`) — what it stops
+  being is the *only* place refused work is said, which was the whole complaint: a
+  gold line on a screen nobody opens mid-set is not a surface.
+- **It does not say what did not send.** Refused work is identified by collection
+  and row key, which mean nothing to the athlete; mapping those to domain nouns
+  ("Thursday's session") is its own ticket. The ADR asks only that the athlete be
+  told something did not send.
+
+**The copy promises nothing, and the name says both words.** It names the server —
+*"The server refused some training. It will never be sent."* — because the one
+thing it must not do is read as a connectivity problem the athlete can fix by
+finding a signal. That is the confusion #82 fixed on the sign-out path, where copy
+promising "sign-out waits until it has been sent" was attached to work that was
+never going to be sent. And the name is `sync_refused_work` / `'refused-work'`,
+never the bare word: `CONTEXT.md` requires both words of that term and
+`screens/login.ts` already has a bare `'refused'` for a refused *sign-in*, which is
+a different event — ADR 0014 binds the glossary name at the key and the type member
+as much as at the copy.
+
+**The region persists; its politeness escalates.** One `role="status"` lives in the
+strip whether or not there is anything to say, because a live region inserted with
+its content is one the screen reader was not watching. Its `aria-live` is `polite`
+for the three chips and `assertive` for refused work — "unmissable" is not only a
+visual claim, and swapping the element instead of the attribute would cost the
+announcement it is asking for.
 
 **Beside the wordmark, not beside the controls.** The strip is
 `justify-between`, so the left group is anchored left and the right group right. A
@@ -606,10 +668,17 @@ gone; what each page keeps is its own half of the answer — not *that* the devi
 is offline, but which of that page's controls stops working.
 
 **It renders nothing on the server**, by construction rather than by care, because
-`AppShell` is baked into `/_shell.html` (ADR 0006). Both hooks are
+`AppShell` is baked into `/_shell.html` (ADR 0006). All three readings are
 `useSyncExternalStore` with a server snapshot meaning "all is well", which is also
-the snapshot React uses for the render that hydrates. `UpdatePrompt` reaches the
-same place a different way.
+the snapshot React uses for the render that hydrates — so the baked artefact is the
+ordinary strip, wordmark and all. `UpdatePrompt` reaches the same place a different
+way.
+
+**One reading, read once.** `useSyncState` lives beside the component and
+`AppShell` calls it, because two things are decided from one answer: what the strip
+says, and whether the wordmark is still what the strip is for. Two calls would be
+two subscriptions to the same store deciding one strip, which is how the wordmark
+and the notice come to disagree; `tests/desktop.test.ts` holds it to one.
 
 ---
 

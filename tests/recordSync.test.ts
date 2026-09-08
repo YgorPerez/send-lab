@@ -11,6 +11,7 @@ import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import type { UnsyncedWrite, WriteRejection } from '../src/lib/recordWire.ts';
 import { createRecordStore, type RecordStore } from '../src/lib/store/collections.ts';
 import { createRecordSync, type Transport } from '../src/lib/store/sync.ts';
+import { UNSYNCED_KEY } from '../src/lib/store/unsynced.ts';
 
 const ACCOUNT = asAthleteId('athlete-1');
 const T1 = 1_755_000_000_000;
@@ -675,5 +676,48 @@ describe('two devices that diverged, in pt-BR', () => {
 		// on every language switch.
 		expect(fake.sent[0][0].key).toBe('w1-Thu:pull');
 		expect(fake.sent[0][0].key).not.toContain('Qui');
+	});
+});
+
+describe('the storage a real device actually gets', () => {
+	// EVERY OTHER TEST IN THIS FILE HANDS IN A STORAGE, AND THAT IS WHAT HID THIS.
+	//
+	// `createRecordSync`'s default is `storageOverride()`, which returns
+	// `undefined` for a *healthy* `localStorage` — because for the collections
+	// `undefined` means "use the library's own default", and the library's default
+	// is `localStorage`. `createUnsyncedWork` has no library under it, so the same
+	// `undefined` meant memory: on every real device, the record of what had not
+	// been sent lived exactly as long as the tab.
+	//
+	// That is the whole of #58 undone, silently, and it is the part with no symptom
+	// — the rows survive inside their collections, so the app looks correct and the
+	// writes simply never go. It is **#96**, and #84 is what made it worth fixing
+	// now: refused work written by the server did not survive a reload, so an
+	// *unmissable* message vanished on the next app open.
+	//
+	// #96 asks for the regression test in the browser tier, as ADR 0008's first
+	// gate assertion. That tier does not exist yet, and this is the half that can
+	// be had without it — jsdom is enough precisely because the sentinel does not
+	// depend on a real browser.
+	//
+	// jsdom is the right place to catch it: its `localStorage` works, so
+	// `storageOverride()` answers `undefined` here exactly as it does in Chrome.
+	it('persists unsynced work under the default storage, as a real device gets it', async () => {
+		localStorage.removeItem(UNSYNCED_KEY(ACCOUNT));
+		const fake = fakeTransport();
+		fake.setFailing(true);
+		const sync = createRecordSync(ACCOUNT, fake.transport);
+		const store = createRecordStore(ACCOUNT, sync.push, memory());
+
+		store.sessions.insert({ at: '2026-09-04', exercises: [] } as never);
+		await settle();
+
+		const raw = localStorage.getItem(UNSYNCED_KEY(ACCOUNT));
+		expect(raw, 'the unsynced work is not on the device at all').not.toBe(null);
+		expect(JSON.parse(raw ?? '[]')).toHaveLength(1);
+
+		// And the other half of durable: a second sync over the same device — which
+		// is what a reload is — finds it and still means to send it.
+		expect(createRecordSync(ACCOUNT, fakeTransport().transport).sendable()).toBe(1);
 	});
 });
