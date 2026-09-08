@@ -517,3 +517,49 @@ it loses the sequence that makes it worth keeping.
   [#91](https://github.com/YgorPerez/send-lab/issues/91) (the probe, blocked by #88 and #89) and
   [#92](https://github.com/YgorPerez/send-lab/issues/92) (re-open on drift, blocked by #91). No code
   landed here — the decision is the deliverable.
+
+- [Delete the marker residue](https://github.com/YgorPerez/send-lab/issues/87) — **the subtraction, and
+  two things it turned up on the way out.** `LOAD_FROM_BASELINE` is gone with `generateProgram`'s
+  `baselines` parameter and the argument at both call sites, retiring three unsourced `0.9` multipliers
+  off [#29](https://github.com/YgorPerez/send-lab/issues/29)'s ledger. It had never once produced a
+  number: both callers passed `{}` and `STEP_ANSWERS` has no test step, so `v` was always `null`. **But
+  "dropped with the marker" was too strong**, and #87 is what forced the precision — `MetricId` and every
+  exercise's `metricIds` survive in the tree, so what died is the one thing that read them *for a load*.
+  `CONTEXT.md`'s **Marker** now separates the *tracking* that leaves from the *reading* that does not: a
+  tested max is the load search's first tier, read once as an input and never kept as a series.
+  **`prefillLoadKg` was ruled on and deleted**, the athlete taking the fork the ticket left open. The
+  argument is shape, not effort: its first branch is `midOf(prescription.loadKg)`, which is exactly what
+  #88's acceptance criteria replace, and its second would need load *and* RPE *and* completion per set to
+  serve #91, so it would be rewritten rather than called. Its one piece of hard-won knowledge — completed
+  sets only, because a prefill that counts itself seeds the next and drifts unaided — is already written
+  down in #91 and in the entry above, so the deletion cost nothing. Function, doc, section header, eight
+  tests and three fixtures out; 207 lines deleted against 72 added. **The comment was corrected and its
+  replacement checked rather than asserted**, which is where the ticket's own phrasing turned out to be
+  the loose version of the finding: "`autoProgress` resolves to an intensity **percentage**" — but
+  `autoProgress` is a *flag*, and `intensity` is reserved for the Phase multiplier. What it switches on is
+  `loadPct`, which resolves `progression.ts`'s weekly rate to a percentage and scales the prescribed range
+  by it. A percentage of nothing is nothing. Writing the loose version into the replacement for a false
+  comment was the one thing this ticket could not do. **One test, for the loop the deletion reshaped**:
+  taking the working load out left the niggle RPE cap as the only override generation writes, so the
+  per-exercise accumulator became ceremony and went. `welcome.test.ts` already asserted the cap lands —
+  with a `some`, which would still pass if it leaked onto every exercise in the day, the one failure that
+  loop can actually have. It now asserts *which* exercises carry it, through `parseOverrideKey` and
+  `region` rather than a label, so it holds in pt-BR. **Two things outlived the ticket.** `probe` was
+  already taken, and the collision was live: `CONTEXT.md`'s **Probe** is a readiness reading, "read for
+  today's freshness, **never for progress**", `_Avoid_: test, metric, marker, measurement` — while the
+  entry above uses the word for something read for progress whose ladder tier 1 is a tested max, the
+  inverse of the definition on the exact axis it draws. `tests/screenReads.test.ts` asserts the substring
+  `probe` is absent from the Today read to prove the readiness Probe left the rebuild, so the first
+  working-load probe to reach that read would have tripped it *for the wrong reason* — #55's and #82's
+  lesson a third time, grep the noun before claiming the bare form. The search is a **load search**;
+  #88, #89, #91 and #92 are retitled and reworded, and it was cheap because no code carried the name yet.
+  And **ADR 0020 — the working load is not an override**, because `CONTEXT.md` defines an override as "a
+  stored deviation from a built-in target, set by the athlete" and a reader will ask why this isn't one.
+  What makes it an ADR rather than a ticket note is what hid it: `LOAD_FROM_BASELINE` wrote loads *into*
+  `program.overrides` under a `weekday:exercise` key and was dead the whole time, so anyone restoring
+  load-seeding would have found a worked example, in the right file, pointing at all three problems.
+  Deleting the corpse removed the wrong answer; the ADR is what stands in its place. Glossary gained
+  **Working load**, **Load search** and **Weighted exercise** — the last one's count was load-bearing in
+  `programFor`'s doc while being defined nowhere — and **Strength index** moved from `_Leaving_: dropped
+  with Marker` to `_Changing_`, a contradiction the entry above had named and left unfixed. `pnpm verify`
+  green: 409 tests, 32 files. #88 unblocked. `development` @ `6c9c7f1`, glossary and ADR at `95bfebb`.
