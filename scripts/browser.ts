@@ -11,12 +11,13 @@
 // Chrome and a completed build is a gate that gets skipped on the machine that
 // most needs it.
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clientOutputDir } from './output-dir.ts';
+import { discoverRoutesIn } from './routes.ts';
 
 export const root = fileURLToPath(new URL('..', import.meta.url));
 
@@ -67,22 +68,16 @@ export function fail(message: string): never {
 
 // ------------------------------------------------------------------ project
 
-/** The routes to visit, derived from the file-based route tree rather than
- *  listed here — a page added without a line in a script would otherwise be a
- *  page nobody ever measures. */
+/** The routes to visit, derived from the route tree rather than listed here.
+ *  `scripts/routes.ts` carries the whole of why, including the #86 failure that
+ *  made it read the generated tree instead of guessing at filenames. This is only
+ *  the seam where a throw becomes the `fail` the checks share. */
 export function discoverRoutes(): string[] {
-	const dir = join(root, 'src', 'routes');
-	if (!existsSync(dir)) return ['/'];
-	const out: string[] = [];
-	for (const name of readdirSync(dir, { withFileTypes: true })) {
-		// `api/` is server routes, `__root` is the shell, `-`-prefixed files are
-		// TanStack's non-route convention.
-		if (name.isDirectory() || !name.name.endsWith('.tsx')) continue;
-		if (name.name.startsWith('__') || name.name.startsWith('-')) continue;
-		const base = name.name.replace(/\.tsx$/, '');
-		out.push(base === 'index' ? '/' : `/${base}`);
+	try {
+		return discoverRoutesIn(root);
+	} catch (e) {
+		return fail(e instanceof Error ? e.message : String(e));
 	}
-	return out.length ? out.sort() : ['/'];
 }
 
 /** The locales the project ships, from the inlang settings. */
