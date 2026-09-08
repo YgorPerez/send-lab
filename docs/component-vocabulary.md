@@ -72,7 +72,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 |---|---|
 | `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
-| `SyncStatus` | Whether work is still on this device: `Offline`, `Saving…`, or nothing at all |
+| `SyncStatus` | Whether work is still on this device: `Offline`, `Sending…`, or nothing at all |
 | `Timer` | The tick, the wake lock, and the two faces of the clock |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
@@ -548,7 +548,7 @@ read only by Settings.
 | device | work waiting | the strip says | tone |
 |---|---|---|---|
 | online | none | nothing at all | — |
-| online | some | `Saving…` | neutral |
+| online | some | `Sending…` | neutral |
 | offline | none | `Offline` | warn |
 | offline | some | `Offline · not sent` | warn |
 
@@ -583,12 +583,21 @@ negative one. Two consequences that look like details and are not:
 
 - **It counts `sendable()`, never `unsynced()`.** They differ by the refused work,
   which can never be delivered — so a count including it never returns to zero and
-  "Saving…" becomes the permanent furniture the ADR refused. Refused work is the
+  "Sending…" becomes the permanent furniture the ADR refused. Refused work is the
   third state's problem, not this one's.
-- **A dead connection is never reported as `Saving…`** Both are true at once in a
-  gym basement, and "Saving…" over a dead connection reads as *it is on its way* —
+- **A dead connection is never reported as `Sending…`** Both are true at once in a
+  gym basement, and "Sending…" over a dead connection reads as *it is on its way* —
   which is the reading that gets an athlete to close the app on work that has not
   gone. It is `Offline · not sent` instead, which says both.
+- **Sent, never saved.** `sync_sending` read "Saving…" until the 2026-09-08
+  domain-modeling pass, which is the register five other strings had already
+  settled: the noun is *unsynced work* and the verb is *send*
+  (`set_unsynced_holds_signout` uses both in one sentence). *Saved* was not
+  available for it — a **saved program** is a different thing, and so is a draft
+  the app saves as it is typed — and #83 was what made the clash visible, by
+  putting `Saving…` eight pixels from `Offline · not sent`. `CONTEXT.md`'s
+  **Unsynced work** carries the rule; the dead `sync_saved` ("Synced") went with
+  it, since the settled state is deliberately blank and nothing rendered it.
 
 **A page no longer says it for itself.** Settings and sign-in each carried their
 own `Offline` chip, which was the same shape as the Settings gear before `Menu`

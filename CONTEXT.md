@@ -278,6 +278,14 @@ server. Safe to keep training on — reads come from the device — but it exist
 one place only, and an uninstalled app may have it deleted by the browser after
 a week idle. Work the server has declined is **refused work** — unsynced work in
 its final state, not a separate thing.
+
+Said to the athlete as this noun and one verb: the work is *unsynced work*, and
+what happens to it is that it is **sent** — "waits until it has been sent", "will
+never be sent", "not sent". Never *saved*: that word already names two other
+things the athlete does here, a **saved program** and a draft the app saves as it
+is typed, so it cannot also mean this. (It is for that reason absent from the list
+below rather than on it — a word this codebase uses for something else makes the
+audit unrunnable, not stricter.)
 _Avoid_: pending, queued, unsaved, outbox, offline changes
 
 **Refused work**:

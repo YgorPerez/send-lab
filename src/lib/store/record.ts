@@ -275,7 +275,7 @@ const stores = new Map<string, RecordStore>();
  *  `unsynced()` on a sync is `CONTEXT.md`'s **unsynced work**. Settings reads the
  *  refused half of it through `useRefusedWork` and gates sign-out on the sendable
  *  half (#82); the top strip reads the sendable half through `useSendableWork`
- *  and says "Saving…" while it is not zero (#83). The third of ADR 0008's states
+ *  and says "Sending…" while it is not zero (#83). The third of ADR 0008's states
  *  — the unmissable message when a write has been *refused* — is still nowhere:
  *  `useRefusedWork` is read by Settings alone, which is not a screen the athlete
  *  opens mid-set. */
@@ -478,7 +478,7 @@ const noSendableWork = () => 0;
  * snapshot immediately after subscribing. So a tab that reloads holding unsent
  * work reads `0` for one render and the real count on the next, which is a frame,
  * not a wrong answer that sticks. Measured in a real browser rather than reasoned
- * from the contract: the strip says "Saving…" on a cold load of a screen that has
+ * from the contract: the strip says "Sending…" on a cold load of a screen that has
  * not built the store.
  */
 function builtSync(): RecordSync | null {
@@ -533,7 +533,7 @@ export function useRefusedWork(): boolean {
  * **`sendable()`, not `unsynced()`.** The two differ by the refused work, and
  * that difference is the whole reason this hook is a separate one rather than a
  * number added to `useRefusedWork`: refused work can never be delivered, so a
- * count including it never returns to zero, and the "Saving…" it drives would
+ * count including it never returns to zero, and the "Sending…" it drives would
  * become the permanent status ADR 0008 spent a paragraph refusing. What this
  * counts is work that is still going to reach the server.
  *

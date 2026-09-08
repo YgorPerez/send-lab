@@ -9,7 +9,7 @@
 //
 // The third state — an unmissable message when a write has been **refused** — is
 // deliberately not one of the answers. It is not a smaller or larger version of
-// "saving": refused work can never be sent, so it needs a message the athlete has
+// "sending": refused work can never be sent, so it needs a message the athlete has
 // to act on rather than a token in the strip, and it must not be counted as work
 // in flight. See `sendable` below.
 //
@@ -20,12 +20,12 @@
 /**
  * What the strip has to say, or `null` for the state that says nothing.
  *
- * `'saving'` is the athlete-facing word (`sync_saving`), not a claim that a
+ * `'sending'` is the athlete-facing word (`sync_sending`), not a claim that a
  * request is in flight this instant: between the push and the debounce firing
  * nothing has been sent yet, and that stretch is squarely part of what the
  * athlete means by "is it saved".
  */
-export type SyncState = 'offline' | 'offline-unsent' | 'saving' | null;
+export type SyncState = 'offline' | 'offline-unsent' | 'sending' | null;
 
 export interface SyncReading {
 	/** `lib/online.ts` — the browser's own answer, optimistic by nature. */
@@ -35,7 +35,7 @@ export interface SyncReading {
 	 *
 	 * **Not `unsynced()`**, which includes refused work. Refused work is unsynced
 	 * work in its final state (`CONTEXT.md`) and no connection ever brings that
-	 * count down, so a strip counting it would say "Saving…" forever: permanent
+	 * count down, so a strip counting it would say "Sending…" forever: permanent
 	 * furniture, and a false promise besides.
 	 */
 	readonly sendable: number;
@@ -44,7 +44,7 @@ export interface SyncReading {
 /**
  * The state to show, given what the device knows.
  *
- * **A dead connection is never reported as saving.** "Saving…" over no signal
+ * **A dead connection is never reported as sending.** "Sending…" over no signal
  * reads as *it is on its way*, which is the reading that gets an athlete to close
  * the app on work that has not left the device.
  *
@@ -65,5 +65,5 @@ export interface SyncReading {
  */
 export function resolveSyncState({ online, sendable }: SyncReading): SyncState {
 	if (!online) return sendable > 0 ? 'offline-unsent' : 'offline';
-	return sendable > 0 ? 'saving' : null;
+	return sendable > 0 ? 'sending' : null;
 }

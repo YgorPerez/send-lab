@@ -503,7 +503,7 @@ describe('a write the server refuses', () => {
 		error.mockRestore();
 	});
 
-	// #83. The strip says "Saving…" while work is waiting, and work starts
+	// #83. The strip says "Sending…" while work is waiting, and work starts
 	// waiting at the *push* — a sync that only spoke after a settle would leave
 	// the athlete's device silent for the whole window that matters most: the
 	// 250ms debounce, and then indefinitely while there is no signal to settle

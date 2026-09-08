@@ -24,22 +24,22 @@ describe('the two states this ticket builds', () => {
 		expect(resolveSyncState({ online: false, sendable: 0 })).toBe('offline');
 	});
 
-	test('work waiting on a reachable server is said as saving', () => {
-		expect(resolveSyncState({ online: true, sendable: 1 })).toBe('saving');
-		expect(resolveSyncState({ online: true, sendable: 12 })).toBe('saving');
+	test('work waiting on a reachable server is said as sending', () => {
+		expect(resolveSyncState({ online: true, sendable: 1 })).toBe('sending');
+		expect(resolveSyncState({ online: true, sendable: 12 })).toBe('sending');
 	});
 
 	// The precedence, and the reason for it: offline is *why* nothing is being
-	// sent. "Saving…" over a dead connection is a promise the device cannot keep,
+	// sent. "Sending…" over a dead connection is a promise the device cannot keep,
 	// and it is the more alarming of the two to be wrong about — the athlete
 	// reads it as "it is on its way" and closes the app.
-	test('a dead connection is never reported as saving', () => {
-		expect(resolveSyncState({ online: false, sendable: 3 })).not.toBe('saving');
+	test('a dead connection is never reported as sending', () => {
+		expect(resolveSyncState({ online: false, sendable: 3 })).not.toBe('sending');
 	});
 });
 
 // The ticket's first sentence: *"the athlete can tell whether the training they
-// just recorded has left the device."* Offline outranking saving satisfied the
+// just recorded has left the device."* Offline outranking sending satisfied the
 // ADR's "offline **or** queued" and not that sentence — offline with nothing
 // waiting and offline with twelve rows waiting were the same chip, so logging a
 // set in a basement changed nothing on screen and the one question the strip
@@ -65,7 +65,7 @@ describe('offline, with training that has not left the device', () => {
 
 // The count handed in is `sendable`, not `unsynced` — the half a flush can still
 // deliver. Refused work is unsynced work in its final state (`CONTEXT.md`) and no
-// amount of connection brings it down, so counting it here would pin "Saving…" to
+// amount of connection brings it down, so counting it here would pin "Sending…" to
 // the strip permanently: furniture, and a lie. Refused work gets the third state,
 // which is not this one.
 describe('refused work is not what this counts', () => {

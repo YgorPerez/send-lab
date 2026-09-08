@@ -1,4 +1,4 @@
-// "Offline" / "Saving…" — what the strip says about work that has not left the
+// "Offline" / "Sending…" — what the strip says about work that has not left the
 // device.
 //
 // WHY IT IS IN THE STRIP
@@ -56,7 +56,7 @@ import { chip } from './ui/variants';
  * chip with the right words in the wrong colour, which no test here would catch.
  *
  * Gold for offline — a fact about the device the athlete may want to act on, and
- * the tone the two pages that used to say it used. Neutral for saving: it is the
+ * the tone the two pages that used to say it used. Neutral for sending: it is the
  * app doing its job, and a warning colour on a healthy write teaches the athlete
  * to ignore the one that is not.
  *
@@ -75,7 +75,7 @@ const SHOWN: Record<
 	// in ADR 0008 is the refused-write message, which is unmissable and is not a
 	// chip.
 	'offline-unsent': { tone: 'warn', label: (locale) => m.sync_offline_unsent({}, { locale }) },
-	saving: { tone: 'neutral', label: (locale) => m.sync_saving({}, { locale }) },
+	sending: { tone: 'neutral', label: (locale) => m.sync_sending({}, { locale }) },
 };
 
 export function SyncStatus({ locale }: { locale: AppLocale }) {
