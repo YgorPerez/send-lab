@@ -45,22 +45,31 @@ import { useSendableWork } from '$lib/store/record';
 import { resolveSyncState, type SyncState } from '$lib/syncState';
 import { chip } from './ui/variants';
 
-/** Gold for offline, because it is a fact about the device the athlete may want
- *  to act on — the same tone the two pages that said it used. Neutral for
- *  saving: it is the app doing its job, and a warning colour on a healthy write
- *  would teach the athlete to ignore the one that is not. */
-const TONE: Record<Exclude<SyncState, null>, 'warn' | 'neutral'> = {
-	offline: 'warn',
-	saving: 'neutral',
+/**
+ * Each state's whole appearance, in one place.
+ *
+ * One map rather than a tone lookup beside a label ternary, because the two were
+ * two dispatches over the same three-value type and they would drift the moment
+ * the third state lands: a state added to one and forgotten in the other is a
+ * chip with the right words in the wrong colour, which no test here would catch.
+ *
+ * Gold for offline — a fact about the device the athlete may want to act on, and
+ * the tone the two pages that used to say it used. Neutral for saving: it is the
+ * app doing its job, and a warning colour on a healthy write teaches the athlete
+ * to ignore the one that is not.
+ *
+ * The locale is passed rather than read, for `UpdatePrompt`'s reason: `m.*()`
+ * resolves the locale at call time, and the strip renders with the *boot* locale
+ * until the app has hydrated (`__root.tsx`). Reading the ambient one here would
+ * make this the single element in the strip in the other language.
+ */
+const SHOWN: Record<
+	Exclude<SyncState, null>,
+	{ tone: 'warn' | 'neutral'; label: (locale: AppLocale) => string }
+> = {
+	offline: { tone: 'warn', label: (locale) => m.sync_offline({}, { locale }) },
+	saving: { tone: 'neutral', label: (locale) => m.sync_saving({}, { locale }) },
 };
-
-/** The locale is passed rather than read, for `UpdatePrompt`'s reason: `m.*()`
- *  resolves the locale at call time, and the strip renders with the *boot* locale
- *  until the app has hydrated (`__root.tsx`). Reading the ambient one here would
- *  make this the one element in the strip that disagreed with the rest of it. */
-function label(state: Exclude<SyncState, null>, locale: AppLocale): string {
-	return state === 'offline' ? m.sync_offline({}, { locale }) : m.sync_saving({}, { locale });
-}
 
 export function SyncStatus({ locale }: { locale: AppLocale }) {
 	const online = useOnline();
@@ -73,10 +82,12 @@ export function SyncStatus({ locale }: { locale: AppLocale }) {
 		// assistive technology was not watching, and the announcement is missed. So
 		// the element outlives the state, and the empty case is an empty `<span>`
 		// rather than a `null` return. Empty it has no padding, no border and no
-		// text, so it occupies no width.
+		// text, so it occupies no width — measured, the chip lands exactly one
+		// `gap-2` from the wordmark whether the region was empty a moment ago or
+		// not, so the always-present region costs the strip nothing.
 		<span role="status">
 			{state === null ? null : (
-				<span className={chip({ tone: TONE[state] })}>{label(state, locale)}</span>
+				<span className={chip({ tone: SHOWN[state].tone })}>{SHOWN[state].label(locale)}</span>
 			)}
 		</span>
 	);

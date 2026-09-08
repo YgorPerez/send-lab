@@ -427,10 +427,36 @@ const NOT_WATCHING = () => {};
 
 /** The two work hooks' snapshots, module-level so their identity is stable
  *  across renders. The server has no store to ask and no athlete to tell. */
-const anyRefusedWork = () => (recordSync()?.refused().length ?? 0) > 0;
+const anyRefusedWork = () => (builtSync()?.refused().length ?? 0) > 0;
 const noRefusedWork = () => false;
-const sendableWork = () => recordSync()?.sendable() ?? 0;
+const sendableWork = () => builtSync()?.sendable() ?? 0;
 const noSendableWork = () => 0;
+
+/**
+ * The active account's sync **if it has already been built**, and never a reason
+ * to build one.
+ *
+ * The distinction from `recordSync()` is which phase may call it. `recordSync()`
+ * builds on a miss — fifteen collections and a `hydrate` — and both of those are
+ * side effects, which `useSyncExternalStore` forbids in a `getSnapshot`: the
+ * snapshot is read during render, more than once, and by React's own tearing
+ * check. It got away with it while `useRefusedWork` was read by Settings alone,
+ * on a screen that had already built the store through `useTrainingRecord`. #83
+ * put a reader in the strip, which renders on every screen and *above* the one
+ * that builds it, so the snapshot would have been the thing constructing the
+ * account.
+ *
+ * The build still happens, one phase later and in the right place: `useSyncWatch`
+ * calls `recordSync()` from the subscription effect, and React re-reads the
+ * snapshot immediately after subscribing. So a tab that reloads holding unsent
+ * work reads `0` for one render and the real count on the next, which is a frame,
+ * not a wrong answer that sticks. Measured in a real browser rather than reasoned
+ * from the contract: the strip says "Saving…" on a cold load of a screen that has
+ * not built the store.
+ */
+function builtSync(): RecordSync | null {
+	return active === null ? null : (syncs.get(active) ?? null);
+}
 
 /**
  * A subscription to the active account's sync, re-made when the account changes.

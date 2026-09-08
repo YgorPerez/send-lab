@@ -205,10 +205,11 @@ export function createRecordSync(
 			} finally {
 				inFlight = null;
 			}
-			// Outside the `try`, and only for a request that landed: a watcher that
-			// throws is a screen's bug, and reporting it as a deferred write would
-			// blame the network for it and hide it behind a `console.warn`.
-			// `announce` is what keeps that distinction now that `push` shares it.
+			// Only for a request that landed: nothing changed about the work when the
+			// write never left. `announce` is what keeps a throwing watcher from
+			// being reported as a deferred write — the distinction this line used to
+			// make by sitting outside the `try`, and that `announce` now makes for
+			// both of its callers.
 			if (delivered) announce();
 		})();
 
@@ -250,14 +251,15 @@ export function createRecordSync(
 
 	return {
 		push(writes) {
-			if (writes.length === 0) return;
 			work.add(writes);
 			schedule();
 			// After the work is recorded, not before: a watcher reads `sendable()`
 			// and `refused()` off this sync, and telling it about a write that is
 			// not in the sequence yet would have it report the count from a moment
-			// that never existed.
-			announce();
+			// that never existed. An empty push still arms the debounce — that is
+			// how a caller with nothing new to say asks for what is already waiting
+			// to go — but it changed nothing, so there is nothing to announce.
+			if (writes.length > 0) announce();
 		},
 		hydrate,
 		flush,

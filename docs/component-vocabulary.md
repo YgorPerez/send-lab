@@ -82,8 +82,9 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
 `ids.ts` (identity), `protocol.ts` (the timer's arithmetic), `cues.ts`
 (its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
-exercise shows, and what a fresh row is prefilled with), and `prescription.ts`
-(what a slot runs, and at what numbers).
+exercise shows, and what a fresh row is prefilled with), `prescription.ts`
+(what a slot runs, and at what numbers), and `syncState.ts` (which of ADR 0008's
+visible states the strip is in, and — nearly always — that it is in none of them).
 
 ### Page and screen are the same thing
 
@@ -309,8 +310,11 @@ Program page ([#65](https://github.com/YgorPerez/send-lab/issues/65)).
 Settled by [#66](https://github.com/YgorPerez/send-lab/issues/66), last of the
 nine and deliberately so: it is cheap and it yields no primitives, so building it
 earlier would have bought the pages after it nothing. It composes entirely from
-what was already here — `Pane`, `Bare`, `Eyebrow`, and the `input`, `button` and
-`chip` recipes — which is the ratio #53 predicted holding at the end of the list.
+what was already here — `Pane`, `Bare`, `Eyebrow`, and the `input` and `button`
+recipes — which is the ratio #53 predicted holding at the end of the list. (`chip`
+was a fourth until [#83](https://github.com/YgorPerez/send-lab/issues/83) took the
+page's `Offline` token into the strip; the page's own three notices carry what is
+left, and they were never chips.)
 
 **A destination, never a gate.** No page in this app is auth-blocked, and this
 page is the reason middleware stays declined: offline the service worker serves
