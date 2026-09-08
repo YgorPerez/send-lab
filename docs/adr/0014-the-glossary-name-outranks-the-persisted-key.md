@@ -178,6 +178,35 @@ and each is owned rather than merely noticed:
   fields have no glossary entry, rather than only walking the glossary and grepping
   for words it avoids. The first direction finds drift; only the second finds
   concepts the language never named.
+- ~~`store/collections.ts` — `PrefsRow`, whole.~~ **Done in the 2026-09-08 domain
+  pass after #75**, and it is the second direction finding a *collection* rather
+  than a field. #75 restructured this row and named three of its six fields
+  (**Cue**, **Daily notice**, **Time zone**) — which is what made the other three
+  visible: `weight`, `length` and `locale` had never had entries either, and
+  neither had preferences themselves. **Training record** inventoried "the program,
+  the sessions, the readiness checks, the bodyweight series, the baseline" — every
+  one a defined term — and omitted the preferences, while `TrainingRecord` carries
+  them, `record_row` stores them and `settings.tsx` says outright that they are
+  part of it. The word `preferences` appears thirteen times in `src/`, every one of
+  them using it for exactly this concept: the codebase had the term and the
+  glossary had never written it down. Now **Preferences**, **Locale** and **Display
+  unit**, and the inventory names them. Nothing renamed — `locale` was ratified as
+  the term rather than moved to *language*, so this cost no layers.
+
+**An `_Avoid_` word that is already this codebase's name for something else
+blunts the audit, permanently.** The method above is a grep, so a word's value on
+a list is inverse to how often it means something else here. #75's three new terms
+went in without that grep being run on them and put four such words on their
+lists: `tone` (35 hits — the design system's own variant prop, defined in
+`docs/component-vocabulary.md`), `region` (67 — what an *exercise* loads, which
+**Body area**'s own entry already assigns it to), `offset` (12 — the word
+**Calibration**'s definition uses affirmatively) and `nudge` (7 — the bodyweight
+nudge on Today, since given its own entry). Dropping those four and `signal` took
+the three terms from 123 grep hits to 6, and the 6 are all deliberate mentions or
+a different sense. **So grep a candidate before listing it**, and where the honest
+word is already taken, put the distinction in the term's *body* instead — which is
+what **Body area** does for *region*, and what **Time zone** now does for a UTC
+offset. A short list that can be run beats a complete one that cannot.
 
 **This does not license renaming a glossary term to match the code.** The
 direction is one-way. If a stored name looks better than the term, the argument to

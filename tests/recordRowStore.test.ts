@@ -193,4 +193,41 @@ describe('a hydrate is shaped like the store', () => {
 	it('an empty batch does nothing and touches no statement', async () => {
 		expect(await applyWritesIn(db, ATHLETE, [])).toEqual({ applied: 0, stale: 0 });
 	});
+
+	it('hands a preferences row back exactly as it was written', async () => {
+		// #75's acceptance criterion, against the table rather than against the
+		// schema: the two switches and the time zone have to survive the trip whole.
+		// The row goes out as JSON in a text column and comes back parsed, which is
+		// the one place a boolean could arrive as `1` and a null as the string
+		// `"null"` — neither of which the collection would refuse.
+		const prefs = {
+			id: 'only',
+			weight: 'kg',
+			length: 'mm',
+			cueNotices: true,
+			dailyNotice: false,
+			timeZone: 'America/Sao_Paulo',
+			locale: 'pt-BR',
+		};
+		await applyWritesIn(db, ATHLETE, [{ collection: 'prefs', key: 'only', row: prefs, at: T1 }]);
+
+		expect((await readRecordIn(db, ATHLETE)).rows.prefs).toEqual([prefs]);
+	});
+
+	it('hands an unset time zone back as null and not as a missing key', async () => {
+		const prefs = {
+			id: 'only',
+			weight: 'kg',
+			length: 'mm',
+			cueNotices: false,
+			dailyNotice: false,
+			timeZone: null,
+			locale: null,
+		};
+		await applyWritesIn(db, ATHLETE, [{ collection: 'prefs', key: 'only', row: prefs, at: T1 }]);
+
+		const [back] = (await readRecordIn(db, ATHLETE)).rows.prefs as [Record<string, unknown>];
+		expect(back).toEqual(prefs);
+		expect('timeZone' in back).toBe(true);
+	});
 });

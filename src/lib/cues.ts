@@ -1,5 +1,8 @@
-// Timer cues: the sounds and the buzz that tell the athlete a phase changed
+// Timer cues: the sounds and the buzz that tell the athlete a segment changed
 // while they are hanging off a board and not looking at the phone.
+//
+// **Segment, not phase** — the glossary reserves *phase* for a stretch of weeks
+// and lists it on Segment's `_Avoid_` list (#75).
 //
 // Carried over from the SvelteKit app's `timerStore.svelte.ts`, at the athlete's
 // request — *"beep/haptic same sound we have now"*. Same frequencies, same
@@ -29,7 +32,7 @@
 // #54 declined haptics as a product decision, on the grounds that iOS has no
 // `navigator.vibrate` and Apple formally opposes the spec. The athlete trains on
 // Android, has since asked for the buzz back, and this is the one place in the
-// app that has it — a phase change nobody is looking at. Reversed here, for the
+// app that has it — a segment change nobody is looking at. Reversed here, for the
 // timer only. Everywhere else the decision stands.
 
 /** What happened, not what it sounds like. */
@@ -44,7 +47,7 @@ export type Cue =
 	| 'work'
 	/** A set ended; the longer between-sets rest begins. */
 	| 'setRest'
-	/** Three, two, one — the last seconds of any phase. */
+	/** Three, two, one — the last seconds of any segment. */
 	| 'countdown'
 	/** The protocol is finished. */
 	| 'done';

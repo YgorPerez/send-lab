@@ -28,7 +28,8 @@ _Avoid_: session, auth session, login, authentication
 
 **Training record**:
 Everything one athlete's account holds — the program, the sessions, the readiness
-checks, the bodyweight series, the baseline. What an account owns, as opposed to
+checks, the bodyweight series, the baseline, the preferences. What an account
+owns, as opposed to
 the account itself, which is the identity that owns it; and what a second device
 is catching up to.
 _Avoid_: state, data, document, account data
@@ -53,6 +54,27 @@ The gear the athlete has to train with — hangboard, board, rings, weights. It
 filters which exercises the generated program may prescribe, so an intake that
 names none of it leaves almost nothing to prescribe.
 _Avoid_: gear, kit, apparatus, hardware
+
+**Preferences**:
+What the athlete has chosen about how the app reads and behaves — display units,
+locale, time zone, and whether each notice reaches them. Part of the training
+record and carried between devices with it, rather than a setting belonging to
+one phone. **Settings** is the screen that edits them; the preferences are what
+it edits.
+_Avoid_: profile, user settings, app config
+
+**Locale**:
+Which of the app's languages the athlete reads it in. It belongs to the account
+and not to the device, so a second phone and anything reading the account on the
+athlete's behalf answer in the same language; unset means follow whatever device
+is in hand.
+_Avoid_: lang, translation
+
+**Display unit**:
+The unit a weight or a length is *read* in — kilograms or pounds, millimetres or
+inches. A choice about reading only: what gets recorded is always the canonical
+unit, so changing this never changes a stored number.
+_Avoid_: measurement, unit system
 
 ### Prescribing
 
@@ -278,6 +300,40 @@ does not have yet and may never get, while a draft is training not recorded at
 all and never will be. Losing unsynced work loses history; losing a draft costs a
 re-entry.
 _Avoid_: pending, partial, autosave, unsaved, in-flight
+
+### Reaching the athlete
+
+**Cue**:
+One event in a running protocol the athlete has to be told about while they are
+not looking at the screen — a segment beginning or ending, the last three
+seconds, the protocol finishing. It is the event and not the sound: one cue has
+three deliveries, a sound, a buzz and a notification, and a cue with all three
+switched off is still the same cue.
+_Avoid_: beep, alert
+
+**Daily notice**:
+The one message sent each morning naming the day type the athlete's slot runs
+today, carrying that day type's headline. Read from the program rather than from
+what has been trained, so it is true on a device that has not synced in a week —
+and a rest day sends nothing rather than sending that there is nothing.
+_Avoid_: reminder, digest, alert, morning push
+
+**Nudge**:
+A standing invitation on a screen to record something the app cannot know on its
+own — today's bodyweight, the one the athlete meets daily. It asks, and being
+ignored is a normal outcome; it never claims anything is wrong or overdue, which
+is what separates it from a flag. Never the verb: a calibration *nudging* a score
+is arithmetic, and this is a piece of a screen.
+_Avoid_: callout, nag, reminder
+
+**Time zone**:
+Where the athlete's day starts — the IANA zone their device reports, held on the
+account because it is the only thing that lets a server decide when their morning
+is. A zone and never an offset: an offset moves twice a year and the zone that
+holds it does not. It belongs to the device rather than to the athlete's taste, so
+it is read and never asked for, and an account that has never reported one has
+none rather than a guessed one.
+_Avoid_: locale, UTC offset, TZ
 
 ### Readiness
 

@@ -22,11 +22,14 @@
 // primary is inside the alert dialog — confirming a token regeneration — where it
 // is the only action on its surface.
 //
-// `notify` is rendered as it exists: one boolean, driving local notifications
-// only (#27's research found no push path anywhere in the tree). #75 replaces the
-// field and #81 builds the two switches that take its place; this page does not
-// build a push path in the meantime, and the permission prompt is asked for at
-// the moment the switch is turned on, not before.
+// `cueNotices` is rendered as it exists: one boolean, driving local notifications
+// only (#27's research found no push path anywhere in the tree). #75 split the old
+// `notify` into the two fields the two capabilities need; **this page still shows
+// one switch**, because the second one — the daily notice — has no push path
+// behind it until #81, and a switch that turns on nothing is the dishonesty the
+// split was made to end. So the cue half is wired here and the daily half waits
+// for the machinery it needs. The permission prompt is asked for at the moment
+// the switch is turned on, not before.
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { type ReactNode, useEffect, useId, useState } from 'react';
@@ -76,7 +79,7 @@ function Settings() {
 
 			<Units prefs={prefs} />
 			<Language />
-			<Notifications notify={prefs.notify} />
+			<Notifications cueNotices={prefs.cueNotices} />
 			<Account online={online} />
 		</Pane>
 	);
@@ -182,18 +185,18 @@ function notificationPermission(): NotificationPermission | 'unsupported' {
 	return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
 }
 
-function Notifications({ notify }: { notify: boolean }) {
+function Notifications({ cueNotices }: { cueNotices: boolean }) {
 	const [refused, setRefused] = useState<'denied' | 'unsupported' | null>(null);
 	const labelId = useId();
-	// The stored boolean is the switch — `notify` as it exists (#62, point 4).
+	// The stored boolean is the switch — `cueNotices` as it exists (#62, point 4).
 	// Reconciling it against the browser's permission, so a revoked permission
-	// shows as off, is #81's "a switch that lies" and lands with the two switches
-	// that replace this field.
+	// shows as off, is #81's "a switch that lies" and lands with the daily-notice
+	// switch beside it.
 
 	async function toggle(on: boolean) {
 		setRefused(null);
 		if (!on) {
-			void writePrefs({ notify: false });
+			void writePrefs({ cueNotices: false });
 			return;
 		}
 		const permission = notificationPermission();
@@ -204,7 +207,7 @@ function Notifications({ notify }: { notify: boolean }) {
 		// Asked at the tap, and only then: the prompt arrives attached to a switch
 		// the athlete just touched, so its purpose is self-evident.
 		const answer = permission === 'granted' ? permission : await Notification.requestPermission();
-		if (answer === 'granted') void writePrefs({ notify: true });
+		if (answer === 'granted') void writePrefs({ cueNotices: true });
 		// `'default'` is the athlete closing the prompt without answering it (#82).
 		// Nothing is blocked and no site-settings trip would help — tapping the
 		// switch again simply asks again — so the switch stays off and says nothing.
@@ -212,16 +215,22 @@ function Notifications({ notify }: { notify: boolean }) {
 	}
 
 	return (
-		<Section label={m.notify_toggle()}>
+		<Section label={m.notifications_title()}>
 			{/* One row, so no `card`: a box around a single line is the furniture
 			    `Bare` exists to replace. */}
 			<Bare>
-				<ControlRow id={labelId} label={m.set_notify_desc()}>
-					<Switch checked={notify} onCheckedChange={(on) => void toggle(on)} labelledBy={labelId} />
+				<ControlRow id={labelId} label={m.set_cue_notices_desc()}>
+					<Switch
+						checked={cueNotices}
+						onCheckedChange={(on) => void toggle(on)}
+						labelledBy={labelId}
+					/>
 				</ControlRow>
 			</Bare>
 			{refused ? (
-				<Caveat>{refused === 'denied' ? m.notify_denied() : m.notify_unsupported()}</Caveat>
+				<Caveat>
+					{refused === 'denied' ? m.notifications_denied() : m.notifications_unsupported()}
+				</Caveat>
 			) : null}
 		</Section>
 	);

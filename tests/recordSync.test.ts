@@ -215,7 +215,17 @@ describe('hydrating from the server', () => {
 	it('writes the account into the collections', async () => {
 		const { sync, store } = hydrating({
 			taskDone: [{ task: 'w1-Thu:pinch', done: true }],
-			prefs: [{ id: 'only', weight: 'kg', length: 'mm', notify: false, locale: 'pt-BR' }],
+			prefs: [
+				{
+					id: 'only',
+					weight: 'kg',
+					length: 'mm',
+					cueNotices: false,
+					dailyNotice: false,
+					timeZone: null,
+					locale: 'pt-BR',
+				},
+			],
 		});
 
 		await sync.hydrate(store);

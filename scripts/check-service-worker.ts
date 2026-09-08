@@ -54,16 +54,17 @@ for (const marker of ['"email"', '"userId"', 'sessionToken']) {
 // The update prompt's other half.
 //
 // `components/UpdatePrompt.tsx` posts `{ type: 'SKIP_WAITING' }` to the waiting
-// worker, and the worker takes over only because workbox's generated code
-// listens for that exact type. The string is **not ours to name**: nothing in
-// `src/` defines it, `tests/appUpdate.test.ts` can only assert we send what we
-// think we send, and if a workbox upgrade renamed it every one of those
-// assertions would stay green while the button did nothing at all.
+// worker, and the worker takes over only because it listens for that exact type.
+// The string used to be **not ours to name** — workbox's generated code owned it,
+// nothing in `src/` defined it, and a workbox upgrade renaming it would have left
+// `tests/appUpdate.test.ts` green while the button did nothing at all. #76 made
+// the worker a source file, so `src/sw.ts` names it now and the two ends can be
+// read against each other. This assertion stays anyway: it is the bundler, not
+// workbox, that could now drop the listener silently.
 //
-// The worker is generated with `skipWaiting: false` on purpose (a swap under a
-// live session is #24's and #27's problem), so the listener is the *only* way an
-// update ever reaches the athlete. This is the one place both halves are visible
-// at once.
+// There is deliberately no unconditional `self.skipWaiting()` beside it (a swap
+// under a live session is #24's and #27's problem), so this listener is the
+// *only* way an update ever reaches the athlete.
 if (!source.includes('SKIP_WAITING')) {
 	fail(
 		"the worker does not listen for 'SKIP_WAITING' — the update prompt's button\n" +

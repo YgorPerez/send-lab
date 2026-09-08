@@ -61,7 +61,13 @@ describe('switching writes both', () => {
 		// The rest of the row is the default rather than absent: a preferences row
 		// that exists has every field, and a switch is not the moment to invent
 		// half of one.
-		expect(prefs).toMatchObject({ weight: 'kg', length: 'mm', notify: false });
+		expect(prefs).toMatchObject({
+			weight: 'kg',
+			length: 'mm',
+			cueNotices: false,
+			dailyNotice: false,
+			timeZone: null,
+		});
 	});
 
 	it('updates the row it already has rather than adding a second', () => {
@@ -74,14 +80,24 @@ describe('switching writes both', () => {
 
 	it('leaves the athlete’s other preferences alone', () => {
 		const prefs = recordStore().prefs;
-		prefs.insert({ id: SINGLETON_KEY, weight: 'lb', length: 'in', notify: true, locale: null });
+		prefs.insert({
+			id: SINGLETON_KEY,
+			weight: 'lb',
+			length: 'in',
+			cueNotices: true,
+			dailyNotice: true,
+			timeZone: 'America/Sao_Paulo',
+			locale: null,
+		});
 
 		chooseLocale('pt-BR');
 
 		expect(prefs.get(SINGLETON_KEY)).toMatchObject({
 			weight: 'lb',
 			length: 'in',
-			notify: true,
+			cueNotices: true,
+			dailyNotice: true,
+			timeZone: 'America/Sao_Paulo',
 			locale: 'pt-BR',
 		});
 	});

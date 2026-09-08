@@ -18,7 +18,7 @@
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
 		"lint:hooks": "eslint .",
-		"check": "pnpm run paraglide && pnpm run routes && tsgo --noEmit",
+		"check": "pnpm run paraglide && pnpm run routes && tsgo --noEmit && tsgo --noEmit -p tsconfig.sw.json",
 		"check:env": "tsx scripts/check-env.ts",
 		"check:i18n": "tsx scripts/check-locale-parity.ts",
 		"check:routes": "tsx scripts/check-auth-wrapper.ts",
@@ -84,6 +84,9 @@
 		"typescript": "6.0.3",
 		"vite": "8.2.1",
 		"vitest": "4.1.10",
-		"workbox-build": "7.4.1"
+		"workbox-build": "7.4.1",
+		"workbox-core": "7.4.1",
+		"workbox-precaching": "7.4.1",
+		"workbox-routing": "7.4.1"
 	}
 }
