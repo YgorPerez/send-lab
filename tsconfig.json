@@ -25,5 +25,9 @@
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "scripts/**/*.ts", "*.ts"],
-	"exclude": ["node_modules", "dist", ".output", ".tanstack"]
+	// `src/sw.ts` runs in a service worker, not a document: it needs the `WebWorker`
+	// lib where everything else needs `DOM`, and one program cannot hold both without
+	// letting each file reach the other’s globals. It has its own program in
+	// `tsconfig.sw.json`, which `pnpm check` runs after this one.
+	"exclude": ["node_modules", "dist", ".output", ".tanstack", "src/sw.ts"]
 }
