@@ -394,8 +394,8 @@ try {
 	// fails here.
 	//
 	// A strict inequality rather than a declared margin, even though `/train`'s is
-	// only 196 against 172. The margin there is the sets the athlete has logged,
-	// and the 172 is the same slot prescribed from the program — so a copy edit
+	// only 201 against 176. The margin there is the sets the athlete has logged,
+	// and the 176 is the same slot prescribed from the program — so a copy edit
 	// that thins the prescription thins *both* passes and leaves the difference
 	// alone. What would close it is the logged work vanishing, which is the thing
 	// being asserted.

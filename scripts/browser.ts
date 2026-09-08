@@ -497,7 +497,7 @@ export async function open(options: OpenOptions): Promise<Session> {
 			pass,
 			assertBooted: async (where: string) => {
 				const report = await evaluate<BootReport | null>(BOOT_CHECK);
-				if (!report || !report.ok) {
+				if (!report?.ok) {
 					fail(
 						`${where}: the page is not in the state this pass asked for — ` +
 							`${report?.why ?? 'the control itself returned nothing'}.\n` +

@@ -98,8 +98,8 @@ export interface RouteFloor {
  *                seeded, 13 empty — the screen #73 was written about.
  *   `/login`     the sign-in form. 10 either way.
  *   `/settings`  the preferences that work offline. 19 either way.
- *   `/train`     the slot: the set grid, the prescriptions and the timer. 196
- *                seeded, 172 empty — the grid is prescribed from the program
+ *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
+ *                seeded, 176 empty — the grid is prescribed from the program
  *                before any of it has been trained.
  *   `/week`      seven slots and the microcycle's own reading. 30 either way.
  *   `/welcome`   the baseline questionnaire, one question at a time. 22 seeded,
