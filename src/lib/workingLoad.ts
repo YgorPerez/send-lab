@@ -17,11 +17,20 @@
 // none of them.
 //
 // Three rungs, in this order, and the tier is recorded with the number because
-// #29 grades a test and a guess differently:
+// #29 grades a measurement and a recollection differently:
 //
-//   1. **A tested max**, if the athlete has one.
-//   2. **The load they usually use** — a self-report, no test required.
+//   1. **A load they have measured** — they have tested this, at this variant.
+//   2. **The load they usually use** — a recollection, no test required.
 //   3. **Start here** — the safe floor below, beside `strength.ts`'s prediction.
+//
+// **Every rung answers the same question, and it is not "what is your max".**
+// The glossary keeps those apart — a max is what an exercise can be *tested* at,
+// a working load is what it is *trained* at — and converting one into the other
+// needs a per-exercise fraction, which is the `0.9 / 0.6 / 0.5 / 0.4` table #87
+// deleted and #40 declined to re-authorise. So the first rung asks for the load
+// like the others do, and `tested` records only that the number was measured
+// rather than recalled. That is the difference #29 grades; it is not a
+// difference in what kind of number was stored.
 //
 // WHY THE FLOOR IS ZERO, AND WHY NOT FOR `pinch`
 // ----------------------------------------------
@@ -42,12 +51,19 @@ import type { Baseline, BodyweightReading, Level, WorkingLoad } from '$lib/types
  * exercise**: one where added load is part of what is prescribed, rather than
  * one answered by grade or time alone.
  *
- * These seven, and the provenance matters. They are exactly the set the
- * SvelteKit app's `PREFILL_FROM_METRIC` addressed, inventoried by #40 before any
- * of this was decided — so the "six of the seven" that `store/baseline.ts` and
- * ADR 0020 both quote is about this list and not a different one. `repeaters`
- * is deliberately **out**: it prescribes work, rest and rounds, so it is
- * answered by time, which is the line the glossary draws.
+ * **An enumerated set, and deliberately not a derivation.** The glossary used to
+ * say the line was "answered by grade or time alone", and that line does not
+ * hold: `density` is twenty-to-forty second hangs and is in, `repeaters` is seven
+ * seconds on and three off and is out, and `intensityPct` separates them the
+ * wrong way — it is on `repeaters` and not on `maxhang`. Nothing in the data
+ * picks these seven out, so the list is the definition, the way `BODY_AREAS` and
+ * `DAY_TYPE_IDS` are.
+ *
+ * What actually settled the membership is provenance: they are exactly the set
+ * the SvelteKit app's `PREFILL_FROM_METRIC` derived a load for, inventoried by
+ * #40 before any of this was decided — so the "six of the seven" that
+ * `store/baseline.ts` and ADR 0020 both quote is about this list and not a
+ * different one. Changing it is a product decision, not a refactor.
  */
 export const WEIGHTED_EXERCISES: ReadonlySet<string> = new Set([
 	'maxhang',

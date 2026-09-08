@@ -231,17 +231,24 @@ export interface Override {
  * Where a working load's number came from — the rung of the ladder the athlete
  * answered on.
  *
- * Stored with the number because **a tested max and a guess are not the same
- * evidence** ([#29](https://github.com/YgorPerez/send-lab/issues/29) grades them
- * differently), and because the load search reads it: a number the athlete
+ * Stored with the number because **a measurement and a recollection are not the
+ * same evidence** ([#29](https://github.com/YgorPerez/send-lab/issues/29) grades
+ * them differently), and because the load search reads it: a number the athlete
  * measured deserves less moving than one the app suggested.
  *
- * Closed and ordered by how much it is worth. `tested` is a lift the athlete
- * actually did; `usual` is a recollection of what they normally load, which is
+ * Closed and ordered by how much it is worth. Every one of them is a **working
+ * load** — what the exercise is trained at — and they differ only in how the
+ * number was arrived at. `tested` is one the athlete has actually measured at
+ * this variant; `usual` is a recollection of what they normally load, which is
  * honest and is not history — writing it as a session would fabricate training
  * that never happened (ADR 0020); `predicted` is `strength.ts`'s estimate, which
  * carries its own confidence; `floor` is the conservative starting point the
  * load search exists to move.
+ *
+ * **None of them is a tested max**, and the glossary keeps those apart: a max is
+ * what an exercise can be tested at, a working load is what it is trained at, and
+ * the fraction between them is per-exercise and unsourced (#87 deleted the last
+ * table of them). So the first rung asks for the load, not the max.
  */
 export const WORKING_LOAD_SOURCES = ['tested', 'usual', 'predicted', 'floor'] as const;
 export type WorkingLoadSource = (typeof WORKING_LOAD_SOURCES)[number];

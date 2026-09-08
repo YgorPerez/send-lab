@@ -161,9 +161,14 @@ exercise without one does not progress.
 _Avoid_: overload, ramp, increase
 
 **Weighted exercise**:
-An exercise where added load is part of what is prescribed, rather than one
-answered by grade or time alone. Only these carry a working load, and on a pinch
-block the added load is the whole load.
+One of the seven exercises that carry a **working load**. A closed, enumerated
+set, like the body areas and the day types — not a property derivable from what
+an exercise prescribes. The entry used to claim the line was "answered by grade
+or time alone", and that line does not hold: `density` is twenty-to-forty second
+hangs and is one of the seven, `repeaters` is seven seconds on and three off and
+is not. What actually settled the membership is which exercises the app once
+derived a load for from a marker. On a pinch block the added load is the whole
+load.
 _Avoid_: loaded exercise, weight exercise
 
 **Working load**:
@@ -378,8 +383,12 @@ _Leaving_: dropped in the rebuild — the athlete's tested numbers stop being
 tracked over time. Internal load, workload ratio and monotony are unaffected:
 they are derived from sessions, not from markers, and a readiness check still
 reads them. **Bodyweight is the exception and survives** — it is not a test.
-What leaves is the *tracking*, not the reading: a tested max is the first tier the
-**load search** asks for, read once as an input and never kept as a series.
+What leaves is the *tracking*, not the reading. The **load search**'s first tier
+is a working load the athlete has **measured** rather than one they recall — the
+distinction is how good the evidence is, not what kind of number it is. It is
+never a tested max: a max is what an exercise can be tested at and a working load
+is what it is trained at, and turning one into the other needs a per-exercise
+fraction this app deliberately does not have.
 
 **Bodyweight**:
 The athlete's weight, tracked over time. Not a marker: nothing is tested and no
@@ -393,8 +402,10 @@ A marker normalized so readings taken on different edge depths or block widths
 are comparable, carrying how much to trust the conversion.
 _Avoid_: normalized score, adjusted max
 _Changing_: it does **not** leave with **Marker**, as this entry used to say. It
-survives inverted — read once to predict a working load from a number the athlete
-already knows, rather than tracked over time as progress.
+survives inverted — read once to suggest a starting **working load** from the
+athlete's level and bodyweight, rather than tracked over time as progress. The
+level half is the app's own judgment and says so; the hold-size conversion is the
+part this term is named for.
 
 **Internal load**:
 Session effort multiplied by session minutes — what a session cost the athlete,

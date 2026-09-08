@@ -80,8 +80,8 @@ export interface PrescribedTask extends Task {
 	 * It is already inside `prescription.loadKg` — `effectiveVariant` reads it as
 	 * the base the week's progression scales — so the card does not need this to
 	 * render a number. It is carried so the card can say **where the number came
-	 * from**, which a range cannot: a tested max and a guess are not the same
-	 * evidence (#29).
+	 * from**, which a range cannot: a load the athlete measured and one they
+	 * recalled are not the same evidence (#29).
 	 */
 	workingLoad: WorkingLoad | null;
 	/**

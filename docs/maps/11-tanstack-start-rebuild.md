@@ -611,8 +611,8 @@ it loses the sequence that makes it worth keeping.
   number field opens empty, neither typed rung comes up pressed, and the two suggestions are **buttons
   rather than prefills** — a suggestion dropped into the input comes back as though the athlete typed
   it, and #29 grades those differently. `pinch`'s floor is 5kg and never zero (ADR 0020's consequence),
-  and `repeaters` is **out** of the seven weighted exercises: it prescribes work, rest and rounds, so it
-  is answered by time, which is the line the glossary draws.
+  and `repeaters` is **out** of the seven weighted exercises — see the domain pass below for why that is
+  a list and not a rule.
 
   **Four things the review caught, all of them the same mistake in different clothes — a sentence that
   was true of six exercises out of seven, or of the model but not the screen.** *The answer has to reach
@@ -642,4 +642,26 @@ it loses the sequence that makes it worth keeping.
   `check:contrast`, `check:motion` and `check:overflow` green against the local build. **The
   deployed-preview run both tickets ask for (`--url=…`) is still owed** — the local build renders an
   empty account, so the floor rung is measured and the prediction's two chips are not, which is #63's
-  gap in a second place. #91 and #92 are what remain of #40. `development` @ `TBD`.
+  gap in a second place.
+
+  **A domain pass over the model afterwards found two glossary claims the build had quietly falsified,
+  and one product question hiding under a tier name.** *`Weighted exercise` did not define its own
+  members*: the entry said the line was "answered by grade or time alone", and it is not — `density` is
+  twenty-to-forty second hangs and is one of the seven, `repeaters` is 7s-on/3s-off and is not, and
+  `intensityPct` separates them the *wrong* way, being on `repeaters` and not on `maxhang`. Nothing in
+  the data picks the seven out; the membership is provenance, inherited from what
+  `PREFILL_FROM_METRIC` addressed. The entry now says it is an enumerated set, like `BODY_AREAS`, so
+  changing it reads as the product decision it is. *`Strength index` described a mechanism nobody built*
+  — "predict a working load from a number the athlete already knows" — when `predictLoad` reads their
+  **level** and bodyweight, the tested-max conversion being the one path deliberately skipped.
+
+  And the one that mattered: **tier 1 asked for a tested max and stored it, unconverted, as a working
+  load**, which the glossary's own words forbid — a max is what an exercise can be tested at, a working
+  load is what it is trained at, and `CONTEXT.md`'s **Marker** entry even called the tested max "an
+  input". Nothing consumed it as one. Converting needs a per-exercise fraction, i.e. the table #87
+  deleted and #40 declined to re-authorise, so the resolution is that **every rung asks the same
+  question** — *what do you load this with* — and `tested` records that the number was **measured**
+  rather than recalled. The rung is now "A load I measured", not "Tested max". Recorded as a consequence
+  on **ADR 0020** rather than as a new ADR: it is the same trap one level down, and someone restoring a
+  max-to-load conversion would otherwise find nothing saying why it is not there. #91 and #92 are what
+  remain of #40. `development` @ `TBD`.

@@ -122,9 +122,10 @@ describe('which exercises carry one', () => {
 		for (const id of ['maxhang', 'recruit', 'density', 'abra', 'slopdens', 'pinch', 'pull']) {
 			expect(isWeightedExercise(asExerciseId(id))).toBe(true);
 		}
-		// `repeaters` prescribes work, rest and rounds — answered by time, which is
-		// the line `CONTEXT.md` draws. `rest` is a real library entry and is the
-		// exclusion every count in this app has had to make by hand.
+		// The set is enumerated rather than derived (`CONTEXT.md`), so this is the
+		// list itself and not a rule applied to it: `density` is time-answered and
+		// in, `repeaters` is time-answered and out. `rest` is a real library entry
+		// and is the exclusion every count in this app has had to make by hand.
 		expect(isWeightedExercise(asExerciseId('repeaters'))).toBe(false);
 		expect(isWeightedExercise(asExerciseId('rest'))).toBe(false);
 		expect(isWeightedExercise(asExerciseId('limitboulder'))).toBe(false);
@@ -430,7 +431,7 @@ describe('the question', () => {
 		expect(loadAsk(record, MAXHANG, 1, variant)).not.toBeNull();
 	});
 
-	it('is not put for an exercise answered by grade or time', () => {
+	it('is not put for an exercise outside the seven', () => {
 		const record = readTrainingRecord(seeded());
 		expect(loadAsk(record, asExerciseId('limitboulder'), 0, variant)).toBeNull();
 		expect(loadAsk(record, asExerciseId('repeaters'), 0, variant)).toBeNull();
@@ -508,8 +509,9 @@ describe('Train asks it, in both locales', () => {
 	// an athlete who ignores this has not silently agreed to a load.
 	it('opens with nothing answered', async () => {
 		const html = await train('en-US');
-		expect(html).toMatch(/<button[^>]*aria-pressed="false"[^>]*>Tested max<\/button>/);
-		expect(html).toMatch(/<button[^>]*aria-pressed="false"[^>]*>What I usually use<\/button>/);
-		expect(html).not.toContain('aria-pressed="true">Tested max');
+		for (const rung of [m.wl_tested(), m.wl_usual()]) {
+			expect(html).toMatch(new RegExp(`<button[^>]*aria-pressed="false"[^>]*>${rung}</button>`));
+			expect(html).not.toContain(`aria-pressed="true">${rung}`);
+		}
 	});
 });
