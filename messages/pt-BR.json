@@ -567,6 +567,7 @@
 	"sync_saving": "Salvando…",
 	"sync_saved": "Sincronizado",
 	"sync_offline": "Offline",
+	"sync_offline_unsent": "Offline · não enviado",
 	"wk_nothing_scheduled": "Nenhum dia desta semana tem trabalho agendado. Seu <b>programa</b> é o que preenche.",
 	"wk_state_trained": "Treinado",
 	"wk_state_missed": "Perdido",

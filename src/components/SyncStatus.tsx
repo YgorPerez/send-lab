@@ -6,6 +6,8 @@
 // ADR 0008 requires the athlete to be able to tell, *from any screen*, that
 // training they just recorded is still only on this device. Before this it was
 // visible on two — Settings and sign-in — neither of which anyone opens mid-set.
+// That sentence is also why offline has two labels rather than one: see
+// `lib/syncState.ts`, which is where the rule lives.
 // The strip is the only surface the app owns on every screen, and it already
 // carries the two things that belong to the app rather than to a page (the
 // wordmark and the locale switch); this is a third of that kind.
@@ -68,6 +70,11 @@ const SHOWN: Record<
 	{ tone: 'warn' | 'neutral'; label: (locale: AppLocale) => string }
 > = {
 	offline: { tone: 'warn', label: (locale) => m.sync_offline({}, { locale }) },
+	// Gold too, and deliberately the same weight as plain offline: it is the same
+	// fact with one more thing known about it, not an escalation. The escalation
+	// in ADR 0008 is the refused-write message, which is unmissable and is not a
+	// chip.
+	'offline-unsent': { tone: 'warn', label: (locale) => m.sync_offline_unsent({}, { locale }) },
 	saving: { tone: 'neutral', label: (locale) => m.sync_saving({}, { locale }) },
 };
 

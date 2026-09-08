@@ -25,7 +25,7 @@
  * nothing has been sent yet, and that stretch is squarely part of what the
  * athlete means by "is it saved".
  */
-export type SyncState = 'offline' | 'saving' | null;
+export type SyncState = 'offline' | 'offline-unsent' | 'saving' | null;
 
 export interface SyncReading {
 	/** `lib/online.ts` — the browser's own answer, optimistic by nature. */
@@ -44,14 +44,26 @@ export interface SyncReading {
 /**
  * The state to show, given what the device knows.
  *
- * **Offline outranks saving**, and the order is the whole of the decision here.
- * Both can be true at once — work waiting on a device with no signal is the
- * ordinary case in a gym basement — and of the two, offline is the one that
- * explains the other. "Saving…" over a dead connection reads as *it is on its
- * way*, which is the reading that gets an athlete to close the app on work that
- * has not left the device.
+ * **A dead connection is never reported as saving.** "Saving…" over no signal
+ * reads as *it is on its way*, which is the reading that gets an athlete to close
+ * the app on work that has not left the device.
+ *
+ * **But offline does not simply outrank waiting work, because that answers the
+ * wrong question.** Both are true at once — work waiting on a device with no
+ * signal is the ordinary case in a gym basement — and collapsing them made
+ * offline-with-nothing-waiting and offline-with-twelve-rows-waiting the same
+ * chip. #83 exists to let the athlete tell *"whether the training they just
+ * recorded has left the device"*, and under that collapse logging a set in a
+ * basement changed nothing on screen: the one question the strip is for, asked in
+ * the one place it matters, and unanswered.
+ *
+ * So the combined case is its own answer. It is still **one** indicator at one
+ * severity, which is what ADR 0008's three states are about — the third of them
+ * is *unmissable*, and this is not that. And it is still not furniture: it needs
+ * both a dead connection and work that has not gone, and it stands down to plain
+ * `'offline'` the moment the work drains.
  */
 export function resolveSyncState({ online, sendable }: SyncReading): SyncState {
-	if (!online) return 'offline';
+	if (!online) return sendable > 0 ? 'offline-unsent' : 'offline';
 	return sendable > 0 ? 'saving' : null;
 }

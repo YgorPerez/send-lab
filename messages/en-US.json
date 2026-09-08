@@ -567,6 +567,7 @@
 	"sync_saving": "Saving…",
 	"sync_saved": "Synced",
 	"sync_offline": "Offline",
+	"sync_offline_unsent": "Offline · not sent",
 	"wk_nothing_scheduled": "No day in this week has work scheduled. Your <b>program</b> is what fills it.",
 	"wk_state_trained": "Trained",
 	"wk_state_missed": "Missed",

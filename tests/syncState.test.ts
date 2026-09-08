@@ -33,8 +33,33 @@ describe('the two states this ticket builds', () => {
 	// sent. "Saving…" over a dead connection is a promise the device cannot keep,
 	// and it is the more alarming of the two to be wrong about — the athlete
 	// reads it as "it is on its way" and closes the app.
-	test('offline outranks saving when both are true', () => {
-		expect(resolveSyncState({ online: false, sendable: 3 })).toBe('offline');
+	test('a dead connection is never reported as saving', () => {
+		expect(resolveSyncState({ online: false, sendable: 3 })).not.toBe('saving');
+	});
+});
+
+// The ticket's first sentence: *"the athlete can tell whether the training they
+// just recorded has left the device."* Offline outranking saving satisfied the
+// ADR's "offline **or** queued" and not that sentence — offline with nothing
+// waiting and offline with twelve rows waiting were the same chip, so logging a
+// set in a basement changed nothing on screen and the one question the strip
+// exists to answer went unanswered in the one place it is asked.
+//
+// So the combined case is said in one chip rather than left to be inferred. Still
+// one indicator at one severity, which is what ADR 0008's three states are about
+// — the third is *unmissable*, and this is not that.
+describe('offline, with training that has not left the device', () => {
+	test('says so, and is not the same state as offline and settled', () => {
+		expect(resolveSyncState({ online: false, sendable: 1 })).toBe('offline-unsent');
+		expect(resolveSyncState({ online: false, sendable: 0 })).toBe('offline');
+	});
+
+	// The half that makes it honest rather than decorative: it goes away. Not by
+	// the connection coming back on its own — by the work draining once it has.
+	test('goes back to plain offline when the work has drained', () => {
+		expect(resolveSyncState({ online: false, sendable: 2 })).toBe('offline-unsent');
+		expect(resolveSyncState({ online: false, sendable: 0 })).toBe('offline');
+		expect(resolveSyncState({ online: true, sendable: 0 })).toBeNull();
 	});
 });
 

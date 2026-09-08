@@ -535,9 +535,26 @@ Two things differ from #20's sketch, both deliberate:
 
 Settled by [#83](https://github.com/YgorPerez/send-lab/issues/83), which is the
 first time [ADR 0008](adr/0008-offline-writes-are-a-queue-not-a-sync.md)'s visible
-states got a surface. Two of the three are built: **Offline**, and **Saving…**
-while unsynced work is waiting. The third — the unmissable message when a write
-has been *refused* — is not, and `useRefusedWork` is still read only by Settings.
+states got a surface. Two of the three are built. The third — the unmissable
+message when a write has been *refused* — is not, and `useRefusedWork` is still
+read only by Settings.
+
+| device | work waiting | the strip says | tone |
+|---|---|---|---|
+| online | none | nothing at all | — |
+| online | some | `Saving…` | neutral |
+| offline | none | `Offline` | warn |
+| offline | some | `Offline · not sent` | warn |
+
+**Offline has two labels, and that is the ticket's first sentence rather than a
+fourth state.** "The athlete can tell whether the training they just recorded has
+left the device" — under a single `Offline`, logging a set in a gym basement
+changed nothing on screen, so the one question the strip exists to answer went
+unanswered in the one place it is asked. Both labels are one indicator at one
+severity, which is what the ADR's three states are about: its third is
+*unmissable*, and a chip is not that. `offline-unsent` needs both a dead
+connection and work that has not gone, and stands down to plain `Offline` the
+moment the work drains.
 
 **The strip is the slot, and the reason is the requirement.** The ADR asks the
 athlete to be able to tell from *any* screen that training has not left the
@@ -562,8 +579,10 @@ negative one. Two consequences that look like details and are not:
   which can never be delivered — so a count including it never returns to zero and
   "Saving…" becomes the permanent furniture the ADR refused. Refused work is the
   third state's problem, not this one's.
-- **Offline outranks Saving…** Both are true at once in a gym basement, and
-  "Saving…" over a dead connection reads as *it is on its way*.
+- **A dead connection is never reported as `Saving…`** Both are true at once in a
+  gym basement, and "Saving…" over a dead connection reads as *it is on its way* —
+  which is the reading that gets an athlete to close the app on work that has not
+  gone. It is `Offline · not sent` instead, which says both.
 
 **A page no longer says it for itself.** Settings and sign-in each carried their
 own `Offline` chip, which was the same shape as the Settings gear before `Menu`
