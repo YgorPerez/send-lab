@@ -253,7 +253,17 @@ const COLLECTIONS: Readonly<Record<string, CollectionSpec<any>>> = {
 			id: only,
 			weight: z.enum(['kg', 'lb']),
 			length: z.enum(['mm', 'in']),
-			notify: z.boolean(),
+			// Two switches, not one `notify` (#75): a local notification this device
+			// raises, and a push the server sends. Different permission stories,
+			// different failure modes, so they are never one field.
+			cueNotices: z.boolean(),
+			dailyNotice: z.boolean(),
+			// An IANA zone, checked as a string for the same reason `locale` is: the
+			// zone database moves, and a name this Node build has not heard of is a
+			// preference that has outlived a release rather than a malformed row.
+			// Null is the account never having reported one — the daily job's cue to
+			// skip it rather than to guess an hour.
+			timeZone: z.string().nullable(),
 			// A locale the app no longer ships is not malformed — it is a preference
 			// that now falls back to the device. Checked as a string, resolved by
 			// `store/locale.ts`.

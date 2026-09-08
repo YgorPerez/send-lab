@@ -279,6 +279,31 @@ all and never will be. Losing unsynced work loses history; losing a draft costs 
 re-entry.
 _Avoid_: pending, partial, autosave, unsaved, in-flight
 
+### Reaching the athlete
+
+**Cue**:
+One event in a running protocol the athlete has to be told about while they are
+not looking at the screen — a segment beginning or ending, the last three
+seconds, the protocol finishing. It is the event and not the sound: one cue has
+three deliveries, a sound, a buzz and a notification, and a cue with all three
+switched off is still the same cue.
+_Avoid_: beep, tone, alert, signal
+
+**Daily notice**:
+The one message sent each morning naming the day type the athlete's slot runs
+today, carrying that day type's headline. Read from the program rather than from
+what has been trained, so it is true on a device that has not synced in a week —
+and a rest day sends nothing rather than sending that there is nothing.
+_Avoid_: reminder, digest, nudge, alert, morning push
+
+**Time zone**:
+Where the athlete's day starts — the IANA zone their device reports, held on the
+account because it is the only thing that lets a server decide when their morning
+is. It belongs to the device rather than to the athlete's taste, so it is read
+and never asked for, and an account that has never reported one has none rather
+than a guessed one.
+_Avoid_: locale, offset, region, TZ
+
 ### Readiness
 
 **Readiness check**:

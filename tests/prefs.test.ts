@@ -40,7 +40,13 @@ describe('writing a preference', () => {
 
 		const prefs = recordStore().prefs.get(SINGLETON_KEY);
 		expect(prefs?.weight).toBe('lb');
-		expect(prefs).toMatchObject({ length: 'mm', notify: false, locale: null });
+		expect(prefs).toMatchObject({
+			length: 'mm',
+			cueNotices: false,
+			dailyNotice: false,
+			timeZone: null,
+			locale: null,
+		});
 	});
 
 	it('lands a second write on the same row', async () => {

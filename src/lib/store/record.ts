@@ -59,8 +59,8 @@ import {
 } from './collections';
 import { createRecordSync, type RecordSync } from './sync';
 
-/** Display units, notification opt-in and the athlete's language, without the
- *  key the singleton row is filed under. */
+/** Display units, the notification switches, the athlete's language and their
+ *  time zone, without the key the singleton row is filed under. */
 export type Prefs = Omit<PrefsRow, 'id'>;
 
 /**
@@ -93,8 +93,21 @@ const NO_PROGRAM: Program = {
 
 /** Preferences before the athlete has set any. `locale: null` means follow the
  *  device; `store/locale.ts` is the resolution order that phrase stands for, and
- *  it needs this as the base of the row it inserts on a first locale switch. */
-export const NO_PREFS: Prefs = { weight: 'kg', length: 'mm', notify: false, locale: null };
+ *  it needs this as the base of the row it inserts on a first locale switch.
+ *
+ *  Both notification switches are **off**, so installing the app never produces a
+ *  permission prompt nobody asked for, and `timeZone` is **null** rather than the
+ *  device's zone: this value is what a record with no prefs row reads as, and a
+ *  guess here would be indistinguishable from a zone the athlete really reported.
+ *  `store/timeZone.ts` writes the real one on boot. */
+export const NO_PREFS: Prefs = {
+	weight: 'kg',
+	length: 'mm',
+	cueNotices: false,
+	dailyNotice: false,
+	timeZone: null,
+	locale: null,
+};
 
 /** The first training week, for an account that has not started a block. */
 const FIRST_WEEK = asWeekId(1);

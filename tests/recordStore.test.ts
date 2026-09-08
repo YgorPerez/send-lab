@@ -194,7 +194,14 @@ describe('an account with nothing in it', () => {
 		expect(record.rehab).toBeNull();
 		expect(record.sessions).toEqual([]);
 		expect(record.taskDone).toEqual({});
-		expect(record.prefs).toEqual({ weight: 'kg', length: 'mm', notify: false, locale: null });
+		expect(record.prefs).toEqual({
+			weight: 'kg',
+			length: 'mm',
+			cueNotices: false,
+			dailyNotice: false,
+			timeZone: null,
+			locale: null,
+		});
 	});
 });
 

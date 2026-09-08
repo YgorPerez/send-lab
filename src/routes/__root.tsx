@@ -5,6 +5,7 @@ import { AppShell } from '../components/AppShell';
 import { authClient } from '../lib/auth-client';
 import { useResolvedLocale } from '../lib/store/locale';
 import { setActiveAccount } from '../lib/store/record';
+import { useDeviceTimeZone } from '../lib/store/timeZone';
 import { installViewTransitionGuards } from '../lib/viewTransition';
 
 export const Route = createRootRoute({
@@ -105,6 +106,12 @@ function RootComponent() {
 	// Where the value comes from — the device on boot, the account once it
 	// hydrates, both on a switch — is `store/locale.ts`'s.
 	const [locale, chooseLocale] = useResolvedLocale();
+
+	// The other thing the account learns from the device on boot (#75): which
+	// IANA zone the athlete is in, so a daily job can work out when their morning
+	// is. Unlike the locale this has no screen and no fallback — the browser
+	// either names a zone or the account keeps reading as absent.
+	useDeviceTimeZone();
 
 	// #70: the shell prerenders with no `window`, so `getLocale()` throws there,
 	// the baked text is always `en-US`, and the Outlet — the route itself never
