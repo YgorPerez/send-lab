@@ -51,12 +51,24 @@ export function fieldsFor(prescription: Variant | undefined): SetField[] {
 }
 
 /**
- * A fresh set, prefilled from the prescription's midpoints.
+ * A fresh set, prefilled from the prescription's midpoints — except the effort
+ * rating, which is not a plan and is left empty.
  *
  * `restSec` falls back to `setRestSec` because it is the rest the athlete
  * actually takes *after* the set: a variant that alternates only within a set
  * prescribes no between-rounds rest, and showing an empty column there reads as
  * "no rest" rather than as "the set rest applies".
+ *
+ * **`rpe` is the one field a prescription cannot open.** Every other column
+ * here is a target the athlete edits when they do something else — the load they
+ * actually pulled, the reps they actually got — so opening at the midpoint saves
+ * six taps and states nothing untrue. An effort rating is not a target that got
+ * done, it is a *reading*, and the only instrument for it is the athlete. Filled
+ * from `midOf(prescription.rpe)`, a `recruit` row opened at 9 because 8–9 was
+ * what was asked for, and an untouched 9 became indistinguishable from a 9 they
+ * felt — #61's bug class, one screen over (#89, decided on #40). The target is
+ * still shown, beside the input rather than in place of the answer: `SetEditor`
+ * takes a `targetRpe`.
  */
 export function prefilledSet(prescription: Variant): LoggedSet {
 	return {
@@ -65,7 +77,7 @@ export function prefilledSet(prescription: Variant): LoggedSet {
 		workSec: midOf(prescription.workSec),
 		reps: midOf(prescription.reps),
 		restSec: midOf(prescription.restSec ?? prescription.setRestSec),
-		rpe: midOf(prescription.rpe),
+		rpe: null,
 		grip: prescription.grip ?? null,
 		done: false,
 	};

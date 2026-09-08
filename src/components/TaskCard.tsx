@@ -241,6 +241,11 @@ export function TaskCard({
 						index={i}
 						set={s}
 						fields={task.fields}
+						// The prescribed range travels down to the column the answer is
+						// typed into as well as sitting in the band above (#89). The band
+						// is for reading the prescription; the column is for judging one
+						// number against another, and the row is where that happens.
+						targetRpe={task.prescription.rpe}
 						onChange={(next) => onChangeSet(i, next)}
 					/>
 				))}

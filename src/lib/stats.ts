@@ -147,7 +147,21 @@ const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 /** Session internal load — sRPE (Foster): session-RPE × session minutes. Session-
  *  RPE is the mean of the logged set RPEs; duration is the logged `durationMin`,
  *  falling back to the session's work + rest time, then to ~2.5 min/set when
- *  nothing timed was recorded. Returns 0 for a session with no sets. */
+ *  nothing timed was recorded. Returns 0 for a session with no sets.
+ *
+ *  **A session nobody rated has no load, and this does not guess one.** sRPE
+ *  *is* the rating — without it there is no measurement to scale by duration,
+ *  only a duration. This used to assume a moderate 5, which was unreachable
+ *  while every fresh row opened at the prescription's midpoint and became the
+ *  common case the moment that stopped (#89): every band and flag downstream
+ *  would have been a statement about the fallback rather than about the athlete,
+ *  which is exactly what #61 found in `computeReadiness`. A session with a
+ *  *partial* rating is still rated — the mean is taken over the sets that
+ *  carry one — and an unrated one drops out, which `acwr` and `weekLoad`
+ *  already read as nothing to report (both return null once no day carries
+ *  load). It does mean a history rated only here and there understates its own
+ *  load; understating a real number is a different thing from reporting an
+ *  invented one. */
 function sessionLoad(w: Session): number {
 	let rpeSum = 0;
 	let rpeN = 0;
@@ -162,8 +176,8 @@ function sessionLoad(w: Session): number {
 			}
 			workSec += (s.workSec ?? 0) * (s.reps ?? 1) + (s.restSec ?? 0);
 		}
-	if (setCount === 0) return 0;
-	const sessionRpe = rpeN ? rpeSum / rpeN : 5; // no RPE logged → assume moderate
+	if (setCount === 0 || rpeN === 0) return 0;
+	const sessionRpe = rpeSum / rpeN;
 	const durationMin =
 		w.durationMin && w.durationMin > 0
 			? w.durationMin

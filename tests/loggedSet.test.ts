@@ -62,7 +62,7 @@ describe('fieldsFor', () => {
 });
 
 describe('prefilledSet', () => {
-	it('fills every field from the prescription midpoint', () => {
+	it('fills every field from the prescription midpoint — except the effort rating', () => {
 		const set = prefilledSet(
 			variant({
 				loadKg: { min: 20, max: 30 },
@@ -80,7 +80,11 @@ describe('prefilledSet', () => {
 			workSec: 7,
 			reps: 6,
 			restSec: 150,
-			rpe: 9, // 8 + 9 = 17, halved = 8.5, rounded = 9
+			// Not `midOf(rpe)`. Every other field here is a *plan* the athlete
+			// edits; the effort rating is a *reading* only they can give, and a row
+			// that opens at the prescribed midpoint cannot tell an untouched 9 from
+			// a 9 they felt (#89, decided on #40).
+			rpe: null,
 			grip: 'pinch',
 			done: false,
 		});
@@ -95,6 +99,14 @@ describe('prefilledSet', () => {
 			prefilledSet(variant({ restSec: { min: 3, max: 3 }, setRestSec: { min: 60, max: 90 } }))
 				.restSec,
 		).toBe(3);
+	});
+
+	it('never answers the effort rating, however tight the prescribed range', () => {
+		// A fixed range is the tempting case — "RPE 8" looks like the answer rather
+		// than the ask — and it is still the app rating the athlete's set for them.
+		expect(prefilledSet(variant({ rpe: { min: 8, max: 8 } })).rpe).toBeNull();
+		expect(prefilledSet(variant({ rpe: { min: 8, max: 9 } })).rpe).toBeNull();
+		expect(prefilledSet(variant({})).rpe).toBeNull();
 	});
 
 	it('starts undone, with nothing the prescription did not say', () => {

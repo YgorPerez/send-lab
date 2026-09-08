@@ -22,7 +22,8 @@
 // is a record, not a form, and 28 sessions of editable inputs is the fastest way
 // to make a history screen feel like a spreadsheet that has to be finished.
 import { Check } from 'lucide-react';
-import { GRIPS, gripLabel } from '$lib/format';
+import type { Range } from '$lib/content/types';
+import { formatRange, GRIPS, gripLabel } from '$lib/format';
 import type { ExerciseId } from '$lib/ids';
 import type { SetField } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
@@ -73,12 +74,25 @@ export function SetEditor({
 	index,
 	set,
 	fields,
+	targetRpe,
 	onChange,
 }: {
 	exerciseId: ExerciseId;
 	index: number;
 	set: LoggedSet;
 	fields: SetField[];
+	/**
+	 * The prescribed effort range, shown in the RPE column beside the input.
+	 *
+	 * A display, not data: `prescription.rpe` is one range per variant and the
+	 * phase scales it per *week*, so every set of a task carries the same target
+	 * and none of them stores it. It is here rather than only in `TaskCard`'s
+	 * prescription row because judging one number against another is not
+	 * something anyone does across a card boundary mid-set — and since `rpe` is
+	 * the one column that no longer opens prefilled (#89), this is the column
+	 * where an athlete has nothing at all to go on without it.
+	 */
+	targetRpe?: Range | null;
 	onChange: (next: LoggedSet) => void;
 }) {
 	return (
@@ -102,9 +116,21 @@ export function SetEditor({
 			<div className="grid grid-cols-4 gap-1.5">
 				{fields.map((f) => {
 					const id = `${exerciseId}-${index}-${f}`;
+					// Only the effort column takes a target, and only when the variant
+					// prescribes one. `shrink-0` on the range and `truncate` on the
+					// label is the priority order said out loud: at 74px the column
+					// gives up its own name before it gives up the number. Colour and
+					// not `opacity` separates the two — at 9px there is no room
+					// between de-emphasised and unreadable.
+					const target = f === 'rpe' && targetRpe ? formatRange(targetRpe) : null;
 					return (
 						<label key={f} className="flex min-w-0 flex-col gap-0.5" htmlFor={id}>
-							<span className="microlabel truncate">{FIELD_LABEL[f]()}</span>
+							<span className="flex min-w-0 items-baseline gap-1">
+								<span className="microlabel truncate">{FIELD_LABEL[f]()}</span>
+								{target ? (
+									<span className="microlabel num shrink-0 text-chalk">{target}</span>
+								) : null}
+							</span>
 							{f === 'grip' ? (
 								<Picker
 									value={set.grip}
@@ -117,6 +143,12 @@ export function SetEditor({
 							) : (
 								<input
 									id={id}
+									// The label now reads "RPE 8–9", which is the accessible name
+									// a screen reader would announce for the field — so the field
+									// says what the sighted column says *and* which of the two
+									// numbers is the ask. Everything shown is still in the label
+									// (the vocabulary's `aria-label` rule).
+									aria-label={target ? m.field_rpe_target({ range: target }) : undefined}
 									className={input({ class: cn(CELL, 'py-0') })}
 									type="number"
 									inputMode="decimal"
