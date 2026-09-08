@@ -44,8 +44,11 @@ import { Popover } from '@base-ui/react/popover';
 import { Link } from '@tanstack/react-router';
 import {
 	CalendarDays,
+	Dumbbell,
 	FlaskConical,
+	House,
 	Menu as MenuIcon,
+	ScrollText,
 	Settings,
 	SlidersHorizontal,
 } from 'lucide-react';
@@ -57,7 +60,7 @@ import { chip } from './ui/variants';
 
 /** One row in the menu. `to` is null for a destination that is not built yet. */
 interface Destination {
-	to: '/week' | '/settings' | null;
+	to: '/' | '/train' | '/log' | '/week' | '/settings' | null;
 	label: (o?: Record<string, never>, opts?: { locale?: AppLocale }) => string;
 	Icon: typeof CalendarDays;
 	/** Which half of the app it belongs to — used only by variant C. */
@@ -66,6 +69,10 @@ interface Destination {
 	ticket?: string;
 }
 
+/**
+ * What the menu holds while the tab bar still exists: the destinations that are
+ * *not* training-day ones.
+ */
 const DESTINATIONS: Destination[] = [
 	{ to: '/week', label: m.nav_week, Icon: CalendarDays, group: 'training' },
 	{ to: null, label: m.nav_program, Icon: SlidersHorizontal, group: 'training', ticket: '#65' },
@@ -73,12 +80,29 @@ const DESTINATIONS: Destination[] = [
 	{ to: '/settings', label: m.nav_settings, Icon: Settings, group: 'app' },
 ];
 
-const VARIANTS = ['A', 'B', 'C'] as const;
+/**
+ * What the menu holds in variant D, where the tab bar is gone.
+ *
+ * Seven, not four. This is the consequence that is easy to miss when the change
+ * is described as "remove the bottom menu": Today, Train and Log do not vanish
+ * with the bar, they move *into* here — so the menu stops being a drawer for the
+ * rest of the app and becomes the app's only navigation. A dropdown sized for
+ * four is a different object at seven, which is the thing to look at.
+ */
+const ALL_DESTINATIONS: Destination[] = [
+	{ to: '/', label: m.nav_today, Icon: House, group: 'training' },
+	{ to: '/train', label: m.nav_train, Icon: Dumbbell, group: 'training' },
+	{ to: '/log', label: m.nav_log, Icon: ScrollText, group: 'training' },
+	...DESTINATIONS,
+];
+
+const VARIANTS = ['A', 'B', 'C', 'D'] as const;
 type Variant = (typeof VARIANTS)[number];
 const VARIANT_NAME: Record<Variant, string> = {
 	A: 'Bottom sheet',
 	B: 'Anchored dropdown',
 	C: 'Full screen, grouped',
+	D: 'B, and no tab bar',
 };
 
 /**
@@ -215,7 +239,7 @@ function VariantA({ locale }: { locale: AppLocale }) {
 // standing still, looking at the strip they just tapped — so thumb reach matters
 // less here than it does for the tab bar.
 
-function VariantB({ locale }: { locale: AppLocale }) {
+function VariantB({ locale, items = DESTINATIONS }: { locale: AppLocale; items?: Destination[] }) {
 	const [open, setOpen] = useState(false);
 	return (
 		<Popover.Root open={open} onOpenChange={setOpen}>
@@ -229,7 +253,7 @@ function VariantB({ locale }: { locale: AppLocale }) {
 				<Popover.Positioner sideOffset={6} align="end" className="z-50">
 					<Popover.Popup className="w-[220px] rounded-lg border border-line bg-panel p-1 shadow-lg transition-[opacity,transform] duration-150 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0">
 						<nav className="flex flex-col gap-0.5">
-							{DESTINATIONS.map((d) => (
+							{items.map((d) => (
 								<Row
 									key={d.label({}, { locale })}
 									d={d}
@@ -327,11 +351,23 @@ function VariantC({ locale }: { locale: AppLocale }) {
 	);
 }
 
+/**
+ * Whether the tab bar should be hidden — true only in variant D.
+ *
+ * Read by `AppShell`, which is the one place that can answer it. Like the variant
+ * itself this settles *after* mount, so the prerendered shell and the first
+ * client render both keep the bar and `check:hydration` stays green.
+ */
+export function useTabBarHidden(): boolean {
+	return useVariant() === 'D';
+}
+
 /** The menu, in whichever shape `?menu=` asked for. Rendered by `AppShell` in
  *  place of the Settings gear. */
 export function PrototypeMenu({ locale }: { locale: AppLocale }): ReactNode {
 	const variant = useVariant();
 	if (variant === 'B') return <VariantB locale={locale} />;
+	if (variant === 'D') return <VariantB locale={locale} items={ALL_DESTINATIONS} />;
 	if (variant === 'C') return <VariantC locale={locale} />;
 	return <VariantA locale={locale} />;
 }

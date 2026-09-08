@@ -34,7 +34,7 @@ import type { ReactNode } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
-import { PrototypeMenu, PrototypeMenuSwitcher } from './PrototypeMenu';
+import { PrototypeMenu, PrototypeMenuSwitcher, useTabBarHidden } from './PrototypeMenu';
 
 const TABS = [
 	{ to: '/', label: m.nav_today, Icon: House },
@@ -103,11 +103,16 @@ export function AppShell({
 	onLocaleChange: (l: AppLocale) => void;
 	children: ReactNode;
 }) {
+	// PROTOTYPE (throwaway). Variant D drops the tab bar entirely and moves Today,
+	// Train and Log into the menu. Kept as a *variant* rather than a deletion so
+	// the two can be compared side by side — which is the decision being made.
+	const noTabBar = useTabBarHidden();
+
 	return (
 		// The rail's width is padding on the frame rather than a margin on `main`,
 		// so `main` centres itself inside what is left — the content column is
 		// centred in the usable width rather than in the window.
-		<div className="min-h-dvh bg-bg lg:pl-[200px]">
+		<div className={`min-h-dvh bg-bg ${noTabBar ? '' : 'lg:pl-[200px]'}`}>
 			{/* Full width on both, including across the rail. The wordmark and the
 			    locale switch are the two things that belong to the app rather than to
 			    a screen, and splitting them either side of the rail's edge would put
@@ -137,7 +142,7 @@ export function AppShell({
 			    Which pages spend it on a second column and which cap themselves back
 			    down is the page's own call; `Panes` is where they say so. */}
 			<main
-				className="mx-auto w-full max-w-[520px] px-3 pt-[52px] pb-[76px] lg:max-w-[1000px] lg:px-5 lg:pt-[60px] lg:pb-14"
+				className={`mx-auto w-full max-w-[520px] px-3 pt-[52px] lg:max-w-[1000px] lg:px-5 lg:pt-[60px] ${noTabBar ? 'pb-14' : 'pb-[76px]' + ' lg:pb-14'}`}
 				style={{ viewTransitionName: 'screen' }}
 			>
 				{children}
@@ -146,46 +151,55 @@ export function AppShell({
 			{/* PROTOTYPE (throwaway). Cycles `?menu=`; also ← / →. */}
 			<PrototypeMenuSwitcher />
 
-			<nav
-				className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 backdrop-blur lg:top-11 lg:right-auto lg:w-[200px] lg:border-t-0 lg:border-r"
-				style={{ viewTransitionName: 'tabbar' }}
-			>
-				<div className="mx-auto flex max-w-[520px] lg:mx-0 lg:max-w-none lg:flex-col lg:gap-0.5 lg:p-2.5">
-					{TABS.map(({ to, label, Icon }) => (
-						<Link
-							key={to}
-							to={to}
-							// 48px tall on a phone and still 44px in the rail. A pointer is
-							// precise enough for less, but a second set of sizes is a second
-							// thing to keep in step and the athlete gains nothing from it
-							// (#52, question 6). `hover:` is free on touch — Tailwind 4 emits
-							// it inside `@media (hover: hover)`.
-							className="relative flex min-h-12 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-ink-faint transition-colors hover:text-ink lg:min-h-11 lg:flex-none lg:flex-row lg:justify-start lg:gap-2.5 lg:rounded-md lg:px-2.5 lg:py-2 lg:hover:bg-panel-2"
-							activeOptions={{ exact: to === '/' }}
-							activeProps={{ className: 'text-chalk' }}
-						>
-							{({ isActive }: { isActive: boolean }) => (
-								<>
-									<span
-										className={cn(
-											'absolute inset-x-4 top-0 h-[2px] rounded-full transition-opacity lg:inset-x-auto lg:inset-y-1.5 lg:left-0 lg:h-auto lg:w-[2px]',
-											isActive ? 'bg-flag opacity-100' : 'opacity-0',
-										)}
-									/>
-									<Icon size={18} strokeWidth={isActive ? 2.2 : 1.7} />
-									{/* Explicit `{ locale }`, not the implicit `getLocale()` the
+			{/* PROTOTYPE (throwaway): variant D renders no tab bar at all, so its
+			    three destinations move into the menu. The `<nav>` stays in the source
+			    either way — `tests/desktop.test.ts` asserts exactly one `<nav>` and one
+			    `<main>` by scanning this file, and `tests/motion.test.ts` asserts the
+			    three view-transition names include `tabbar`. Both guards encode the
+			    architecture being questioned; gating the render rather than deleting
+			    the markup keeps them meaningful while the question is open. */}
+			{noTabBar ? null : (
+				<nav
+					className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-bg/95 backdrop-blur lg:top-11 lg:right-auto lg:w-[200px] lg:border-t-0 lg:border-r"
+					style={{ viewTransitionName: 'tabbar' }}
+				>
+					<div className="mx-auto flex max-w-[520px] lg:mx-0 lg:max-w-none lg:flex-col lg:gap-0.5 lg:p-2.5">
+						{TABS.map(({ to, label, Icon }) => (
+							<Link
+								key={to}
+								to={to}
+								// 48px tall on a phone and still 44px in the rail. A pointer is
+								// precise enough for less, but a second set of sizes is a second
+								// thing to keep in step and the athlete gains nothing from it
+								// (#52, question 6). `hover:` is free on touch — Tailwind 4 emits
+								// it inside `@media (hover: hover)`.
+								className="relative flex min-h-12 flex-1 flex-col items-center justify-center gap-1 py-2.5 text-ink-faint transition-colors hover:text-ink lg:min-h-11 lg:flex-none lg:flex-row lg:justify-start lg:gap-2.5 lg:rounded-md lg:px-2.5 lg:py-2 lg:hover:bg-panel-2"
+								activeOptions={{ exact: to === '/' }}
+								activeProps={{ className: 'text-chalk' }}
+							>
+								{({ isActive }: { isActive: boolean }) => (
+									<>
+										<span
+											className={cn(
+												'absolute inset-x-4 top-0 h-[2px] rounded-full transition-opacity lg:inset-x-auto lg:inset-y-1.5 lg:left-0 lg:h-auto lg:w-[2px]',
+												isActive ? 'bg-flag opacity-100' : 'opacity-0',
+											)}
+										/>
+										<Icon size={18} strokeWidth={isActive ? 2.2 : 1.7} />
+										{/* Explicit `{ locale }`, not the implicit `getLocale()` the
 									    function falls back to: Paraglide's own runtime locale
 									    updates the instant `localStorage` is read, before React's
 									    hydration-deferred `locale` prop (#70) catches up, and the
 									    two disagreeing is a text hydration mismatch on every
 									    pt-BR load. */}
-									<span className="eyebrow">{label({}, { locale })}</span>
-								</>
-							)}
-						</Link>
-					))}
-				</div>
-			</nav>
+										<span className="eyebrow">{label({}, { locale })}</span>
+									</>
+								)}
+							</Link>
+						))}
+					</div>
+				</nav>
+			)}
 		</div>
 	);
 }
