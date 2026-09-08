@@ -149,14 +149,35 @@ session.
 _Avoid_: interval scheme, routine
 
 **Override**:
-A stored deviation from a built-in target, set by the athlete. Feeds into the
-prescription; anything not overridden falls back to the built-in value.
+A stored deviation from a built-in target, set by the athlete, and addressed by
+the weekday it applies to. Feeds into the prescription; anything not overridden
+falls back to the built-in value. A **working load** is not one (ADR-0020).
 _Avoid_: custom, target, edit
 
 **Progression**:
 The week-on-week climb in prescribed load, at a rate scaled by the athlete's
-level and by how much they actually trained.
+level and by how much they actually trained. It scales a **working load**, so an
+exercise without one does not progress.
 _Avoid_: overload, ramp, increase
+
+**Weighted exercise**:
+An exercise where added load is part of what is prescribed, rather than one
+answered by grade or time alone. Only these carry a working load, and on a pinch
+block the added load is the whole load.
+_Avoid_: loaded exercise, weight exercise
+
+**Working load**:
+The load an exercise is actually trained at, held per exercise and **variant**.
+*Settling* while the load search is still moving it; *settled* once two
+consecutive on-target sessions agree, after which progression scales it. Never an
+override (ADR-0020).
+_Avoid_: working weight, target load, base load, prescribed load
+
+**Load search**:
+The first few sessions spent finding the athlete's real working load, driven by
+the gap between the prescribed RPE and the RPE the athlete actually gave. Ends
+when the working load settles, and re-opens if a settled one drifts.
+_Avoid_: probe, calibration, tuning, auto-tune
 
 ### Training and recording
 
@@ -297,7 +318,9 @@ today's freshness, never for progress.
 _Avoid_: test, metric, marker, measurement
 _Leaving_: **already removed from the rebuild.** A readiness check rests on
 wellness answers and load alone, with no objective reading to contradict them.
-Still present in the SvelteKit app until cutover.
+Still present in the SvelteKit app until cutover. **The word is not reused** — the
+search for a working load is a **load search**, and this reading was the opposite
+of it: same-day freshness, never progress.
 
 **Injury self-check**:
 A per-area questionnaire modelled on a validated clinical instrument, scoring
@@ -355,6 +378,8 @@ _Leaving_: dropped in the rebuild — the athlete's tested numbers stop being
 tracked over time. Internal load, workload ratio and monotony are unaffected:
 they are derived from sessions, not from markers, and a readiness check still
 reads them. **Bodyweight is the exception and survives** — it is not a test.
+What leaves is the *tracking*, not the reading: a tested max is the first tier the
+**load search** asks for, read once as an input and never kept as a series.
 
 **Bodyweight**:
 The athlete's weight, tracked over time. Not a marker: nothing is tested and no
@@ -367,7 +392,9 @@ _Avoid_: weight, mass, bw
 A marker normalized so readings taken on different edge depths or block widths
 are comparable, carrying how much to trust the conversion.
 _Avoid_: normalized score, adjusted max
-_Leaving_: dropped with Marker.
+_Changing_: it does **not** leave with **Marker**, as this entry used to say. It
+survives inverted — read once to predict a working load from a number the athlete
+already knows, rather than tracked over time as progress.
 
 **Internal load**:
 Session effort multiplied by session minutes — what a session cost the athlete,
