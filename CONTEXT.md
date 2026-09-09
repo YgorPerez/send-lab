@@ -41,8 +41,10 @@ _Avoid_: state, data, document, account data
 _Changing_: the record held with nobody signed in is not yet reachable from an
 account — it stays under its own segment and no sign-in adopts it, so the
 athlete who trains signed out and then signs in for the first time is shown an
-empty record. The glossary says what the words mean; the app does not agree with
-it here yet.
+empty record. ADR 0021 is the decision; issue
+[#97](https://github.com/YgorPerez/send-lab/issues/97) is the work. Until that
+lands, the glossary says what the words mean and the app does not agree with it
+here.
 
 **Baseline**:
 The answers the generated program is built from — goal, focus, level, days per
