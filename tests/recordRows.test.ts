@@ -105,6 +105,33 @@ describe('a bad row is rejected, not coerced', () => {
 		expect(check.ok).toBe(false);
 	});
 
+	it('refuses a session carrying an RPE off the scale', () => {
+		// The one set field with a fixed scale, so the one the wire can bound — a
+		// load or an edge is whatever the athlete actually used.
+		const set = {
+			loadKg: null,
+			edgeMm: null,
+			workSec: null,
+			reps: null,
+			restSec: null,
+			grip: null,
+			done: true,
+		};
+		const session = (rpe: number | null) => ({
+			at: '2026-08-13',
+			weekday: 'Thu',
+			dayType: 'pull',
+			note: '',
+			exercises: [{ exercise: 'pull', variant: 0, sets: [{ ...set, rpe }] }],
+		});
+		expect(sanitizeRow('sessions', '2026-08-13', session(47)).ok).toBe(false);
+		expect(sanitizeRow('sessions', '2026-08-13', session(-1)).ok).toBe(false);
+		// The ends of the scale, and an unrated set, all pass.
+		expect(sanitizeRow('sessions', '2026-08-13', session(0)).ok).toBe(true);
+		expect(sanitizeRow('sessions', '2026-08-13', session(10)).ok).toBe(true);
+		expect(sanitizeRow('sessions', '2026-08-13', session(null)).ok).toBe(true);
+	});
+
 	it('refuses a readiness check whose verdict is not a verdict', () => {
 		const check = sanitizeRow('readinessLog', '1000', { at: 1000, verdict: 'fine', score: 70 });
 		expect(check.ok).toBe(false);

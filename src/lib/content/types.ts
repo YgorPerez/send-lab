@@ -29,6 +29,23 @@ export interface Range {
 	max: number;
 }
 
+/**
+ * The scale an **RPE** is given on, 0–10 (Borg CR10).
+ *
+ * Declared here, below the app, because four layers had their own opinion of it
+ * and none of them agreed: this file's own comment said 0–10, `rpeHistogram`
+ * bucketed 1–10 and quietly counted a logged 0 as a 1, the wire accepted any
+ * number at all, and the library prescribes nothing below 2. A scale stated
+ * three times and enforced nowhere is not a scale (ADR 0013 on where a shared
+ * closed value belongs).
+ *
+ * **The floor is 0 and not 1**, which is the half worth saying out loud: 0 is
+ * "nothing at all" on Borg's scale and a real thing for an athlete to answer,
+ * and clamping it up to 1 was the app editing a rating it had been given — the
+ * same move #89 removed everywhere else.
+ */
+export const RPE_SCALE: Range = { min: 0, max: 10 };
+
 /** Primary grip an exercise loads. */
 export const GRIPS = [
 	'half-crimp',
@@ -106,7 +123,8 @@ export interface VariantParams {
 	edgeMm?: Range;
 	/** Relative intensity, % of MVC / max. */
 	intensityPct?: Range;
-	/** Target effort, RPE 0–10. */
+	/** The **RPE** range this asks the set to feel like, on `RPE_SCALE`. Never
+	 *  the athlete's own rating, which is a `LoggedSet`'s (#89). */
 	rpe?: Range;
 	/** Whether the last set(s) go to failure. */
 	toFailure?: boolean;

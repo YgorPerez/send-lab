@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { asExerciseId, asWeekdayKey } from '../src/lib/ids';
-import { acwr, readinessInsights, weekLoad } from '../src/lib/stats';
+import { acwr, readinessInsights, rpeHistogram, weekLoad } from '../src/lib/stats';
 import type { LoggedReadinessCheck, Session } from '../src/lib/types';
 
 const DAY = 86_400_000;
@@ -131,4 +131,24 @@ test('readinessInsights: baseline, trend and outcome calibration', () => {
 	// consistently strong sessions on modest scores nudge calibration up (clamped to +12)
 	const cal = [entry(50, 3), entry(50, 3), entry(50, 3), entry(50, 3)];
 	assert.equal(readinessInsights(cal).calibration, 12);
+});
+
+// The scale runs 0–10 and the histogram used to bucket 1–10, clamping a logged 0
+// up into the 1 bucket — the app editing a rating it had been given, which is the
+// move #89 took out everywhere else.
+test('rpeHistogram counts a logged 0 as a 0', () => {
+	const points = rpeHistogram([w(1, 1, 0), w(2, 1, 0), w(3, 1, 7)]);
+	assert.deepEqual(points, [
+		{ label: '0', value: 2 },
+		{ label: '7', value: 1 },
+	]);
+});
+
+test('rpeHistogram rounds to whole points and reports only what was rated', () => {
+	// 8.5 is a real answer on a `step="any"` input; a null is not a bucket.
+	const points = rpeHistogram([w(1, 1, 8.5), w(2, 1, 10), w(3, 2, null)]);
+	assert.deepEqual(points, [
+		{ label: '9', value: 1 },
+		{ label: '10', value: 1 },
+	]);
 });
