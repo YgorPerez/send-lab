@@ -121,7 +121,8 @@ describe('work the server has refused', () => {
 // `AppShell`, which is the shell and cannot be rendered without a router.
 //
 // The browser gates cannot cover this. `check:contrast` and `check:motion` walk
-// real routes, and no route ever has refused work on it, so the notice is invisible
+// real routes, and no route ever has refused work on it, so the announcement is
+// invisible
 // to both — the numbers behind it (6.44:1 on the fill, two lines at 360) were
 // measured by driving a real refusal through `/api/state` and belong to the commit
 // that made them. What belongs here is that the words arrive at all.
@@ -160,13 +161,13 @@ describe('what the strip renders for each state', () => {
 	// The third state is not the chip the other three are, and the escalation is
 	// the whole of #84: same slot, different weight. So it carries the accent fill
 	// and it does not carry the chip's 10px mono token.
-	test('refused work is a filled notice, not a chip', () => {
-		const notice = strip('refused-work', 'en-US');
-		expect(notice, 'the notice lost the accent fill').toContain('bg-flag');
-		expect(notice, 'the notice is announced as politely as the chip it outranks').toContain(
+	test('refused work is a filled announcement, not a chip', () => {
+		const said = strip('refused-work', 'en-US');
+		expect(said, 'the announcement lost the accent fill').toContain('bg-flag');
+		expect(said, 'the announcement is announced as politely as the chip it outranks').toContain(
 			'aria-live="assertive"',
 		);
-		expect(notice, 'the notice is a chip after all').not.toContain('font-mono');
+		expect(said, 'the announcement is a chip after all').not.toContain('font-mono');
 
 		for (const state of ['offline', 'offline-unsent', 'sending'] as const) {
 			const chip = strip(state, 'en-US');

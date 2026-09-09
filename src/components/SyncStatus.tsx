@@ -26,7 +26,7 @@
 // unmissable message when a write has permanently failed". #84 built the third,
 // and it is escalated out of this slot rather than given a second surface beside
 // it — the same place at a different weight. A refusal therefore takes the
-// strip's whole left side: the notice is a filled `--flag` bar carrying a real
+// strip's whole left side: the announcement is a filled `--flag` bar carrying a real
 // sentence — the app's one other use of the accent fill, which is otherwise the
 // single `primary` button a screen gets — and the wordmark stands down for it
 // (`AppShell`), because the strip
@@ -36,7 +36,7 @@
 // that"), and at 360px a token beside the wordmark has ~138px, which is not a
 // sentence in either locale.
 //
-// The escalation is why the notice never appears *with* a chip:
+// The escalation is why the announcement never appears *with* a chip:
 // `resolveSyncState` returns one state and refused work outranks the other two.
 // The price is recorded there — while refused work stands the strip is not also
 // reporting the connection.
@@ -60,7 +60,7 @@
 // snapshots for the render that hydrates the baked markup. The live values land in
 // the effect after it. That is also what keeps the wordmark in the baked shell:
 // nothing is refused in the artefact, so nothing has stood down in it.
-// `UpdatePrompt` reaches the same place by a different route, and for the same
+// `UpdateAnnouncement` reaches the same place by a different route, and for the same
 // reason.
 
 import { useOnline } from '$lib/online';
@@ -74,7 +74,7 @@ import { chip } from './ui/variants';
  * What the strip has to say right now, live.
  *
  * Read by `AppShell` and handed back down, rather than read here: the wordmark
- * yields to the refusal notice, so the strip's left side has two things to decide
+ * yields to the announcement, so the strip's left side has two things to decide
  * from one answer and asking twice is two subscriptions to the same store for one
  * value.
  *
@@ -101,7 +101,7 @@ export function useSyncState(): SyncState {
  * app doing its job, and a warning colour on a healthy write teaches the athlete
  * to ignore the one that is not.
  *
- * The locale is passed rather than read, for `UpdatePrompt`'s reason: `m.*()`
+ * The locale is passed rather than read, for `UpdateAnnouncement`'s reason: `m.*()`
  * resolves the locale at call time, and the strip renders with the *boot* locale
  * until the app has hydrated (`__root.tsx`). Reading the ambient one here would
  * make this the single element in the strip in the other language.

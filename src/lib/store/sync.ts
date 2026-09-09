@@ -150,6 +150,11 @@ export function createRecordSync(
 	/**
 	 * Tell every watcher the work moved.
 	 *
+	 * `tellWatchers`, not `announce`: **announcement** is a `CONTEXT.md` term one
+	 * layer up — the thing the app says on every screen, which is what the strip
+	 * does with what this reports — and ADR 0014 does not let the same word be a
+	 * function down here that pushes a callback.
+	 *
 	 * Each one in its own `try`, which is not defensive habit: `push` is called
 	 * from inside the collection's write handler, TanStack DB awaits that handler
 	 * before it persists, and a rejection rolls the mutation back — so an
@@ -158,7 +163,7 @@ export function createRecordSync(
 	 * subscriber's bug, not a network failure, which is the one thing the settle
 	 * path was careful not to blame it on.
 	 */
-	function announce(): void {
+	function tellWatchers(): void {
 		for (const notify of watchers) {
 			try {
 				notify();
@@ -216,11 +221,11 @@ export function createRecordSync(
 				inFlight = null;
 			}
 			// Only for a request that landed: nothing changed about the work when the
-			// write never left. `announce` is what keeps a throwing watcher from
+			// write never left. `tellWatchers` is what keeps a throwing watcher from
 			// being reported as a deferred write — the distinction this line used to
-			// make by sitting outside the `try`, and that `announce` now makes for
-			// both of its callers.
-			if (delivered) announce();
+			// make by sitting outside the `try`, and that `tellWatchers` now makes
+			// for both of its callers.
+			if (delivered) tellWatchers();
 		})();
 
 		await inFlight;
@@ -268,8 +273,8 @@ export function createRecordSync(
 			// not in the sequence yet would have it report the count from a moment
 			// that never existed. An empty push still arms the debounce — that is
 			// how a caller with nothing new to say asks for what is already waiting
-			// to go — but it changed nothing, so there is nothing to announce.
-			if (writes.length > 0) announce();
+			// to go — but it changed nothing, so there is nothing to report.
+			if (writes.length > 0) tellWatchers();
 		},
 		hydrate,
 		flush,

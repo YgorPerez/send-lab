@@ -90,7 +90,8 @@ export interface SyncReading {
  * is exactly one thing that ends it, and it is not something the athlete can be
  * told to do — `unsynced.ts`'s `add()` replaces an entry when the *same row* is
  * written again, dropping its refusal, because a refusal is a fact about content
- * and not a ban on the key. So the notice lasts until the athlete happens to edit
+ * and not a ban on the key. So the announcement lasts until the athlete happens to
+ * edit
  * that one row, which for an appended session is never.
  *
  * That is the right trade only because refused work is the app's most serious

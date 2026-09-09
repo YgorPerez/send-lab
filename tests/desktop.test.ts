@@ -42,7 +42,7 @@ const root = process.cwd();
  *  hydrated. It was two files until #83 put the sync state in the strip: that one
  *  is empty in the baked artefact, but it is a real element in the strip a moment
  *  later, and a `lg:`-versus-JS decision inside it would bake the same wrong
- *  answer as one in `AppShell` itself. `Menu.tsx` and `UpdatePrompt.tsx` are
+ *  answer as one in `AppShell` itself. `Menu.tsx` and `UpdateAnnouncement.tsx` are
  *  scanned by the assertions further down instead, which are about what they
  *  render rather than what they measure. */
 const SHELL = [
@@ -227,7 +227,7 @@ describe('the chrome is one nav and one main, below the shell', () => {
 
 	// ADR 0008's third state — #84 — is the one that is *not* a token, and the two
 	// halves of it are decided in two files. It would be easy for the strip to end
-	// up carrying both voices at once: an unmissable refusal notice with the
+	// up carrying both voices at once: an unmissable announcement with the
 	// wordmark still introducing the app beside it, which is a 360px strip trying
 	// to hold a sentence and a wordmark. So the yield is asserted where it is
 	// written, and asserted to be the *only* thing the wordmark yields to.
@@ -236,22 +236,22 @@ describe('the chrome is one nav and one main, below the shell', () => {
 		expect(header, 'the wordmark left the strip').toContain('Send Lab');
 		// Whitespace-tolerant: this asserts the ternary, not the formatter's line
 		// breaks, which is a distinction the first version of it got wrong.
-		expect(header, 'the wordmark no longer yields to the refused-work notice (#84)').toMatch(
+		expect(header, 'the wordmark no longer yields to the refused-work announcement (#84)').toMatch(
 			/sync === 'refused-work'\s*\?\s*null\s*:\s*<span className="eyebrow">\s*Send Lab/,
 		);
 		// One reading for both halves. Two calls to `useSyncState` would be two
 		// subscriptions to the same store deciding one strip, which is how the
-		// wordmark and the notice come to disagree.
+		// wordmark and the announcement come to disagree.
 		expect(
 			shell.match(/useSyncState\(\)/g)?.length,
 			'the shell reads the sync state more than once',
 		).toBe(1);
-		// And the notice never renders beside a chip. The precedence is
+		// And the announcement never renders beside a chip. The precedence is
 		// `resolveSyncState`'s and `tests/syncState.test.ts` holds it; what this
 		// holds is that the component does not reintroduce a second answer.
 		expect(
 			code('src/components/SyncStatus.tsx'),
-			'the refused-work notice is rendered from something other than the resolved state',
+			'the refused-work announcement is rendered from something other than the resolved state',
 		).toContain("state === 'refused-work'");
 	});
 
