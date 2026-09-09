@@ -21,7 +21,7 @@
 // -----------------------------
 // **No fixture.** `store/seed.ts` already defines this scenario and
 // `tests/screens.test.ts` already asserts against it, so the gates and the unit
-// suite come to describe one account: a contrast failure in a seeded `/log` row
+// suite come to describe one training record: a contrast failure in a seeded `/log` row
 // has a unit test next to it that named the same row. Restating the rows here
 // would be a second scenario, and it would drift.
 //
@@ -108,7 +108,7 @@ export type Cells = Record<string, string>;
  * buying. The **bytes** are not, and that is worth knowing before anyone tries
  * to cache or diff them: the collection stamps every row with a fresh
  * `versionKey` UUID, so two seedings of one scenario serialize differently while
- * describing the same account. Compare what the cells decode to, never the
+ * describing the same training record. Compare what the cells decode to, never the
  * strings.
  *
  * The storage is a `Map`: the collections persist synchronously on insert, so by
@@ -215,7 +215,7 @@ export interface BootState {
 	cells?: Record<string, Cells>;
 }
 
-/** The empty account, on the pinned clock — the coverage the gates had before
+/** No training record at all, on the pinned clock — the coverage the gates had before
  *  #73, minus the moving calendar. */
 export const EMPTY_BOOT: BootState = { pass: 'empty', now: PINNED_NOW };
 

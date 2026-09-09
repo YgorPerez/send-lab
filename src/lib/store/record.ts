@@ -374,7 +374,7 @@ export function resetRecordStore(): void {
 export function recordSync(): RecordSync | null {
 	// Signed out there is no sync by construction, and since #83 this is read from
 	// the top strip on every screen — including `/login`, where building the
-	// signed-out account's sixteen collections to be told `null` is sixteen
+	// signed-out store's sixteen collections to be told `null` is sixteen
 	// collections nobody asked for.
 	if (active === null) return null;
 	recordStore();

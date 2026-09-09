@@ -32,19 +32,19 @@
 //   pnpm check:motion --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:motion --routes=/,/train --verbose
 //   pnpm check:motion --desktop           # the wide layout, 1280px
-//   pnpm check:motion --passes=seeded     # skip the empty account
+//   pnpm check:motion --passes=seeded     # skip the recordless pass
 //
 // Not in `pnpm verify`, for the same reason `check:contrast` is not: it needs
 // Chrome and a completed build.
 //
 // WHAT IT MEASURES IT ON
 // ----------------------
-// Two accounts, on one pinned instant (#73): the seeded training record and the
-// empty account. This one is not about the clock — animation timing comes from
+// Two states, on one pinned instant (#73): the seeded training record, and none
+// at all. This one is not about the clock — animation timing comes from
 // the compositor, not from `Date` — it is about *what is on screen to animate*.
 // A completed set row, a session in the log, a filled chart: none of those exist
 // in an empty store, and a transition that survives reduced motion on one of them
-// is a transition four passes over an empty app cannot see. So each account is
+// is a transition four passes over an empty app cannot see. So each of the two is
 // measured with motion allowed and then reduced, which is four sessions rather
 // than two, and every survivor names the pass it came from.
 import { discoverRoutes, fail, open, parseArgs, type Session, viewport } from './browser.ts';
@@ -72,7 +72,7 @@ const FRAME_MS = Number(args.get('frame-ms') ?? 20);
 const MIN_ELEMENTS = Number(args.get('min-elements') ?? 8);
 
 const ROUTES = (args.get('routes') ?? discoverRoutes().join(',')).split(',').filter(Boolean);
-/** Which accounts to measure. Both, unless asked otherwise. */
+/** Which of the two to measure. Both, unless asked otherwise. */
 const PASSES = (args.get('passes') ?? 'seeded,empty').split(',').filter(Boolean);
 
 interface Timed {
@@ -288,12 +288,12 @@ const report = (rows: Timed[]) => {
 let exitCode = 0;
 
 /**
- * Both halves of the check, on one account.
+ * Both halves of the check, on one of the two.
  *
  * Run 1 allows motion and asserts the navigation *does* animate; run 2 reduces
  * it and asserts none of that survives. The first is what makes the second mean
- * anything, and both are repeated per account rather than shared, because what
- * there is on screen to animate is the variable the account changes.
+ * anything, and both are repeated per state rather than shared, because what
+ * there is on screen to animate is what the record changes.
  */
 async function bothWays(
 	boot: BootState,
@@ -440,7 +440,7 @@ if (survivors.length) {
 } else {
 	console.log(
 		`check:motion — ok (nothing over ${FRAME_MS}ms under prefers-reduced-motion, across ` +
-			`${PASSES.length} account(s) [${PASSES.join(' ')}] × ${ROUTES.length} route(s) ` +
+			`${PASSES.length} pass(es) [${PASSES.join(' ')}] × ${ROUTES.length} route(s) ` +
 			`[${ROUTES.join(' ')}] and one real navigation each)`,
 	);
 }

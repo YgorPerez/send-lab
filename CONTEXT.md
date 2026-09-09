@@ -27,12 +27,22 @@ app a session is training.
 _Avoid_: session, auth session, login, authentication
 
 **Training record**:
-Everything one athlete's account holds — the program, the sessions, the readiness
-checks, the bodyweight series, the baseline, the preferences. What an account
-owns, as opposed to
-the account itself, which is the identity that owns it; and what a second device
-is catching up to.
+Everything one athlete's training amounts to — the program, the sessions, the
+readiness checks, the bodyweight series, the baseline, the preferences. What an
+account owns, as opposed to the account itself, which is the identity that owns
+it; and what a second device is catching up to.
+
+An account is what **syncs** a record and what keeps two athletes' records apart
+on a shared device — not what brings one into being. Training logged with nobody
+signed in is a training record too: real, kept, and the athlete's, which is why
+sign-in can promise that what they trained is still there rather than that it
+was saved somewhere.
 _Avoid_: state, data, document, account data
+_Changing_: the record held with nobody signed in is not yet reachable from an
+account — it stays under its own segment and no sign-in adopts it, so the
+athlete who trains signed out and then signs in for the first time is shown an
+empty record. The glossary says what the words mean; the app does not agree with
+it here yet.
 
 **Baseline**:
 The answers the generated program is built from — goal, focus, level, days per

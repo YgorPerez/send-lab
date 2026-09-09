@@ -36,7 +36,7 @@
 //   pnpm check:contrast --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:contrast --routes=/,/train --locales=pt-BR --width=320
 //   pnpm check:contrast --desktop         # the wide layout, 1280px
-//   pnpm check:contrast --passes=seeded   # skip the empty account
+//   pnpm check:contrast --passes=seeded   # skip the recordless pass
 //
 // Set `CHROME_PATH` if Chrome is somewhere unusual. Chrome, the static server
 // and the CDP client are `scripts/browser.ts`, shared with `check:motion`.
@@ -44,9 +44,9 @@
 // WHAT IT MEASURES IT ON
 // ----------------------
 // Twice: once on the seeded training record (`store/seed.ts`, the scenario
-// `tests/screens.test.ts` asserts against) and once on the empty account a new
+// `tests/screens.test.ts` asserts against) and once with no record at all, which a new
 // athlete sees — both on one pinned instant, so a changed number means changed
-// code and not a changed weekday. Before #73 this ran the empty account only, on
+// code and not a changed weekday. Before #73 this ran the recordless case only, on
 // the machine's own clock, and reported "ok" over an app in which half the routes
 // rendered almost nothing.
 import {
@@ -90,7 +90,7 @@ const MIN_ELEMENTS = Number(args.get('min-elements') ?? 3);
 
 const ROUTES = (args.get('routes') ?? discoverRoutes().join(',')).split(',').filter(Boolean);
 const LOCALES = (args.get('locales') ?? discoverLocales().join(',')).split(',').filter(Boolean);
-/** Which accounts to measure. Both, unless asked otherwise — the seeded record
+/** Which of the two to measure. Both, unless asked otherwise — the seeded record
  *  is what the athlete has, and the empty one is what a new athlete sees. */
 const PASSES = (args.get('passes') ?? 'seeded,empty').split(',').filter(Boolean);
 
@@ -199,7 +199,7 @@ const PROBE = String.raw`(() => {
  * How tall the page laid out, and how wide the viewport it did it in.
  *
  * Not a contrast reading, and it is here because this is the run that has a
- * seeded account and a real layout engine at the same time. #52 had to *derive*
+ * seeded record and a real layout engine at the same time. #52 had to *derive*
  * `/log`'s desktop height from an older prototype's number — the one page whose
  * whole argument for a second pane is that it halves a long list — because the
  * screen it could measure was the empty one. Reported per route in the summary,
@@ -389,7 +389,7 @@ try {
 
 	// The cross-pass control, and it is the one that proves the record was *read*
 	// rather than merely written: a route the floors claim is content-bearing has
-	// to render more with an account behind it than without one. A seed that
+	// to render more with a training record behind it than without one. A seed that
 	// landed in a namespace nothing looks for passes every check above this and
 	// fails here.
 	//
@@ -410,7 +410,7 @@ try {
 		});
 		if (inert.length) {
 			fail(
-				`the seeded account changed nothing on ${inert.join(', ')}.\n` +
+				`the seeded record changed nothing on ${inert.join(', ')}.\n` +
 					'  Those routes render a training record, so measuring the same count with\n' +
 					'  and without one means the rows were installed somewhere the app does not\n' +
 					'  read — check the storage segment in scripts/seeded-record.ts.',
