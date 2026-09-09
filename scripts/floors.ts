@@ -7,7 +7,7 @@
 // was for: a backstop that rejects the router's error boundary, not a density
 // assertion. One number for every route has to be low enough for the sparsest
 // screen in the app, which makes it far too low for the densest: signed out,
-// `/log` renders **13** text elements where the seeded account renders 170, and
+// `/log` renders **13** text elements where the seeded record renders 170, and
 // it cleared a floor of three without complaint. #52 hit exactly that and could
 // not measure `/log`'s desktop height at all.
 //
@@ -20,7 +20,7 @@
 // -----------------------------
 // Measured, not chosen — the repo's rule for any number it acts on. Each is the
 // smallest count `check:contrast` reported for that route across both locales on
-// the seeded account, taken down by about a quarter to a round number. That
+// the seeded record, taken down by about a quarter to a round number. That
 // headroom is the point: these are not assertions about how many elements a
 // screen has, which would go red on every copy edit. They are the line under
 // which the screen is not that screen any more.
@@ -86,7 +86,7 @@ export interface RouteFloor {
 }
 
 /**
- * The floor per route, on the seeded account.
+ * The floor per route, with the seeded record behind it.
  *
  * Every route the app has, deliberately — including the ones that are sparse by
  * design, because "sparse" is a claim worth writing down rather than a gap.
@@ -146,7 +146,7 @@ function declaredFloor(route: string, measured?: number): RouteFloor {
 	if (declared === undefined) {
 		throw new Error(
 			`route '${route}' has no floor in scripts/floors.ts — it measured ${measured ?? 'nothing'} ` +
-				'text element(s) on the seeded account. Add an entry with room under that number, ' +
+				'text element(s) with the seeded record behind it. Add an entry with room under that number, ' +
 				'or a page that renders nothing is a page this gate reports as fine.',
 		);
 	}

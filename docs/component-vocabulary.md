@@ -806,7 +806,7 @@ nothing else reports it.
 **What they measure it on** ([#73](https://github.com/YgorPerez/send-lab/issues/73)).
 `check:contrast`, `check:hydration` and `check:motion` each run **twice**: once on
 the seeded training record — `store/seed.ts`, the same scenario
-`tests/screens.test.ts` asserts against — and once on the empty account a new
+`tests/screens.test.ts` asserts against — and once with no record at all, which is what a new
 athlete sees. Both passes boot on one pinned instant, `2026-08-13T09:30`, a
 Thursday in week 5 of that block, printed at the top of every run so a number is
 reproducible from the output that carried it. Until #73 they ran the empty account

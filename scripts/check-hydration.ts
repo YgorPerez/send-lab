@@ -49,15 +49,15 @@
 //   pnpm check:hydration --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:hydration --routes=/,/train --locales=pt-BR --verbose
 //   pnpm check:hydration --desktop        # the wide layout, 1280px
-//   pnpm check:hydration --passes=seeded  # skip the empty account
+//   pnpm check:hydration --passes=seeded  # skip the recordless pass
 //
 // Not in `pnpm verify`, for the same reason `check:contrast` and `check:motion`
 // are not: it needs Chrome and a completed build.
 //
 // WHAT IT MEASURES IT ON
 // ----------------------
-// Two accounts, on one pinned instant (#73): the seeded training record and the
-// empty account a new athlete sees. A mismatch is the first client render
+// Two states, on one pinned instant (#73): the seeded training record, and none
+// at all, which is what a new athlete sees. A mismatch is the first client render
 // disagreeing with the prerendered shell, so *what there is to render* is
 // exactly the variable — a screen holding five weeks of sessions has more ways
 // to disagree than the two headings the empty one draws. Before #73 the second
@@ -97,7 +97,7 @@ const MIN_ELEMENTS = Number(args.get('min-elements') ?? 8);
 
 const ROUTES = (args.get('routes') ?? discoverRoutes().join(',')).split(',').filter(Boolean);
 const LOCALES = (args.get('locales') ?? discoverLocales().join(',')).split(',').filter(Boolean);
-/** Which accounts to measure. Both, unless asked otherwise. */
+/** Which of the two to measure. Both, unless asked otherwise. */
 const PASSES = (args.get('passes') ?? 'seeded,empty').split(',').filter(Boolean);
 
 /**
