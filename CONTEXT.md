@@ -202,8 +202,9 @@ _Avoid_: working weight, target load, base load, prescribed load
 
 **Load search**:
 The first few sessions spent finding the athlete's real working load, driven by
-the gap between the prescribed RPE and the RPE the athlete actually gave. Ends
-when the working load settles, and re-opens if a settled one drifts.
+the gap between the prescribed **RPE** and the RPE the athlete actually gave. A
+set with no RPE given is no gap rather than a gap of zero, and moves nothing.
+Ends when the working load settles, and re-opens if a settled one drifts.
 _Avoid_: probe, calibration, tuning, auto-tune
 
 ### Training and recording
@@ -220,9 +221,20 @@ One exercise as it appears in one slot — the unit the athlete ticks off.
 _Avoid_: item, entry, todo
 
 **Set**:
-One logged effort within a session: load, edge, time, reps, rest, effort, grip,
-and whether it was completed.
-_Avoid_: rep, attempt, effort
+One logged effort within a session: load, edge, time, reps, rest, **RPE**, grip,
+and whether it was completed. The unit anything is counted in — three sets are
+three sets and never "three efforts", though *effort* is both what an RPE rates
+and what the app calls it on screen.
+_Avoid_: rep, attempt
+
+**RPE**:
+How hard a set felt, answered by the athlete and never by the app. A
+**prescription** carries an RPE *range* — what the set was asked to feel like —
+and the set carries the one number the athlete gave; they are two things and
+never one field. A set nobody rated has no RPE, which is neither a zero nor the
+middle of what was asked for. *Effort* is the plain word the app pairs with it
+on screen ("Effort (RPE)").
+_Avoid_: exertion, difficulty, hardness, effort score
 
 **Logged exercise**:
 One exercise inside a session, holding the sets recorded against it. It is an
@@ -472,8 +484,9 @@ level half is the app's own judgment and says so; the hold-size conversion is th
 part this term is named for.
 
 **Internal load**:
-Session effort multiplied by session minutes — what a session cost the athlete,
-as opposed to the load on the bar.
+Session **RPE** multiplied by session minutes — what a session cost the athlete,
+as opposed to the load on the bar. A session nobody rated has none: with no RPE
+there is nothing to scale by duration, only a duration.
 _Avoid_: training load, volume, stress
 
 **Workload ratio**:
