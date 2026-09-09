@@ -38,15 +38,25 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { PINNED_NOW } from '../scripts/seeded-record.ts';
 import { getContent } from '../src/lib/content/index.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { recordStore, resetRecordStore } from '../src/lib/store/record.ts';
 import { seedRecordStore } from '../src/lib/store/seed.ts';
 import { routeTree } from '../src/routeTree.gen.ts';
 
-/** A Thursday in week 5 of the seeded block — a training day with a full slot,
- *  and the day the carry-forward and the timer both have something to show. */
-const THURSDAY = new Date('2026-08-13T09:30:00');
+/**
+ * A Thursday in week 5 of the seeded block — a training day with a full slot,
+ * and the day the carry-forward and the timer both have something to show.
+ *
+ * Imported rather than written out here, because #73 gave the three browser
+ * gates the same seeded record resolved against the same instant. One
+ * declaration is what lets a contrast failure in a seeded `/log` row and an
+ * assertion in this file be talked about as the same account on the same day;
+ * two copies would drift, and the drift would stay invisible until the suites
+ * disagreed about which slot was on screen.
+ */
+const THURSDAY = new Date(PINNED_NOW);
 
 beforeAll(() => {
 	// `Date` only. Faking timers wholesale would stop React and the collections

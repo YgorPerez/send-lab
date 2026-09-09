@@ -25,10 +25,13 @@
 // WHERE THE UNSENT WRITES LIVE
 // ----------------------------
 // Not here, and not in memory. `store/unsynced.ts` holds them, persisted under
-// `sendlab:<account>:unsynced`, which is what #58 added: this module used to keep
-// them in a `Map`, so a reload while offline lost *the fact that a row had not
-// been sent* even though the row itself survived inside its collection. The write
-// then sat on the device until something else happened to touch the same row.
+// `sendlab:<account>:unsynced` — on the device, which took until #96 to actually
+// be true: the `storage` parameter below defaulted to a value that meant memory on
+// every healthy browser, and the note there is the whole of it. That is what #58
+// added: this module used to keep them in a `Map`, so a reload while offline lost
+// *the fact that a row had not been sent* even though the row itself survived
+// inside its collection. The write then sat on the device until something else
+// happened to touch the same row.
 //
 // That module also owns the terminal state. A row the server *refuses* — a 200
 // whose report names it — leaves the replay rather than being retried forever
@@ -38,7 +41,7 @@
 //
 import type { StorageApi } from '@tanstack/db';
 import type { StoredRecord, UnsyncedWrite, WriteReport } from '$lib/recordWire';
-import { HYDRATED, type RecordStore, storageOverride } from './collections';
+import { deviceStorage, HYDRATED, type RecordStore } from './collections';
 import { createUnsyncedWork, type RefusedWrite } from './unsynced';
 
 /** How long a burst of mutations is allowed to accumulate before it is sent.
@@ -123,7 +126,14 @@ export interface RecordSync {
 export function createRecordSync(
 	account: string,
 	transport: Transport = httpTransport,
-	storage: StorageApi | undefined = storageOverride(),
+	// `deviceStorage()`, not `storageOverride()` — #96. The two differ by exactly
+	// the case that matters, a healthy `localStorage`, and the difference was not
+	// visible here: `storageOverride()` returns `undefined` for it, meaning "the
+	// library's default is fine", and the unsynced work has no library under it, so
+	// it took that as memory. Every real device therefore kept the record of what
+	// had not been sent for as long as the tab, which is #58 undone with no
+	// symptom. `collections.ts` carries the ruling.
+	storage: StorageApi | undefined = deviceStorage(),
 ): RecordSync {
 	/** The unsynced writes, durable and one per row, so a second edit of a row
 	 *  replaces the first rather than waiting behind it. That is the same

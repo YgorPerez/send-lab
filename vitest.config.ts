@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+import { libAlias } from './scripts/lib-alias.ts';
 
 // Vitest replaces `node:test` (issue #20), driven by the offline-first
 // assertions (#24) rather than preference: three of them need `localStorage`, a
@@ -16,11 +16,13 @@ import { defineConfig } from 'vitest/config';
 // exist yet, and standing up the Playwright provider to run an empty directory
 // would be a green check that proves nothing. It lands with #24 / #27.
 export default defineConfig({
-	// Mirrors `vite.config.ts`. This file cannot load the app config directly —
-	// the TanStack Start plugin has no place in a jsdom run — so the one alias the
-	// domain modules rely on is declared in both. Keep them in step.
+	// This file cannot load the app config directly — the TanStack Start plugin
+	// has no place in a jsdom run — so the one alias the domain modules rely on is
+	// handed over separately. It is a single declaration in
+	// `scripts/lib-alias.ts`, shared with `vite.config.ts` and with the measuring
+	// gates' module loader, rather than a copy per tool to keep in step.
 	resolve: {
-		alias: { $lib: fileURLToPath(new URL('./src/lib', import.meta.url)) },
+		alias: libAlias(),
 	},
 	test: {
 		projects: [

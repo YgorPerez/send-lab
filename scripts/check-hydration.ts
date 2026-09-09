@@ -49,10 +49,36 @@
 //   pnpm check:hydration --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:hydration --routes=/,/train --locales=pt-BR --verbose
 //   pnpm check:hydration --desktop        # the wide layout, 1280px
+//   pnpm check:hydration --passes=seeded  # skip the empty account
 //
 // Not in `pnpm verify`, for the same reason `check:contrast` and `check:motion`
 // are not: it needs Chrome and a completed build.
-import { discoverLocales, discoverRoutes, fail, open, parseArgs, viewport } from './browser.ts';
+//
+// WHAT IT MEASURES IT ON
+// ----------------------
+// Two accounts, on one pinned instant (#73): the seeded training record and the
+// empty account a new athlete sees. A mismatch is the first client render
+// disagreeing with the prerendered shell, so *what there is to render* is
+// exactly the variable — a screen holding five weeks of sessions has more ways
+// to disagree than the two headings the empty one draws. Before #73 the second
+// of those was the only one measured.
+import {
+	discoverLocales,
+	discoverRoutes,
+	fail,
+	open,
+	parseArgs,
+	type Session,
+	viewport,
+} from './browser.ts';
+import { floorFor } from './floors.ts';
+import {
+	type BootState,
+	EMPTY_BOOT,
+	PINNED_NOW,
+	PINNED_NOW_LOCAL,
+	seededRecord,
+} from './seeded-record.ts';
 
 const args = parseArgs();
 /** `--desktop` measures the wide layout (#52): a 1280px viewport *and* emulated
@@ -61,11 +87,18 @@ const args = parseArgs();
 const { width: WIDTH, height: HEIGHT, desktop: DESKTOP } = viewport(args);
 const VERBOSE = args.has('verbose');
 
-/** Below this, the route did not render and a quiet console proves nothing. */
+/** Below this, the route did not render and a quiet console proves nothing.
+ *
+ *  The backstop the **empty** pass is held to. On the seeded pass each route
+ *  carries its own floor (`scripts/floors.ts`), because one number for the whole
+ *  app has to clear `/login` and therefore cleared a `/log` rendering thirteen
+ *  elements where it should render a hundred and seventy. */
 const MIN_ELEMENTS = Number(args.get('min-elements') ?? 8);
 
 const ROUTES = (args.get('routes') ?? discoverRoutes().join(',')).split(',').filter(Boolean);
 const LOCALES = (args.get('locales') ?? discoverLocales().join(',')).split(',').filter(Boolean);
+/** Which accounts to measure. Both, unless asked otherwise. */
+const PASSES = (args.get('passes') ?? 'seeded,empty').split(',').filter(Boolean);
 
 /**
  * React's hydration family, matched on the error *number* rather than on prose.
@@ -114,22 +147,25 @@ interface Bad {
 
 // -------------------------------------------------------------------- run it
 
-const session = await open({
-	tool: 'check:hydration',
-	width: WIDTH,
-	height: HEIGHT,
-	desktop: DESKTOP,
-	// Explicit, and full motion on purpose: the reduced-motion build takes
-	// different code paths through the shell, and this check is about the
-	// default one the athlete gets.
-	reducedMotion: false,
-	...(args.has('url') ? { url: args.get('url') as string } : {}),
-});
-const { cdp, origin, evaluate, goto } = session;
+/** Everything one pass over the app reports back. */
+interface Pass {
+	bad: Bad[];
+	other: Bad[];
+	checked: number;
+	/** Text elements per route, so the summary can show what each pass saw. */
+	rendered: Map<string, number>;
+}
 
-let exitCode = 0;
-try {
+/** One pass over every route in every locale, on one boot state. */
+async function measure(session: Session, boot: BootState): Promise<Pass> {
+	const { cdp, origin, evaluate, goto } = session;
+	const out: Pass = { bad: [], other: [], checked: 0, rendered: new Map() };
+	const seeded = boot.pass === 'seeded';
+
 	// ---- control 1: the console channel reaches us at all.
+	//
+	// Per pass, not per run: each pass is its own Chrome, and a channel that
+	// worked for the first one says nothing about the second.
 
 	await goto(`${origin}/`);
 	cdp.drain();
@@ -137,75 +173,136 @@ try {
 	await new Promise((r) => setTimeout(r, 150));
 	if (!cdp.drain().some((m) => m.includes('check:hydration probe'))) {
 		fail(
-			'the console-error probe did not come back.\n' +
+			`${boot.pass}: the console-error probe did not come back.\n` +
 				'  Nothing this check reports can be trusted: a page that logged a hydration\n' +
 				'  error would look identical to a clean one. Check `Runtime.enable` and the\n' +
 				'  `consoleAPICalled` handler in scripts/browser.ts.',
 		);
 	}
 
-	// ---- control 2: there is prerendered markup to hydrate against.
-	//
-	// ADR 0006 makes the shell deliberately content-free below the app frame, so
-	// this floor is about the *document*, not the app: if the server started
-	// serving an empty `<div id="root">`, React would client-render with nothing
-	// to compare and no mismatch is possible — green, and meaningless.
-
-	const html = await fetch(`${origin}/`).then((r) => r.text());
-	const body = html.slice(html.indexOf('<body'));
-	if (!/<[a-z]/i.test(body.replace(/<\/?(body|script|link|style)[^>]*>/gi, ''))) {
-		fail(
-			'the served HTML carries no prerendered markup below <body>.\n' +
-				'  With nothing to hydrate against, a mismatch cannot happen and this check\n' +
-				'  cannot fail. Either the build stopped prerendering `/_shell.html`, or\n' +
-				`  ${origin} is not serving it.`,
-		);
-	}
-
 	// ---- the measurement.
-
-	const bad: Bad[] = [];
-	const other: Bad[] = [];
-	let checked = 0;
 
 	for (const locale of LOCALES) {
 		await session.setLocale(locale);
 		for (const route of ROUTES) {
-			const screen = `${locale} ${route}`;
+			const screen = `${boot.pass} ${locale} ${route}`;
 
 			cdp.drain();
 			await goto(`${origin}${route}`);
+
+			// The arrival control (#73). The empty app reports no mismatch on the rows
+			// it never drew, so a page that booted without the record is a clean run.
+			await session.assertBooted(screen);
+
 			await evaluate(SETTLE);
 			const logged = cdp.drain();
 			const rendered = (await evaluate<number>(RENDERED)) ?? 0;
 
-			if (rendered < MIN_ELEMENTS) {
+			// The route's own floor on the seeded pass, the global backstop on the
+			// empty one — where a low count is the correct answer, and #61 owns what
+			// it should look like.
+			// Thrown rather than caught here: `fail` exits the process and skips the
+			// `finally` that closes Chrome, and unwinding reaches the same message
+			// through the one `fail` at the bottom of the file with the session shut
+			// down on the way past.
+			const floor = floorFor(route, seeded ? 'seeded' : 'empty', MIN_ELEMENTS, rendered);
+			if (rendered < floor) {
 				fail(
-					`${screen}: only ${rendered} text element(s) rendered, expected at least ${MIN_ELEMENTS}.\n` +
+					`${screen}: only ${rendered} text element(s) rendered, expected at least ${floor}.\n` +
 						'  A screen that never rendered cannot report a hydration mismatch, so a\n' +
 						'  quiet console here means nothing.' +
-						(logged.length ? `\n  The page also reported: ${logged[0].split('\n')[0]}` : ''),
+						(logged.length ? `\n  The page also reported: ${logged[0].split('\n')[0]}` : '') +
+						(seeded ? "\n  This route's floor is in scripts/floors.ts." : ''),
 				);
 			}
 
-			checked++;
+			out.checked++;
+			out.rendered.set(
+				route,
+				Math.min(out.rendered.get(route) ?? Number.POSITIVE_INFINITY, rendered),
+			);
 			const seen = new Set<string>();
 			for (const message of logged) {
 				const key = message.split('\n')[0];
 				if (seen.has(key)) continue;
 				seen.add(key);
-				(HYDRATION.test(message) ? bad : other).push({ screen, message });
+				(HYDRATION.test(message) ? out.bad : out.other).push({ screen, message });
 			}
 			if (VERBOSE) {
 				console.log(
 					`  ${screen} — ${rendered} text element(s), ` +
-						`${logged.length} console error(s), ${bad.filter((b) => b.screen === screen).length} hydration`,
+						`${logged.length} console error(s), ${out.bad.filter((b) => b.screen === screen).length} hydration`,
 				);
 			}
 		}
 	}
+	return out;
+}
 
-	const scope = `${checked} route/locale pair(s) [${ROUTES.join(' ')}] × [${LOCALES.join(' ')}]`;
+console.log(
+	`check:hydration — clock pinned to ${PINNED_NOW_LOCAL} local (${PINNED_NOW}), ` +
+		`measuring [${PASSES.join(' ')}]`,
+);
+
+let exitCode = 0;
+try {
+	/** The boot states to measure, in order. Built inside the handler, so a throw
+	 *  from the Vite load reports as this check's own failure line. */
+	const boots: BootState[] = [];
+	for (const pass of PASSES) {
+		if (pass === 'seeded') {
+			boots.push({ pass, now: PINNED_NOW, cells: await seededRecord(LOCALES) });
+		} else if (pass === 'empty') boots.push(EMPTY_BOOT);
+		else fail(`unknown pass '${pass}' — expected 'seeded' or 'empty'`);
+	}
+
+	const passes = new Map<string, Pass>();
+	for (const boot of boots) {
+		const session = await open({
+			tool: 'check:hydration',
+			width: WIDTH,
+			height: HEIGHT,
+			desktop: DESKTOP,
+			// Explicit, and full motion on purpose: the reduced-motion build takes
+			// different code paths through the shell, and this check is about the
+			// default one the athlete gets.
+			reducedMotion: false,
+			boot,
+			...(args.has('url') ? { url: args.get('url') as string } : {}),
+		});
+		try {
+			// ---- control 2: there is prerendered markup to hydrate against.
+			//
+			// ADR 0006 makes the shell deliberately content-free below the app frame,
+			// so this floor is about the *document*, not the app: if the server
+			// started serving an empty `<div id="root">`, React would client-render
+			// with nothing to compare and no mismatch is possible — green, and
+			// meaningless. Asked of the origin rather than of the page, so it is
+			// checked once per pass and never mistakes an installed record for markup.
+
+			const html = await fetch(`${session.origin}/`).then((r) => r.text());
+			const body = html.slice(html.indexOf('<body'));
+			if (!/<[a-z]/i.test(body.replace(/<\/?(body|script|link|style)[^>]*>/gi, ''))) {
+				fail(
+					'the served HTML carries no prerendered markup below <body>.\n' +
+						'  With nothing to hydrate against, a mismatch cannot happen and this check\n' +
+						'  cannot fail. Either the build stopped prerendering `/_shell.html`, or\n' +
+						`  ${session.origin} is not serving it.`,
+				);
+			}
+			passes.set(boot.pass, await measure(session, boot));
+		} finally {
+			await session.close();
+		}
+	}
+
+	const bad = [...passes.values()].flatMap((p) => p.bad);
+	const other = [...passes.values()].flatMap((p) => p.other);
+	const checked = [...passes.values()].reduce((n, p) => n + p.checked, 0);
+
+	const scope =
+		`${checked} pass/route/locale triple(s) [${PASSES.join(' ')}] × ` +
+		`[${ROUTES.join(' ')}] × [${LOCALES.join(' ')}]`;
 
 	if (other.length) {
 		console.log('check:hydration — other page errors seen (not fatal here):');
@@ -230,9 +327,12 @@ try {
 		exitCode = 1;
 	} else {
 		console.log(`check:hydration — ok (no hydration mismatch over ${scope})`);
+		for (const [pass, p] of passes) {
+			console.log(`  ${pass}: ${[...p.rendered].map(([route, n]) => `${route} ${n}`).join(', ')}`);
+		}
 	}
-} finally {
-	await session.close();
+} catch (e) {
+	fail(e instanceof Error ? e.message : String(e));
 }
 
 process.exit(exitCode);

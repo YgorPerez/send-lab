@@ -36,10 +36,36 @@
 //   pnpm check:contrast --url=https://send-lab-git-<branch>-….vercel.app
 //   pnpm check:contrast --routes=/,/train --locales=pt-BR --width=320
 //   pnpm check:contrast --desktop         # the wide layout, 1280px
+//   pnpm check:contrast --passes=seeded   # skip the empty account
 //
 // Set `CHROME_PATH` if Chrome is somewhere unusual. Chrome, the static server
 // and the CDP client are `scripts/browser.ts`, shared with `check:motion`.
-import { discoverLocales, discoverRoutes, fail, open, parseArgs, viewport } from './browser.ts';
+//
+// WHAT IT MEASURES IT ON
+// ----------------------
+// Twice: once on the seeded training record (`store/seed.ts`, the scenario
+// `tests/screens.test.ts` asserts against) and once on the empty account a new
+// athlete sees — both on one pinned instant, so a changed number means changed
+// code and not a changed weekday. Before #73 this ran the empty account only, on
+// the machine's own clock, and reported "ok" over an app in which half the routes
+// rendered almost nothing.
+import {
+	discoverLocales,
+	discoverRoutes,
+	fail,
+	open,
+	parseArgs,
+	type Session,
+	viewport,
+} from './browser.ts';
+import { floorFor, readsRecord } from './floors.ts';
+import {
+	type BootState,
+	EMPTY_BOOT,
+	PINNED_NOW,
+	PINNED_NOW_LOCAL,
+	seededRecord,
+} from './seeded-record.ts';
 
 // ---------------------------------------------------------------- arguments
 
@@ -52,12 +78,21 @@ const { width: WIDTH, height: HEIGHT, desktop: DESKTOP } = viewport(args);
  *
  *  A backstop, not the main guard — the uncaught-exception capture is what
  *  actually catches a broken screen, and it names the cause. This only has to be
- *  low enough for the sparsest real page (the sign-in form, at four) and high
- *  enough to reject the router's error boundary, which renders two. */
+ *  low enough for the sparsest real page and high enough to reject the router's
+ *  error boundary, which renders two. The sparsest page is `/log` signed out, at
+ *  **thirteen** — `/login`, which this comment used to name at four, measures ten.
+ *
+ *  It is what the **empty** pass is held to, and since #73 it is no longer the
+ *  only floor: on the seeded pass each route carries its own, in
+ *  `scripts/floors.ts`. One number for the whole app had to be low enough for
+ *  `/login` and was therefore far too low for `/log`. */
 const MIN_ELEMENTS = Number(args.get('min-elements') ?? 3);
 
 const ROUTES = (args.get('routes') ?? discoverRoutes().join(',')).split(',').filter(Boolean);
 const LOCALES = (args.get('locales') ?? discoverLocales().join(',')).split(',').filter(Boolean);
+/** Which accounts to measure. Both, unless asked otherwise — the seeded record
+ *  is what the athlete has, and the empty one is what a new athlete sees. */
+const PASSES = (args.get('passes') ?? 'seeded,empty').split(',').filter(Boolean);
 
 // ------------------------------------------------------------- the measurement
 
@@ -160,6 +195,22 @@ const PROBE = String.raw`(() => {
   return out;
 })()`;
 
+/**
+ * How tall the page laid out, and how wide the viewport it did it in.
+ *
+ * Not a contrast reading, and it is here because this is the run that has a
+ * seeded account and a real layout engine at the same time. #52 had to *derive*
+ * `/log`'s desktop height from an older prototype's number — the one page whose
+ * whole argument for a second pane is that it halves a long list — because the
+ * screen it could measure was the empty one. Reported per route in the summary,
+ * so the next layout claim about it rests on a measurement like every other
+ * claim in this repo.
+ */
+const PAGE_BOX = `(() => ({
+  height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight),
+  width: window.innerWidth,
+}))()`;
+
 /** Wait until nothing is animating and nothing above the tree is still
  *  translucent.
  *
@@ -177,27 +228,45 @@ const SETTLE = `(async () => {
 
 // -------------------------------------------------------------------- run it
 
-const session = await open({
-	tool: 'check:contrast',
-	width: WIDTH,
-	height: HEIGHT,
-	desktop: DESKTOP,
-	...(args.has('url') ? { url: args.get('url') as string } : {}),
-});
-const { cdp, origin, evaluate, goto } = session;
+/** Everything one pass over the app reports back. */
+interface Pass {
+	failures: (Row & { screen: string })[];
+	exempt: (Row & { screen: string })[];
+	warnings: string[];
+	/**
+	 * What each route came to, so the two passes can be compared.
+	 *
+	 * Reduced across locales in the direction that is the harder claim:
+	 * the **fewest** elements either locale rendered, and the **tallest** page
+	 * either produced — pt-BR runs 1.4–2× longer than en-US, so it is the height
+	 * a layout has to survive.
+	 */
+	rendered: Map<string, { elements: number; height: number }>;
+	measured: number;
+}
 
-let exitCode = 0;
-try {
-	const failures: (Row & { screen: string })[] = [];
-	const warnings: string[] = [];
-	const exempt: (Row & { screen: string })[] = [];
-	let measured = 0;
+/** One pass over every route in every locale, on one boot state. */
+async function measure(session: Session, boot: BootState): Promise<Pass> {
+	const { cdp, origin, evaluate, goto } = session;
+	const out: Pass = {
+		failures: [],
+		exempt: [],
+		warnings: [],
+		rendered: new Map(),
+		measured: 0,
+	};
+	const seeded = boot.pass === 'seeded';
 
 	for (const locale of LOCALES) {
 		await session.setLocale(locale);
 		for (const route of ROUTES) {
-			const screen = `${locale} ${route}`;
+			const screen = `${boot.pass} ${locale} ${route}`;
 			await goto(`${origin}${route}`);
+
+			// The arrival control (#73), on every screen — the boot script runs on
+			// every navigation, so one silent failure is one screen measured unseeded.
+			await session.assertBooted(screen);
+
 			const settled = await evaluate<{ running: number; rootOpacity: number }>(SETTLE);
 			if (!settled || settled.running > 0 || settled.rootOpacity < 1) {
 				fail(
@@ -221,17 +290,41 @@ try {
 			// exists to measure. Errors are surfaced; only an unrendered screen fails.
 			const logged = cdp.drain();
 			if (logged.length) {
-				warnings.push(`${screen}: ${logged.length} page error(s) — ${logged[0].split('\n')[0]}`);
-			}
-			if (rows.length < MIN_ELEMENTS) {
-				fail(
-					`${screen}: only ${rows.length} text element(s) rendered, expected at least ${MIN_ELEMENTS}.\n` +
-						'  That is an empty or errored screen, not a well-contrasted one.' +
-						(logged.length ? `\n  The page also reported: ${logged[0].split('\n')[0]}` : '') +
-						'\n  Override with --min-elements=N if the route really is this sparse.',
+				out.warnings.push(
+					`${screen}: ${logged.length} page error(s) — ${logged[0].split('\n')[0]}`,
 				);
 			}
-			measured += rows.length;
+			// The floor is the route's own on the seeded pass and the global backstop
+			// on the empty one, where a low count is the correct answer (#61 owns what
+			// an empty screen should show; this only stops it being the only case
+			// measured).
+			// Thrown, not caught and turned into a `fail()` here: `fail` exits the
+			// process, which skips the `finally` that closes Chrome, and an unfloored
+			// route is now by far the likeliest way these gates go red. Unwinding
+			// reaches the same message through the one `fail` at the bottom of the
+			// file, with the session shut down on the way past.
+			const floor = floorFor(route, seeded ? 'seeded' : 'empty', MIN_ELEMENTS, rows.length);
+			if (rows.length < floor) {
+				fail(
+					`${screen}: only ${rows.length} text element(s) rendered, expected at least ${floor}.\n` +
+						'  That is an empty or errored screen, not a well-contrasted one.' +
+						(logged.length ? `\n  The page also reported: ${logged[0].split('\n')[0]}` : '') +
+						(seeded
+							? "\n  This route's floor is in scripts/floors.ts. Lower it only with a\n" +
+								'  measurement, never to get the gate green.'
+							: '\n  Override with --min-elements=N if the route really is this sparse.'),
+				);
+			}
+			out.measured += rows.length;
+			const box = (await evaluate<{ height: number; width: number }>(PAGE_BOX)) ?? {
+				height: 0,
+				width: 0,
+			};
+			const before = out.rendered.get(route);
+			out.rendered.set(route, {
+				elements: Math.min(before?.elements ?? Number.POSITIVE_INFINITY, rows.length),
+				height: Math.max(before?.height ?? 0, box.height),
+			});
 			if (args.has('verbose')) {
 				console.log(`  ${screen} — ${rows.length} text element(s)`);
 				for (const r of rows) {
@@ -242,10 +335,93 @@ try {
 			}
 			for (const row of rows) {
 				if (row.pass) continue;
-				(row.disabled ? exempt : failures).push({ screen, ...row });
+				(row.disabled ? out.exempt : out.failures).push({ screen, ...row });
 			}
 		}
 	}
+	return out;
+}
+
+// The instant, printed before anything is measured: a run is only reproducible
+// from its own output if the output says which day it resolved.
+console.log(
+	`check:contrast — clock pinned to ${PINNED_NOW_LOCAL} local (${PINNED_NOW}), ` +
+		`measuring [${PASSES.join(' ')}]`,
+);
+if (PASSES.length < 2) {
+	// Said out loud, because the cross-pass control below is the only check that
+	// can catch a record installed where the app does not read it, and one pass
+	// silently disables it.
+	console.log(
+		'  one pass only — the cross-pass control is off, so a record installed\n' +
+			'  where the app does not read it would measure as a clean run.',
+	);
+}
+
+/** The boot states to measure, in order. The seeded record is built once and
+ *  handed to the pass that wants it — one Vite load, both locales. */
+let exitCode = 0;
+try {
+	const boots: BootState[] = [];
+	for (const pass of PASSES) {
+		if (pass === 'seeded') {
+			boots.push({ pass, now: PINNED_NOW, cells: await seededRecord(LOCALES) });
+		} else if (pass === 'empty') boots.push(EMPTY_BOOT);
+		else fail(`unknown pass '${pass}' — expected 'seeded' or 'empty'`);
+	}
+
+	const passes = new Map<string, Pass>();
+	for (const boot of boots) {
+		const session = await open({
+			tool: 'check:contrast',
+			width: WIDTH,
+			height: HEIGHT,
+			desktop: DESKTOP,
+			boot,
+			...(args.has('url') ? { url: args.get('url') as string } : {}),
+		});
+		try {
+			passes.set(boot.pass, await measure(session, boot));
+		} finally {
+			await session.close();
+		}
+	}
+
+	// The cross-pass control, and it is the one that proves the record was *read*
+	// rather than merely written: a route the floors claim is content-bearing has
+	// to render more with an account behind it than without one. A seed that
+	// landed in a namespace nothing looks for passes every check above this and
+	// fails here.
+	//
+	// A strict inequality rather than a declared margin, even though `/train`'s is
+	// only 201 against 176. The margin there is the sets the athlete has logged,
+	// and the 176 is the same slot prescribed from the program — so a copy edit
+	// that thins the prescription thins *both* passes and leaves the difference
+	// alone. What would close it is the logged work vanishing, which is the thing
+	// being asserted.
+	const seededPass = passes.get('seeded');
+	const emptyPass = passes.get('empty');
+	if (seededPass && emptyPass) {
+		const inert = ROUTES.filter((route) => {
+			const withRecord = seededPass.rendered.get(route)?.elements;
+			const without = emptyPass.rendered.get(route)?.elements;
+			if (withRecord === undefined || without === undefined) return false;
+			return readsRecord(route) && withRecord <= without;
+		});
+		if (inert.length) {
+			fail(
+				`the seeded account changed nothing on ${inert.join(', ')}.\n` +
+					'  Those routes render a training record, so measuring the same count with\n' +
+					'  and without one means the rows were installed somewhere the app does not\n' +
+					'  read — check the storage segment in scripts/seeded-record.ts.',
+			);
+		}
+	}
+
+	const failures = [...passes.values()].flatMap((p) => p.failures);
+	const exempt = [...passes.values()].flatMap((p) => p.exempt);
+	const warnings = [...passes.values()].flatMap((p) => p.warnings);
+	const measured = [...passes.values()].reduce((n, p) => n + p.measured, 0);
 
 	// Collapse to one line per distinct colour-on-backdrop-at-size combination.
 	const group = (rows: (Row & { screen: string })[]) => {
@@ -298,11 +474,22 @@ try {
 		exitCode = 1;
 	} else {
 		console.log(
-			`check:contrast — ok (${measured} text elements over ${ROUTES.length} route(s) [${routeList}] × ${LOCALES.length} locale(s) [${localeList}], all at or above WCAG AA)`,
+			`check:contrast — ok (${measured} text elements over ${PASSES.length} pass(es) [${PASSES.join(' ')}] × ` +
+				`${ROUTES.length} route(s) [${routeList}] × ${LOCALES.length} locale(s) [${localeList}], ` +
+				'all at or above WCAG AA)',
 		);
+		for (const [pass, p] of passes) {
+			// Elements, and how tall the page laid out at this viewport — the numbers
+			// `scripts/floors.ts` is re-derived from, and the ones a layout claim about
+			// a long screen has to rest on rather than derive.
+			const seen = [...p.rendered]
+				.map(([route, { elements, height }]) => `${route} ${elements}el/${height}px`)
+				.join(', ');
+			console.log(`  ${pass} at ${WIDTH}px: ${seen}`);
+		}
 	}
-} finally {
-	await session.close();
+} catch (e) {
+	fail(e instanceof Error ? e.message : String(e));
 }
 
 process.exit(exitCode);

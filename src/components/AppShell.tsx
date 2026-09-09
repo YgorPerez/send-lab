@@ -42,7 +42,7 @@ import * as m from '$lib/paraglide/messages';
 import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
 import { Menu } from './Menu';
-import { SyncStatus } from './SyncStatus';
+import { SyncStatus, useSyncState } from './SyncStatus';
 import { UpdatePrompt } from './UpdatePrompt';
 
 /**
@@ -106,6 +106,12 @@ export function AppShell({
 	onLocaleChange: (l: AppLocale) => void;
 	children: ReactNode;
 }) {
+	// Read here and handed down, because two things in the left group are decided
+	// from it: what the strip says, and whether the wordmark is still what the
+	// strip is for. It is `null` on the server and on the render that hydrates the
+	// baked shell — by construction, see `SyncStatus` — so the artefact this bakes
+	// into is the ordinary strip, wordmark and all.
+	const sync = useSyncState();
 	return (
 		// The rail's width is padding on the frame rather than a margin on `main`,
 		// so `main` centres itself inside what is left — the content column is
@@ -123,10 +129,16 @@ export function AppShell({
 				    rather than beside the controls: appearing and disappearing there
 				    moves nothing, where the same token on the right would slide the
 				    locale switch and the menu sideways every time a task is ticked
-				    (#83). */}
-				<div className="flex min-w-0 items-center gap-2">
-					<span className="eyebrow">Send Lab</span>
-					<SyncStatus locale={locale} />
+				    (#83).
+
+				    The wordmark stands down for a refusal (#84), and only for that.
+				    ADR 0008's third state is an *unmissable* message rather than a
+				    token, so it takes the whole left side — and what it takes the room
+				    from is the app introducing itself, which is the least important
+				    thing in the strip. The right group does not move either way. */}
+				<div className="flex min-w-0 flex-1 items-center gap-2">
+					{sync === 'refused-work' ? null : <span className="eyebrow">Send Lab</span>}
+					<SyncStatus state={sync} locale={locale} />
 				</div>
 				<div className="flex items-center gap-2">
 					<LocaleSwitch locale={locale} onChange={onLocaleChange} />

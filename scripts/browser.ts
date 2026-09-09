@@ -6,24 +6,30 @@
 // second copy of this would be a second place for the `vite preview` trap and
 // the shared-debug-port trap to be re-learned.
 //
+// #73 added a fifth thing, and put it here for the same reason: **what state the
+// page boots with**. The clock the app resolves today's slot from, and the
+// training record it reads, are now part of the session rather than of each
+// check — so the three of them measure one account on one instant, name which
+// pass they are reporting, and none of them grows its own copy of the
+// installation. `scripts/seeded-record.ts` is that state; this is the seam it
+// arrives through.
+//
 // NOT IN `pnpm verify`. Both callers run against a *built* app in a real browser,
 // and `verify` stays jsdom-only and browserless on purpose: a gate that needs
 // Chrome and a completed build is a gate that gets skipped on the machine that
 // most needs it.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clientOutputDir } from './output-dir.ts';
+import { LOCALE_KEY } from './paraglide-strategy.ts';
 import { discoverRoutesIn } from './routes.ts';
+import { BOOT_CHECK, type BootReport, type BootState, bootScript } from './seeded-record.ts';
 
 export const root = fileURLToPath(new URL('..', import.meta.url));
-
-/** Where Paraglide persists the athlete's choice. Matches the `localStorage`
- *  strategy declared in `scripts/paraglide-strategy.ts`. */
-export const LOCALE_KEY = 'PARAGLIDE_LOCALE';
 
 // ---------------------------------------------------------------- arguments
 
@@ -60,6 +66,30 @@ export function viewport(args: Map<string, string>): {
 }
 
 let toolName = 'check';
+
+/**
+ * Teardown for every session still open, run on the way out.
+ *
+ * `fail` exits the process, which skips every `finally` above it — so a failing
+ * run used to leave a headless Chrome holding its profile directory, and the
+ * comment on `open()` about a leaked browser being talked to by the next run
+ * described a leak this file was itself producing. It mattered more once #73
+ * made a single `check:motion` run open four sessions rather than two.
+ *
+ * Sync work only: `process.on('exit')` cannot await anything. Killing Chrome and
+ * dropping its profile are both synchronous, and the static server is a socket
+ * this process owns, which dies with it.
+ */
+const openSessions = new Set<() => void>();
+process.on('exit', () => {
+	for (const teardown of openSessions) {
+		try {
+			teardown();
+		} catch {
+			// Already gone. Nothing to report on the way out.
+		}
+	}
+});
 
 export function fail(message: string): never {
 	console.error(`${toolName} — ${message}`);
@@ -261,6 +291,24 @@ async function connect(port: number): Promise<Cdp> {
 export interface Session {
 	cdp: Cdp;
 	origin: string;
+	/** The pass this session is measuring, for the check to name in its output.
+	 *  `unpinned` when the caller asked for no boot state at all. */
+	pass: string;
+	/**
+	 * The arrival control (#73, story 18): assert the current page is in the state
+	 * this session asked for, or fail naming `where`.
+	 *
+	 * A harness that silently failed to install the record renders exactly the
+	 * empty app, and an empty app is a clean contrast run, a quiet console and a
+	 * screen with nothing on it to animate. So the record is not assumed to have
+	 * landed, it is asked about after each page has loaded — and it lives here
+	 * rather than in each check, because three copies of a control is three places
+	 * for one of them to stop being a control.
+	 *
+	 * `scripts/seeded-record.ts` carries what it actually asks and what each part
+	 * of it can catch.
+	 */
+	assertBooted: (where: string) => Promise<BootReport>;
 	/** Evaluate an expression in the page and bring the value back. */
 	evaluate: <T>(expression: string) => Promise<T>;
 	/** Navigate, then wait long enough for the client-only tree to render. */
@@ -304,6 +352,16 @@ export interface OpenOptions {
 	url?: string;
 	/** Milliseconds to wait after a navigation before reading the page. */
 	settleMs?: number;
+	/**
+	 * What the page boots holding: the clock's starting instant, and the training
+	 * record installed before the app's own script runs (#73).
+	 *
+	 * Left out, a session boots the way it did before #73 — an empty store on the
+	 * machine's own clock — which is a *third* thing rather than either pass, so
+	 * every check that measures passes should say which one it is asking for
+	 * (`EMPTY_BOOT` is the named empty account, on the pinned clock).
+	 */
+	boot?: BootState;
 }
 
 /**
@@ -342,14 +400,32 @@ export async function open(options: OpenOptions): Promise<Session> {
 	]);
 	chrome.on('error', () => fail(`could not start Chrome at ${chromePath}`));
 
-	const close = async () => {
-		chrome.kill();
-		await server?.close();
+	const teardown = () => {
+		// `chrome.kill()` kills the process this spawned, and Chrome is not one
+		// process: a headless browser is a parent plus a renderer, a GPU process and
+		// a utility process, and on Windows those are not in the parent's job by
+		// default. So killing the handle left three live processes per session
+		// holding the profile directory — which is why `rmSync` below needed its
+		// `catch`, and why the warning on `open()` about the next run talking to a
+		// corpse was describing a leak this file produced itself. Measured: nine
+		// orphans after ten runs, before #73 tripled the sessions per run.
+		if (chrome.pid != null && process.platform === 'win32') {
+			spawnSync('taskkill', ['/pid', String(chrome.pid), '/t', '/f'], { stdio: 'ignore' });
+		} else {
+			chrome.kill();
+		}
 		try {
 			rmSync(profile, { recursive: true, force: true });
 		} catch {
 			// A locked profile directory is not worth failing the run over.
 		}
+	};
+	openSessions.add(teardown);
+
+	const close = async () => {
+		openSessions.delete(teardown);
+		teardown();
+		await server?.close();
 	};
 
 	try {
@@ -400,9 +476,43 @@ export async function open(options: OpenOptions): Promise<Session> {
 			await new Promise((r) => setTimeout(r, settleMs));
 		};
 
+		// The boot state, installed as a script that runs before the page's own on
+		// every navigation. Registered here rather than evaluated after a load
+		// because the app reads the store on its first render: a record written
+		// afterwards would leave every measurement one frame late, and the frame it
+		// missed is the empty one.
+		if (options.boot) {
+			await cdp.send('Page.addScriptToEvaluateOnNewDocument', {
+				source: bootScript(options.boot),
+			});
+		}
+
+		// `unpinned` is neither pass: it is a caller that asked for no boot state,
+		// and therefore for the machine's own clock and whatever storage holds.
+		const pass = options.boot?.pass ?? 'unpinned';
+
 		return {
 			cdp,
 			origin,
+			pass,
+			assertBooted: async (where: string) => {
+				const report = await evaluate<BootReport | null>(BOOT_CHECK);
+				if (!report?.ok) {
+					fail(
+						`${where}: the page is not in the state this pass asked for — ` +
+							`${report?.why ?? 'the control itself returned nothing'}.\n` +
+							'  Nothing measured here is comparable to anything: the page would have\n' +
+							'  booted on the machine clock, or read a record from another namespace.',
+					);
+				}
+				if (options.boot?.cells && report.installed === 0) {
+					fail(
+						`${where}: the '${pass}' pass installed no rows, so this is the\n` +
+							'  empty app being measured and reported as the seeded one.',
+					);
+				}
+				return report;
+			},
 			evaluate,
 			goto,
 			setLocale: async (locale: string) => {
