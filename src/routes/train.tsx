@@ -23,7 +23,7 @@ import {
 	type TaskKey,
 	taskKey,
 } from '$lib/ids';
-import { midOf, prefilledSet } from '$lib/loggedSet';
+import { midOf, nextSet, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import type { Protocol } from '$lib/protocol';
@@ -241,11 +241,12 @@ function Train() {
 								update(t.key, (x) => ({
 									...x,
 									// A later set carries the previous one forward: the athlete's own
-									// edits become the default for what comes next.
+									// edits become the default for what comes next. Which of them do
+									// not travel is `nextSet`'s decision, not the route's.
 									sets: [
 										...x.sets,
 										x.sets.length
-											? { ...x.sets[x.sets.length - 1], done: false }
+											? nextSet(x.sets[x.sets.length - 1])
 											: prefilledSet(x.prescription),
 									],
 								}))

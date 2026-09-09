@@ -8,8 +8,10 @@ const DAY = 86_400_000;
 const NOW = Date.parse('2026-06-24T12:00:00Z');
 const iso = (daysAgo: number) => new Date(NOW - daysAgo * DAY).toISOString().slice(0, 10);
 
-/** A workout `daysAgo` days back with `sets` sets each at the given `rpe`. */
-const w = (daysAgo: number, sets: number, rpe: number): Session => ({
+/** A workout `daysAgo` days back with `sets` sets each at the given `rpe`.
+ *  `null` is a session the athlete trained and never rated, which is a state
+ *  that only exists since the prefill stopped answering for them (#89). */
+const w = (daysAgo: number, sets: number, rpe: number | null): Session => ({
 	at: iso(daysAgo),
 	weekday: asWeekdayKey('Mon'),
 	exercises: [
@@ -51,6 +53,41 @@ test('acwr flags a recent spike', () => {
 	for (let d = 0; d < 7; d += 1) ws.push(w(d, 10, 9)); // heavy last 7 days
 	const r = acwr(ws, NOW);
 	assert.equal(r?.status, 'spike');
+});
+
+// sRPE *is* the rating (Foster): session-RPE × minutes. A session nobody rated
+// has no internal load to report, and the load metrics used to assume a
+// moderate 5 for it — which was unreachable while the prefill answered every
+// row, and would now be the common case. A band computed off that number is
+// #61's bug class: a verdict made of the app's own fallback.
+test('acwr withholds a verdict over history nobody rated', () => {
+	const rated = [];
+	const unrated = [];
+	for (let d = 0; d < 28; d += 2) {
+		rated.push(w(d, 5, 7));
+		unrated.push(w(d, 5, null));
+	}
+	assert.equal(acwr(rated, NOW)?.status, 'optimal');
+	assert.equal(acwr(unrated, NOW), null);
+});
+
+test('acwr reads the rated sets of a partly-rated session', () => {
+	// One set rated, one not, is not an unrated session — the session RPE is the
+	// mean of what was actually given.
+	const half = (daysAgo: number): Session => {
+		const s = w(daysAgo, 2, 7);
+		s.exercises[0].sets[1].rpe = null;
+		return s;
+	};
+	const ws = [];
+	for (let d = 0; d < 28; d += 2) ws.push(half(d));
+	assert.equal(acwr(ws, NOW)?.status, 'optimal');
+});
+
+test('weekLoad withholds monotony over a week nobody rated', () => {
+	const week = [];
+	for (let d = 0; d < 7; d += 1) week.push(w(d, 5, null));
+	assert.equal(weekLoad(week, NOW), null);
 });
 
 test('weekLoad: even daily load is monotonous, spiky load with rest days is varied', () => {

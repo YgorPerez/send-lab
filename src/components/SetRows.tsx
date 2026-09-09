@@ -22,7 +22,8 @@
 // is a record, not a form, and 28 sessions of editable inputs is the fastest way
 // to make a history screen feel like a spreadsheet that has to be finished.
 import { Check } from 'lucide-react';
-import { GRIPS, gripLabel } from '$lib/format';
+import type { Range } from '$lib/content/types';
+import { formatRange, GRIPS, gripLabel } from '$lib/format';
 import type { ExerciseId } from '$lib/ids';
 import type { SetField } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
@@ -73,12 +74,31 @@ export function SetEditor({
 	index,
 	set,
 	fields,
+	prescribedRpe,
 	onChange,
 }: {
 	exerciseId: ExerciseId;
 	index: number;
 	set: LoggedSet;
 	fields: SetField[];
+	/**
+	 * The prescribed effort range, shown in the RPE column beside the input.
+	 *
+	 * A display, not data: `prescription.rpe` is one range per *variant*, moved
+	 * only by an override, so every set of a task carries the same one and none
+	 * of them stores it. Unlike the load, nothing scales it — `effectiveVariant`
+	 * puts the phase's intensity into `loadKg` and its volume into
+	 * `sets`/`rounds`, and never touches `rpe`.
+	 *
+	 * It is here rather than only in `TaskCard`'s prescription band because
+	 * judging one number against another is not something anyone does across a
+	 * card boundary mid-set — and since `rpe` is the one column that no longer
+	 * opens prefilled (#89), it is the column with nothing at all in it to go on.
+	 *
+	 * Named for the glossary: *target* is the first word on **Prescription**'s
+	 * `_Avoid_` list (`CONTEXT.md`), and ADR 0014 binds that on names.
+	 */
+	prescribedRpe?: Range;
 	onChange: (next: LoggedSet) => void;
 }) {
 	return (
@@ -102,9 +122,20 @@ export function SetEditor({
 			<div className="grid grid-cols-4 gap-1.5">
 				{fields.map((f) => {
 					const id = `${exerciseId}-${index}-${f}`;
+					// Only the effort column carries what was asked for, and only when
+					// the variant prescribes it. `shrink-0` on the range and `truncate`
+					// on the label is the priority order said out loud: at 74px the
+					// column gives up its own name before it gives up the number.
+					// Colour and not `opacity` separates the two — at 9px there is no
+					// room between de-emphasised and unreadable — and `--chalk` is
+					// already what a prescribed value is drawn in one band above.
+					const presc = f === 'rpe' && prescribedRpe ? formatRange(prescribedRpe) : null;
 					return (
 						<label key={f} className="flex min-w-0 flex-col gap-0.5" htmlFor={id}>
-							<span className="microlabel truncate">{FIELD_LABEL[f]()}</span>
+							<span className="flex min-w-0 items-baseline gap-1">
+								<span className="microlabel truncate">{FIELD_LABEL[f]()}</span>
+								{presc ? <span className="microlabel num shrink-0 text-chalk">{presc}</span> : null}
+							</span>
 							{f === 'grip' ? (
 								<Picker
 									value={set.grip}
@@ -117,6 +148,14 @@ export function SetEditor({
 							) : (
 								<input
 									id={id}
+									// The wrapping `<label>` now reads "RPE 8–9", and that text is
+									// what a screen reader would announce as this field's name —
+									// two numbers with nothing to say which is the ask. So the
+									// name is given in words instead. It still carries everything
+									// the column shows, which is the vocabulary's `aria-label`
+									// rule: the attribute replaces a control's content rather than
+									// adding to it.
+									aria-label={presc ? m.field_rpe_presc({ range: presc }) : undefined}
 									className={input({ class: cn(CELL, 'py-0') })}
 									type="number"
 									inputMode="decimal"

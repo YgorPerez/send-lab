@@ -146,6 +146,19 @@ describe('Train', () => {
 		}
 	});
 
+	it('opens a fresh set row unrated, while still carrying the target', () => {
+		// The two things the header and the set row are each one half of: the task
+		// knows what was *asked for* (`prescription.rpe`, one range per variant,
+		// scaled per week by the phase) and the row holds what the athlete
+		// *answered*. A row that opens at the midpoint of the first is the app
+		// filing a reading it never took (#89).
+		const fresh = TRAIN.tasks.flatMap((t) => t.sets.filter((s) => !s.done));
+		expect(fresh.length).toBeGreaterThan(0);
+		expect(fresh.every((s) => s.rpe === null)).toBe(true);
+		// And the target survives to where the row can show it.
+		expect(TRAIN.tasks.some((t) => t.prescription.rpe != null)).toBe(true);
+	});
+
 	it('has nothing to repeat while today is already being logged', () => {
 		expect(TRAIN.canRepeatLast).toBe(false);
 	});

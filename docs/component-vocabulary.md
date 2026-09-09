@@ -803,6 +803,29 @@ which is where `check:overflow` earns its keep.
 branched on the viewport bakes one answer and mismatches at the other width, and
 nothing else reports it.
 
+**What they measure it on** ([#73](https://github.com/YgorPerez/send-lab/issues/73)).
+`check:contrast`, `check:hydration` and `check:motion` each run **twice**: once on
+the seeded training record — `store/seed.ts`, the same scenario
+`tests/screens.test.ts` asserts against — and once on the empty account a new
+athlete sees. Both passes boot on one pinned instant, `2026-08-13T09:30`, a
+Thursday in week 5 of that block, printed at the top of every run so a number is
+reproducible from the output that carried it. Until #73 they ran the empty account
+only, on whatever day the machine thought it was, and both halves of that mattered:
+signed out, `/log` renders **13** text elements against the seeded account's 170,
+and the same commit measured 548 elements one day and 426 the next. So a route now
+carries its own floor (`scripts/floors.ts`, measured and re-derivable from the
+summary line each run prints) instead of one global minimum low enough for
+`/login`, and each run's summary also prints how tall every route laid out, which
+is what finally answers #52's open question with a reading: seeded `/log` is
+**2179px** at 360px and **1459px** at 1280px, so the second pane does take about a
+third off the longest list in the app. The seeded record is installed from the
+harness side —
+`Page.addScriptToEvaluateOnNewDocument`, before the app's own script — because ADR
+0006 keeps the precached shell user-independent and a boot-time branch on a query
+parameter would ship an account-shaped decision inside it. `check:overflow` still
+measures the empty account only; the seam is shared, so giving it the same two
+passes is a small, separate change.
+
 **`check:overflow` is the fourth, and it is new** ([#63](https://github.com/YgorPerez/send-lab/issues/63)).
 Until it landed, "no horizontal overflow at 360px" was measured by hand once, with
 a throwaway script, and went stale the moment the next page shipped — which is why

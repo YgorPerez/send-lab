@@ -52,7 +52,7 @@ import {
 	type WeekId,
 	weekdayKeyOf,
 } from '$lib/ids';
-import { prefilledSet } from '$lib/loggedSet';
+import { midOf, prefilledSet } from '$lib/loggedSet';
 import { type ResolverState, resolveDayTypeId, trainableExerciseIds } from '$lib/prescription';
 import { capByVerdict } from '$lib/readinessPlan';
 import { acwr, readinessInsights, weekLoad } from '$lib/stats';
@@ -168,12 +168,22 @@ function prose(locale: string, key: string): string {
  *  between two seedings cannot be reasoned about. */
 const jitter = (seed: number, spread: number): number => ((seed * 37) % (spread * 2 + 1)) - spread;
 
-/** A set as it was logged: the prescription's midpoints, nudged, and done. */
+/** A set as it was logged: the prescription's midpoints, nudged, and done.
+ *
+ *  The effort rating is the one field `prefilledSet` no longer answers (#89), so
+ *  it is answered here instead — deliberately, and only here. A *seeded* set is
+ *  a set the scenario says was trained and rated: the load metrics
+ *  (`stats.ts`'s sRPE, and every band and flag off it) exist to be exercised
+ *  against a history that has ratings in it, and a scenario whose five weeks are
+ *  all unrated would show the athlete an empty ACWR and prove nothing. The app
+ *  filling a live row is the thing that was wrong; the fixture writing what its
+ *  imagined athlete felt is what a fixture is. */
 function loggedSet(prescription: Variant, seed: number): LoggedSet {
 	const s = prefilledSet(prescription);
 	if (s.loadKg != null) s.loadKg = Math.max(0, s.loadKg + jitter(seed, 2));
 	if (s.reps != null) s.reps = Math.max(1, s.reps + jitter(seed, 1));
-	if (s.rpe != null) s.rpe = Math.min(10, Math.max(4, s.rpe + jitter(seed + 1, 1)));
+	const midRpe = midOf(prescription.rpe);
+	if (midRpe != null) s.rpe = Math.min(10, Math.max(4, midRpe + jitter(seed + 1, 1)));
 	s.done = true;
 	return s;
 }
@@ -290,7 +300,13 @@ function todaySession(
 				: [prefilledSet(prescription)];
 		if (exercise === focus) {
 			sets[0].done = true;
-			sets[0].rpe = sets[0].rpe ?? 7;
+			// The done set is rated and the staged one is not, which is the state
+			// the Train screen is opened in: one answer given, one column still
+			// waiting. It read `sets[0].rpe ?? 7` until `prefilledSet` stopped
+			// answering (#89), which left the fallback as the only branch and every
+			// scenario at a flat 7 — so it takes the midpoint the way `loggedSet`
+			// above does, and 7 is what a variant prescribing no effort range gets.
+			sets[0].rpe = midOf(prescription.rpe) ?? 7;
 		}
 		return { exercise, variant: 0, sets };
 	});

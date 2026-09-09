@@ -38,15 +38,25 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { PINNED_NOW } from '../scripts/seeded-record.ts';
 import { getContent } from '../src/lib/content/index.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { recordStore, resetRecordStore } from '../src/lib/store/record.ts';
 import { seedRecordStore } from '../src/lib/store/seed.ts';
 import { routeTree } from '../src/routeTree.gen.ts';
 
-/** A Thursday in week 5 of the seeded block — a training day with a full slot,
- *  and the day the carry-forward and the timer both have something to show. */
-const THURSDAY = new Date('2026-08-13T09:30:00');
+/**
+ * A Thursday in week 5 of the seeded block — a training day with a full slot,
+ * and the day the carry-forward and the timer both have something to show.
+ *
+ * Imported rather than written out here, because #73 gave the three browser
+ * gates the same seeded record resolved against the same instant. One
+ * declaration is what lets a contrast failure in a seeded `/log` row and an
+ * assertion in this file be talked about as the same account on the same day;
+ * two copies would drift, and the drift would stay invisible until the suites
+ * disagreed about which slot was on screen.
+ */
+const THURSDAY = new Date(PINNED_NOW);
 
 beforeAll(() => {
 	// `Date` only. Faking timers wholesale would stop React and the collections
@@ -113,6 +123,29 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// Log: the checks, the sessions, the activity.
 			expect(log).toContain(locale === 'en-US' ? 'Green light' : 'Sinal verde');
 			expect(log).toContain(locale === 'en-US' ? 'Max / Tissue' : 'Máx / Tecido');
+		});
+
+		// #89. The prescribed range is displayed twice on purpose: once in the
+		// task header, as one line of the prescription, and once in the set row's
+		// own RPE column, because judging one number against another across a card
+		// boundary is not something a person does mid-set. What is asserted here
+		// is the second one — that every RPE input carries its target, in the
+		// locale, and says it is a target rather than a value.
+		test('puts the prescribed RPE beside the RPE input, not only in the header', async () => {
+			const train = await render('/train');
+			const inputs = [...train.matchAll(/<input[^>]*id="[^"]*-rpe"[^>]*>/g)].map((m) => m[0]);
+			expect(inputs.length).toBeGreaterThan(0);
+			// *Target* is the first word on **Prescription**'s `_Avoid_` list, so the
+			// copy says what the glossary says (ADR 0014).
+			const word = locale === 'en-US' ? 'prescribed' : 'prescrito';
+			for (const tag of inputs) {
+				expect(tag.toLowerCase()).toContain(word);
+				// The range itself, not just the word: "8" or "8–9".
+				expect(tag).toMatch(new RegExp(`${word}[^"]*\\d`, 'i'));
+			}
+			// And it is legible, not only announced — the range is in the column
+			// label the athlete is looking at.
+			expect(train).toMatch(/RPE<\/span>\s*<span[^>]*>\d/);
 		});
 
 		// Week (#63). The one screen whose whole point is the separation ADR-0003
