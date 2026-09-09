@@ -66,7 +66,7 @@ export function fieldsFor(prescription: Variant | undefined): SetField[] {
  * done, it is a *reading*, and the only instrument for it is the athlete. Filled
  * from `midOf(prescription.rpe)`, a `recruit` row opened at 9 because 8–9 was
  * what was asked for, and an untouched 9 became indistinguishable from a 9 they
- * felt — #61's bug class, one screen over (#89, decided on #40). What was asked
+ * felt — #61's bug class, one screen over (ADR 0021; #89, decided on #40). What was asked
  * for is still shown, beside the input rather than in place of the answer:
  * `SetEditor` takes a `prescribedRpe`.
  */
@@ -92,7 +92,7 @@ export function prefilledSet(prescription: Variant): LoggedSet {
  * most likely to be too. Two fields refuse to come along, and for the same
  * reason: neither is a plan.
  *
- * `done` is obvious. **`rpe` is the one `prefilledSet` leaves empty (#89), and
+ * `done` is obvious. **`rpe` is the one `prefilledSet` leaves empty (ADR 0021), and
  * carrying it would put the prefill straight back** — one rung further from the
  * prescription and no better sourced. An effort rating is a reading of *that*
  * set, and the third set of a hard hangboard exercise is precisely where it stops

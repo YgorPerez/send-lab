@@ -22,7 +22,7 @@
 // is a record, not a form, and 28 sessions of editable inputs is the fastest way
 // to make a history screen feel like a spreadsheet that has to be finished.
 import { Check } from 'lucide-react';
-import type { Range } from '$lib/content/types';
+import { type Range, RPE_SCALE } from '$lib/content/types';
 import { formatRange, GRIPS, gripLabel } from '$lib/format';
 import type { ExerciseId } from '$lib/ids';
 import type { SetField } from '$lib/loggedSet';
@@ -160,6 +160,11 @@ export function SetEditor({
 									type="number"
 									inputMode="decimal"
 									step="any"
+									// The one column with a fixed scale, so the one that can say
+									// what it will take. The wire bounds it too — without this the
+									// athlete could type a 47 the queued write would then fail on.
+									min={f === 'rpe' ? RPE_SCALE.min : undefined}
+									max={f === 'rpe' ? RPE_SCALE.max : undefined}
 									value={NUMERIC.includes(f) ? (set[f] ?? '') : ''}
 									onChange={(e) => onChange({ ...set, [f]: parseNum(e.currentTarget.value) })}
 								/>

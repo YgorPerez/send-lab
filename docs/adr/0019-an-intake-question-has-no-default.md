@@ -38,3 +38,9 @@ The rule binds the intake, which is where it was paid for. Whether it binds ever
 form the rebuild has left to build is not settled here; the two screens that
 write next (`week`, `program`) edit values the athlete already has, which is a
 different case from asking for one.
+
+**Settled for the third case by
+[ADR 0021](0021-a-logged-reading-has-no-default.md)**, which found the line is not
+intake-versus-form but plan-versus-reading: the set logger asks for a measurement
+rather than editing a value the athlete already has, and a set's RPE opens empty
+for this file's reason while its other six fields do not.

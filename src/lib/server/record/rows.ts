@@ -52,7 +52,14 @@
 // `lib/types.ts` deleted `LogEntry`; `defaultState()` was the stale half.
 import { z } from 'zod';
 import { SELF_CHECK_BANDS } from '$lib/content/logic';
-import { BODY_AREAS, DAY_TYPE_IDS, GRIPS, REHAB_STAGES, VERDICT_IDS } from '$lib/content/types';
+import {
+	BODY_AREAS,
+	DAY_TYPE_IDS,
+	GRIPS,
+	REHAB_STAGES,
+	RPE_SCALE,
+	VERDICT_IDS,
+} from '$lib/content/types';
 import {
 	type ExerciseId,
 	loadKey,
@@ -103,7 +110,9 @@ const loggedSet = z.object({
 	workSec: z.number().nullable(),
 	reps: z.number().nullable(),
 	restSec: z.number().nullable(),
-	rpe: z.number().nullable(),
+	// Bounded, unlike the other six: an RPE is a reading on a fixed scale, where a
+	// load or an edge is whatever the athlete actually used.
+	rpe: z.number().min(RPE_SCALE.min).max(RPE_SCALE.max).nullable(),
 	grip: z.enum(GRIPS).nullable(),
 	done: z.boolean(),
 });
@@ -179,7 +188,7 @@ const override = z.object({
 	edgeMm: z.number().optional(),
 	workSec: z.number().optional(),
 	restSec: z.number().optional(),
-	rpe: z.number().optional(),
+	rpe: z.number().min(RPE_SCALE.min).max(RPE_SCALE.max).optional(),
 });
 
 const weekdayTemplate = z.object({

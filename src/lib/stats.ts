@@ -4,6 +4,7 @@
 // from the logged sets. Workouts are stored newest-first.
 import { getLocale } from '$lib/paraglide/runtime';
 import { exerciseParams } from './content/exercises';
+import { RPE_SCALE } from './content/types';
 import { isoDay } from './dates';
 import type { LoggedReadinessCheck, Session } from './types';
 
@@ -149,7 +150,8 @@ const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
  *  falling back to the session's work + rest time, then to ~2.5 min/set when
  *  nothing timed was recorded. Returns 0 for a session with no sets.
  *
- *  **A session nobody rated has no load, and this does not guess one.** sRPE
+ *  **A session nobody rated has no load, and this does not guess one**
+ *  (ADR 0021). sRPE
  *  *is* the rating — without it there is no measurement to scale by duration,
  *  only a duration. This used to assume a moderate 5, which was unreachable
  *  while every fresh row opened at the prescription's midpoint and became the
@@ -317,18 +319,25 @@ export function sessionsLast7(workouts: Session[]): number {
 	return n;
 }
 
-/** Counts of logged RPE values, bucketed 1–10. */
+/** Counts of logged RPE values, one bucket per whole point of `RPE_SCALE`.
+ *  Only the buckets something landed in; a set with no rating is not a bucket. */
 export function rpeHistogram(workouts: Session[]): Point[] {
-	const counts = new Array(11).fill(0) as number[];
+	const counts = new Array(RPE_SCALE.max - RPE_SCALE.min + 1).fill(0) as number[];
 	for (const w of workouts)
 		for (const ex of w.exercises)
 			for (const s of ex.sets)
 				if (s.rpe != null) {
-					const r = Math.min(10, Math.max(1, Math.round(s.rpe)));
-					counts[r] += 1;
+					// Clamped to the scale rather than into it: the floor is 0, and the
+					// `Math.max(1, …)` this replaces counted a logged 0 as a 1 — the app
+					// editing a rating it had been given (#89).
+					const r = Math.min(RPE_SCALE.max, Math.max(RPE_SCALE.min, Math.round(s.rpe)));
+					counts[r - RPE_SCALE.min] += 1;
 				}
 	const out: Point[] = [];
-	for (let r = 1; r <= 10; r++) if (counts[r] > 0) out.push({ label: String(r), value: counts[r] });
+	for (let r = RPE_SCALE.min; r <= RPE_SCALE.max; r++) {
+		const n = counts[r - RPE_SCALE.min];
+		if (n > 0) out.push({ label: String(r), value: n });
+	}
 	return out;
 }
 
