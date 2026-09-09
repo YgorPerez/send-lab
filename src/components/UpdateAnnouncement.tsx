@@ -31,7 +31,7 @@ import * as m from '$lib/paraglide/messages';
 import type { AppLocale } from '$lib/store/locale';
 import { button } from './ui/variants';
 
-export function UpdatePrompt({ locale }: { locale: AppLocale }) {
+export function UpdateAnnouncement({ locale }: { locale: AppLocale }) {
 	const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
 	useEffect(() => {

@@ -72,7 +72,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 |---|---|
 | `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
-| `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refusal notice |
+| `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
 | `Timer` | The tick, the wake lock, and the two faces of the clock |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
@@ -549,7 +549,8 @@ correction, since its own sentence reads as three labels sharing a surface.
 
 Measuring the third one on the built app is also what turned up **#96**: the
 unsynced work had been running in memory on every healthy browser, so refused work
-did not survive a reload and an *unmissable* notice vanished on the next app open.
+did not survive a reload and an *unmissable* announcement vanished on the next app
+open.
 `collections.ts`'s `deviceStorage()` is the fix and `tests/recordSync.test.ts`
 holds it.
 
@@ -587,7 +588,7 @@ each of which was the alternative:
 
 - **Not a chip.** A 10px token is not the third severity, and this file said so
   before the state was built. At 360px a token beside the wordmark has ~138px,
-  which is not a sentence in either locale; without the wordmark the notice has
+  which is not a sentence in either locale; without the wordmark the announcement has
   214px, and both locales fit in two lines inside the 44px strip (measured).
 - **Not a second surface.** Two tokens competing in one strip is what the ticket
   ruled out in its first paragraph, so `resolveSyncState` returns one state and
@@ -595,14 +596,14 @@ each of which was the alternative:
   refused work stands, the strip is not also reporting the connection. Exactly one
   thing ends it and it is not something the athlete can be asked to do —
   `unsynced.ts`'s `add()` drops a refusal when the *same row* is written again, so
-  for an appended session the notice never stands down. The right trade only
+  for an appended session the announcement never stands down. The right trade only
   because refused work is the app's most serious state and essentially never
   happens.
 - **The one exception to the rationed accent fill.** `button`'s `primary` is
   otherwise the only filled vermilion on a screen, and this is the app's second
   use of it. What is reused is the *measured pair* — `text-bg` on `bg-flag` at
   6.44:1, where white would be 3.11:1 — and not the recipe: `button` owns a
-  control's shape and the notice is not a control.
+  control's shape and the announcement is not a control.
 - **Not dismissible, and not a link.** A control in the shell is a control on every
   screen, and there is nothing at the other end of it the athlete can do about
   refused work yet. Settings keeps the detail (`set_refused_note`) — what it stops
@@ -671,14 +672,14 @@ is offline, but which of that page's controls stops working.
 `AppShell` is baked into `/_shell.html` (ADR 0006). All three readings are
 `useSyncExternalStore` with a server snapshot meaning "all is well", which is also
 the snapshot React uses for the render that hydrates — so the baked artefact is the
-ordinary strip, wordmark and all. `UpdatePrompt` reaches the same place a different
+ordinary strip, wordmark and all. `UpdateAnnouncement` reaches the same place a different
 way.
 
 **One reading, read once.** `useSyncState` lives beside the component and
 `AppShell` calls it, because two things are decided from one answer: what the strip
 says, and whether the wordmark is still what the strip is for. Two calls would be
 two subscriptions to the same store deciding one strip, which is how the wordmark
-and the notice come to disagree; `tests/desktop.test.ts` holds it to one.
+and the announcement come to disagree; `tests/desktop.test.ts` holds it to one.
 
 ---
 

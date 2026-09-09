@@ -43,7 +43,7 @@ import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
 import { Menu } from './Menu';
 import { SyncStatus, useSyncState } from './SyncStatus';
-import { UpdatePrompt } from './UpdatePrompt';
+import { UpdateAnnouncement } from './UpdateAnnouncement';
 
 /**
  * Locale, switched in place.
@@ -165,7 +165,7 @@ export function AppShell({
 			{/* Nothing until a new version is actually waiting, and nothing at all on
 			    the server — see the file for why the prerendered shell must not carry
 			    it. It sits in the space the tab bar left. */}
-			<UpdatePrompt locale={locale} />
+			<UpdateAnnouncement locale={locale} />
 		</div>
 	);
 }

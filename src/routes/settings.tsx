@@ -283,7 +283,7 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 	const [held, setHeld] = useState(false);
 	// Said whether or not the athlete ever tries to leave: a refusal arrives as a
 	// 200 and has no other symptom. Since #84 this is no longer the *only* place it
-	// is said — the strip carries the notice on every screen, because a surface the
+	// is said — the strip announces it on every screen, because a surface the
 	// athlete has to go looking for is not a surface — and what this keeps is the
 	// detail: which control the refusal changes, and that sign-out no longer waits
 	// for the work. Live rather than read at mount, because most flushes are not

@@ -276,7 +276,7 @@ const stores = new Map<string, RecordStore>();
  *  refused half of it through `useRefusedWork` and gates sign-out on the sendable
  *  half (#82); the top strip reads both — the sendable half through
  *  `useSendableWork` to say "Sending…" while it is not zero (#83), and the refused
- *  half to carry ADR 0008's third state, the unmissable notice, on every screen
+ *  half to carry ADR 0008's third state, the unmissable announcement, on every screen
  *  (#84). All three of the ADR's visible states now have a surface. */
 const syncs = new Map<string, RecordSync | null>();
 const listeners = new Set<() => void>();

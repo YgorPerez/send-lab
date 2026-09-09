@@ -291,20 +291,42 @@ one place only, and an uninstalled app may have it deleted by the browser after
 a week idle. Work the server has declined is **refused work** — unsynced work in
 its final state, not a separate thing.
 
-Said to the athlete as this noun and one verb: the work is *unsynced work*, and
-what happens to it is that it is **sent** — "waits until it has been sent", "will
-never be sent", "not sent". Never *saved*: that word already names two other
-things the athlete does here, a **saved program** and a draft the app saves as it
-is typed, so it cannot also mean this. (It is for that reason absent from the list
-below rather than on it — a word this codebase uses for something else makes the
-audit unrunnable, not stricter.)
+**The name binds at every layer; the copy says *training*.** *Unsynced work* is
+what this is called in the storage key, the types, the hooks and the message keys
+— ADR 0014's rule, and the layer where the ambiguity actually bites. What the
+athlete *reads* is training: "unsent training", "the server refused some
+training". That is a correction to what this entry used to claim. It asked for the
+model's noun in the copy too, and the shipped strings had never agreed — sign-in
+said "unsent training" before the sentence was written, and "trabalho não
+sincronizado" is the model's phrase rather than a person's, in a strip read
+mid-set.
+
+The **verb is the same at both layers**: the work is **sent** — "waits until it
+has been sent", "will never be sent", "not sent". Never *saved*: that word already
+names two other things the athlete does here, a **saved program** and a draft the
+app saves as it is typed, so it cannot also mean this. (It is for that reason
+absent from the list below rather than on it — a word this codebase uses for
+something else makes the audit unrunnable, not stricter.)
 _Avoid_: pending, queued, unsaved, outbox, offline changes
 
 **Refused work**:
 Unsynced work the server has declined to store — its final state, and the one
-kind of it that finding a signal does not fix. Always both words: a refused
-*sign-in* is a different event, and the bare word is ambiguous between them.
-_Avoid_: rejected work, failed write, dead letter, sync error, conflict, refusal
+kind of it that finding a signal does not fix.
+
+**Always both words wherever it is a name**, because a refused *sign-in* is a
+different event and the bare word is ambiguous between them. That is not
+hypothetical: `screens/login.ts` has carried `AuthFailure = … | 'refused'` for
+the sign-in one since before this term existed, and #84's first cut named the
+strip's state `'refused'` too — one word, two meanings, one import away from each
+other. So the message key is `sync_refused_work` and the state is `'refused-work'`,
+spelled the way `'offline-unsent'` is.
+
+In *prose* the bare word is allowed once the sentence has said which kind, which
+is why *refusal* is *absent from the list below rather than on it*: the word is
+legitimately in use for the sign-in event, so a grep for it cannot tell a breach
+from a correct usage — the same reason *saved* is missing from **Unsynced work**'s
+list. What the list can still catch is a second name for this thing.
+_Avoid_: rejected work, failed write, dead letter, sync error, conflict
 
 **Draft**:
 What the athlete is part-way through entering, before it is recorded — a
@@ -342,6 +364,25 @@ today, carrying that day type's headline. Read from the program rather than from
 what has been trained, so it is true on a device that has not synced in a week —
 and a rest day sends nothing rather than sending that there is nothing.
 _Avoid_: reminder, digest, alert, morning push
+
+**Announcement**:
+Something the app says on whatever screen the athlete is on, unasked, because it
+is about the app rather than about that screen — a new version waiting, training
+the server refused and will never send. It is *announced*: both of them are live
+regions, which is not a coincidence but the point of the word.
+
+Distinct from a **notice**, which is how the app reaches the athlete when they are
+not looking at a screen at all, and which the preference switches persist under
+that name (`cueNotices`, `dailyNotice`) — so the two cannot share it. Distinct
+from a **flag**, which is a problem the readiness check found in the athlete;
+from a **nudge**, which asks them to record something; and from a caveat, which is
+one line inside a section saying why a control did not do what was asked. An
+announcement asks for nothing except to be read, and the most serious one in the
+app cannot be acted on at all.
+_Avoid_: banner, toast, notification, alert, notice
+_Changing_: `screens/login.ts` still calls three lines of sign-in copy `notices`
+(`LoginNotice`). They are neither — a line that belongs to one screen is that
+screen's own — so this entry makes that name wrong and does not fix it.
 
 **Nudge**:
 A standing invitation on a screen to record something the app cannot know on its

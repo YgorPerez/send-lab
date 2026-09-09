@@ -78,7 +78,7 @@ These turned out to be three **severities** rather than three labels sharing a
 surface, and that is worth writing down because it is not what the sentence above
 says. #83 put the indicator in the top strip — the only surface every screen has —
 and #84 escalated the third out of that same slot at a greater weight rather than
-opening a second one beside it, on the grounds that two notices competing in a
+opening a second one beside it, on the grounds that two announcements competing in a
 44px strip on a 360px phone is how both get ignored. So one thing is said at a
 time, and the most serious thing wins. What that costs is stated where it is
 decided (`lib/syncState.ts`, and `docs/component-vocabulary.md` for the surface):

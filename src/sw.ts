@@ -19,7 +19,7 @@
 // `clientsClaim()` with no `self.skipWaiting()` beside it is deliberate and
 // belongs to #27, which is still open: a new worker takes over the page but a
 // *waiting* one does not activate until the athlete asks. The message listener
-// below is the only thing that ever activates it, and `components/UpdatePrompt.tsx`
+// below is the only thing that ever activates it, and `components/UpdateAnnouncement.tsx`
 // is what sends the message. `pnpm check:sw` fails the build if the string on
 // either side goes missing — until this file existed, that string was workbox's
 // to name and nothing in `src/` defined it. Now this does.

@@ -53,7 +53,7 @@ for (const marker of ['"email"', '"userId"', 'sessionToken']) {
 
 // The update prompt's other half.
 //
-// `components/UpdatePrompt.tsx` posts `{ type: 'SKIP_WAITING' }` to the waiting
+// `components/UpdateAnnouncement.tsx` posts `{ type: 'SKIP_WAITING' }` to the waiting
 // worker, and the worker takes over only because it listens for that exact type.
 // The string used to be **not ours to name** — workbox's generated code owned it,
 // nothing in `src/` defined it, and a workbox upgrade renaming it would have left
@@ -70,7 +70,7 @@ if (!source.includes('SKIP_WAITING')) {
 		"the worker does not listen for 'SKIP_WAITING' — the update prompt's button\n" +
 			'  would post a message nothing acts on, and every deploy would stay\n' +
 			'  undeliverable until the athlete closed every tab. See\n' +
-			'  src/components/UpdatePrompt.tsx and src/lib/appUpdate.ts.',
+			'  src/components/UpdateAnnouncement.tsx and src/lib/appUpdate.ts.',
 	);
 }
 
