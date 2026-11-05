@@ -236,13 +236,13 @@ export function remainingOf(r: Run, c: Protocol): number {
  * The segment that follows this one, and how long it lasts — the "next up" line
  * Timer Plus shows and this app did not.
  *
- * Computed by stepping the protocol to the end of the current segment rather than
- * by a second switch statement. One transition table, so the preview cannot
- * disagree with what actually happens next.
+ * Computed by skipping the current segment rather than by a second switch
+ * statement. One transition table, so the preview cannot disagree with what
+ * actually happens next, nor with where the skip button goes.
  */
 export function nextOf(r: Run, c: Protocol): { segment: Segment; seconds: number } | null {
 	if (r.segment === 'idle' || r.segment === 'done') return null;
-	const next = step({ ...r, remaining: 1 }, c);
+	const next = skip(r, c);
 	if (next.segment === 'done') return { segment: 'done', seconds: 0 };
 	return { segment: next.segment, seconds: next.remaining };
 }

@@ -161,6 +161,11 @@ function ProgressBar({ reading }: { reading: Reading }) {
  * `backdrop-filter` ancestor becomes the containing block for fixed descendants,
  * so a plain overlay would have been trapped inside a 120px-tall strip. The
  * portal also brings the focus trap and Escape handling for free.
+ *
+ * It scrolls when it does not fit. A phone on its side is 360px tall, and the
+ * ring, the indicators and the control row together are taller than that: with
+ * no scroll, Start, skip and back sat below the screen with no way to reach them.
+ * Scrolling is the floor, not the landscape layout. That one is still to design.
  */
 function FullScreenClock({
 	open,
@@ -194,7 +199,7 @@ function FullScreenClock({
 			<Dialog.Portal>
 				<Dialog.Popup
 					aria-label={segmentLabel}
-					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
+					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col overflow-y-auto bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
 				>
 					<div className="flex items-start gap-2 px-4 pt-4">
 						<div className="min-w-0 flex-1">
