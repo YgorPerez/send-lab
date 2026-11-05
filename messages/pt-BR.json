@@ -304,6 +304,8 @@
 	"timer_total": "Total",
 	"timer_left": "Falta",
 	"timer_use": "Usar no timer",
+	"timer_skip": "Pular para o próximo segmento",
+	"timer_back": "Voltar um segmento",
 	"btn_start": "Iniciar",
 	"btn_pause": "Pausar",
 	"btn_reset": "Zerar",

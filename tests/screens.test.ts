@@ -35,7 +35,8 @@
 // horizontal overflow are measured in a real browser by `pnpm check:contrast`,
 // and reduced motion by `pnpm check:motion`.
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
-import { createElement } from 'react';
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { PINNED_NOW } from '../scripts/seeded-record.ts';
@@ -243,6 +244,77 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		});
 	});
 }
+
+// The full-screen clock is a closed Base UI dialog in a string render, and an
+// open one renders nothing either, because its portal mounts in an effect. So
+// the clock's controls are asserted the way the athlete reaches them: mount Train
+// in the (jsdom) DOM, open the clock, press the buttons, read what the clock says.
+//
+// en-US only. A mounted app runs the root's effects, and one of them applies the
+// seeded account's locale (`useResolvedLocale`), which is en-US: a pt-BR pass
+// here would be the app and the test fighting over the language, not a test of
+// the clock. The pt-BR labels are held to the en-US keys by `check:i18n`.
+describe('the full-screen clock on Train', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const labelled = (scope: ParentNode, label: string) =>
+		scope.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+
+	test('skips and goes back a segment, with labelled 48px+ controls', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/train'] }),
+		});
+		await router.load();
+		const host = document.createElement('div');
+		document.body.append(host);
+		const root = createRoot(host);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			press(labelled(host, 'Full-screen clock'));
+			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!clock) throw new Error('the full-screen clock did not open');
+			const skip = labelled(clock, 'Skip to the next segment');
+			const back = labelled(clock, 'Back a segment');
+			// Named for a screen reader, and big enough for a chalky finger: 56px.
+			for (const control of [skip, back]) {
+				expect(control).toBeTruthy();
+				expect(control?.className).toContain('h-14');
+				expect(control?.className).toContain('w-14');
+			}
+			// Nothing to jump within before the clock has started.
+			expect(skip?.disabled).toBe(true);
+			expect(back?.disabled).toBe(true);
+
+			press(worded(clock, 'Start'));
+			press(worded(clock, 'Pause'));
+			const first = clock.getAttribute('aria-label');
+			// The "Next up" line names the segment a skip has to land on.
+			const next = clock.textContent?.match(/Next up\s*(.+?) ·/)?.[1];
+			expect(next).toBeTruthy();
+			expect(next).not.toBe(first);
+
+			press(skip);
+			expect(clock.getAttribute('aria-label')).toBe(next);
+			// Paused before the jump, paused after it.
+			expect(worded(clock, 'Start')).toBeTruthy();
+			press(back);
+			expect(clock.getAttribute('aria-label')).toBe(first);
+		} finally {
+			act(() => root.unmount());
+			host.remove();
+		}
+	});
+});
 
 // The three ranks of the type scale, and the 44px touch floor, are properties of
 // the vocabulary rather than of any one screen — so they are asserted against
