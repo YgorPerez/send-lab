@@ -432,12 +432,15 @@ describe('the full-screen clock on Train', () => {
 			history: createMemoryHistory({ initialEntries: ['/train'] }),
 		});
 		await router.load();
-		// The root route renders the whole document, so React warns about an
-		// `<html>` inside this `<div>`. That is the price of mounting the real
-		// route rather than a copy of the clock, and nothing here hydrates.
-		const host = document.createElement('div');
-		document.body.append(host);
-		const root = createRoot(host);
+		// The root route renders the whole document, so it is mounted on the
+		// document itself. Under a `<div>` the root would sit inside the `<body>` it
+		// renders, and once a dialog's portal has mounted, a click outside it sends
+		// React's event dispatch round that loop forever — and a `<div>` root left
+		// behind holds the document's `<body>` against the next test's. That is the
+		// price of mounting the real route rather than a copy of the clock; nothing
+		// here hydrates.
+		const host = document;
+		const root = createRoot(document);
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
 			press(labelled(host, 'Full-screen clock'));
@@ -474,7 +477,76 @@ describe('the full-screen clock on Train', () => {
 			expect(clock.getAttribute('aria-label')).toBe(first);
 		} finally {
 			act(() => root.unmount());
-			host.remove();
+		}
+	});
+});
+
+// Only one of the Timer screen's two clocks runs at a time (#108): the press
+// that starts one pauses the other. Mounted on the document, as Train's is and
+// for the same reason, and pressed on the strips, where both tabs stay mounted
+// and the hidden one keeps its place.
+describe('the Timer screen runs one clock at a time', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	/** The strip a full-screen control sits in: the protocol clock's or the stopwatch's. */
+	const strip = (host: ParentNode, fullScreen: string) => {
+		const el = host
+			.querySelector(`button[aria-label="${fullScreen}"]`)
+			?.closest<HTMLElement>('.rounded-lg');
+		if (!el) throw new Error(`no strip holds "${fullScreen}"`);
+		return el;
+	};
+	const runs = (scope: ParentNode) => worded(scope, 'Pause') !== undefined;
+
+	test('starting the stopwatch pauses the protocol, and starting the protocol pauses the stopwatch', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const host = document;
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			const protocol = strip(host, 'Full-screen clock');
+			const stopwatch = strip(host, 'Full-screen stopwatch');
+
+			const close = () =>
+				press(
+					document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]'),
+				);
+
+			// Start opens the full-screen clock; the athlete closes it to reach the tab.
+			press(worded(protocol, 'Start'));
+			expect(runs(protocol)).toBe(true);
+			close();
+
+			press(worded(host, 'Stopwatch'));
+			// Looking at the other tab pauses nothing: the protocol keeps counting.
+			expect(runs(protocol)).toBe(true);
+
+			press(worded(stopwatch, 'Start'));
+			expect(runs(stopwatch)).toBe(true);
+			expect(runs(protocol)).toBe(false);
+			close();
+
+			press(worded(host, 'Protocols'));
+			press(worded(protocol, 'Start'));
+			expect(runs(protocol)).toBe(true);
+			expect(runs(stopwatch)).toBe(false);
+			// Paused, not reset: it offers to resume what it counted, never Start.
+			expect(worded(stopwatch, 'Lap')?.disabled).toBe(true);
+		} finally {
+			act(() => root.unmount());
 		}
 	});
 });
