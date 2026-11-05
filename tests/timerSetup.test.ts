@@ -27,7 +27,7 @@ import {
 	taskKey,
 } from '../src/lib/ids.ts';
 import type { Protocol, Run } from '../src/lib/protocol.ts';
-import { IDLE } from '../src/lib/protocol.ts';
+import { IDLE, planCues } from '../src/lib/protocol.ts';
 import { restored, type TimerSetup, timerDraftKey } from '../src/lib/timerSetup.ts';
 
 const CONFIG: Protocol = {
@@ -137,6 +137,33 @@ describe('what the clock comes back as', () => {
 		// The configuration still survives: it is the athlete's setup, and it
 		// outlives any one run of it.
 		expect(back.config).toEqual(CONFIG);
+	});
+});
+
+// The clock asks the planner about every move from the run it last saw to the
+// run it sees now. At mount the run it last saw is the one it was restored to:
+// nothing has moved, and a clock that came back paused says nothing (spec stories
+// 32 and 33). Counted from idle instead, every return to a screen with a paused
+// draft beeped, buzzed and said the segment name, as if the athlete had pressed
+// Start.
+describe('a clock restored paused, at mount', () => {
+	const places: Run[] = [
+		{ segment: 'prepare', remaining: 2, round: 1, set: 1 },
+		MID,
+		{ segment: 'work', remaining: 2, round: 3, set: 2 },
+		{ segment: 'rest', remaining: 3, round: 2, set: 1 },
+		{ segment: 'setRest', remaining: 40, round: 6, set: 1 },
+		{ segment: 'cooldown', remaining: 1, round: 6, set: 3 },
+	];
+
+	it.each(places)('plans no cue in $segment with $remaining s left', (place) => {
+		const back = restored(stored({ config: CONFIG, run: place }), PULL, SEEDED);
+		expect(planCues({ from: back.run, to: back.run, running: back.running })).toEqual([]);
+	});
+
+	it('would have announced the segment if the clock counted the mount from idle', () => {
+		const back = restored(stored({ config: CONFIG, run: MID }), PULL, SEEDED);
+		expect(planCues({ from: IDLE, to: back.run, running: back.running })).not.toEqual([]);
 	});
 });
 

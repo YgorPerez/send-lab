@@ -641,7 +641,12 @@ export function Timer({
 			},
 		});
 	});
-	const previous = useRef<Run>(IDLE);
+	// The run last seen starts as the one the clock opened on, not idle. A clock
+	// restored paused mid-protocol has not moved at mount, so the planner hears
+	// "no move" and plans nothing; counted from idle it was an arrival, and every
+	// return to a screen with a paused draft beeped, buzzed and said the segment
+	// (spec stories 32 and 33).
+	const previous = useRef<Run>(initial.run);
 	useEffect(() => {
 		const from = previous.current;
 		previous.current = run;

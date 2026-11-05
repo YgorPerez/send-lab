@@ -672,6 +672,73 @@ describe('the flash on the full-screen clock', () => {
 	});
 });
 
+// A clock left paused comes back paused, and silent (spec stories 32 and 33).
+// The planner's half is pinned in `timerSetup.test.ts`; this is the clock asking
+// it the right question at mount. jsdom has no audio and no speech, so the buzz
+// is what is listened for: `navigator.vibrate` is called by every arrival cue.
+describe('a clock restored paused', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const vibrate = vi.fn();
+	beforeEach(() => {
+		vibrate.mockClear();
+		Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+	});
+	afterEach(() => {
+		Reflect.deleteProperty(navigator, 'vibrate');
+	});
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+
+	async function mount(path: string) {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: [path] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		return root;
+	}
+
+	test.each(['/timer', '/train'])('%s plays no cue when it comes back', async (path) => {
+		const first = await mount(path);
+		try {
+			press(document.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
+			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!clock) throw new Error(`the full-screen clock on ${path} did not open`);
+			const reset = clock.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
+			if (reset && !reset.disabled) press(reset);
+			press(worded(clock, 'Start'));
+			press(worded(clock, 'Pause'));
+			// Started, so it buzzed: the listener hears what it is listening for.
+			expect(vibrate).toHaveBeenCalled();
+		} finally {
+			act(() => first.unmount());
+		}
+
+		vibrate.mockClear();
+		const second = await mount(path);
+		try {
+			// Back where it was left, paused, rather than idle: the test is about a
+			// restored place, not a fresh clock.
+			expect(document.body.textContent).toContain('Prepare');
+			expect(worded(document, 'Start')).toBeTruthy();
+			expect(vibrate).not.toHaveBeenCalled();
+		} finally {
+			act(() => second.unmount());
+		}
+	});
+});
+
 // The three ranks of the type scale, and the 44px touch floor, are properties of
 // the vocabulary rather than of any one screen — so they are asserted against
 // what the screens actually emit, not against the stylesheet.
