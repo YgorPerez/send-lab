@@ -148,6 +148,7 @@ describe('a preferences write', () => {
 		locale: 'pt-BR',
 		countdown: 5,
 		buzz: false,
+		flash: false,
 	};
 	const write = (row: unknown) => ({ collection: 'prefs', key: 'only', row, at: T1 });
 

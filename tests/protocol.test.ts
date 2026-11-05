@@ -299,6 +299,12 @@ describe('going back a segment', () => {
 	});
 });
 
+/** The sounds and buzzes in a plan. What the tests below pin is what the athlete
+ *  hears and feels, so a delivery added beside those two (the flash, #107) is
+ *  pinned in its own block and does not move these. */
+const heardAndFelt = (planned: Delivery[]) =>
+	planned.filter((d) => d.kind === 'sound' || d.kind === 'buzz');
+
 // Which cues a transition fires used to be decided inside the clock component,
 // out of reach of any test. These pin today's behaviour — the SvelteKit app's,
 // carried over — so the cue tickets that follow change it on purpose and not by
@@ -307,7 +313,7 @@ describe('the cue planner', () => {
 	const START = beginning(REPEATERS);
 
 	test('pressing Start sounds and buzzes the start cue', () => {
-		expect(planCues({ from: IDLE, to: START, running: true })).toEqual([
+		expect(heardAndFelt(planCues({ from: IDLE, to: START, running: true }))).toEqual([
 			{ kind: 'sound', cue: 'start' },
 			{ kind: 'buzz', cue: 'start' },
 		]);
@@ -317,7 +323,7 @@ describe('the cue planner', () => {
 	// prepare handing over earns "go".
 	test('pressing Start with no prepare announces work, not go', () => {
 		const c = { ...REPEATERS, prepare: 0 };
-		expect(planCues({ from: IDLE, to: beginning(c), running: true })).toEqual([
+		expect(heardAndFelt(planCues({ from: IDLE, to: beginning(c), running: true }))).toEqual([
 			{ kind: 'sound', cue: 'work' },
 			{ kind: 'buzz', cue: 'work' },
 		]);
@@ -373,7 +379,7 @@ describe('the cue planner', () => {
 			cue: 'done',
 		},
 	])('$name sounds and buzzes $cue', ({ from, to, cue }) => {
-		expect(planCues({ from, to, running: true })).toEqual([
+		expect(heardAndFelt(planCues({ from, to, running: true }))).toEqual([
 			{ kind: 'sound', cue },
 			{ kind: 'buzz', cue },
 		]);
@@ -437,7 +443,7 @@ describe('the cue planner', () => {
 			cue: 'done',
 		},
 	])('$name announces $cue, as the clock getting there would', ({ from, cue }) => {
-		expect(planCues({ from, to: skip(from, SMALL), running: true })).toEqual([
+		expect(heardAndFelt(planCues({ from, to: skip(from, SMALL), running: true }))).toEqual([
 			{ kind: 'sound', cue },
 			{ kind: 'buzz', cue },
 		]);
@@ -454,7 +460,7 @@ describe('the cue planner', () => {
 
 	test('going back to the segment before announces that segment', () => {
 		const work: Run = { segment: 'work', remaining: 2, round: 2, set: 1 };
-		expect(planCues({ from: work, to: back(work, SMALL), running: true })).toEqual([
+		expect(heardAndFelt(planCues({ from: work, to: back(work, SMALL), running: true }))).toEqual([
 			{ kind: 'sound', cue: 'rest' },
 			{ kind: 'buzz', cue: 'rest' },
 		]);
@@ -468,7 +474,7 @@ describe('the cue planner', () => {
 		const late: Run = { segment: 'work', remaining: 2, round: 1, set: 1 };
 		const restarted = back(late, c);
 		expect(restarted.remaining).toBe(10);
-		expect(planCues({ from: late, to: restarted, running: true })).toEqual([
+		expect(heardAndFelt(planCues({ from: late, to: restarted, running: true }))).toEqual([
 			{ kind: 'sound', cue: 'work' },
 			{ kind: 'buzz', cue: 'work' },
 		]);
@@ -482,7 +488,7 @@ describe('the cue planner', () => {
 		let before = IDLE;
 		let r = beginning(c);
 		for (;;) {
-			for (const d of planCues({ from: before, to: r, running: true })) {
+			for (const d of heardAndFelt(planCues({ from: before, to: r, running: true }))) {
 				heard.push(`${d.kind}:${d.cue}`);
 			}
 			if (r.segment === 'done') break;
@@ -555,7 +561,7 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 	});
 
 	test('the defaults are today: three seconds, and the buzz on', () => {
-		expect(CUE_DEFAULTS).toEqual({ countdown: 3, buzz: true });
+		expect(CUE_DEFAULTS).toMatchObject({ countdown: 3, buzz: true });
 		expect(at(4)).toEqual([]);
 		expect(at(3)).toEqual(COUNT);
 	});
@@ -563,16 +569,18 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 	test('with the buzz off, a segment change only sounds', () => {
 		const off = { ...CUE_DEFAULTS, buzz: false };
 		expect(
-			planCues(
-				{
-					from: { segment: 'prepare', remaining: 1, round: 1, set: 1 },
-					to: { segment: 'work', remaining: 7, round: 1, set: 1 },
-					running: true,
-				},
-				off,
+			heardAndFelt(
+				planCues(
+					{
+						from: { segment: 'prepare', remaining: 1, round: 1, set: 1 },
+						to: { segment: 'work', remaining: 7, round: 1, set: 1 },
+						running: true,
+					},
+					off,
+				),
 			),
 		).toEqual([{ kind: 'sound', cue: 'go' }]);
-		expect(planCues({ from: IDLE, to: beginning(REPEATERS), running: true }, off)).toEqual([
+		expect(heardAndFelt(planCues({ from: IDLE, to: beginning(REPEATERS), running: true }, off))).toEqual([
 			{ kind: 'sound', cue: 'start' },
 		]);
 	});
@@ -583,7 +591,7 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 			let before = IDLE;
 			let r = beginning(REPEATERS);
 			for (;;) {
-				for (const d of planCues({ from: before, to: r, running: true }, prefs)) {
+				for (const d of heardAndFelt(planCues({ from: before, to: r, running: true }, prefs))) {
 					out.push(`${d.kind}:${d.cue}`);
 				}
 				if (r.segment === 'done') break;

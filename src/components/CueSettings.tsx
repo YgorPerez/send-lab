@@ -61,6 +61,8 @@ const SWITCHES: readonly {
 		supported: canVibrate,
 		unsupported: m.cues_buzz_unsupported,
 	},
+	// Every screen can flash, so there is nothing for it to warn about.
+	{ field: 'flash', label: m.cues_flash },
 ];
 
 /** Nothing about the device changes while the page is open. */

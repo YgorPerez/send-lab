@@ -315,6 +315,7 @@
 	"cues_countdown": "Contar os últimos",
 	"cues_buzz": "Vibrar quando começa esforço ou descanso",
 	"cues_buzz_unsupported": "Este aparelho não vibra. A escolha segue sua conta para um que vibre.",
+	"cues_flash": "Piscar a tela quando começa esforço ou descanso",
 	"timer_saved": "Protocolos salvos",
 	"timer_saved_empty": "Nenhum protocolo salvo ainda. Escolha um predefinido e <b>duplique</b> para guardar uma cópia sua.",
 	"timer_copy_name": "Cópia de {name}",

@@ -335,6 +335,7 @@ const COLLECTIONS: Readonly<Record<string, CollectionSpec<any>>> = {
 			// `CUE_DEFAULTS`, and so is what the client's own read fills in.
 			countdown: z.literal(COUNTDOWN_LENGTHS).default(CUE_DEFAULTS.countdown),
 			buzz: z.boolean().default(CUE_DEFAULTS.buzz),
+			flash: z.boolean().default(CUE_DEFAULTS.flash),
 		}),
 	),
 	swaps: spec(

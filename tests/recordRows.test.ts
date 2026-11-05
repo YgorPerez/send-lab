@@ -42,6 +42,7 @@ const PREFS = {
 	locale: null,
 	countdown: 3,
 	buzz: true,
+	flash: true,
 } as const;
 
 /** A `StorageApi` backed by a `Map` — the collections persist nowhere. */
@@ -426,5 +427,24 @@ describe('preferences carry how cues are delivered', () => {
 
 	it('refuses a buzz that is not a switch', () => {
 		expect(sanitizeRow('prefs', SINGLETON_KEY, { ...chosen, buzz: 'off' }).ok).toBe(false);
+	});
+
+	// #107. The flash switch rides the same row, defaulted the same way: a row
+	// from before it reads as the flash on, which is what the athlete gets
+	// without ever opening the setting.
+	it('carries the flash switched off', () => {
+		const off = { ...PREFS, flash: false };
+		const check = sanitizeRow('prefs', SINGLETON_KEY, off);
+		expect(check.ok ? check.row : check.reason).toEqual(off);
+	});
+
+	it('reads a row from before the flash as the flash on', () => {
+		const { flash: _f, ...before } = { ...PREFS, flash: false };
+		const check = sanitizeRow('prefs', SINGLETON_KEY, before);
+		expect(check.ok ? check.row : check.reason).toEqual({ ...before, flash: true });
+	});
+
+	it('refuses a flash that is not a switch', () => {
+		expect(sanitizeRow('prefs', SINGLETON_KEY, { ...PREFS, flash: 1 }).ok).toBe(false);
 	});
 });
