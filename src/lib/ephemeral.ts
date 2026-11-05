@@ -2,7 +2,9 @@
 //
 // WHAT BELONGS HERE, AND WHAT DOES NOT
 // ------------------------------------
-// Three stores: the rest timer, the readiness draft and the session draft. ADR
+// Three stores: the rest timer, the readiness draft and the session draft. The
+// rest timer keeps one clock per screen that runs one — Train's and the Timer
+// screen's (#101) — under two keys of the same shape. ADR
 // 0008's rule is that ephemeral UI stays local-only and **never syncs** — it is
 // not account data, it never reaches `/api/state`, and it never goes through
 // TanStack DB. Losing it costs the athlete a re-entry; losing account data costs
