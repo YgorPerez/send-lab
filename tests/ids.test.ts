@@ -14,13 +14,16 @@ import {
 	asExerciseId,
 	asWeekdayKey,
 	asWeekId,
+	newSavedProtocolId,
 	parseAthleteId,
+	parseSavedProtocolId,
 	parseSlotKey,
 	parseTaskKey,
 	parseWeekdayKey,
 	parseWeekId,
 	presetKey,
 	protocolKey,
+	savedProtocolKey,
 	slotKey,
 	taskKey,
 	WEEKDAY_KEYS,
@@ -155,6 +158,29 @@ describe('protocol keys', () => {
 		const task = taskKey(asWeekId(5), asWeekdayKey('Thu'), repeaters);
 		expect(presetKey(repeaters, 0)).not.toBe(protocolKey(task, 0));
 		expect(presetKey(repeaters, 0)).not.toBe(presetKey(repeaters, 1));
+	});
+
+	// A saved protocol (#103) is the athlete's, so its clock is filed under its
+	// id — never its name, which they can change (ADR 0003).
+	test("files a saved protocol's clock under its id", () => {
+		const id = newSavedProtocolId();
+		expect(savedProtocolKey(id)).toBe(`saved:${id}`);
+		expect(savedProtocolKey(id)).not.toBe(presetKey(repeaters, 0));
+	});
+});
+
+describe('saved protocol ids', () => {
+	test('mints a fresh one every time', () => {
+		const ids = new Set(Array.from({ length: 50 }, () => newSavedProtocolId()));
+		expect(ids.size).toBe(50);
+	});
+
+	test('reads one back from untrusted input, and refuses what is not one', () => {
+		const id = newSavedProtocolId();
+		expect(parseSavedProtocolId(id)).toBe(id);
+		expect(parseSavedProtocolId('')).toBeNull();
+		expect(parseSavedProtocolId(42)).toBeNull();
+		expect(parseSavedProtocolId(undefined)).toBeNull();
 	});
 });
 

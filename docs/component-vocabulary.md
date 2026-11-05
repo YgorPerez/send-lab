@@ -113,7 +113,7 @@ above and reads from exactly two things:
 
 | Layer | Lives in | What it is |
 |---|---|---|
-| The store | `src/lib/store/` | Sixteen keyed row sets (ADR 0007), and `useTrainingRecord()`, which assembles them into one `TrainingRecord` |
+| The store | `src/lib/store/` | Seventeen keyed row sets (ADR 0007), and `useTrainingRecord()`, which assembles them into one `TrainingRecord` |
 | The screen resolver | `src/lib/screens/` | `resolveToday` / `resolveTrain` / `resolveLog` — pure functions of `(content, record, now)` |
 
 What the three built screens do with it, which is idiom 2 and idiom 3 one layer

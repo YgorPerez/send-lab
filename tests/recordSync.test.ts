@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { asAthleteId, asExerciseId, asWeekdayKey, asWeekId, taskKey } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import type { UnsyncedWrite, WriteRejection } from '../src/lib/recordWire.ts';
+import { sanitizeRow } from '../src/lib/server/record/rows.ts';
 import { createRecordStore, type RecordStore } from '../src/lib/store/collections.ts';
 import { createRecordSync, type Transport } from '../src/lib/store/sync.ts';
 import { UNSYNCED_KEY } from '../src/lib/store/unsynced.ts';
@@ -409,6 +410,33 @@ describe('a write made with the network down', () => {
 		expect(second.sent[0][0].collection).toBe('taskDone');
 		expect(second.sent[0][0].key).toBe('w1-Thu:pull');
 		expect(revived.unsynced()).toBe(0);
+	});
+
+	// #103: a saved protocol made at a gym with no signal, and one deleted there,
+	// reach the account on the next start — and the server takes the row as sent.
+	it('carries a saved protocol made offline, and one deleted offline', async () => {
+		const cells = memory();
+		const first = fakeTransport();
+		first.setFailing(true);
+		const sync = createRecordSync(ACCOUNT, first.transport, cells);
+		const store = createRecordStore(ACCOUNT, sync.push, memory());
+		const protocol = { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180 };
+		store.savedProtocols.insert({ id: 'kept', name: 'Repeaters (copy)', protocol, createdAt: T1 } as never);
+		store.savedProtocols.insert({ id: 'gone', name: 'Gone', protocol, createdAt: T1 } as never);
+		await settle();
+		store.savedProtocols.delete('gone');
+		await settle();
+		expect(first.sent).toEqual([]);
+
+		const second = fakeTransport();
+		createRecordSync(ACCOUNT, second.transport, cells);
+		await settle();
+
+		const writes = second.sent.flat();
+		const kept = writes.find((w) => w.key === 'kept');
+		expect(kept?.collection).toBe('savedProtocols');
+		expect(sanitizeRow('savedProtocols', 'kept', kept?.row).ok).toBe(true);
+		expect(writes.find((w) => w.key === 'gone')?.row).toBeNull();
 	});
 
 	it('is not resent by a reload once it has landed', async () => {
