@@ -2,42 +2,68 @@
 //
 // The clock outside a session: pick a protocol, run it. Nothing here is
 // training — a run records no session, no set and no history — so the screen
-// reads no prescription and writes nothing to the training record. What it does
-// keep is the athlete's place in the protocol, as a draft on this device, under
-// the same two rules as Train's (`timerSetup.ts`): it comes back paused, and only
-// for the protocol it was left in.
+// reads no prescription. What it does keep is the athlete's place in the
+// protocol, as a draft on this device, under the same two rules as Train's
+// (`timerSetup.ts`): it comes back paused, and only for the protocol it was left
+// in.
 //
-// The protocols are the **presets**: every library variant that carries one,
-// read-only, computed by `resolveTimer` and never stored. Saved protocols (#103)
-// join them as a second list, and a Protocols | Stopwatch switch (#108) goes
-// above both. Neither is here yet; the layout leaves them their place rather than
-// drawing it empty.
+// Two lists. The athlete's **saved protocols** (#103) come first, because they
+// are theirs and there are few of them; under them the **presets**: every library
+// variant that carries a protocol, read-only, computed by `resolveTimer` and never
+// stored. The one row the clock is pointed at carries the actions — duplicate,
+// and for a saved protocol delete — so twenty-six rows do not each carry two
+// buttons. Creating and editing one is #104's, and goes beside them; the
+// Protocols | Stopwatch switch (#108) goes above both.
 //
 // Same posture as Train, so the same two rules: the clock is sticky, because the
 // list scrolls under it and Start must stay in reach; and every row is a 44px
 // target, the clock's controls 48px.
 import { createFileRoute } from '@tanstack/react-router';
 import { ExternalLink } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getContent } from '$lib/content';
 import { clock } from '$lib/format';
-import type { ProtocolKey } from '$lib/ids';
+import { type ProtocolKey, savedProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import { type PresetGroup, type PresetRow, resolveTimer } from '$lib/screens/timer';
+import type { Protocol } from '$lib/protocol';
+import { type PresetGroup, resolveTimer, type SavedRow } from '$lib/screens/timer';
+import { useTrainingRecord } from '$lib/store/record';
+import { deleteSavedProtocol, duplicateProtocol } from '$lib/store/savedProtocols';
 import { useTimerSetup } from '$lib/timerSetup';
 import { CueSettingsShortcut } from '../components/CueSettings';
 import { Timer } from '../components/Timer';
-import { Pane, Section } from '../components/ui/primitives';
-import { option } from '../components/ui/variants';
+import { AlertDialog } from '../components/ui/AlertDialog';
+import { Empty, Pane, Section } from '../components/ui/primitives';
+import { button, option } from '../components/ui/variants';
 
 export const Route = createFileRoute('/timer')({ component: TimerScreen });
 
+/** Anything the clock can run, as the list shows it. */
+interface Runnable {
+	key: ProtocolKey;
+	/** What the clock's strip is named. */
+	label: string;
+	protocol: Protocol;
+}
+
 function TimerScreen() {
 	const locale = getLocale();
-	const screen = useMemo(() => resolveTimer(getContent(locale), locale), [locale]);
-	const presets = useMemo(
-		() => screen.presets.flatMap((g) => g.presets.map((p) => ({ preset: p, group: g }))),
+	const record = useTrainingRecord();
+	const screen = useMemo(() => resolveTimer(getContent(locale), record, locale), [record, locale]);
+	// Saved first, in the order the screen lists them, so "the first one" is the
+	// one at the top.
+	const runnable = useMemo(
+		(): Runnable[] => [
+			...screen.saved.map((s) => ({ key: s.key, label: s.name, protocol: s.protocol })),
+			...screen.presets.flatMap((g) =>
+				g.presets.map((p) => ({
+					key: p.key,
+					label: `${g.name} · ${p.name}`,
+					protocol: p.protocol,
+				})),
+			),
+		],
 		[screen],
 	);
 
@@ -49,15 +75,69 @@ function TimerScreen() {
 	// changes it, and that tap is a different protocol, which starts clean.
 	const [stored] = useTimerSetup('timer');
 	const [selected, setSelected] = useState<ProtocolKey | null>(
-		() =>
-			presets.find((p) => p.preset.key === stored?.scope)?.preset.key ??
-			presets[0]?.preset.key ??
-			null,
+		() => runnable.find((r) => r.key === stored?.scope)?.key ?? runnable[0]?.key ?? null,
 	);
 	// Owned here rather than by the Timer, for the reason Train gives: picking
 	// another protocol remounts the clock, and the dialog should not close with it.
 	const [clockOpen, setClockOpen] = useState(false);
-	const current = presets.find((p) => p.preset.key === selected) ?? null;
+	// A deleted saved protocol takes the selection with it; the clock moves to the
+	// top of the list rather than vanishing.
+	const current = runnable.find((r) => r.key === selected) ?? runnable[0] ?? null;
+
+	// THE TAPPED ROW STAYS UNDER THE FINGER.
+	//
+	// The selected row carries its actions on a line of their own, so moving the
+	// selection down the list takes that line away from above the row just tapped
+	// and lifts it 48px out from under the thumb — and a quick second tap, chalky
+	// and one-handed, lands on its neighbour. So the row's position is read at the
+	// tap and the page scrolled by whatever the re-render moved it, before paint.
+	const anchor = useRef<{ el: HTMLElement; top: number } | null>(null);
+	const select = (key: ProtocolKey, el: HTMLElement) => {
+		anchor.current = { el, top: el.getBoundingClientRect().top };
+		setSelected(key);
+	};
+	const currentKey = current?.key;
+	useLayoutEffect(() => {
+		const held = anchor.current;
+		anchor.current = null;
+		if (!held || !currentKey) return;
+		const moved = held.el.getBoundingClientRect().top - held.top;
+		if (moved) window.scrollBy(0, moved);
+	}, [currentKey]);
+	// The selected row's name, which its actions are described by: "Delete" alone
+	// does not say what goes.
+	const nameId = useId();
+
+	// A copy is made where the athlete is not looking — at the top of the list,
+	// while they tapped a preset further down — so the new row is scrolled to.
+	// Once: the ref is stable, so React calls it when the row first mounts and not
+	// on every render after.
+	const [made, setMade] = useState<ProtocolKey | null>(null);
+	const reveal = useCallback((el: HTMLElement | null) => {
+		el?.scrollIntoView({ block: 'center' });
+	}, []);
+	// A copy is selected and scrolled to the middle of the screen — where its own
+	// Duplicate then sits, under a thumb that may still be coming down for a
+	// second tap. One copy per tap, not two.
+	const lastCopy = useRef(0);
+	const duplicate = async (source: { copyName: string; protocol: Protocol }) => {
+		const now = Date.now();
+		if (now - lastCopy.current < 700) return;
+		lastCopy.current = now;
+		const row = await duplicateProtocol({ name: source.copyName, protocol: source.protocol }, now);
+		const key = savedProtocolKey(row.id);
+		setSelected(key);
+		setMade(key);
+	};
+
+	// The protocol the delete question is about, kept apart from whether the
+	// question is open, so the title does not lose its name while it closes.
+	const [doomed, setDoomed] = useState<SavedRow | null>(null);
+	const [confirming, setConfirming] = useState(false);
+	// A delete waits for the account to answer first (`store/savedProtocols.ts`),
+	// which offline can take a while; the question stays up, its confirm spent,
+	// until the row is gone, rather than closing on a row that is still listed.
+	const [deleting, setDeleting] = useState(false);
 
 	return (
 		// Capped, like Train: one list and one clock, and a wider list says nothing
@@ -74,11 +154,11 @@ function TimerScreen() {
 			{current ? (
 				<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
 					<Timer
-						key={current.preset.key}
+						key={current.key}
 						slot="timer"
-						protocol={current.preset.protocol}
-						label={`${current.group.name} · ${current.preset.name}`}
-						protocolKey={current.preset.key}
+						protocol={current.protocol}
+						label={current.label}
+						protocolKey={current.key}
 						clockOpen={clockOpen}
 						onClockOpenChange={setClockOpen}
 						editable={false}
@@ -88,13 +168,70 @@ function TimerScreen() {
 				</div>
 			) : null}
 
+			<Section label={m.timer_saved()}>
+				{screen.saved.length ? (
+					<div className="flex flex-col gap-1">
+						{screen.saved.map((s) => (
+							<div
+								key={s.key}
+								ref={s.key === made ? reveal : undefined}
+								className="flex scroll-my-40 flex-col gap-1"
+							>
+								<ProtocolButton
+									row={s}
+									on={s.key === current?.key}
+									nameId={nameId}
+									onSelect={(el) => select(s.key, el)}
+								/>
+								{s.key === current?.key ? (
+									<RowActions
+										describedBy={nameId}
+										onDuplicate={() => void duplicate(s)}
+										onDelete={() => {
+											setDoomed(s);
+											setConfirming(true);
+										}}
+									/>
+								) : null}
+							</div>
+						))}
+					</div>
+				) : (
+					<Empty value={m.timer_saved_empty()} />
+				)}
+			</Section>
+
 			<Section label={m.timer_presets()}>
 				<div className="flex flex-col gap-5">
 					{screen.presets.map((g) => (
-						<PresetList key={g.exercise} group={g} selected={selected} onSelect={setSelected} />
+						<PresetList
+							key={g.exercise}
+							group={g}
+							selected={current?.key ?? null}
+							nameId={nameId}
+							onSelect={select}
+							onDuplicate={(p) => void duplicate(p)}
+						/>
 					))}
 				</div>
 			</Section>
+
+			<AlertDialog
+				open={confirming}
+				onOpenChange={setConfirming}
+				title={m.timer_delete_title({ name: doomed?.name ?? '' })}
+				description={m.timer_delete_body()}
+				cancel={m.btn_cancel()}
+				confirm={m.btn_delete()}
+				busy={deleting}
+				onConfirm={async () => {
+					if (!doomed) return;
+					setDeleting(true);
+					await deleteSavedProtocol(doomed.id);
+					setDeleting(false);
+					setConfirming(false);
+				}}
+			/>
 		</Pane>
 	);
 }
@@ -103,11 +240,15 @@ function TimerScreen() {
 function PresetList({
 	group,
 	selected,
+	nameId,
 	onSelect,
+	onDuplicate,
 }: {
 	group: PresetGroup;
 	selected: ProtocolKey | null;
-	onSelect: (key: ProtocolKey) => void;
+	nameId: string;
+	onSelect: (key: ProtocolKey, el: HTMLElement) => void;
+	onDuplicate: (preset: PresetGroup['presets'][number]) => void;
 }) {
 	return (
 		<section className="flex flex-col gap-1.5">
@@ -130,12 +271,19 @@ function PresetList({
 			</header>
 			<div className="flex flex-col gap-1">
 				{group.presets.map((p) => (
-					<PresetButton
-						key={p.key}
-						preset={p}
-						on={p.key === selected}
-						onSelect={() => onSelect(p.key)}
-					/>
+					<div key={p.key} className="flex flex-col gap-1">
+						<ProtocolButton
+							row={p}
+							on={p.key === selected}
+							nameId={nameId}
+							onSelect={(el) => onSelect(p.key, el)}
+						/>
+						{/* A preset is the library's: the one thing to do with it besides
+						    running it is to keep a copy that is the athlete's. */}
+						{p.key === selected ? (
+							<RowActions describedBy={nameId} onDuplicate={() => onDuplicate(p)} />
+						) : null}
+					</div>
 				))}
 			</div>
 		</section>
@@ -143,33 +291,79 @@ function PresetList({
 }
 
 /**
- * One preset: its name, its shape, how long it runs. Choosing it points the
+ * One protocol: its name, its shape, how long it runs. Choosing it points the
  * clock at it; Start is the clock's, so a stray tap on the list never starts
  * anything.
  */
-function PresetButton({
-	preset,
+function ProtocolButton({
+	row,
 	on,
+	nameId,
 	onSelect,
 }: {
-	preset: PresetRow;
+	row: { name: string; shape: string; total: number };
 	on: boolean;
-	onSelect: () => void;
+	/** Given to the name only while selected — one row at a time carries it. */
+	nameId: string;
+	onSelect: (el: HTMLElement) => void;
 }) {
 	return (
 		<button
 			type="button"
 			aria-pressed={on}
-			onClick={onSelect}
+			onClick={(e) => onSelect(e.currentTarget)}
 			className={option({ on, width: 'full', class: 'flex min-h-11 items-center gap-3' })}
 		>
 			<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-				<span>{preset.name}</span>
-				<span className="num text-[11px] font-normal text-ink-dim">{preset.shape}</span>
+				<span id={on ? nameId : undefined}>{row.name}</span>
+				<span className="num text-[11px] font-normal text-ink-dim">{row.shape}</span>
 			</span>
-			<span className="num shrink-0 text-[12px] font-normal text-ink-dim">
-				{clock(preset.total)}
-			</span>
+			<span className="num shrink-0 text-[12px] font-normal text-ink-dim">{clock(row.total)}</span>
 		</button>
+	);
+}
+
+/**
+ * What the selected row can do besides run: duplicate, and — for a saved
+ * protocol, never a preset — delete. Labelled buttons on their own line under
+ * the row rather than icons on it, because an icon attached to a larger control
+ * does not read as one (`component-vocabulary.md`, the measured rules).
+ *
+ * Tight to the row above and clear of the row below, so the line reads as the
+ * selected row's and not as floating between two. Duplicate takes the right
+ * edge, the easy reach for a right thumb, because it is the common one; Delete
+ * is not coloured apart, since colour here reports state, and its question is
+ * what guards it.
+ */
+function RowActions({
+	describedBy,
+	onDuplicate,
+	onDelete,
+}: {
+	describedBy: string;
+	onDuplicate: () => void;
+	onDelete?: () => void;
+}) {
+	return (
+		<div className="mb-2 flex flex-wrap justify-end gap-2">
+			{onDelete ? (
+				<button
+					type="button"
+					aria-describedby={describedBy}
+					onClick={onDelete}
+					className={button({ class: 'min-h-11' })}
+				>
+					{m.btn_delete()}
+				</button>
+			) : null}
+			<button
+				type="button"
+				aria-describedby={describedBy}
+				onClick={onDuplicate}
+				className={button({ class: 'min-h-11' })}
+			>
+				{m.timer_duplicate()}
+			</button>
+		</div>
 	);
 }

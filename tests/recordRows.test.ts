@@ -57,7 +57,7 @@ function memory() {
 
 describe('the registry covers the store', () => {
 	// The one assertion that keeps the server's copy of `getKey` honest. If a
-	// sixteenth collection lands in `store/collections.ts` and not here, its rows
+	// new collection lands in `store/collections.ts` and not here, its rows
 	// would be rejected as an unknown collection and the athlete's writes would
 	// vanish with a 200 — so this fails instead.
 	it('names exactly the collections createRecordStore builds', () => {
@@ -273,6 +273,7 @@ describe("the server's keyOf is the collection's getKey", () => {
 		selfCheckLog: seeded.selfCheckLog[0],
 		bodyweight: seeded.bodyweight[0],
 		savedPrograms: { name: 'Base 8', program: seeded.program },
+		savedProtocols: seeded.savedProtocols[0],
 		// The one row whose key is not one of its own fields spelled straight out:
 		// `loadKey` joins two of them, so this is the sample that actually exercises
 		// the cross-check rather than confirming an identity.
@@ -280,7 +281,7 @@ describe("the server's keyOf is the collection's getKey", () => {
 	};
 
 	// Without this the table below could silently stop covering a collection, and
-	// a sixteenth would be added to the store and the registry with no key ever
+	// a new one would be added to the store and the registry with no key ever
 	// compared — which is the hole this whole block exists to close.
 	it('has a row for every collection', () => {
 		expect(Object.keys(SAMPLES).sort()).toEqual([...COLLECTION_NAMES].sort());
@@ -303,6 +304,41 @@ describe("the server's keyOf is the collection's getKey", () => {
 		// its schema says so instead of looking like a key bug.
 		const check = sanitizeRow(name, clientKey, row);
 		expect(check.ok ? null : check.reason).toBeNull();
+	});
+});
+
+// A saved protocol (#103) is the athlete's own copy of a protocol, so the server
+// holds it to the one thing that makes it runnable: a clock that can advance.
+describe('a saved protocol is a protocol that can run', () => {
+	const row = scenarioRows(getContent('en-US'), 'en-US', NOW).savedProtocols[0];
+	const check = (protocol: Partial<typeof row.protocol>, rest: Partial<typeof row> = {}) =>
+		sanitizeRow('savedProtocols', row.id, {
+			...row,
+			...rest,
+			protocol: { ...row.protocol, ...protocol },
+		});
+
+	it('accepts the seeded one', () => {
+		expect(check({}).ok).toBe(true);
+	});
+
+	it.each([
+		['no work', { work: 0 }],
+		['no rounds', { rounds: 0 }],
+		['no sets', { sets: 0 }],
+		['a negative rest', { rest: -1 }],
+		['a negative prepare', { prepare: -5 }],
+		['a fraction of a round', { rounds: 2.5 }],
+	])('refuses %s', (_what, protocol) => {
+		expect(check(protocol).ok).toBe(false);
+	});
+
+	it('refuses a protocol with no name', () => {
+		expect(check({}, { name: '' }).ok).toBe(false);
+	});
+
+	it('is filed under its id, never its name', () => {
+		expect(sanitizeRow('savedProtocols', row.name, row).ok).toBe(false);
 	});
 });
 

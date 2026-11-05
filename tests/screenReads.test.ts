@@ -435,7 +435,8 @@ function seededWith(now: number) {
 // ran something the exercise library does not prescribe would be a protocol with
 // no study behind it.
 describe('Timer', () => {
-	const TIMER = resolveTimer(getContent('en-US'), 'en-US');
+	const NONE = { savedProtocols: [] };
+	const TIMER = resolveTimer(getContent('en-US'), NONE, 'en-US');
 	const group = (exercise: string) => TIMER.presets.find((g) => g.exercise === exercise);
 	const preset = (exercise: string, variant: number) =>
 		group(exercise)?.presets.find((p) => p.variant === variant);
@@ -497,8 +498,41 @@ describe('Timer', () => {
 		expect(group('wrist')?.study).toBeNull();
 	});
 
+	// #103. A copy is named after what it copies, so a preset's copy carries the
+	// exercise as well as the variant: "7/3 · 20mm…" alone could be any hang. The
+	// "Copy of" goes first, because a long name is cut at its end on a phone and
+	// the clock must still say it is running the copy.
+	it('names a preset’s copy after its exercise and variant', () => {
+		expect(preset('repeaters', 0)?.copyName).toBe(
+			'Copy of Repeaters · 7/3 · 20mm half-crimp + open hand',
+		);
+		const pt = resolveTimer(getContent('pt-BR'), NONE, 'pt-BR');
+		expect(pt.presets.find((g) => g.exercise === 'repeaters')?.presets[0].copyName).toBe(
+			'Cópia de Repeaters · 7/3 · 20mm half-crimp + mão aberta',
+		);
+	});
+
+	it('lists the saved protocols, each with its shape and how long it takes', () => {
+		const seeded = readTrainingRecord(seededWith(NOW));
+		const { saved } = resolveTimer(getContent('en-US'), seeded, 'en-US');
+		expect(saved).toHaveLength(1);
+		// 10s prepare, two sets of 5 × 10s/20s, a minute between.
+		expect(saved[0]).toMatchObject({
+			name: 'Warm-up hangs',
+			shape: '5 × 10s/20s · 2 sets',
+			total: 330,
+			copyName: 'Copy of Warm-up hangs',
+		});
+		// Filed under its id, so renaming it keeps the athlete's place.
+		expect(saved[0].key).toBe(`saved:${saved[0].id}`);
+	});
+
+	it('has nothing saved on an account that has kept nothing', () => {
+		expect(TIMER.saved).toEqual([]);
+	});
+
 	it('reads in the locale it is resolved in', () => {
-		const pt = resolveTimer(getContent('pt-BR'), 'pt-BR');
+		const pt = resolveTimer(getContent('pt-BR'), NONE, 'pt-BR');
 		const wrist = pt.presets.find((g) => g.exercise === 'wrist');
 		expect(wrist?.name).toBe('Força de Punho / Sloper');
 		const repeaters = pt.presets.find((g) => g.exercise === 'repeaters');
