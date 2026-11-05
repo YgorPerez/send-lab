@@ -81,8 +81,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `WorkingLoadAsk` | The ladder put at first contact with a weighted exercise, and what the athlete is told about the two numbers under its third rung |
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
-`ids.ts` (identity), `protocol.ts` (the timer's arithmetic), `cues.ts`
-(its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
+`ids.ts` (identity), `protocol.ts` (the timer's arithmetic, and which cue
+each transition fires), `cues.ts` (playing those cues: its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
 exercise shows, and what a fresh row is prefilled with), `prescription.ts`
 (what a slot runs, and at what numbers), `workingLoad.ts` (which exercises carry
 a working load and what to start one at), `strength.ts` (the size→20mm
