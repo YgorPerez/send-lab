@@ -418,7 +418,15 @@ export type Delivery =
 	| { kind: 'sound'; cue: Cue }
 	| { kind: 'buzz'; cue: BuzzedCue }
 	| { kind: 'speech'; key: SegmentPhrase }
-	| { kind: 'speech'; key: CountPhrase; n: number };
+	| { kind: 'speech'; key: CountPhrase; n: number }
+	/** The screen washing over in the colour of the segment arrived in (#107),
+	 *  fading out over `ms`. The clock draws it; `cues.ts` hands it over. */
+	| { kind: 'flash'; segment: Segment; ms: number };
+
+/** How long a flash takes to fade. Long enough to catch from the corner of the
+ *  eye with both hands on a board; short enough to be over before the second
+ *  it marks is half gone. */
+const FLASH_MS = 450;
 
 /** The phrase that names arriving in `segment`. */
 function phraseOf(segment: SpokenSegment): SegmentPhrase {
@@ -461,11 +469,13 @@ export interface CuePrefs {
 	/** Whether a voice names each segment as it begins and says the countdown
 	 *  (#106). The sound plays either way, so the timing never depends on it. */
 	voice: boolean;
+	/** Whether segment changes flash the full-screen clock (#107). */
+	flash: boolean;
 }
 
 /** What an athlete who never opened the setting gets, and what a row written
  *  before the setting existed reads as: exactly the clock before #105. */
-export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true, voice: true };
+export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true, voice: true, flash: true };
 
 /**
  * What the athlete is told when the clock moves from one run to the next.
@@ -492,22 +502,34 @@ export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true, voice: true };
  * on".
  *
  * `prefs` is the athlete's say in how (#105): how long the countdown is, and
- * whether a change buzzes and is spoken as well as sounded. Left out, it is
- * `CUE_DEFAULTS`.
+ * whether a change buzzes, is spoken and flashes as well as sounded. Left out,
+ * it is `CUE_DEFAULTS`.
  *
  * The voice (#106) follows the sound exactly: it names the segment arrived in
  * and says each countdown beat as a number. It names the segment and not the
  * cue, so prepare handing over says "work" while the sound plays its own "go".
+ *
+ * The flash (#107) marks a segment change only, in the colour of the segment
+ * arrived in. A countdown beat is the same segment, so it never flashes.
+ *
+ * `reducedMotion` is the device's say (#107): whether the athlete asked their
+ * system for reduced motion. It is a fact about the device rather than a
+ * preference the account carries, so it sits with the move, not with `prefs`.
+ * Under it the flash is still planned — the athlete did not switch it off — but
+ * it finishes inside one frame, as everything in the app does (ADR 0011), which
+ * means it is over before it is drawn.
  */
 export function planCues(
 	{
 		from,
 		to,
 		running,
+		reducedMotion = false,
 	}: {
 		from: Run;
 		to: Run;
 		running: boolean;
+		reducedMotion?: boolean;
 	},
 	prefs: CuePrefs = CUE_DEFAULTS,
 ): Delivery[] {
@@ -525,5 +547,7 @@ export function planCues(
 	const out: Delivery[] = [{ kind: 'sound', cue }];
 	if (prefs.buzz) out.push({ kind: 'buzz', cue });
 	if (prefs.voice) out.push({ kind: 'speech', key: phraseOf(to.segment) });
+	if (prefs.flash)
+		out.push({ kind: 'flash', segment: to.segment, ms: reducedMotion ? 0 : FLASH_MS });
 	return out;
 }

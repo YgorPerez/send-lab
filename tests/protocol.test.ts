@@ -9,6 +9,7 @@ import {
 	back,
 	beginning,
 	CUE_DEFAULTS,
+	type Delivery,
 	elapsedOf,
 	IDLE,
 	nextOf,
@@ -433,6 +434,8 @@ describe('a cooldown', () => {
 			{ kind: 'sound', cue: 'cooldown' },
 			{ kind: 'buzz', cue: 'cooldown' },
 			{ kind: 'speech', key: 'cues_say_cooldown' },
+			// And it flashes in its own colour, as every change does (#107).
+			{ kind: 'flash', segment: 'cooldown', ms: expect.any(Number) },
 		]);
 		const ending: Run = { ...COOLED_COOLDOWN, remaining: 1 };
 		expect(
@@ -442,6 +445,7 @@ describe('a cooldown', () => {
 			{ kind: 'sound', cue: 'done' },
 			{ kind: 'buzz', cue: 'done' },
 			{ kind: 'speech', key: 'cues_say_done' },
+			{ kind: 'flash', segment: 'done', ms: expect.any(Number) },
 		]);
 	});
 });
@@ -476,11 +480,16 @@ describe('reading a protocol back', () => {
 // out of reach of any test. These pin today's behaviour — the SvelteKit app's,
 // carried over — so the cue tickets that follow change it on purpose and not by
 // accident.
+/** A plan without its flash. The tests below pin what the athlete hears, feels
+ *  and is told; the flash (#107) is seen, and is pinned in its own block below so
+ *  that adding it moved none of these. */
+const unflashed = (planned: Delivery[]) => planned.filter((d) => d.kind !== 'flash');
+
 describe('the cue planner', () => {
 	const START = beginning(REPEATERS);
 
 	test('pressing Start sounds and buzzes the start cue, and says prepare', () => {
-		expect(planCues({ from: IDLE, to: START, running: true })).toEqual([
+		expect(unflashed(planCues({ from: IDLE, to: START, running: true }))).toEqual([
 			{ kind: 'sound', cue: 'start' },
 			{ kind: 'buzz', cue: 'start' },
 			{ kind: 'speech', key: 'cues_say_prepare' },
@@ -491,7 +500,7 @@ describe('the cue planner', () => {
 	// prepare handing over earns "go".
 	test('pressing Start with no prepare announces work, not go', () => {
 		const c = { ...REPEATERS, prepare: 0 };
-		expect(planCues({ from: IDLE, to: beginning(c), running: true })).toEqual([
+		expect(unflashed(planCues({ from: IDLE, to: beginning(c), running: true }))).toEqual([
 			{ kind: 'sound', cue: 'work' },
 			{ kind: 'buzz', cue: 'work' },
 			{ kind: 'speech', key: 'cues_say_work' },
@@ -556,7 +565,7 @@ describe('the cue planner', () => {
 			say: 'cues_say_done',
 		},
 	])('$name sounds and buzzes $cue, and says $say', ({ from, to, cue, say }) => {
-		expect(planCues({ from, to, running: true })).toEqual([
+		expect(unflashed(planCues({ from, to, running: true }))).toEqual([
 			{ kind: 'sound', cue },
 			{ kind: 'buzz', cue },
 			{ kind: 'speech', key: say },
@@ -566,11 +575,13 @@ describe('the cue planner', () => {
 	// Three, two, one — sounded and spoken, never buzzed.
 	test('counts down the last three seconds of a segment aloud, with no buzz', () => {
 		const at = (remaining: number) =>
-			planCues({
-				from: { segment: 'work', remaining: remaining + 1, round: 1, set: 1 },
-				to: { segment: 'work', remaining, round: 1, set: 1 },
-				running: true,
-			});
+			unflashed(
+				planCues({
+					from: { segment: 'work', remaining: remaining + 1, round: 1, set: 1 },
+					to: { segment: 'work', remaining, round: 1, set: 1 },
+					running: true,
+				}),
+			);
 		expect(at(4)).toEqual([]);
 		for (const remaining of [3, 2, 1]) {
 			expect(at(remaining)).toEqual([
@@ -582,12 +593,12 @@ describe('the cue planner', () => {
 
 	test('a paused clock counts nothing down', () => {
 		const r: Run = { segment: 'rest', remaining: 2, round: 2, set: 1 };
-		expect(planCues({ from: r, to: r, running: false })).toEqual([]);
+		expect(unflashed(planCues({ from: r, to: r, running: false }))).toEqual([]);
 	});
 
 	test('resetting to idle is silent', () => {
 		const r: Run = { segment: 'work', remaining: 5, round: 3, set: 1 };
-		expect(planCues({ from: r, to: IDLE, running: false })).toEqual([]);
+		expect(unflashed(planCues({ from: r, to: IDLE, running: false }))).toEqual([]);
 	});
 
 	// A skip is a change of segment the athlete asked for, and it sounds like one:
@@ -630,7 +641,7 @@ describe('the cue planner', () => {
 			say: 'cues_say_done',
 		},
 	])('$name announces $cue, as the clock getting there would', ({ from, cue, say }) => {
-		expect(planCues({ from, to: skip(from, SMALL), running: true })).toEqual([
+		expect(unflashed(planCues({ from, to: skip(from, SMALL), running: true }))).toEqual([
 			{ kind: 'sound', cue },
 			{ kind: 'buzz', cue },
 			{ kind: 'speech', key: say },
@@ -642,14 +653,14 @@ describe('the cue planner', () => {
 	// for the seconds that follow, as it is when the clock arrives on its own.
 	test('a skip into a short segment announces it and counts nothing', () => {
 		const from: Run = { segment: 'work', remaining: 2, round: 1, set: 1 };
-		const heard = planCues({ from, to: skip(from, SMALL), running: true });
+		const heard = unflashed(planCues({ from, to: skip(from, SMALL), running: true }));
 		expect(heard).not.toContainEqual({ kind: 'sound', cue: 'countdown' });
 		expect(heard).not.toContainEqual(expect.objectContaining({ key: 'cues_say_count' }));
 	});
 
 	test('going back to the segment before announces that segment', () => {
 		const work: Run = { segment: 'work', remaining: 2, round: 2, set: 1 };
-		expect(planCues({ from: work, to: back(work, SMALL), running: true })).toEqual([
+		expect(unflashed(planCues({ from: work, to: back(work, SMALL), running: true }))).toEqual([
 			{ kind: 'sound', cue: 'rest' },
 			{ kind: 'buzz', cue: 'rest' },
 			{ kind: 'speech', key: 'cues_say_rest' },
@@ -672,7 +683,7 @@ describe('the cue planner', () => {
 		const late: Run = { segment: 'work', remaining: 2, round: 1, set: 1 };
 		const restarted = back(late, c);
 		expect(restarted.remaining).toBe(10);
-		expect(planCues({ from: late, to: restarted, running: true })).toEqual([
+		expect(unflashed(planCues({ from: late, to: restarted, running: true }))).toEqual([
 			{ kind: 'sound', cue: 'work' },
 			{ kind: 'buzz', cue: 'work' },
 			{ kind: 'speech', key: 'cues_say_work' },
@@ -695,7 +706,7 @@ describe('the cue planner', () => {
 		let before = IDLE;
 		let r = beginning(c);
 		for (;;) {
-			for (const d of planCues({ from: before, to: r, running: true })) {
+			for (const d of unflashed(planCues({ from: before, to: r, running: true }))) {
 				heard.push(
 					d.kind === 'speech'
 						? `speech:${d.key.slice(9)}${'n' in d ? d.n : ''}`
@@ -772,13 +783,15 @@ describe('the cue planner', () => {
 describe("the cue planner, under the athlete's cue preferences", () => {
 	/** What one second of a long work segment plans, at `remaining` left. */
 	const at = (remaining: number, prefs?: Parameters<typeof planCues>[1]) =>
-		planCues(
-			{
-				from: { segment: 'work', remaining: remaining + 1, round: 1, set: 1 },
-				to: { segment: 'work', remaining, round: 1, set: 1 },
-				running: true,
-			},
-			prefs,
+		unflashed(
+			planCues(
+				{
+					from: { segment: 'work', remaining: remaining + 1, round: 1, set: 1 },
+					to: { segment: 'work', remaining, round: 1, set: 1 },
+					running: true,
+				},
+				prefs,
+			),
 		);
 	const count = (n: number) => [
 		{ kind: 'sound', cue: 'countdown' },
@@ -791,7 +804,7 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 		let before = IDLE;
 		let r = beginning(REPEATERS);
 		for (;;) {
-			for (const d of planCues({ from: before, to: r, running: true }, prefs)) {
+			for (const d of unflashed(planCues({ from: before, to: r, running: true }, prefs))) {
 				out.push(
 					d.kind === 'speech' ? `speech:${d.key}${'n' in d ? d.n : ''}` : `${d.kind}:${d.cue}`,
 				);
@@ -816,8 +829,8 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 		expect(at(countdown, { ...CUE_DEFAULTS, countdown })).toEqual(count(countdown));
 	});
 
-	test('the defaults are three seconds, the buzz on and the voice on', () => {
-		expect(CUE_DEFAULTS).toEqual({ countdown: 3, buzz: true, voice: true });
+	test('the defaults are three seconds, the buzz on, the voice on and the flash on', () => {
+		expect(CUE_DEFAULTS).toEqual({ countdown: 3, buzz: true, voice: true, flash: true });
 		expect(at(4)).toEqual([]);
 		expect(at(3)).toEqual(count(3));
 	});
@@ -825,19 +838,23 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 	test('with the buzz off, a segment change only sounds', () => {
 		const off = { ...CUE_DEFAULTS, buzz: false };
 		expect(
-			planCues(
-				{
-					from: { segment: 'prepare', remaining: 1, round: 1, set: 1 },
-					to: { segment: 'work', remaining: 7, round: 1, set: 1 },
-					running: true,
-				},
-				off,
+			unflashed(
+				planCues(
+					{
+						from: { segment: 'prepare', remaining: 1, round: 1, set: 1 },
+						to: { segment: 'work', remaining: 7, round: 1, set: 1 },
+						running: true,
+					},
+					off,
+				),
 			),
 		).toEqual([
 			{ kind: 'sound', cue: 'go' },
 			{ kind: 'speech', key: 'cues_say_work' },
 		]);
-		expect(planCues({ from: IDLE, to: beginning(REPEATERS), running: true }, off)).toEqual([
+		expect(
+			unflashed(planCues({ from: IDLE, to: beginning(REPEATERS), running: true }, off)),
+		).toEqual([
 			{ kind: 'sound', cue: 'start' },
 			{ kind: 'speech', key: 'cues_say_prepare' },
 		]);
@@ -863,6 +880,155 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 		expect(at(2, { ...CUE_DEFAULTS, voice: false, countdown: 5 })).toEqual([
 			{ kind: 'sound', cue: 'countdown' },
 		]);
+	});
+});
+
+// The screen flash (#107): the segment change seen from the corner of the eye.
+// It is planned with the other deliveries, so whether it shows, in which
+// colour, and how long it lasts under reduced motion are all decided here.
+describe('the flash on a segment change', () => {
+	/** A protocol with every segment in it, run a second at a time from Start. */
+	const ALL: Protocol = {
+		prepare: 4,
+		work: 4,
+		rest: 2,
+		rounds: 2,
+		sets: 2,
+		setRest: 5,
+		cooldown: 3,
+	};
+	const session = (
+		prefs?: Parameters<typeof planCues>[1],
+		reducedMotion?: boolean,
+	): Delivery[][] => {
+		const out: Delivery[][] = [];
+		let before = IDLE;
+		let r = beginning(ALL);
+		for (;;) {
+			out.push(planCues({ from: before, to: r, running: true, reducedMotion }, prefs));
+			if (r.segment === 'done') break;
+			before = r;
+			r = step(r, ALL);
+		}
+		return out;
+	};
+	const flashes = (planned: Delivery[][]) => planned.flat().filter((d) => d.kind === 'flash');
+
+	test('flashes once on every segment change, in the segment it arrives in', () => {
+		expect(flashes(session()).map((d) => d.segment)).toEqual([
+			'prepare',
+			'work',
+			'rest',
+			'work',
+			'setRest',
+			'work',
+			'rest',
+			'work',
+			'cooldown',
+			'done',
+		]);
+	});
+
+	test('flashes exactly when the change is announced, and never on a countdown second', () => {
+		for (const planned of session()) {
+			const announced = planned.some((d) => d.kind === 'sound' && d.cue !== 'countdown');
+			expect(planned.some((d) => d.kind === 'flash')).toBe(announced);
+		}
+	});
+
+	test.each<{ name: string; from: Run; to: Run; segment: Segment }>([
+		{
+			name: 'prepare → work',
+			from: { segment: 'prepare', remaining: 1, round: 1, set: 1 },
+			to: { segment: 'work', remaining: 7, round: 1, set: 1 },
+			segment: 'work',
+		},
+		{
+			name: 'work → rest',
+			from: { segment: 'work', remaining: 1, round: 1, set: 1 },
+			to: { segment: 'rest', remaining: 3, round: 2, set: 1 },
+			segment: 'rest',
+		},
+		{
+			name: 'work → work, with no rest between rounds',
+			from: { segment: 'work', remaining: 1, round: 1, set: 1 },
+			to: { segment: 'work', remaining: 7, round: 2, set: 1 },
+			segment: 'work',
+		},
+		{
+			name: 'end of a set → set rest',
+			from: { segment: 'work', remaining: 1, round: 6, set: 1 },
+			to: { segment: 'setRest', remaining: 180, round: 6, set: 1 },
+			segment: 'setRest',
+		},
+		{
+			name: 'the last effort → done',
+			from: { segment: 'work', remaining: 1, round: 6, set: 2 },
+			to: { segment: 'done', remaining: 0, round: 6, set: 2 },
+			segment: 'done',
+		},
+	])('$name flashes $segment', ({ from, to, segment }) => {
+		const flash = planCues({ from, to, running: true }).filter((d) => d.kind === 'flash');
+		expect(flash).toEqual([{ kind: 'flash', segment, ms: expect.any(Number) }]);
+	});
+
+	// A jump is announced where it lands, so it flashes there too — the skip the
+	// athlete tapped from the wall is confirmed without looking.
+	test('a skip, a back and a restart each flash the segment they land on', () => {
+		const work: Run = { segment: 'work', remaining: 2, round: 2, set: 1 };
+		const landed = (to: Run) =>
+			planCues({ from: work, to, running: true }).filter((d) => d.kind === 'flash');
+		expect(landed(skip(work, SMALL))).toEqual([
+			{ kind: 'flash', segment: 'setRest', ms: expect.any(Number) },
+		]);
+		expect(landed(back(work, SMALL))).toEqual([
+			{ kind: 'flash', segment: 'rest', ms: expect.any(Number) },
+		]);
+		const c: Protocol = {
+			prepare: 5,
+			work: 10,
+			rest: 6,
+			rounds: 2,
+			sets: 1,
+			setRest: 0,
+			cooldown: 0,
+		};
+		const late: Run = { segment: 'work', remaining: 2, round: 1, set: 1 };
+		expect(
+			planCues({ from: late, to: back(late, c), running: true }).filter((d) => d.kind === 'flash'),
+		).toEqual([{ kind: 'flash', segment: 'work', ms: expect.any(Number) }]);
+	});
+
+	test('a paused clock, a plain second and a reset never flash', () => {
+		const r: Run = { segment: 'rest', remaining: 8, round: 2, set: 1 };
+		expect(planCues({ from: r, to: r, running: false })).toEqual([]);
+		expect(planCues({ from: r, to: { ...r, remaining: 7 }, running: true })).toEqual([]);
+		expect(planCues({ from: r, to: IDLE, running: false })).toEqual([]);
+	});
+
+	test('lasts long enough to be caught from the corner of the eye', () => {
+		for (const d of flashes(session())) expect(d.ms).toBeGreaterThanOrEqual(250);
+	});
+
+	// ADR 0011: under reduced motion every animation finishes inside one frame.
+	// The flash is still planned — it is a delivery like the others, and the
+	// athlete did not switch it off — but it is over before a frame is drawn.
+	test('under reduced motion, finishes in one frame', () => {
+		const reduced = flashes(session(undefined, true));
+		expect(reduced).toHaveLength(10);
+		for (const d of reduced) expect(d.ms).toBe(0);
+	});
+
+	test('reduced motion changes the flash and nothing else', () => {
+		const strip = (planned: Delivery[][]) =>
+			planned.map((ds) => ds.filter((d) => d.kind !== 'flash'));
+		expect(strip(session(undefined, true))).toEqual(strip(session()));
+	});
+
+	test('switched off, nothing flashes and everything else is planned as before', () => {
+		const off = session({ ...CUE_DEFAULTS, flash: false });
+		expect(flashes(off)).toEqual([]);
+		expect(off).toEqual(session().map((ds) => ds.filter((d) => d.kind !== 'flash')));
 	});
 });
 

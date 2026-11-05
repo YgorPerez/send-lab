@@ -90,6 +90,7 @@ describe('switching writes both', () => {
 			locale: null,
 			countdown: 10,
 			buzz: false,
+			flash: false,
 			voice: false,
 		});
 
@@ -104,6 +105,7 @@ describe('switching writes both', () => {
 			locale: 'pt-BR',
 			countdown: 10,
 			buzz: false,
+			flash: false,
 			voice: false,
 		});
 	});

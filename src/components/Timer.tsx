@@ -15,7 +15,8 @@
 // The protocol arithmetic is `lib/protocol.ts`, pure and unit-tested, and so is
 // the choice of which cue each transition fires (`planCues`, under the athlete's
 // cue preferences); playing the sounds, the buzz and the voice is `lib/cues.ts`. What is
-// left here — the tick, the wake lock, and the shape — is the part that
+// left here — the tick, the wake lock, the shape, and drawing the flash the
+// planner asks for — is the part that
 // genuinely needs a component. See the header of `protocol.ts` for why the split
 // is what it is: it is the vocabulary's answer for anything that advances on a
 // clock.
@@ -94,6 +95,29 @@ const SEGMENT_COLOR: Record<Segment, string> = {
 	cooldown: 'var(--cooldown)',
 	done: 'var(--ink-dim)',
 };
+
+/** A flash the planner asked for (#107), as the clock draws it. `n` counts
+ *  them, so a second flash keyed on it starts over rather than continuing the
+ *  first one's fade. */
+interface Flash {
+	segment: Segment;
+	ms: number;
+	n: number;
+}
+
+/**
+ * Whether the device asks for reduced motion, read when the cue is planned so a
+ * setting changed mid-session reaches the next one. The planner decides what to
+ * do about it (ADR 0011); this only reports it. No `matchMedia` — the server, or
+ * jsdom — reads as no.
+ */
+function prefersReducedMotion(): boolean {
+	return (
+		typeof window !== 'undefined' &&
+		typeof window.matchMedia === 'function' &&
+		window.matchMedia('(prefers-reduced-motion: reduce)').matches
+	);
+}
 
 /** What each protocol field is called where it is typed in — Train's setup
  *  here, and the saved-protocol editor. A record over the fields rather than a
@@ -278,6 +302,8 @@ function FullScreenClock({
 	onReset,
 	onSkip,
 	onBack,
+	flash,
+	onFlashEnd,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
@@ -287,6 +313,8 @@ function FullScreenClock({
 	onReset: () => void;
 	onSkip: () => void;
 	onBack: () => void;
+	flash: Flash | null;
+	onFlashEnd: () => void;
 }) {
 	const { run, config, shown, segmentLength, accent, left, elapsed, running, next } = reading;
 	const segmentLabel = SEGMENT_LABEL[run.segment]();
@@ -304,6 +332,25 @@ function FullScreenClock({
 					aria-label={segmentLabel}
 					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col overflow-y-auto bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
 				>
+					{/* The flash (#107): the whole screen washed in the colour of the
+					    segment just arrived in, fading out, so the change is caught
+					    from the corner of the eye. Behind everything else — the popup
+					    is its own stacking context, so a negative z-index paints over
+					    its background and under the clock — and never in the way of a
+					    tap. Decorative: the announcer below already says the change. */}
+					{flash ? (
+						<div
+							key={flash.n}
+							aria-hidden="true"
+							data-flash={flash.segment}
+							onAnimationEnd={onFlashEnd}
+							className="a-flash pointer-events-none fixed inset-0 -z-10"
+							style={{
+								background: SEGMENT_COLOR[flash.segment],
+								animationDuration: `${flash.ms}ms`,
+							}}
+						/>
+					) : null}
 					<SegmentAnnouncer reading={reading} />
 					<p id={readingId} className="sr-only">
 						{spokenReading(reading)}
@@ -574,9 +621,25 @@ export function Timer({
 	// They are an effect event and not a dependency on purpose: a dependency
 	// would re-run this effect on the change itself, replan the second the clock
 	// is already in, and play its countdown beat twice.
+	//
+	// The flash is the one delivery drawn rather than played, so it comes back
+	// here as state for the full-screen clock. A closed clock draws nothing, and
+	// opening or closing it drops whatever flash is held (`showClock`), so one
+	// planned while the strip was all there was never replays, stale, the moment
+	// the clock opens. A flash of no length is over before a frame is drawn,
+	// which is what the planner asks for under reduced motion.
 	const prefs = usePrefs();
+	const [flash, setFlash] = useState<Flash | null>(null);
 	const cue = useEffectEvent((from: Run, to: Run, isRunning: boolean) => {
-		deliver(planCues({ from, to, running: isRunning }, prefs));
+		const planned = planCues(
+			{ from, to, running: isRunning, reducedMotion: prefersReducedMotion() },
+			prefs,
+		);
+		deliver(planned, {
+			flash: (segment, ms) => {
+				if (ms > 0) setFlash((f) => ({ segment, ms, n: (f?.n ?? 0) + 1 }));
+			},
+		});
 	});
 	const previous = useRef<Run>(IDLE);
 	useEffect(() => {
@@ -595,11 +658,17 @@ export function Timer({
 	// running. Re-created lazily on the next cue.
 	useEffect(() => releaseCues, []);
 
+	// Every way the full-screen clock opens or closes goes through here.
+	const showClock = (open: boolean) => {
+		setFlash(null);
+		onClockOpenChange(open);
+	};
+
 	const start = () => {
 		if (run.segment === 'idle' || run.segment === 'done') setRun(beginning(config));
 		setRunning(true);
 		onStart?.();
-		if (openOnStart) onClockOpenChange(true);
+		if (openOnStart) showClock(true);
 	};
 	const reset = () => {
 		setRunning(false);
@@ -622,13 +691,15 @@ export function Timer({
 		<div className="rounded-lg border border-line bg-panel">
 			<FullScreenClock
 				open={clockOpen}
-				onOpenChange={onClockOpenChange}
+				onOpenChange={showClock}
 				label={label}
 				reading={reading}
 				onToggle={toggle}
 				onReset={reset}
 				onSkip={() => jump(skip)}
 				onBack={() => jump(back)}
+				flash={flash}
+				onFlashEnd={() => setFlash(null)}
 			/>
 			{/* One announcer at a time: while the full-screen clock is up it carries
 			    its own, and the strip behind a modal dialog is not read out. */}
@@ -663,7 +734,7 @@ export function Timer({
 				    costs nothing to keep — but it is no longer the *only* way in. */}
 				<button
 					type="button"
-					onClick={() => onClockOpenChange(true)}
+					onClick={() => showClock(true)}
 					aria-label={m.timer_fullscreen()}
 					aria-describedby={readingId}
 					style={{ color: accent }}
@@ -711,7 +782,7 @@ export function Timer({
 						<button
 							type="button"
 							aria-label={m.timer_fullscreen()}
-							onClick={() => onClockOpenChange(true)}
+							onClick={() => showClock(true)}
 							className={button({ size: 'touch', class: 'w-12 px-0' })}
 						>
 							<Maximize2 size={16} />

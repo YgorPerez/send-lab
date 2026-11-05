@@ -403,6 +403,31 @@
 }
 
 /* -------------------------------------------------------------------------
+   The clock's flash (#107).
+
+   The full-screen clock washes in the new segment's colour and fades out, so
+   a segment change is caught from the corner of the eye with both hands on a
+   board. The colour and the duration are set inline by the clock: the colour
+   is the segment's, the duration the cue planner's (`planCues`), which plans a
+   flash of no length under reduced motion and so is never drawn there. If
+   one ever were, the reduced-motion block above still takes it to one frame.
+
+   The resting state is invisible, so the element left behind by a finished
+   fade shows nothing. 40% at the peak: enough luminance change to register
+   off-axis on a #07080a screen, while the number still reads through it.
+   ------------------------------------------------------------------------- */
+.a-flash {
+	opacity: 0;
+	animation-name: a-flash;
+	animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+@keyframes a-flash {
+	from {
+		opacity: 0.4;
+	}
+}
+
+/* -------------------------------------------------------------------------
    The accordion panel.
 
    Owned here rather than taken from `tw-animate-css` (#53, obligation 7).
