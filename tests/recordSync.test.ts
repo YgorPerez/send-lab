@@ -420,7 +420,15 @@ describe('a write made with the network down', () => {
 		first.setFailing(true);
 		const sync = createRecordSync(ACCOUNT, first.transport, cells);
 		const store = createRecordStore(ACCOUNT, sync.push, memory());
-		const protocol = { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180 };
+		const protocol = {
+			prepare: 10,
+			work: 7,
+			rest: 3,
+			rounds: 6,
+			sets: 4,
+			setRest: 180,
+			cooldown: 0,
+		};
 		store.savedProtocols.insert({
 			id: 'kept',
 			name: 'Copy of Repeaters',

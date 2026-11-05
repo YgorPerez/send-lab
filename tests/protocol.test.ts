@@ -16,8 +16,10 @@ import {
 	planCues,
 	protocolOf,
 	type Run,
+	readProtocol,
 	remainingOf,
 	type Segment,
+	segmentLengthOf,
 	skip,
 	step,
 	totalOf,
@@ -31,6 +33,7 @@ const REPEATERS: Protocol = {
 	rounds: 6,
 	sets: 2,
 	setRest: 180,
+	cooldown: 0,
 };
 
 /** Run the protocol to completion and report every second of it. */
@@ -62,16 +65,24 @@ describe('the protocol', () => {
 	});
 
 	test.each([
-		{ prepare: 0, work: 5, rest: 0, rounds: 1, sets: 1, setRest: 0 },
-		{ prepare: 3, work: 2, rest: 1, rounds: 4, sets: 1, setRest: 0 },
-		{ prepare: 0, work: 2, rest: 1, rounds: 1, sets: 3, setRest: 6 },
-		{ prepare: 7, work: 3, rest: 2, rounds: 3, sets: 2, setRest: 9 },
+		{ prepare: 0, work: 5, rest: 0, rounds: 1, sets: 1, setRest: 0, cooldown: 0 },
+		{ prepare: 3, work: 2, rest: 1, rounds: 4, sets: 1, setRest: 0, cooldown: 0 },
+		{ prepare: 0, work: 2, rest: 1, rounds: 1, sets: 3, setRest: 6, cooldown: 0 },
+		{ prepare: 7, work: 3, rest: 2, rounds: 3, sets: 2, setRest: 9, cooldown: 0 },
 	])('agrees with the clock for %j', (c) => {
 		expect(run(c).seconds).toBe(totalOf(c));
 	});
 
 	test('runs prepare, then work/rest per round, then the set rest, then finishes', () => {
-		const { segments } = run({ prepare: 3, work: 2, rest: 1, rounds: 2, sets: 2, setRest: 4 });
+		const { segments } = run({
+			prepare: 3,
+			work: 2,
+			rest: 1,
+			rounds: 2,
+			sets: 2,
+			setRest: 4,
+			cooldown: 0,
+		});
 		expect(segments).toEqual([
 			'prepare',
 			'work',
@@ -89,7 +100,7 @@ describe('the protocol', () => {
 	// Getting this wrong adds `rest` seconds per set and is invisible until the
 	// session over-runs by half a minute.
 	test('does not rest after the final round of a set', () => {
-		const c = { prepare: 0, work: 2, rest: 5, rounds: 2, sets: 1, setRest: 0 };
+		const c = { prepare: 0, work: 2, rest: 5, rounds: 2, sets: 1, setRest: 0, cooldown: 0 };
 		expect(run(c).segments).toEqual(['work', 'rest', 'work', 'done']);
 		// Two efforts and exactly one rest between them.
 		expect(run(c).seconds).toBe(2 * 2 + 5);
@@ -99,11 +110,27 @@ describe('the protocol', () => {
 	// rest between them show as one `work` — the assertion that matters is that
 	// both rounds were actually spent rather than one being swallowed.
 	test('skips a zero-length segment rather than sitting in it', () => {
-		const noRest = run({ prepare: 0, work: 2, rest: 0, rounds: 2, sets: 1, setRest: 0 });
+		const noRest = run({
+			prepare: 0,
+			work: 2,
+			rest: 0,
+			rounds: 2,
+			sets: 1,
+			setRest: 0,
+			cooldown: 0,
+		});
 		expect(noRest.segments).toEqual(['work', 'done']);
 		expect(noRest.seconds).toBe(4);
 
-		const noSetRest = run({ prepare: 0, work: 2, rest: 0, rounds: 1, sets: 2, setRest: 0 });
+		const noSetRest = run({
+			prepare: 0,
+			work: 2,
+			rest: 0,
+			rounds: 1,
+			sets: 2,
+			setRest: 0,
+			cooldown: 0,
+		});
 		expect(noSetRest.segments).toEqual(['work', 'done']);
 		expect(noSetRest.seconds).toBe(4);
 	});
@@ -124,6 +151,7 @@ describe('the protocol', () => {
 			rounds: 2,
 			sets: 1,
 			setRest: 0,
+			cooldown: 0,
 		});
 		expect(segments[segments.length - 1]).toBe('done');
 		expect(seconds).toBeLessThan(10);
@@ -202,7 +230,15 @@ describe('the next-up preview', () => {
 });
 
 /** Two rounds, two sets, every segment present — short enough to write out. */
-const SMALL: Protocol = { prepare: 3, work: 2, rest: 1, rounds: 2, sets: 2, setRest: 4 };
+const SMALL: Protocol = {
+	prepare: 3,
+	work: 2,
+	rest: 1,
+	rounds: 2,
+	sets: 2,
+	setRest: 4,
+	cooldown: 0,
+};
 
 /** Every segment of `SMALL`, at its first second, in the order the clock runs them.
  *  Written out by hand from the protocol's rules rather than generated, so the
@@ -265,7 +301,15 @@ describe('going back a segment', () => {
 	// A 10s effort: up to three seconds in, back means "the one before"; past
 	// that, it means "redo this one".
 	test('restarts the segment once it has run for more than three seconds', () => {
-		const c: Protocol = { prepare: 5, work: 10, rest: 6, rounds: 2, sets: 1, setRest: 0 };
+		const c: Protocol = {
+			prepare: 5,
+			work: 10,
+			rest: 6,
+			rounds: 2,
+			sets: 1,
+			setRest: 0,
+			cooldown: 0,
+		};
 		const work = (remaining: number): Run => ({ segment: 'work', remaining, round: 1, set: 1 });
 		const prepare: Run = { segment: 'prepare', remaining: 5, round: 1, set: 1 };
 		expect(back(work(9), c)).toEqual(prepare);
@@ -295,6 +339,134 @@ describe('going back a segment', () => {
 	test('in a round the edited protocol no longer has, restarts the segment', () => {
 		const stranded: Run = { segment: 'work', remaining: 1, round: 4, set: 1 };
 		expect(back(stranded, SMALL)).toEqual({ ...stranded, remaining: 2 });
+	});
+});
+
+// Cooldown (#104): the easy minutes after the last set, a segment of their own.
+// `SMALL` with five seconds of it, written out by hand like `SMALL_STARTS`.
+const COOLED: Protocol = { ...SMALL, cooldown: 5 };
+const COOLED_LAST_WORK: Run = { segment: 'work', remaining: 2, round: 2, set: 2 };
+const COOLED_COOLDOWN: Run = { segment: 'cooldown', remaining: 5, round: 2, set: 2 };
+const COOLED_DONE: Run = { segment: 'done', remaining: 0, round: 2, set: 2 };
+
+describe('a cooldown', () => {
+	test('runs after the last set, and then the protocol is done', () => {
+		expect(run(COOLED).segments).toEqual([
+			'prepare',
+			'work',
+			'rest',
+			'work',
+			'setRest',
+			'work',
+			'rest',
+			'work',
+			'cooldown',
+			'done',
+		]);
+	});
+
+	test('is not in the segment order at all when it is zero', () => {
+		expect(run(SMALL).segments).not.toContain('cooldown');
+	});
+
+	// SMALL: 3 + 2 × (2 + 1 + 2) + 4 = 17s; five of cooldown makes 22.
+	test('counts toward the total, and the clock spends exactly that', () => {
+		expect(totalOf(SMALL)).toBe(17);
+		expect(totalOf(COOLED)).toBe(22);
+		expect(run(COOLED).seconds).toBe(22);
+	});
+
+	test('keeps elapsed and remaining adding up, one second per tick, through to done', () => {
+		let r = beginning(COOLED);
+		for (let i = 0; i < 22; i++) {
+			expect(elapsedOf(r, COOLED)).toBe(i);
+			expect(remainingOf(r, COOLED)).toBe(22 - i);
+			r = step(r, COOLED);
+		}
+		expect(r).toEqual(COOLED_DONE);
+		expect(remainingOf(r, COOLED)).toBe(0);
+	});
+
+	test('is five seconds long on the ring', () => {
+		expect(segmentLengthOf(COOLED_COOLDOWN, COOLED)).toBe(5);
+		expect(segmentLengthOf({ ...COOLED_COOLDOWN, remaining: 2 }, COOLED)).toBe(5);
+	});
+
+	test('is what the last effort previews, and it previews done', () => {
+		expect(nextOf(COOLED_LAST_WORK, COOLED)).toEqual({ segment: 'cooldown', seconds: 5 });
+		expect(nextOf(COOLED_COOLDOWN, COOLED)).toEqual({ segment: 'done', seconds: 0 });
+		expect(nextOf(COOLED_LAST_WORK, SMALL)).toEqual({ segment: 'done', seconds: 0 });
+	});
+
+	test('is where a skip from the last effort lands, and a skip from it finishes', () => {
+		expect(skip(COOLED_LAST_WORK, COOLED)).toEqual(COOLED_COOLDOWN);
+		expect(skip({ ...COOLED_COOLDOWN, remaining: 3 }, COOLED)).toEqual(COOLED_DONE);
+	});
+
+	test('goes back to the last effort from its start, and restarts once it has run', () => {
+		expect(back(COOLED_COOLDOWN, COOLED)).toEqual(COOLED_LAST_WORK);
+		expect(back({ ...COOLED_COOLDOWN, remaining: 1 }, COOLED)).toEqual(COOLED_COOLDOWN);
+	});
+
+	test('is where back from done goes', () => {
+		expect(back(COOLED_DONE, COOLED)).toEqual(COOLED_COOLDOWN);
+	});
+
+	test('jumps only to seconds the clock passes through', () => {
+		const passed = new Set<string>();
+		const trace: Run[] = [];
+		for (let r = beginning(COOLED); ; r = step(r, COOLED)) {
+			passed.add(JSON.stringify(r));
+			trace.push(r);
+			if (r.segment === 'done') break;
+		}
+		for (const r of trace) {
+			for (const jumped of [skip(r, COOLED), back(r, COOLED)]) {
+				expect(passed.has(JSON.stringify(jumped)), JSON.stringify({ r, jumped })).toBe(true);
+			}
+		}
+	});
+
+	test('is announced as its own cue, and counted down like any segment', () => {
+		const last: Run = { ...COOLED_LAST_WORK, remaining: 1 };
+		expect(planCues({ from: last, to: step(last, COOLED), running: true })).toEqual([
+			{ kind: 'sound', cue: 'cooldown' },
+			{ kind: 'buzz', cue: 'cooldown' },
+		]);
+		const ending: Run = { ...COOLED_COOLDOWN, remaining: 1 };
+		expect(planCues({ from: { ...ending, remaining: 2 }, to: ending, running: true })).toEqual([
+			{ kind: 'sound', cue: 'countdown' },
+		]);
+		expect(planCues({ from: ending, to: step(ending, COOLED), running: true })).toEqual([
+			{ kind: 'sound', cue: 'done' },
+			{ kind: 'buzz', cue: 'done' },
+		]);
+	});
+});
+
+// What the clock reads a protocol out of — a stored draft, a synced row — was
+// written by whatever build was current, and a build before #104 wrote no
+// cooldown. Read as none, so the protocol runs exactly as it did.
+describe('reading a protocol back', () => {
+	const BEFORE_COOLDOWN = { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180 };
+
+	test('reads a missing cooldown as none', () => {
+		expect(readProtocol(BEFORE_COOLDOWN)).toEqual({ ...BEFORE_COOLDOWN, cooldown: 0 });
+	});
+
+	test('keeps a cooldown that is there', () => {
+		expect(readProtocol({ ...BEFORE_COOLDOWN, cooldown: 120 })?.cooldown).toBe(120);
+	});
+
+	test.each([
+		['nothing', null],
+		['a number', 7],
+		['a field missing', { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4 }],
+		['a field that is not a number', { ...BEFORE_COOLDOWN, work: '7' }],
+		['a field that is not finite', { ...BEFORE_COOLDOWN, rest: Number.NaN }],
+		['a cooldown that is not a number', { ...BEFORE_COOLDOWN, cooldown: 'none' }],
+	])('refuses %s', (_, value) => {
+		expect(readProtocol(value)).toBeNull();
 	});
 });
 
@@ -463,7 +635,15 @@ describe('the cue planner', () => {
 	// read as one second on — silent. It is the effort starting again, and the
 	// athlete hears it start.
 	test('restarting a segment announces it again', () => {
-		const c: Protocol = { prepare: 5, work: 10, rest: 6, rounds: 2, sets: 1, setRest: 0 };
+		const c: Protocol = {
+			prepare: 5,
+			work: 10,
+			rest: 6,
+			rounds: 2,
+			sets: 1,
+			setRest: 0,
+			cooldown: 0,
+		};
 		const late: Run = { segment: 'work', remaining: 2, round: 1, set: 1 };
 		const restarted = back(late, c);
 		expect(restarted.remaining).toBe(10);
@@ -476,7 +656,15 @@ describe('the cue planner', () => {
 	// The whole session, a second at a time, as the clock drives it. What the
 	// athlete hears on a 2-round, 2-set protocol with every segment in it.
 	test('cues a whole session in the order the athlete hears it', () => {
-		const c: Protocol = { prepare: 4, work: 4, rest: 2, rounds: 2, sets: 2, setRest: 5 };
+		const c: Protocol = {
+			prepare: 4,
+			work: 4,
+			rest: 2,
+			rounds: 2,
+			sets: 2,
+			setRest: 5,
+			cooldown: 0,
+		};
 		const heard: string[] = [];
 		let before = IDLE;
 		let r = beginning(c);
@@ -612,7 +800,7 @@ describe("a variant's protocol", () => {
 				sets: { min: 3, max: 4 },
 				setRestSec: { min: 180, max: 180 },
 			}),
-		).toEqual({ prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180 });
+		).toEqual({ prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180, cooldown: 0 });
 	});
 
 	test('reads a single effort per set when the variant names no rounds', () => {
@@ -623,6 +811,7 @@ describe("a variant's protocol", () => {
 			rounds: 1,
 			sets: 3,
 			setRest: 0,
+			cooldown: 0,
 		});
 	});
 

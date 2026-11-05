@@ -15,7 +15,13 @@
 import type { StorageApi } from '@tanstack/db';
 import { describe, expect, it } from 'vitest';
 import { computeReadiness, getContent } from '../src/lib/content/index.ts';
-import { asAthleteId, asExerciseId, asWeekdayKey, taskKey } from '../src/lib/ids.ts';
+import {
+	asAthleteId,
+	asExerciseId,
+	asSavedProtocolId,
+	asWeekdayKey,
+	taskKey,
+} from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import {
 	effectiveVariant,
@@ -479,6 +485,7 @@ describe('Timer', () => {
 			rounds: 6,
 			sets: 4,
 			setRest: 180,
+			cooldown: 0,
 		});
 	});
 
@@ -525,6 +532,62 @@ describe('Timer', () => {
 		});
 		// Filed under its id, so renaming it keeps the athlete's place.
 		expect(saved[0].key).toBe(`saved:${saved[0].id}`);
+	});
+
+	// #104. A cooldown is part of what the protocol is, so the shape says it and
+	// the total counts it: two protocols that differ only by one must not look
+	// the same in the list.
+	it('shows a saved protocol’s cooldown in its shape and its total', () => {
+		const cooled = (cooldown: number) =>
+			resolveTimer(
+				getContent('en-US'),
+				{
+					savedProtocols: [
+						{
+							id: asSavedProtocolId('5eed0000-0000-4000-8000-0000000000c0'),
+							name: 'Finisher',
+							protocol: {
+								prepare: 10,
+								work: 20,
+								rest: 10,
+								rounds: 8,
+								sets: 1,
+								setRest: 0,
+								cooldown,
+							},
+							createdAt: 0,
+						},
+					],
+				},
+				'en-US',
+			).saved[0];
+		// 10 + 8 × 20 + 7 × 10 = 240, then the cooldown.
+		expect(cooled(0)).toMatchObject({ shape: '8 × 20s/10s', total: 240 });
+		expect(cooled(120)).toMatchObject({ shape: '8 × 20s/10s · 2:00 cooldown', total: 360 });
+		expect(cooled(45)).toMatchObject({ shape: '8 × 20s/10s · 45s cooldown', total: 285 });
+		const pt = resolveTimer(
+			getContent('pt-BR'),
+			{
+				savedProtocols: [
+					{
+						id: asSavedProtocolId('5eed0000-0000-4000-8000-0000000000c1'),
+						name: 'Finisher',
+						protocol: {
+							prepare: 0,
+							work: 7,
+							rest: 3,
+							rounds: 6,
+							sets: 2,
+							setRest: 60,
+							cooldown: 300,
+						},
+						createdAt: 0,
+					},
+				],
+			},
+			'pt-BR',
+		);
+		expect(pt.saved[0].shape).toBe('6 × 7s/3s · 2 séries · 5:00 de desaquecimento');
 	});
 
 	it('has nothing saved on an account that has kept nothing', () => {

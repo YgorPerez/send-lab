@@ -47,6 +47,8 @@ const TONES: Record<Cue, number[]> = {
 	rest: [440],
 	work: [660],
 	setRest: [330],
+	// Falling, the mirror of "go": the work is over and nothing more is asked.
+	cooldown: [523, 392],
 	countdown: [1000],
 	done: [880],
 };
@@ -59,6 +61,7 @@ const BUZZ: Record<BuzzedCue, number | number[]> = {
 	rest: 80,
 	work: 80,
 	setRest: 80,
+	cooldown: 80,
 	done: [140, 70, 140],
 };
 

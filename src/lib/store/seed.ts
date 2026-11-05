@@ -473,7 +473,8 @@ function savedProtocols(locale: string, now: number): SavedProtocol[] {
 			id: asSavedProtocolId('5eed0000-0000-4000-8000-000000000001'),
 			name: prose(locale, 'saved_protocol_warmup'),
 			// 10s to get on, two sets of 5 × 10s/20s, a minute between: 5:30.
-			protocol: { prepare: 10, work: 10, rest: 20, rounds: 5, sets: 2, setRest: 60 },
+			// No cooldown: a warm-up leads into the session rather than out of it.
+			protocol: { prepare: 10, work: 10, rest: 20, rounds: 5, sets: 2, setRest: 60, cooldown: 0 },
 			createdAt: now - 12 * DAY_MS,
 		},
 	];

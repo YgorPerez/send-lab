@@ -258,6 +258,8 @@ const protocol = z.object({
 	rounds: count,
 	sets: count,
 	setRest: seconds,
+	// A client from before #104 sends none, and means none.
+	cooldown: seconds.default(0),
 });
 
 const savedProtocol = z.object({

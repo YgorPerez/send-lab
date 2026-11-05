@@ -9,7 +9,7 @@ import { createRecordStore } from '../src/lib/store/collections.ts';
 import { readTrainingRecord, recordStore, resetRecordStore } from '../src/lib/store/record.ts';
 import { deleteSavedProtocol, duplicateProtocol } from '../src/lib/store/savedProtocols.ts';
 
-const REPEATERS = { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180 };
+const REPEATERS = { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180, cooldown: 0 };
 const T0 = 1_755_000_000_000;
 
 let original: PropertyDescriptor | undefined;
@@ -90,6 +90,22 @@ describe('deleting a saved protocol', () => {
 		await deleteSavedProtocol(gone.id);
 		await expect(deleteSavedProtocol(gone.id)).resolves.toBeUndefined();
 		expect(saved()).toEqual([]);
+	});
+});
+
+// Rows written before #104 — on this device, or synced from one still running an
+// older build — have no cooldown. They read as having none.
+describe('a saved protocol from before cooldown', () => {
+	it('reads with none, and runs as it did', () => {
+		const { cooldown: _, ...before } = REPEATERS;
+		recordStore().savedProtocols.insert({
+			id: 'older',
+			name: 'Older',
+			protocol: before,
+			createdAt: T0,
+		} as never);
+
+		expect(saved()[0].protocol).toEqual({ ...REPEATERS, cooldown: 0 });
 	});
 });
 

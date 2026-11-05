@@ -41,12 +41,16 @@ import { clock, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import {
+	BLANK_PROTOCOL,
 	back,
 	beginning,
 	elapsedOf,
 	IDLE,
 	nextOf,
+	PROTOCOL_FIELDS,
+	PROTOCOL_MINIMUM,
 	type Protocol,
+	type ProtocolField,
 	planCues,
 	type Run,
 	remainingOf,
@@ -68,6 +72,7 @@ const SEGMENT_LABEL: Record<Segment, () => string> = {
 	work: m.timer_work,
 	rest: m.timer_rest,
 	setRest: m.timer_setrest,
+	cooldown: m.timer_cooldown,
 	done: m.timer_done,
 };
 
@@ -77,17 +82,22 @@ const SEGMENT_COLOR: Record<Segment, string> = {
 	work: 'var(--stop)',
 	rest: 'var(--ok)',
 	setRest: 'var(--ok)',
+	cooldown: 'var(--cooldown)',
 	done: 'var(--ink-dim)',
 };
 
-const FIELDS: { key: keyof Protocol; label: () => string }[] = [
-	{ key: 'prepare', label: m.timer_prepare_s },
-	{ key: 'work', label: m.timer_work_s },
-	{ key: 'rest', label: m.timer_rest_s },
-	{ key: 'rounds', label: m.timer_rounds },
-	{ key: 'sets', label: m.timer_sets },
-	{ key: 'setRest', label: m.timer_setrest_s },
-];
+/** What each protocol field is called where it is typed in — Train's setup
+ *  here, and the saved-protocol editor. A record over the fields rather than a
+ *  list, so a field added to the protocol does not compile until it is named. */
+export const FIELD_LABEL: Record<ProtocolField, () => string> = {
+	prepare: m.timer_prepare_s,
+	work: m.timer_work_s,
+	rest: m.timer_rest_s,
+	rounds: m.timer_rounds,
+	sets: m.timer_sets,
+	setRest: m.timer_setrest_s,
+	cooldown: m.timer_cooldown_s,
+};
 
 /**
  * The clock face: seconds under a minute, `m:ss` over it.
@@ -463,19 +473,7 @@ export function Timer({
 	// its own writes. The write is one effect, below.
 	const [storedSetup, persistSetup] = useTimerSetup(slot);
 	const [initial] = useState(() =>
-		restored(
-			storedSetup,
-			protocolKey,
-			{
-				prepare: protocol?.prepare ?? 10,
-				work: protocol?.work ?? 10,
-				rest: protocol?.rest ?? 0,
-				rounds: protocol?.rounds ?? 1,
-				sets: protocol?.sets ?? 1,
-				setRest: protocol?.setRest ?? 0,
-			},
-			{ fixed: !editable },
-		),
+		restored(storedSetup, protocolKey, protocol ?? BLANK_PROTOCOL, { fixed: !editable }),
 	);
 	const [config, setConfig] = useState<Protocol>(initial.config);
 	const [run, setRun] = useState<Run>(initial.run);
@@ -740,20 +738,20 @@ export function Timer({
 
 			{editable && setupOpen ? (
 				<div id="timer-setup" className="grid grid-cols-3 gap-1.5 px-3 pb-2">
-					{FIELDS.map((f) => (
-						<label key={f.key} className="flex min-w-0 flex-col gap-0.5" htmlFor={`t-${f.key}`}>
-							<span className="microlabel truncate">{f.label()}</span>
+					{PROTOCOL_FIELDS.map((f) => (
+						<label key={f} className="flex min-w-0 flex-col gap-0.5" htmlFor={`t-${f}`}>
+							<span className="microlabel truncate">{FIELD_LABEL[f]()}</span>
 							<input
-								id={`t-${f.key}`}
+								id={`t-${f}`}
 								className={input({ class: 'h-9 py-0' })}
 								type="number"
 								inputMode="numeric"
-								min={0}
-								value={config[f.key]}
+								min={PROTOCOL_MINIMUM[f]}
+								value={config[f]}
 								onChange={(e) =>
 									setConfig((prev) => ({
 										...prev,
-										[f.key]: Math.max(0, Number.parseInt(e.currentTarget.value, 10) || 0),
+										[f]: Math.max(0, Number.parseInt(e.currentTarget.value, 10) || 0),
 									}))
 								}
 							/>
