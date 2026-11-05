@@ -14,7 +14,7 @@
 // ----------------------------------------------
 // The protocol arithmetic is `lib/protocol.ts`, pure and unit-tested, and so is
 // the choice of which cue each transition fires (`planCues`, under the athlete's
-// cue preferences); playing the sounds and the buzz is `lib/cues.ts`. What is
+// cue preferences); playing the sounds, the buzz and the voice is `lib/cues.ts`. What is
 // left here — the tick, the wake lock, and the shape — is the part that
 // genuinely needs a component. See the header of `protocol.ts` for why the split
 // is what it is: it is the vocabulary's answer for anything that advances on a

@@ -235,6 +235,28 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			);
 		});
 
+		// The voice (#106) is one more switch in the same component, on by
+		// default, and read before the buzz: it is the cue that carries the most.
+		test('renders the voice switch in the cue settings, on, above the buzz', async () => {
+			const settings = await render('/settings');
+			const voice =
+				locale === 'en-US'
+					? 'Say each segment and the countdown aloud'
+					: 'Falar cada segmento e a contagem em voz alta';
+			const buzz =
+				locale === 'en-US'
+					? 'Vibrate when work or rest begins'
+					: 'Vibrar quando começa esforço ou descanso';
+			expect(settings).toContain(voice);
+			expect(settings.indexOf(voice)).toBeLessThan(settings.indexOf(buzz));
+			const row = settings.slice(settings.indexOf(voice), settings.indexOf(buzz));
+			expect(row).toMatch(
+				/role="switch"[^>]*aria-checked="true"|aria-checked="true"[^>]*role="switch"/,
+			);
+			// Whether this device has a voice is the client's to say, as for the buzz.
+			expect(settings).not.toContain(locale === 'en-US' ? 'no voice' : 'não tem voz');
+		});
+
 		// Timer (#101). The presets come from the library, read in the locale, each
 		// with its shape and its length, each exercise linked to the study the
 		// library cites; and the clock is there to run the one selected.
