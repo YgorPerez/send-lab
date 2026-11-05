@@ -25,7 +25,6 @@
 // Re-seeding the timer for a different exercise remounts it (the parent keys on
 // the protocol), and an open dialog owned here would close on that remount — the
 // athlete's rule is that the clock stays up and picks up the new protocol.
-import { Dialog } from '@base-ui/react/dialog';
 import {
 	ChevronDown,
 	Maximize2,
@@ -34,7 +33,6 @@ import {
 	RotateCcw,
 	SkipBack,
 	SkipForward,
-	X,
 } from 'lucide-react';
 import {
 	type Ref,
@@ -46,7 +44,7 @@ import {
 	useState,
 } from 'react';
 import { deliver, releaseCues } from '$lib/cues';
-import { clock, protocolShape } from '$lib/format';
+import { clock, FIELD_LABEL, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -59,7 +57,6 @@ import {
 	PROTOCOL_FIELDS,
 	PROTOCOL_MINIMUM,
 	type Protocol,
-	type ProtocolField,
 	planCues,
 	type Run,
 	remainingOf,
@@ -70,9 +67,10 @@ import {
 	totalOf,
 } from '$lib/protocol';
 import { usePrefs } from '$lib/store/record';
-import { restored, type TimerSlot, useTimerSetup } from '$lib/timerSetup';
+import { type ClockHome, restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
+import { Face, FullScreenClock } from './FullScreenClock';
 import { Eyebrow } from './ui/primitives';
 import { button, input } from './ui/variants';
 
@@ -119,19 +117,6 @@ function prefersReducedMotion(): boolean {
 	);
 }
 
-/** What each protocol field is called where it is typed in — Train's setup
- *  here, and the saved-protocol editor. A record over the fields rather than a
- *  list, so a field added to the protocol does not compile until it is named. */
-export const FIELD_LABEL: Record<ProtocolField, () => string> = {
-	prepare: m.timer_prepare_s,
-	work: m.timer_work_s,
-	rest: m.timer_rest_s,
-	rounds: m.timer_rounds,
-	sets: m.timer_sets,
-	setRest: m.timer_setrest_s,
-	cooldown: m.timer_cooldown_s,
-};
-
 /**
  * The clock face: seconds under a minute, `m:ss` over it.
  *
@@ -139,30 +124,8 @@ export const FIELD_LABEL: Record<ProtocolField, () => string> = {
  * room. Three raw digits of "180" is a worse read at that distance than "3:00",
  * and a leading "0:07" is a worse read than "7".
  */
-function Face({ seconds, className }: { seconds: number; className?: string }) {
-	if (seconds >= 60) return <span className={className}>{clock(seconds)}</span>;
-	return (
-		<span className={className}>
-			{seconds}
-			<span className="text-[0.38em] text-ink-faint">s</span>
-		</span>
-	);
-}
-
-/**
- * How large the full-screen face can be and still sit inside the ring.
- *
- * One size used to serve every reading, and it was chosen for seconds: two
- * digits at 30vw fill the ring. `2:00` is four glyphs and a colon at the same
- * size, and it ran through the ring on both sides. A set rest of three minutes
- * did it before #104; a cooldown, which is usually minutes, did it on every
- * protocol that had one. So the size steps down with the number of glyphs, and
- * each step keeps the reading inside the ring's inner width.
- */
-function faceSize(seconds: number): string {
-	if (seconds < 60) return 'text-[min(30vw,20dvh)]';
-	if (seconds < 600) return 'text-[min(20vw,13dvh)]';
-	return 'text-[min(16vw,10.5dvh)]';
+function faceOf(seconds: number): { whole: string; unit?: string } {
+	return seconds >= 60 ? { whole: clock(seconds) } : { whole: String(seconds), unit: 's' };
 }
 
 /** Everything the two faces of the timer both read off the run. */
@@ -275,25 +238,14 @@ function ProgressBar({ reading }: { reading: Reading }) {
 }
 
 /**
- * The full-screen clock.
+ * The protocol's run in the full-screen clock (`FullScreenClock.tsx`).
  *
  * Asked for directly by the athlete, against Timer Plus: while a hang is running
  * the phone is on the floor or clipped to the board, and the only thing that
  * matters is the number. Everything else on Train — the sets, the targets, the
  * note — goes away entirely rather than shrinking.
- *
- * It is a Dialog rather than a `position: fixed` div because the timer lives
- * inside Train's sticky header, and that header carries `backdrop-blur`: a
- * `backdrop-filter` ancestor becomes the containing block for fixed descendants,
- * so a plain overlay would have been trapped inside a 120px-tall strip. The
- * portal also brings the focus trap and Escape handling for free.
- *
- * It scrolls when it does not fit. A phone on its side is 360px tall, and the
- * ring, the indicators and the control row together are taller than that: with
- * no scroll, Start, skip and back sat below the screen with no way to reach them.
- * Scrolling is the floor, not the landscape layout. That one is still to design.
  */
-function FullScreenClock({
+function ProtocolFullScreen({
 	open,
 	onOpenChange,
 	label,
@@ -318,104 +270,52 @@ function FullScreenClock({
 }) {
 	const { run, config, shown, segmentLength, accent, left, elapsed, running, next } = reading;
 	const segmentLabel = SEGMENT_LABEL[run.segment]();
+	const face = faceOf(shown);
 	// The ring reports the segment you are in, not the whole session: mid-hang the
 	// useful question is "how much of *this* is left", and the session total is
 	// already on the lines underneath.
 	const R = 46;
 	const CIRC = 2 * Math.PI * R;
-	const readingId = useId();
 
 	return (
-		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Portal>
-				<Dialog.Popup
-					aria-label={segmentLabel}
-					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col overflow-y-auto bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
-				>
-					{/* The flash (#107): the whole screen washed in the colour of the
-					    segment just arrived in, fading out, so the change is caught
-					    from the corner of the eye. Behind everything else — the popup
-					    is its own stacking context, so a negative z-index paints over
-					    its background and under the clock — and never in the way of a
-					    tap. Decorative: the announcer below already says the change. */}
-					{flash ? (
-						<div
-							key={flash.n}
-							aria-hidden="true"
-							data-flash={flash.segment}
-							onAnimationEnd={onFlashEnd}
-							className="a-flash pointer-events-none fixed inset-0 -z-10"
-							style={{
-								background: SEGMENT_COLOR[flash.segment],
-								animationDuration: `${flash.ms}ms`,
-							}}
-						/>
-					) : null}
-					<SegmentAnnouncer reading={reading} />
-					<p id={readingId} className="sr-only">
-						{spokenReading(reading)}
-					</p>
-					<div className="flex items-start gap-2 px-4 pt-4">
-						<div className="min-w-0 flex-1">
-							<Dialog.Title
-								className="num text-[13px] tracking-wider uppercase"
-								style={{ color: accent }}
-							>
-								{segmentLabel}
-							</Dialog.Title>
-							{label ? <p className="eyebrow mt-1 truncate">{label}</p> : null}
-						</div>
-						<Dialog.Close
-							aria-label={m.btn_close()}
-							className={button({ kind: 'quiet', size: 'touch', class: 'size-12 shrink-0 px-0' })}
-						>
-							<X size={20} />
-						</Dialog.Close>
-					</div>
-
-					{/* The clock. Tapping it starts and pauses — the whole point is not
-					    having to find a control with chalky hands — and the buttons
-					    underneath are the tappable equivalent for anyone who does not
-					    discover that, since a gesture is never the only way in. */}
-					<button
-						type="button"
-						onClick={onToggle}
-						aria-label={running ? m.btn_pause() : m.btn_start()}
-						aria-describedby={readingId}
-						className="relative flex flex-1 flex-col items-center justify-center gap-4 px-4"
-					>
-						<span className="relative flex items-center justify-center">
-							<svg
-								viewBox="0 0 100 100"
-								aria-hidden="true"
-								className="size-[min(78vw,52dvh)] -rotate-90"
-							>
-								<circle cx="50" cy="50" r={R} fill="none" stroke="var(--panel-2)" strokeWidth="3" />
-								<circle
-									cx="50"
-									cy="50"
-									r={R}
-									fill="none"
-									stroke={accent}
-									strokeWidth="3"
-									strokeLinecap="round"
-									strokeDasharray={CIRC}
-									strokeDashoffset={
-										segmentLength > 0 ? CIRC * (1 - Math.max(0, shown) / segmentLength) : 0
-									}
-									style={{ transition: 'stroke-dashoffset 1s linear' }}
-								/>
-							</svg>
-							<Face
-								seconds={shown}
-								className={cn('num absolute leading-none font-bold tabular-nums', faceSize(shown))}
-							/>
-						</span>
-
-						{/* The indicators, in the order they are asked for mid-session:
-						    where am I in the protocol, what comes next, how far through the
-						    whole thing am I. The athlete asked for Timer Plus's full set —
-						    the prototype had the first line and nothing else. */}
+		<FullScreenClock
+			open={open}
+			onOpenChange={onOpenChange}
+			label={segmentLabel}
+			status={{ label: segmentLabel, color: accent }}
+			name={label}
+			spoken={spokenReading(reading)}
+			toggleLabel={running ? m.btn_pause() : m.btn_start()}
+			onToggle={onToggle}
+			announcer={<SegmentAnnouncer reading={reading} />}
+			// The flash (#107): the whole screen washed in the colour of the segment
+			// just arrived in, fading out, so the change is caught from the corner of
+			// the eye. Behind everything else — the popup is its own stacking
+			// context, so a negative z-index paints over its background and under the
+			// clock — and never in the way of a tap. Decorative: the announcer
+			// already says the change.
+			layer={
+				flash ? (
+					<div
+						key={flash.n}
+						aria-hidden="true"
+						data-flash={flash.segment}
+						onAnimationEnd={onFlashEnd}
+						className="a-flash pointer-events-none fixed inset-0 -z-10"
+						style={{
+							background: SEGMENT_COLOR[flash.segment],
+							animationDuration: `${flash.ms}ms`,
+						}}
+					/>
+				) : null
+			}
+			detail={
+				counted(run) || next ? (
+					<>
+						{/* The indicators, in the order they are asked for mid-session: where am
+						    I in the protocol, what comes next, how far through the whole thing am
+						    I. The athlete asked for Timer Plus's full set — the prototype had the
+						    first line and nothing else. */}
 						{counted(run) ? (
 							<span className="num flex items-center gap-3 text-[15px] text-ink-dim">
 								<span>{m.timer_round({ n: run.round, total: config.rounds })}</span>
@@ -432,72 +332,99 @@ function FullScreenClock({
 								{next.seconds > 0 ? ` · ${clock(next.seconds)}` : ''}
 							</span>
 						) : null}
-					</button>
-
-					<div className="flex flex-col gap-2 px-4 pb-6">
-						<div className="num flex justify-between text-[12px] text-ink-faint">
-							<span>
-								{m.timer_elapsed()} <span className="text-ink-dim">{clock(elapsed)}</span>
-							</span>
-							<span>
-								{m.timer_left()} <span className="text-chalk">{clock(left)}</span>
-							</span>
-							<span>
-								{m.timer_total()} {clock(reading.total)}
-							</span>
-						</div>
-						<ProgressBar reading={reading} />
-						{/* Back and skip flank Start, the order every media control uses,
-						    so the one the athlete reaches for is found by direction rather
-						    than by reading an icon. Reset is kept at the far end, away
-						    from skip: a slip from skip onto reset loses the whole session.
-						    Before the start there is nothing to jump within, and after the
-						    end nothing to skip to, so those are disabled rather than
-						    hidden: the row keeps its shape. */}
-						<div className="mt-1 flex gap-2">
-							<button
-								type="button"
-								aria-label={m.timer_back()}
-								onClick={onBack}
-								disabled={run.segment === 'idle'}
-								className={button({ size: 'touch', class: 'h-14 w-14 shrink-0 px-0' })}
-							>
-								<SkipBack size={20} />
-							</button>
-							<button
-								type="button"
-								onClick={onToggle}
-								className={button({
-									kind: running ? 'quiet' : 'primary',
-									size: 'touch',
-									class: 'h-14 flex-1 text-[17px]',
-								})}
-							>
-								{running ? <Pause size={20} /> : <Play size={20} />}
-								{running ? m.btn_pause() : m.btn_start()}
-							</button>
-							<button
-								type="button"
-								aria-label={m.timer_skip()}
-								onClick={onSkip}
-								disabled={run.segment === 'idle' || run.segment === 'done'}
-								className={button({ size: 'touch', class: 'h-14 w-14 shrink-0 px-0' })}
-							>
-								<SkipForward size={20} />
-							</button>
-							<button
-								type="button"
-								aria-label={m.btn_reset()}
-								onClick={onReset}
-								className={button({ size: 'touch', class: 'ml-2 h-14 w-14 shrink-0 px-0' })}
-							>
-								<RotateCcw size={20} />
-							</button>
-						</div>
+					</>
+				) : null
+			}
+			readout={
+				<>
+					<div className="num flex justify-between text-[12px] text-ink-faint">
+						<span>
+							{m.timer_elapsed()} <span className="text-ink-dim">{clock(elapsed)}</span>
+						</span>
+						<span>
+							{m.timer_left()} <span className="text-chalk">{clock(left)}</span>
+						</span>
+						<span>
+							{m.timer_total()} {clock(reading.total)}
+						</span>
 					</div>
-				</Dialog.Popup>
-			</Dialog.Portal>
-		</Dialog.Root>
+					<ProgressBar reading={reading} />
+				</>
+			}
+			// Back and skip flank Start, the order every media control uses, so the
+			// one the athlete reaches for is found by direction rather than by
+			// reading an icon. Reset is kept at the far end, away from skip: a slip
+			// from skip onto reset loses the whole session. Before the start there is
+			// nothing to jump within, and after the end nothing to skip to, so those
+			// are disabled rather than hidden: the row keeps its shape.
+			controls={
+				<>
+					<button
+						type="button"
+						aria-label={m.timer_back()}
+						onClick={onBack}
+						disabled={run.segment === 'idle'}
+						className={button({ size: 'touch', class: 'h-14 w-14 shrink-0 px-0' })}
+					>
+						<SkipBack size={20} />
+					</button>
+					<button
+						type="button"
+						onClick={onToggle}
+						className={button({
+							kind: running ? 'quiet' : 'primary',
+							size: 'touch',
+							class: 'h-14 flex-1 text-[17px]',
+						})}
+					>
+						{running ? <Pause size={20} /> : <Play size={20} />}
+						{running ? m.btn_pause() : m.btn_start()}
+					</button>
+					<button
+						type="button"
+						aria-label={m.timer_skip()}
+						onClick={onSkip}
+						disabled={run.segment === 'idle' || run.segment === 'done'}
+						className={button({ size: 'touch', class: 'h-14 w-14 shrink-0 px-0' })}
+					>
+						<SkipForward size={20} />
+					</button>
+					<button
+						type="button"
+						aria-label={m.btn_reset()}
+						onClick={onReset}
+						className={button({ size: 'touch', class: 'ml-2 h-14 w-14 shrink-0 px-0' })}
+					>
+						<RotateCcw size={20} />
+					</button>
+				</>
+			}
+		>
+			{/* The ring sets the face's size: `--face` is the share of its inner width
+			    a two-glyph reading fills. On its side the screen's height is what
+			    runs out, and the ring takes all of it: the lines that sat under it
+			    upright are in the right-hand column. */}
+			<span className="relative flex items-center justify-center [--face:calc(var(--ring)*0.385)] [--ring:min(78vw,52dvh)] sideways:[--ring:min(44vw,calc(100dvh-2rem))]">
+				<svg viewBox="0 0 100 100" aria-hidden="true" className="size-(--ring) -rotate-90">
+					<circle cx="50" cy="50" r={R} fill="none" stroke="var(--panel-2)" strokeWidth="3" />
+					<circle
+						cx="50"
+						cy="50"
+						r={R}
+						fill="none"
+						stroke={accent}
+						strokeWidth="3"
+						strokeLinecap="round"
+						strokeDasharray={CIRC}
+						strokeDashoffset={
+							segmentLength > 0 ? CIRC * (1 - Math.max(0, shown) / segmentLength) : 0
+						}
+						style={{ transition: 'stroke-dashoffset 1s linear' }}
+					/>
+				</svg>
+				<Face {...face} fill className="num absolute leading-none font-bold tabular-nums" />
+			</span>
+		</FullScreenClock>
 	);
 }
 
@@ -514,7 +441,7 @@ export interface ClockHandle {
 export function Timer({
 	ref,
 	onStart,
-	slot,
+	home,
 	protocol,
 	label,
 	protocolKey,
@@ -529,7 +456,7 @@ export function Timer({
 	onStart?: () => void;
 	/** Which screen's clock this is. Each screen keeps its own place, so leaving
 	 *  one clock for the other never costs either its position (#101). */
-	slot: TimerSlot;
+	home: ClockHome;
 	protocol: Protocol | null;
 	/** The exercise this protocol came from, shown beside the title. Passed
 	 *  beside the protocol rather than welded into it: it is a localized display
@@ -565,7 +492,7 @@ export function Timer({
 	// `config` are React state from here on, because `run` changes every second
 	// and a clock that read its own position back out of storage would be racing
 	// its own writes. The write is one effect, below.
-	const [storedSetup, persistSetup] = useTimerSetup(slot);
+	const [storedSetup, persistSetup] = useTimerSetup(home, protocolKey);
 	const [initial] = useState(() =>
 		restored(storedSetup, protocolKey, protocol ?? BLANK_PROTOCOL, { fixed: !editable }),
 	);
@@ -584,8 +511,8 @@ export function Timer({
 	// `running` is deliberately not in the stored shape, so pausing writes
 	// nothing and the write happens once per tick rather than twice.
 	useEffect(() => {
-		persistSetup(protocolKey, { config, run });
-	}, [persistSetup, protocolKey, config, run]);
+		persistSetup({ config, run });
+	}, [persistSetup, config, run]);
 
 	// The tick. A pure updater over one state object, so there is no stale
 	// closure to hold in a ref — see `protocol.ts`. Re-created when the
@@ -641,7 +568,12 @@ export function Timer({
 			},
 		});
 	});
-	const previous = useRef<Run>(IDLE);
+	// The run last seen starts as the one the clock opened on, not idle. A clock
+	// restored paused mid-protocol has not moved at mount, so the planner hears
+	// "no move" and plans nothing; counted from idle it was an arrival, and every
+	// return to a screen with a paused draft beeped, buzzed and said the segment
+	// (spec stories 32 and 33).
+	const previous = useRef<Run>(initial.run);
 	useEffect(() => {
 		const from = previous.current;
 		previous.current = run;
@@ -689,7 +621,7 @@ export function Timer({
 
 	return (
 		<div className="rounded-lg border border-line bg-panel">
-			<FullScreenClock
+			<ProtocolFullScreen
 				open={clockOpen}
 				onOpenChange={showClock}
 				label={label}
@@ -739,7 +671,7 @@ export function Timer({
 					aria-describedby={readingId}
 					style={{ color: accent }}
 				>
-					<Face seconds={shown} className="num text-[46px] leading-none font-bold" />
+					<Face {...faceOf(shown)} className="num text-[46px] leading-none font-bold" />
 				</button>
 				<div className="flex min-w-0 flex-1 flex-col gap-1">
 					<div className="num flex justify-between text-[10px] text-ink-faint">

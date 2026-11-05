@@ -593,6 +593,25 @@ describe('Timer', () => {
 		expect(pt.saved[0].shape).toBe('6 × 7s/3s · 2 séries · 5:00 de desaquecimento');
 	});
 
+	// What the clock can run, in the order it is listed, each named the way its
+	// strip names it. The screen used to build this itself, and to spell a
+	// preset's label a second time beside `copyName`.
+	it('lists everything the clock can run, saved first, each with the strip’s name', () => {
+		const seeded = readTrainingRecord(seededWith(NOW));
+		const screen = resolveTimer(getContent('en-US'), seeded, 'en-US');
+		expect(screen.runnable.map((r) => r.key)).toEqual([
+			...screen.saved.map((s) => s.key),
+			...screen.presets.flatMap((g) => g.presets.map((p) => p.key)),
+		]);
+		// A saved protocol is its own name; a preset leaves its group heading
+		// behind, so it carries the exercise with it — the same words a copy of it
+		// is named after.
+		expect(screen.saved[0].label).toBe('Warm-up hangs');
+		const repeaters = screen.presets.find((g) => g.exercise === 'repeaters')?.presets[0];
+		expect(repeaters?.label).toBe(`Repeaters · ${repeaters?.name}`);
+		expect(repeaters?.copyName).toBe(`Copy of ${repeaters?.label}`);
+	});
+
 	it('has nothing saved on an account that has kept nothing', () => {
 		expect(TIMER.saved).toEqual([]);
 	});

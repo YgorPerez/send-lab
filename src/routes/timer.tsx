@@ -2,7 +2,7 @@
 //
 // The clock outside a session: pick a protocol, run it. Nothing here is
 // training — a run records no session, no set and no history — so the screen
-// reads no prescription. What it does keep is the athlete's place in the
+// reads no prescription. What it does keep is the athlete's place in each
 // protocol, as a draft on this device, under the same two rules as Train's
 // (`timerSetup.ts`): it comes back paused, and only for the protocol it was left
 // in.
@@ -33,23 +33,28 @@ import { clock } from '$lib/format';
 import { type ProtocolKey, savedProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import { BLANK_PROTOCOL, PROTOCOL_FIELDS, type Protocol } from '$lib/protocol';
-import { type PresetGroup, resolveTimer, type SavedRow } from '$lib/screens/timer';
+import { BLANK_PROTOCOL, PROTOCOL_FIELDS } from '$lib/protocol';
+import {
+	type PresetGroup,
+	type PresetListing,
+	type ProtocolListing,
+	resolveTimer,
+	type SavedProtocolListing,
+} from '$lib/screens/timer';
 import { useTrainingRecord } from '$lib/store/record';
 import {
 	createSavedProtocol,
 	deleteSavedProtocol,
-	duplicateProtocol,
-	type SavedProtocolDraft,
 	updateSavedProtocol,
 } from '$lib/store/savedProtocols';
-import { useTimerSetup } from '$lib/timerSetup';
+import { useLastTimerProtocol } from '$lib/timerSetup';
+import type { NamedProtocol } from '$lib/types';
 import { CueSettingsShortcut } from '../components/CueSettings';
 import { type EditorTarget, ProtocolEditor } from '../components/ProtocolEditor';
 import { Stopwatch } from '../components/Stopwatch';
 import { type ClockHandle, Timer } from '../components/Timer';
 import { AlertDialog } from '../components/ui/AlertDialog';
-import { Empty, Pane, Section } from '../components/ui/primitives';
+import { Empty, Pane, Section, StickyStrip } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { button, option } from '../components/ui/variants';
 
@@ -57,43 +62,22 @@ export const Route = createFileRoute('/timer')({ component: TimerScreen });
 
 type Tab = 'protocols' | 'stopwatch';
 
-/** Anything the clock can run, as the list shows it. */
-interface Runnable {
-	key: ProtocolKey;
-	/** What the clock's strip is named. */
-	label: string;
-	protocol: Protocol;
-}
-
 function TimerScreen() {
 	const locale = getLocale();
 	const record = useTrainingRecord();
 	const screen = useMemo(() => resolveTimer(getContent(locale), record, locale), [record, locale]);
-	// Saved first, in the order the screen lists them, so "the first one" is the
-	// one at the top.
-	const runnable = useMemo(
-		(): Runnable[] => [
-			...screen.saved.map((s) => ({ key: s.key, label: s.name, protocol: s.protocol })),
-			...screen.presets.flatMap((g) =>
-				g.presets.map((p) => ({
-					key: p.key,
-					label: `${g.name} · ${p.name}`,
-					protocol: p.protocol,
-				})),
-			),
-		],
-		[screen],
-	);
+	const { runnable } = screen;
 
 	// WHICH PROTOCOL THE CLOCK IS RUNNING, held by identity.
 	//
-	// It opens on the one the athlete left the clock in — the stored draft's scope
-	// names it — so coming back to this screen finds the same clock, paused where
-	// it stopped. Read once, like the draft itself; after that only a tap on a row
-	// changes it, and that tap is a different protocol, which starts clean.
-	const [stored] = useTimerSetup('timer');
+	// It opens on the one the athlete left the clock in, so coming back to this
+	// screen finds the same clock, paused where it stopped. Read once, like the
+	// draft itself; after that only a tap on a row changes it. Each protocol keeps
+	// its own place (`ClockShelf` in `timerSetup.ts`), so a tap on another row and
+	// back finds the first one where it was left.
+	const last = useLastTimerProtocol();
 	const [selected, setSelected] = useState<ProtocolKey | null>(
-		() => runnable.find((r) => r.key === stored?.scope)?.key ?? runnable[0]?.key ?? null,
+		() => runnable.find((r) => r.key === last)?.key ?? runnable[0]?.key ?? null,
 	);
 	// Owned here rather than by the Timer, for the reason Train gives: picking
 	// another protocol remounts the clock, and the dialog should not close with it.
@@ -141,11 +125,14 @@ function TimerScreen() {
 	// Duplicate then sits, under a thumb that may still be coming down for a
 	// second tap. One copy per tap, not two.
 	const lastCopy = useRef(0);
-	const duplicate = async (source: { copyName: string; protocol: Protocol }) => {
+	const duplicate = async (source: ProtocolListing) => {
 		const now = Date.now();
 		if (now - lastCopy.current < 700) return;
 		lastCopy.current = now;
-		const row = await duplicateProtocol({ name: source.copyName, protocol: source.protocol }, now);
+		const row = await createSavedProtocol(
+			{ name: source.copyName, protocol: source.protocol },
+			now,
+		);
 		const key = savedProtocolKey(row.id);
 		setSelected(key);
 		setMade(key);
@@ -155,10 +142,11 @@ function TimerScreen() {
 	// is open on is kept apart from whether it is open, as the delete question's
 	// is, so its title does not change while it slides away.
 	const [editorOpen, setEditorOpen] = useState(false);
-	const [editing, setEditing] = useState<{ target: EditorTarget; row: SavedRow | null } | null>(
-		null,
-	);
-	const openEditor = (row: SavedRow | null) => {
+	const [editing, setEditing] = useState<{
+		target: EditorTarget;
+		row: SavedProtocolListing | null;
+	} | null>(null);
+	const openEditor = (row: SavedProtocolListing | null) => {
 		setEditing({
 			target: row
 				? { kind: 'edit', name: row.name, protocol: row.protocol }
@@ -167,14 +155,14 @@ function TimerScreen() {
 		});
 		setEditorOpen(true);
 	};
-	const save = async (draft: SavedProtocolDraft) => {
+	const save = async (named: NamedProtocol) => {
 		if (editing?.row) {
-			await updateSavedProtocol(editing.row.id, draft);
+			await updateSavedProtocol(editing.row.id, named);
 			return;
 		}
 		// A new one goes to the bottom of the saved list, which may be off the
 		// screen: it is pointed at and scrolled to, as a copy is.
-		const row = await createSavedProtocol(draft);
+		const row = await createSavedProtocol(named);
 		const key = savedProtocolKey(row.id);
 		setSelected(key);
 		setMade(key);
@@ -182,7 +170,7 @@ function TimerScreen() {
 
 	// The protocol the delete question is about, kept apart from whether the
 	// question is open, so the title does not lose its name while it closes.
-	const [doomed, setDoomed] = useState<SavedRow | null>(null);
+	const [doomed, setDoomed] = useState<SavedProtocolListing | null>(null);
 	const [confirming, setConfirming] = useState(false);
 	// A delete waits for the account to answer first (`store/savedProtocols.ts`),
 	// which offline can take a while; the question stays up, its confirm spent,
@@ -213,7 +201,7 @@ function TimerScreen() {
 
 			<div hidden={tab !== 'protocols'} className="flex flex-col gap-6">
 				{current ? (
-					<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
+					<StickyStrip>
 						<Timer
 							// Remounted when the protocol's numbers change, not only when
 							// another one is picked: an edited saved protocol (#104) is a
@@ -223,7 +211,7 @@ function TimerScreen() {
 							key={`${current.key}|${PROTOCOL_FIELDS.map((f) => current.protocol[f]).join(',')}`}
 							ref={protocolClock}
 							onStart={() => stopwatch.current?.pause()}
-							slot="timer"
+							home="timer"
 							protocol={current.protocol}
 							label={current.label}
 							protocolKey={current.key}
@@ -233,7 +221,7 @@ function TimerScreen() {
 							openOnStart
 							titled={false}
 						/>
-					</div>
+					</StickyStrip>
 				) : null}
 
 				<Section label={m.timer_saved()}>
@@ -339,7 +327,7 @@ function PresetList({
 	selected: ProtocolKey | null;
 	nameId: string;
 	onSelect: (key: ProtocolKey, el: HTMLElement) => void;
-	onDuplicate: (preset: PresetGroup['presets'][number]) => void;
+	onDuplicate: (preset: PresetListing) => void;
 }) {
 	return (
 		<section className="flex flex-col gap-1.5">

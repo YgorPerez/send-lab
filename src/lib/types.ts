@@ -334,10 +334,15 @@ export interface SavedProgram {
  * the source's name in the language it was copied in, and from then on it stays
  * as written, the way a session note does (ADR 0012).
  */
-export interface SavedProtocol {
-	id: SavedProtocolId;
+/** A protocol and the athlete's name for it: what a saved protocol is made of,
+ *  what the editor reads back, and what a copy is kept under. */
+export interface NamedProtocol {
 	name: string;
 	protocol: Protocol;
+}
+
+export interface SavedProtocol extends NamedProtocol {
+	id: SavedProtocolId;
 	/** Epoch ms. Saved protocols list in the order they were made. */
 	createdAt: number;
 }

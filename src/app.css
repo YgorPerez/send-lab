@@ -13,6 +13,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* A phone on its side (#98, spec story 24): landscape, and short enough that a
+   stacked layout runs off the bottom. 32rem is above every phone held sideways
+   (360–430px tall) and below every laptop window, which is landscape too and
+   has the room to stack. A media query, like `lg:` (ADR 0018): one DOM, and
+   nothing in the app tree reads the viewport. Only the full-screen clock uses
+   it — the one screen read from across the room on a phone propped on its side. */
+@custom-variant sideways (@media (orientation: landscape) and (max-height: 32rem));
+
 /* =========================================================================
    THE TOKEN LAYER — Direction A, "dense and calm" (#47, picked on #51)
    =========================================================================

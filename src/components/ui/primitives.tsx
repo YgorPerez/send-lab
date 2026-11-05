@@ -24,6 +24,26 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
 }
 
 /**
+ * A strip held under the 44px app bar while the page scrolls beneath it.
+ *
+ * The clock on Train and on the Timer screen, and the stopwatch: each is the one
+ * element that has to survive scrolling to a set row three cards down, or to the
+ * twentieth protocol in a list. Bled to the page edge so the list does not show
+ * through its sides, and blurred rather than opaque so the scroll still reads.
+ *
+ * Its `backdrop-blur` makes it the containing block for any fixed descendant,
+ * which is why the full-screen clock inside it is a portalled dialog
+ * (`FullScreenClock.tsx`).
+ */
+export function StickyStrip({ children }: { children: ReactNode }) {
+	return (
+		<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
+			{children}
+		</div>
+	);
+}
+
+/**
  * A screen section: heading, optional right-hand meta, body.
  *
  * The gap under the heading is deliberately larger than the gaps within the

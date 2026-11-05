@@ -43,17 +43,21 @@ import {
 import type { AppLocale } from '$lib/store/locale';
 import type { TrainingRecord } from '$lib/store/record';
 import { STUDIES } from '$lib/studies';
+import type { NamedProtocol } from '$lib/types';
 
-export interface PresetRow {
-	/** The preset's identity, and the scope its clock is kept under. */
+/**
+ * Anything the Timer screen lists and the clock can run, ready to show: a
+ * preset or a saved protocol. Not a "row": that word is the store's, for what is
+ * persisted, and a preset never is.
+ */
+export interface ProtocolListing extends NamedProtocol {
+	/** Its identity, and the scope its clock's draft is kept under — the
+	 *  variant's `preset:` key, or the saved protocol's `saved:<id>`. */
 	key: ProtocolKey;
-	exercise: ExerciseId;
-	/** Position among the exercise's variants — not renumbered when a variant
-	 *  without a protocol is skipped. */
-	variant: number;
-	/** The variant's name, in the locale. */
-	name: string;
-	protocol: Protocol;
+	/** What the clock's strip is named: a saved protocol's own name, a preset's
+	 *  exercise and variant, since the group heading it sat under is not on the
+	 *  strip. */
+	label: string;
 	/** `6 × 7s/3s · 4 sets`. */
 	shape: string;
 	/** How long it runs, prepare included, in seconds. */
@@ -62,17 +66,18 @@ export interface PresetRow {
 	copyName: string;
 }
 
-/** One of the athlete's saved protocols, ready to list and to run. */
-export interface SavedRow {
-	/** The scope its clock is kept under — `saved:<id>`. */
-	key: ProtocolKey;
+/** A library variant's protocol, offered as it is. `name` is the variant's, in
+ *  the locale. */
+export interface PresetListing extends ProtocolListing {
+	exercise: ExerciseId;
+	/** Position among the exercise's variants — not renumbered when a variant
+	 *  without a protocol is skipped. */
+	variant: number;
+}
+
+/** One of the athlete's saved protocols. `name` is theirs, as they wrote it. */
+export interface SavedProtocolListing extends ProtocolListing {
 	id: SavedProtocolId;
-	/** The athlete's name for it, as they wrote it. */
-	name: string;
-	protocol: Protocol;
-	shape: string;
-	total: number;
-	copyName: string;
 }
 
 export interface PresetGroup {
@@ -81,13 +86,17 @@ export interface PresetGroup {
 	name: string;
 	/** The study the library cites for this exercise, or `null` if none. */
 	study: { title: string; url: string } | null;
-	presets: PresetRow[];
+	presets: PresetListing[];
 }
 
 export interface TimerScreen {
 	presets: PresetGroup[];
 	/** Oldest first, as the record holds them. */
-	saved: SavedRow[];
+	saved: SavedProtocolListing[];
+	/** Everything the clock can run, in the order the screen lists it: saved
+	 *  first, then every preset group's, so "the first one" is the one at the
+	 *  top. */
+	runnable: ProtocolListing[];
 }
 
 /** Everything the Timer screen reads, in the locale it is read in. */
@@ -99,21 +108,23 @@ export function resolveTimer(
 	const presets: PresetGroup[] = [];
 	for (const [id, ex] of Object.entries(content.exercises)) {
 		const exercise = asExerciseId(id);
-		const rows = ex.variants.flatMap((v, variant): PresetRow[] => {
+		const rows = ex.variants.flatMap((v, variant): PresetListing[] => {
 			const protocol = protocolOf(v);
 			if (!protocol) return [];
+			// The exercise as well as the variant: the strip and a copy both leave
+			// the group that said which exercise "7/3 · 20mm…" was.
+			const label = `${ex.name} · ${v.name}`;
 			return [
 				{
 					key: presetKey(exercise, variant),
 					exercise,
 					variant,
 					name: v.name,
+					label,
 					protocol,
 					shape: protocolShape(protocol, locale),
 					total: totalOf(protocol),
-					// The exercise as well as the variant: a copy leaves the group that
-					// said which exercise "7/3 · 20mm…" was.
-					copyName: copyNameOf(`${ex.name} · ${v.name}`, locale),
+					copyName: copyNameOf(label, locale),
 				},
 			];
 		});
@@ -121,17 +132,18 @@ export function resolveTimer(
 			presets.push({ exercise, name: ex.name, study: studyFor(id, locale), presets: rows });
 	}
 	const saved = record.savedProtocols.map(
-		(p): SavedRow => ({
+		(p): SavedProtocolListing => ({
 			key: savedProtocolKey(p.id),
 			id: p.id,
 			name: p.name,
+			label: p.name,
 			protocol: p.protocol,
 			shape: protocolShape(p.protocol, locale),
 			total: totalOf(p.protocol),
 			copyName: copyNameOf(p.name, locale),
 		}),
 	);
-	return { presets, saved };
+	return { presets, saved, runnable: [...saved, ...presets.flatMap((g) => g.presets)] };
 }
 
 function copyNameOf(name: string, locale: AppLocale): string {
@@ -157,7 +169,7 @@ export interface ProtocolForm {
  *  A refused form still carries its protocol when only the name stops it, so
  *  the editor can show what the numbers add up to before a name is typed. */
 export type FormReading =
-	| { ok: true; name: string; protocol: Protocol }
+	| ({ ok: true } & NamedProtocol)
 	| { ok: false; refused: (ProtocolField | 'name')[]; protocol: Protocol | null };
 
 /** The editor opened on a protocol — the one being edited, or a blank one's
