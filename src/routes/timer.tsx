@@ -2,7 +2,7 @@
 //
 // The clock outside a session: pick a protocol, run it. Nothing here is
 // training — a run records no session, no set and no history — so the screen
-// reads no prescription. What it does keep is the athlete's place in the
+// reads no prescription. What it does keep is the athlete's place in each
 // protocol, as a draft on this device, under the same two rules as Train's
 // (`timerSetup.ts`): it comes back paused, and only for the protocol it was left
 // in.
@@ -43,7 +43,7 @@ import {
 	type SavedProtocolDraft,
 	updateSavedProtocol,
 } from '$lib/store/savedProtocols';
-import { useTimerSetup } from '$lib/timerSetup';
+import { useLastTimerProtocol } from '$lib/timerSetup';
 import { CueSettingsShortcut } from '../components/CueSettings';
 import { type EditorTarget, ProtocolEditor } from '../components/ProtocolEditor';
 import { Stopwatch } from '../components/Stopwatch';
@@ -87,13 +87,14 @@ function TimerScreen() {
 
 	// WHICH PROTOCOL THE CLOCK IS RUNNING, held by identity.
 	//
-	// It opens on the one the athlete left the clock in — the stored draft's scope
-	// names it — so coming back to this screen finds the same clock, paused where
-	// it stopped. Read once, like the draft itself; after that only a tap on a row
-	// changes it, and that tap is a different protocol, which starts clean.
-	const [stored] = useTimerSetup('timer');
+	// It opens on the one the athlete left the clock in, so coming back to this
+	// screen finds the same clock, paused where it stopped. Read once, like the
+	// draft itself; after that only a tap on a row changes it. Each protocol keeps
+	// its own place (`ClockShelf` in `timerSetup.ts`), so a tap on another row and
+	// back finds the first one where it was left.
+	const last = useLastTimerProtocol();
 	const [selected, setSelected] = useState<ProtocolKey | null>(
-		() => runnable.find((r) => r.key === stored?.scope)?.key ?? runnable[0]?.key ?? null,
+		() => runnable.find((r) => r.key === last)?.key ?? runnable[0]?.key ?? null,
 	);
 	// Owned here rather than by the Timer, for the reason Train gives: picking
 	// another protocol remounts the clock, and the dialog should not close with it.
@@ -223,7 +224,7 @@ function TimerScreen() {
 							key={`${current.key}|${PROTOCOL_FIELDS.map((f) => current.protocol[f]).join(',')}`}
 							ref={protocolClock}
 							onStart={() => stopwatch.current?.pause()}
-							slot="timer"
+							home="timer"
 							protocol={current.protocol}
 							label={current.label}
 							protocolKey={current.key}

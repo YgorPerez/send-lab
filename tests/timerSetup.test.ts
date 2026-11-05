@@ -28,7 +28,15 @@ import {
 } from '../src/lib/ids.ts';
 import type { Protocol, Run } from '../src/lib/protocol.ts';
 import { IDLE, planCues } from '../src/lib/protocol.ts';
-import { restored, type TimerSetup, timerDraftKey } from '../src/lib/timerSetup.ts';
+import {
+	draftOn,
+	lastOn,
+	restored,
+	SHELF_LIMIT,
+	shelve,
+	type TimerSetup,
+	timerDraftKey,
+} from '../src/lib/timerSetup.ts';
 
 const CONFIG: Protocol = {
 	prepare: 10,
@@ -216,9 +224,9 @@ describe('a preset’s clock', () => {
 	});
 });
 
-// Train and the Timer screen each keep a clock. Sharing one stored slot made
+// Train and the Timer screen each keep a clock. Sharing one stored draft made
 // each overwrite the other: leave Train mid-protocol for the Timer and back, and
-// Train came back idle. One slot per screen keeps both positions.
+// Train came back idle. One key per screen keeps both positions.
 describe('where each screen’s clock is kept', () => {
 	it('keeps Train’s clock where it has always been, so no draft is lost', () => {
 		expect(timerDraftKey('train')).toBe('sendlab:timer:v1');
@@ -226,5 +234,63 @@ describe('where each screen’s clock is kept', () => {
 
 	it('keeps the Timer screen’s clock apart from Train’s', () => {
 		expect(timerDraftKey('timer')).not.toBe(timerDraftKey('train'));
+	});
+});
+
+// The Timer screen lists every protocol, and a tap on another row is the
+// commonest thing done on it. Its draft is scoped to the protocol (spec: "for a
+// saved protocol that is its id, for a preset its variant"), so it keeps one per
+// protocol: a stray tap away and back finds the place where it was left.
+describe('the Timer screen’s drafts, one per protocol', () => {
+	const A = presetKey(asExerciseId('repeaters'), 0);
+	const B = presetKey(asExerciseId('maxhang'), 1);
+
+	it('keeps a protocol’s place when another one is run', () => {
+		let shelf = shelve(undefined, A, { config: CONFIG, run: MID });
+		shelf = shelve(shelf, B, { config: SEEDED, run: { ...MID, round: 1 } });
+
+		const back = restored(draftOn(shelf, A), A, CONFIG, { fixed: true });
+		expect(back.run).toEqual(MID);
+		expect(back.running).toBe(false);
+	});
+
+	it('remembers the protocol last looked at, even one at the start', () => {
+		let shelf = shelve(undefined, A, { config: CONFIG, run: MID });
+		shelf = shelve(shelf, B, { config: SEEDED, run: IDLE });
+
+		expect(lastOn(shelf)).toBe(B);
+		// Nothing worth keeping for a protocol at its start: no place, and the
+		// numbers are the protocol's own.
+		expect(draftOn(shelf, B)).toBeUndefined();
+		expect(draftOn(shelf, A)).toBeDefined();
+	});
+
+	it('forgets a place once the athlete resets it', () => {
+		let shelf = shelve(undefined, A, { config: CONFIG, run: MID });
+		shelf = shelve(shelf, A, { config: CONFIG, run: IDLE });
+
+		expect(draftOn(shelf, A)).toBeUndefined();
+	});
+
+	it('keeps only the places most recently left', () => {
+		let shelf = shelve(undefined, A, { config: CONFIG, run: MID });
+		for (let i = 0; i < SHELF_LIMIT; i++) {
+			shelf = shelve(shelf, presetKey(asExerciseId('repeaters'), i + 1), {
+				config: CONFIG,
+				run: MID,
+			});
+		}
+
+		expect(shelf.drafts).toHaveLength(SHELF_LIMIT);
+		expect(draftOn(shelf, A)).toBeUndefined();
+	});
+
+	it('reads anything else in storage as nothing kept', () => {
+		for (const junk of [null, 7, 'x', { last: 3 }, { drafts: 'no' }, { drafts: [null] }]) {
+			expect(draftOn(junk, A)).toBeUndefined();
+			expect(lastOn(junk)).toBeUndefined();
+		}
+		// And writing over it starts a clean shelf rather than throwing.
+		expect(draftOn(shelve({ drafts: 'no' }, A, { config: CONFIG, run: MID }), A)).toBeDefined();
 	});
 });

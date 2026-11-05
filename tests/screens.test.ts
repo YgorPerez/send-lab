@@ -680,10 +680,9 @@ describe('a clock restored paused', () => {
 	beforeAll(() => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 	});
-	beforeEach(() => overwriteGetLocale(() => 'en-US'));
-
 	const vibrate = vi.fn();
 	beforeEach(() => {
+		overwriteGetLocale(() => 'en-US');
 		vibrate.mockClear();
 		Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
 	});
@@ -735,6 +734,69 @@ describe('a clock restored paused', () => {
 			expect(vibrate).not.toHaveBeenCalled();
 		} finally {
 			act(() => second.unmount());
+		}
+	});
+});
+
+// A tap on another row is the commonest thing done on the Timer screen, and it
+// used to throw away the place the clock was left in. Each protocol keeps its
+// own (spec: the draft is "scoped to the protocol").
+describe('the Timer screen keeps each protocol’s place', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	/** The protocol rows: pressed-or-not buttons that carry a shape, which the
+	 *  header's language switch does not. */
+	const rows = () =>
+		[...document.querySelectorAll<HTMLButtonElement>('main button[aria-pressed]')].filter((b) =>
+			b.querySelector('.num'),
+		);
+	const stripLabel = () =>
+		document
+			.querySelector('button[aria-label="Full-screen clock"]')
+			?.closest('.rounded-lg')
+			?.querySelector('.uppercase')?.textContent ?? '';
+
+	test('a protocol left paused is still paused there after running another', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			const [first, second] = rows();
+			press(first);
+			press(document.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
+			const clock = () => document.querySelector<HTMLElement>('[role="dialog"]');
+			const reset = clock()?.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
+			if (reset && !reset.disabled) press(reset);
+			press(worded(clock() ?? document, 'Start'));
+			press(
+				clock()?.querySelector<HTMLButtonElement>('button[aria-label="Skip to the next segment"]'),
+			);
+			press(worded(clock() ?? document, 'Pause'));
+			const left = stripLabel();
+			expect(left).toMatch(/^Work/);
+			press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+
+			press(second);
+			expect(stripLabel()).toBe('Ready');
+			press(rows()[0]);
+			expect(stripLabel()).toBe(left);
+			// Paused, as every restored clock is.
+			expect(worded(document, 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
 		}
 	});
 });

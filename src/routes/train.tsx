@@ -191,7 +191,7 @@ function Train() {
 			    survive scrolling to a set row three cards down. */}
 			<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
 				<Timer
-					slot="train"
+					home="train"
 					key={protocolKey}
 					protocol={protocol}
 					label={timerTask?.exName ?? null}

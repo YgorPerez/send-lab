@@ -70,7 +70,7 @@ import {
 	totalOf,
 } from '$lib/protocol';
 import { usePrefs } from '$lib/store/record';
-import { restored, type TimerSlot, useTimerSetup } from '$lib/timerSetup';
+import { type ClockHome, restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
 import { Eyebrow } from './ui/primitives';
@@ -514,7 +514,7 @@ export interface ClockHandle {
 export function Timer({
 	ref,
 	onStart,
-	slot,
+	home,
 	protocol,
 	label,
 	protocolKey,
@@ -529,7 +529,7 @@ export function Timer({
 	onStart?: () => void;
 	/** Which screen's clock this is. Each screen keeps its own place, so leaving
 	 *  one clock for the other never costs either its position (#101). */
-	slot: TimerSlot;
+	home: ClockHome;
 	protocol: Protocol | null;
 	/** The exercise this protocol came from, shown beside the title. Passed
 	 *  beside the protocol rather than welded into it: it is a localized display
@@ -565,7 +565,7 @@ export function Timer({
 	// `config` are React state from here on, because `run` changes every second
 	// and a clock that read its own position back out of storage would be racing
 	// its own writes. The write is one effect, below.
-	const [storedSetup, persistSetup] = useTimerSetup(slot);
+	const [storedSetup, persistSetup] = useTimerSetup(home, protocolKey);
 	const [initial] = useState(() =>
 		restored(storedSetup, protocolKey, protocol ?? BLANK_PROTOCOL, { fixed: !editable }),
 	);
@@ -584,8 +584,8 @@ export function Timer({
 	// `running` is deliberately not in the stored shape, so pausing writes
 	// nothing and the write happens once per tick rather than twice.
 	useEffect(() => {
-		persistSetup(protocolKey, { config, run });
-	}, [persistSetup, protocolKey, config, run]);
+		persistSetup({ config, run });
+	}, [persistSetup, config, run]);
 
 	// The tick. A pure updater over one state object, so there is no stale
 	// closure to hold in a ref — see `protocol.ts`. Re-created when the

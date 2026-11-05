@@ -17,8 +17,9 @@
 //      resume is the correction, and it is theirs to make.
 //   2. **It comes back only for the protocol it was saved under.** The Timer is
 //      remounted per pinned task and variant (`train.tsx`'s `protocolKey`), or
-//      per preset on the Timer screen (`presetKey`), and one exercise's position
-//      shown on another's card is worse than no memory.
+//      per preset or saved protocol on the Timer screen, and one exercise's
+//      position shown on another's card is worse than no memory. Train keeps one
+//      draft; the Timer screen keeps one per protocol (`ClockShelf`).
 //
 // Both are arithmetic, so both live here and not in the component — the same
 // split `protocol.ts` makes, and for the same reason: a component test
@@ -42,24 +43,32 @@ import {
 } from '$lib/protocol';
 
 /**
- * Which screen's clock this is. Each screen keeps its own, because each keeps
- * one: a single shared slot meant leaving Train mid-protocol for the Timer screen
- * (#101) overwrote Train's place, and coming back found it idle. Two slots hold
- * both positions with no map to grow and prune.
+ * Which screen's clock this is: where it lives. Each screen keeps its own, because
+ * a single shared draft meant leaving Train mid-protocol for the Timer screen
+ * (#101) overwrote Train's place, and coming back found it idle.
  *
- * Train's is the key the timer has always used, so a draft written before the
- * split still comes back.
+ * Not "slot": a slot is one weekday of one training week (`CONTEXT.md`), and
+ * Train is the screen that shows them.
  */
-export type TimerSlot = 'train' | 'timer';
+export type ClockHome = 'train' | 'timer';
 
-const KEYS: Record<TimerSlot, string> = {
+/**
+ * Train's is the key the timer has always used, so a draft written before the
+ * split still comes back. It holds one draft: Train shows one pinned protocol at
+ * a time, and moving to another task is moving on from the last one.
+ *
+ * The Timer screen's holds a shelf of them, one per protocol (`ClockShelf`), at
+ * version 2: the first version held one draft, as Train's does, and lost a place
+ * on every tap on another row.
+ */
+const KEYS: Record<ClockHome, string> = {
 	train: ephemeralKey('timer', 1),
-	timer: ephemeralKey('timerScreen', 1),
+	timer: ephemeralKey('timerScreen', 2),
 };
 
 /** The storage key a screen's clock is kept under. */
-export function timerDraftKey(slot: TimerSlot): string {
-	return KEYS[slot];
+export function timerDraftKey(home: ClockHome): string {
+	return KEYS[home];
 }
 
 /** What is worth persisting: the athlete's protocol, and where they were in it.
@@ -113,17 +122,73 @@ export function restored(
 }
 
 /**
- * Persist the athlete's setup and position for this protocol.
+ * The Timer screen's drafts: one per protocol, and which protocol it was last
+ * pointed at.
  *
- * Cross-tab sync off, per #18. Returns the stored value's setter rather than the
- * value: the component owns `config` and `run` as React state — they change every
- * second and the clock cannot read them back through storage — so this is a sink,
- * not a source. The source is `restored()`, read once at mount.
+ * The screen lists every preset and saved protocol, and a tap on another row is
+ * the commonest thing done on it. The draft is scoped to the protocol (spec #98:
+ * "for a saved protocol that is its id, for a preset its variant"), so each
+ * protocol keeps its own place, and a tap away and back finds it where it was.
+ * Each entry is still scoped, and still read through `restored()`: paused, and
+ * only for the protocol it names.
+ *
+ * Only places worth coming back to are kept — a protocol at its start or at its
+ * end has none, and its numbers are the protocol's own — and only the
+ * `SHELF_LIMIT` most recently left, so a draft for a protocol since deleted
+ * falls off the end rather than staying forever.
+ */
+export interface ClockShelf {
+	/** The protocol the clock was last pointed at, place or not. */
+	readonly last: string;
+	/** Most recently left first. */
+	readonly drafts: readonly Scoped<TimerSetup>[];
+}
+
+/** How many protocols keep their place at once. More than the athlete is ever
+ *  part-way through, and few enough that the shelf stays a handful of bytes. */
+export const SHELF_LIMIT = 8;
+
+/** The shelf with `protocolKey`'s place written, or dropped if it has none. */
+export function shelve(stored: unknown, protocolKey: ProtocolKey, setup: TimerSetup): ClockShelf {
+	const others = shelfOf(stored).drafts.filter((d) => d.scope !== protocolKey);
+	const placed = setup.run.segment !== 'idle' && isResumable(setup.run);
+	const drafts = placed ? [scoped(protocolKey, setup), ...others] : others;
+	return { last: protocolKey, drafts: drafts.slice(0, SHELF_LIMIT) };
+}
+
+/** `protocolKey`'s draft on the shelf, ready for `restored()`. */
+export function draftOn(stored: unknown, protocolKey: ProtocolKey): Scoped<TimerSetup> | undefined {
+	return shelfOf(stored).drafts.find((d) => d.scope === protocolKey);
+}
+
+/** The protocol the Timer screen's clock was last pointed at. */
+export function lastOn(stored: unknown): string | undefined {
+	return isRecord(stored) && typeof stored.last === 'string' ? stored.last : undefined;
+}
+
+/** Parsed, not trusted: anything that is not a shelf reads as an empty one. */
+function shelfOf(stored: unknown): ClockShelf {
+	if (!isRecord(stored) || !Array.isArray(stored.drafts)) return { last: '', drafts: [] };
+	const drafts = (stored.drafts as unknown[]).filter(
+		(d): d is Scoped<TimerSetup> => isRecord(d) && typeof d.scope === 'string',
+	);
+	return { last: lastOn(stored) ?? '', drafts };
+}
+
+/**
+ * Persist the athlete's setup and position for this protocol, and hand back the
+ * one stored for it.
+ *
+ * Cross-tab sync off, per #18. The setter is a sink rather than a source: the
+ * component owns `config` and `run` as React state — they change every second
+ * and the clock cannot read them back through storage — and reads the stored
+ * draft once, at mount, through `restored()`.
  */
 export function useTimerSetup(
-	slot: TimerSlot,
-): [Scoped<TimerSetup> | undefined, (protocolKey: ProtocolKey, setup: TimerSetup) => void] {
-	const [stored, setStored] = useLocalStorageState<Scoped<TimerSetup> | undefined>(KEYS[slot], {
+	home: ClockHome,
+	protocolKey: ProtocolKey,
+): [Scoped<TimerSetup> | undefined, (setup: TimerSetup) => void] {
+	const [stored, setStored] = useLocalStorageState<unknown>(KEYS[home], {
 		defaultValue: undefined,
 		storageSync: false,
 	});
@@ -132,10 +197,25 @@ export function useTimerSetup(
 	// every render rather than when the clock actually moved — a `localStorage`
 	// write per render instead of one per tick.
 	const persist = useCallback(
-		(protocolKey: ProtocolKey, setup: TimerSetup) => setStored(scoped(protocolKey, setup)),
-		[setStored],
+		(setup: TimerSetup) =>
+			setStored((prev: unknown) =>
+				home === 'train' ? scoped(protocolKey, setup) : shelve(prev, protocolKey, setup),
+			),
+		[setStored, home, protocolKey],
 	);
-	return [stored, persist];
+	const draft =
+		home === 'train' ? (stored as Scoped<TimerSetup> | undefined) : draftOn(stored, protocolKey);
+	return [draft, persist];
+}
+
+/** The protocol the Timer screen's clock was last pointed at, so the screen
+ *  opens on it. */
+export function useLastTimerProtocol(): string | undefined {
+	const [stored] = useLocalStorageState<unknown>(KEYS.timer, {
+		defaultValue: undefined,
+		storageSync: false,
+	});
+	return lastOn(stored);
 }
 
 function sameProtocol(a: Protocol, b: Protocol): boolean {
