@@ -327,7 +327,7 @@
 	"cues_countdown": "Contar os últimos",
 	"cues_buzz": "Vibrar quando começa esforço ou descanso",
 	"cues_buzz_unsupported": "Este aparelho não vibra. A escolha segue sua conta para um que vibre.",
-	"cues_flash": "Piscar a tela quando começa esforço ou descanso",
+	"cues_flash": "Piscar o relógio a cada troca de segmento",
 	"cues_voice": "Falar cada segmento e a contagem em voz alta",
 	"cues_voice_unsupported": "Este aparelho não tem voz para este idioma. A escolha segue sua conta para um que tenha.",
 	"cues_say_prepare": "Prepare-se",

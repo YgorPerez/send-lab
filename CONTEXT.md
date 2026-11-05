@@ -70,7 +70,7 @@ _Avoid_: gear, kit, apparatus, hardware
 **Preferences**:
 What the athlete has chosen about how the app reads and behaves — display units,
 locale, time zone, whether each notice reaches them, and how the clock's cues
-do (the countdown's length, the buzz, the voice). Part of the training record and carried
+do (the countdown's length, the buzz, the voice, the flash). Part of the training record and carried
 between devices with it, rather than a setting belonging to one phone. **Settings** is the screen that edits them; the preferences are what
 it edits.
 _Avoid_: profile, user settings, app config
@@ -395,9 +395,12 @@ One event in a running protocol the athlete has to be told about while they are
 not looking at the screen — a segment beginning or ending, the final countdown
 (the last 3, 5 or 10 seconds, the athlete's choice), the protocol finishing. It
 is the event and not the sound: one cue has several deliveries, a sound, a buzz,
-a spoken phrase and a notification, and a cue with all of them switched off is
-still the same cue. The phrase names the segment arrived in, or says the
-countdown's number, in the app's language at the moment it is said.
+a spoken phrase, a flash and a notification, and a cue with all of them switched
+off is still the same cue. The phrase names the segment arrived in, or says the
+countdown's number, in the app's language at the moment it is said. The flash
+washes the full-screen clock in the colour of the segment arrived in, so it marks
+a segment change and never a countdown beat; under reduced motion it finishes
+inside one frame, as every animation does (ADR 0011).
 _Avoid_: beep, alert
 
 **Daily notice**:

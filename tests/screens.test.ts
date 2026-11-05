@@ -223,8 +223,8 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// The flash switch (#107), on every device alike.
 			expect(settings).toContain(
 				locale === 'en-US'
-					? 'Flash the screen when work or rest begins'
-					: 'Piscar a tela quando começa esforço ou descanso',
+					? 'Flash the clock at each segment change'
+					: 'Piscar o relógio a cada troca de segmento',
 			);
 			// Whether this device can vibrate is the client's to say. The string
 			// render is the server's, which cannot know, so it says nothing.
