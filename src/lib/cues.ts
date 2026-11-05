@@ -35,8 +35,24 @@
 // Android, has since asked for the buzz back, and this is the one place in the
 // app that has it — a segment change nobody is looking at. Reversed here, for the
 // timer only. Everywhere else the decision stands.
+//
+// THE VOICE (#106)
+// ----------------
+// The planner hands over a message key, never words, and the words are looked
+// up here in the locale that is active when they are said (ADR 0012). Three
+// rules, each about not making the athlete worse off than the beeps alone:
+//
+//   - **No voice for the language, no voice.** A device that lists voices and
+//     none for the locale would read Portuguese in an English voice, which is
+//     noise over the beeps rather than information. One that lists none yet
+//     (Chrome loads them after the first ask) is trusted to pick by `lang`.
+//   - **A phrase never queues.** Each one cancels what is still being said: a
+//     slow voice that falls behind is saying "three" while the clock is on one.
+//   - **Failure is silent**, exactly as the audio's is.
 
-import type { BuzzedCue, Cue, Delivery } from './protocol';
+import * as m from '$lib/paraglide/messages';
+import { getLocale } from '$lib/paraglide/runtime';
+import type { BuzzedCue, Cue, Delivery, SegmentPhrase } from './protocol';
 
 /** One tone, or several played in sequence for a distinct cue. */
 const TONES: Record<Cue, number[]> = {
@@ -133,6 +149,91 @@ function buzz(name: BuzzedCue): void {
 	}
 }
 
+type Speech = Extract<Delivery, { kind: 'speech' }>;
+
+/** The words for each segment's phrase. Keyed by the planner's own type, so a
+ *  segment added to `SEGMENTS` does not compile until it has a message here. */
+const PHRASES: Record<SegmentPhrase, typeof m.cues_say_work> = {
+	cues_say_prepare: m.cues_say_prepare,
+	cues_say_work: m.cues_say_work,
+	cues_say_rest: m.cues_say_rest,
+	cues_say_setrest: m.cues_say_setrest,
+	cues_say_done: m.cues_say_done,
+};
+
+/** The device's speech engine, or null where there is none (jsdom, the server,
+ *  some embedded browsers). */
+function speechEngine(): SpeechSynthesis | null {
+	if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined')
+		return null;
+	return speechSynthesis;
+}
+
+/** `pt_BR`, `pt-br` and `pt-BR` are the same language tag. */
+const tag = (lang: string) => lang.replace('_', '-').toLowerCase();
+
+/**
+ * The voice to say `locale` in: one for the exact locale, else one for the same
+ * language. `null` when the device lists no voices yet, so the engine picks by
+ * `lang`; `undefined` when it lists some and none speaks the language.
+ */
+function voiceFor(
+	engine: SpeechSynthesis,
+	locale: string,
+): SpeechSynthesisVoice | null | undefined {
+	const voices = engine.getVoices();
+	if (voices.length === 0) return null;
+	const wanted = tag(locale);
+	const language = wanted.split('-')[0];
+	return (
+		voices.find((v) => tag(v.lang) === wanted) ??
+		voices.find((v) => tag(v.lang).split('-')[0] === language)
+	);
+}
+
+/**
+ * Whether this device can say the cues in the active language. What the
+ * settings' voice switch reads to say so when it cannot; the voice itself does
+ * not ask, it just stays silent.
+ */
+export function canSpeak(): boolean {
+	try {
+		const engine = speechEngine();
+		return engine !== null && voiceFor(engine, getLocale()) !== undefined;
+	} catch {
+		return false;
+	}
+}
+
+/** Lets a caller re-ask `canSpeak` when the device's voices arrive. */
+export function subscribeVoices(notify: () => void): () => void {
+	const engine = speechEngine();
+	if (!engine) return () => {};
+	engine.addEventListener('voiceschanged', notify);
+	return () => engine.removeEventListener('voiceschanged', notify);
+}
+
+function speak(d: Speech): void {
+	const engine = speechEngine();
+	if (!engine) return;
+	try {
+		const locale = getLocale();
+		const voice = voiceFor(engine, locale);
+		if (voice === undefined) return;
+		const text =
+			d.key === 'cues_say_count'
+				? m.cues_say_count({ n: d.n }, { locale })
+				: PHRASES[d.key]({}, { locale });
+		const utterance = new SpeechSynthesisUtterance(text);
+		utterance.lang = locale;
+		if (voice) utterance.voice = voice;
+		engine.cancel();
+		engine.speak(utterance);
+	} catch {
+		// Not allowed yet, or the engine is gone. The beeps carry the timing.
+	}
+}
+
 /**
  * Deliver what `planCues` decided, in order. Never throws and never awaits — a
  * cue that cannot be delivered is not a reason to interrupt a set. Decides
@@ -148,6 +249,9 @@ export function deliver(deliveries: readonly Delivery[]): void {
 			case 'buzz':
 				buzz(d.cue);
 				break;
+			case 'speech':
+				speak(d);
+				break;
 		}
 	}
 }
@@ -158,6 +262,12 @@ export function deliver(deliveries: readonly Delivery[]): void {
  * and to show a media indicator for a timer that is no longer running.
  */
 export function releaseCues(): void {
+	try {
+		// A phrase still being said when the clock is dismissed would outlive it.
+		speechEngine()?.cancel();
+	} catch {
+		// Nothing to stop.
+	}
 	const ctx = context;
 	context = null;
 	if (ctx && ctx.state !== 'closed') void ctx.close().catch(() => {});
