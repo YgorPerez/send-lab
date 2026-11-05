@@ -16,7 +16,8 @@
 			"!**/*.svg",
 			"!**/app.css",
 			"!src/lib/paraglide",
-			"!src/routeTree.gen.ts"
+			"!src/routeTree.gen.ts",
+			"!.claude/skills/impeccable"
 		]
 	},
 	"formatter": {
