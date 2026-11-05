@@ -666,10 +666,16 @@ describe('the saved-protocol editor', () => {
 		['a field left empty', { setRest: '' }, ['setRest']],
 		['something that is not a number', { prepare: 'ten' }, ['prepare']],
 	])('refuses %s, and says which field', (_what, fields, refused) => {
-		expect(readProtocolForm(typed(fields))).toEqual({ ok: false, refused });
+		expect(readProtocolForm(typed(fields))).toEqual({ ok: false, refused, protocol: null });
 	});
 
-	it('refuses a protocol with no name', () => {
-		expect(readProtocolForm(typed({}, '   '))).toEqual({ ok: false, refused: ['name'] });
+	// Refused for its name alone, the numbers still read: the editor shows what
+	// they add up to while the athlete has not got to the name yet.
+	it('refuses a protocol with no name, and still reads its numbers', () => {
+		expect(readProtocolForm(typed({}, '   '))).toEqual({
+			ok: false,
+			refused: ['name'],
+			protocol: TABATA,
+		});
 	});
 });

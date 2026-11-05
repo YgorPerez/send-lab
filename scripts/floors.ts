@@ -99,13 +99,13 @@ export interface RouteFloor {
  *   `/login`     the sign-in form. 10 either way.
  *   `/settings`  the preferences that work offline. 19 either way.
  *   `/timer`     the Protocols | Stopwatch switch, the saved protocols, the
- *                library's presets, and the clock for the one selected. COUNTS
- *                — two seeded saved protocols (rows, and Delete and Edit on the
- *                selected one) against the empty list's copy, which names both
- *                ways in, and its New protocol button (#103, #104). With one
- *                seeded protocol the two tied: the empty state grew as much as
- *                the one row did. The Stopwatch tab is `hidden` until chosen,
- *                so only its switch counts (#108).
+ *                library's presets, and the clock for the one selected. 116
+ *                seeded, 113 empty — two seeded saved protocols (rows, and
+ *                Delete and Edit on the selected one) against the empty list's
+ *                copy, which names both ways in, and its New protocol button
+ *                (#103, #104). With one seeded protocol the two tied: the empty
+ *                state grew as much as the one row did. The Stopwatch tab is
+ *                `hidden` until chosen, so only its switch counts (#108).
  *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
  *                seeded, 176 empty — the grid is prescribed from the program
  *                before any of it has been trained.

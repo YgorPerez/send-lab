@@ -5,7 +5,14 @@
 // protocol is edited once in a while and read every session, so the list stays a
 // list, and the sheet can give each field a full label and room for the line that
 // says what is wrong with it. pt-BR's "Desaquecimento (s)" does not fit a
-// three-column grid at 360px, so the fields go two to a row.
+// three-column grid at 360px, so the fields go two to a row — paired the way
+// the shape string reads them: work and rest, rounds and sets, the set rest and
+// the cooldown, then prepare.
+//
+// The footer says the protocol back in the list's own words — `8 × 20s/10s ·
+// 2:00 cooldown · 6:00` — as it is typed, so the sheet is a preview of the row
+// it will make. A time field past a minute reads itself back in minutes under
+// the input (`= 2:00`): a cooldown is minutes, typed as seconds.
 //
 // WHAT IT DECIDES, AND WHAT IT DOES NOT
 // -------------------------------------
@@ -21,18 +28,27 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
 import { type FormEvent, type ReactNode, useId, useState } from 'react';
-import { clock } from '$lib/format';
+import { clock, protocolShape } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
-import {
-	PROTOCOL_FIELDS,
-	PROTOCOL_MINIMUM,
-	type Protocol,
-	type ProtocolField,
-	totalOf,
-} from '$lib/protocol';
+import { PROTOCOL_MINIMUM, type Protocol, type ProtocolField, totalOf } from '$lib/protocol';
 import { formOf, type ProtocolForm, readProtocolForm } from '$lib/screens/timer';
+import { cn } from '$lib/utils';
 import { FIELD_LABEL } from './Timer';
 import { button, input } from './ui/variants';
+
+/** The fields in the order the sheet pairs them, two to a row. */
+const EDITOR_ORDER: readonly ProtocolField[] = [
+	'work',
+	'rest',
+	'rounds',
+	'sets',
+	'setRest',
+	'cooldown',
+	'prepare',
+];
+
+/** The counts, as against the seconds: their refusal says "number", not "seconds". */
+const COUNTS: ReadonlySet<ProtocolField> = new Set(['rounds', 'sets']);
 
 /** What the editor is open on: a protocol to make, or one to change. */
 export type EditorTarget =
@@ -54,7 +70,10 @@ export function ProtocolEditor({
 	onSave: (draft: { name: string; protocol: Protocol }) => Promise<void>;
 }) {
 	return (
-		<Dialog.Root open={open} onOpenChange={onOpenChange}>
+		// Not closed by a tap outside it: on a phone the dimmed clock above the
+		// sheet is where a resting thumb lands, and that tap would throw away
+		// everything typed. Cancel, the close button and Escape still close it.
+		<Dialog.Root open={open} onOpenChange={onOpenChange} disablePointerDismissal>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
 				<Dialog.Popup className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-[520px] flex-col rounded-t-xl border border-line bg-panel transition-transform duration-250 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full">
@@ -108,15 +127,20 @@ function EditorForm({
 			return;
 		}
 		setSaving(true);
-		await onSave({ name: reading.name, protocol: reading.protocol });
-		setSaving(false);
+		try {
+			await onSave({ name: reading.name, protocol: reading.protocol });
+		} finally {
+			setSaving(false);
+		}
 		onDone();
 	};
 
 	const title = target.kind === 'new' ? m.timer_editor_new() : m.timer_editor_edit();
-	// The total of what is typed, while it is a protocol; a dash while it is not,
-	// rather than the total of the numbers that happen to parse.
-	const total = reading.ok ? clock(totalOf(reading.protocol)) : '–';
+	// What is typed, said back, while the numbers make a protocol — with or
+	// without a name yet; a dash while they do not, rather than the total of
+	// whichever numbers happen to parse.
+	const protocol = reading.protocol;
+	const summary = protocol ? `${protocolShape(protocol)} · ${clock(totalOf(protocol))}` : '–';
 
 	return (
 		<form noValidate onSubmit={submit} className="flex min-h-0 flex-col">
@@ -144,7 +168,6 @@ function EditorForm({
 							type="text"
 							autoComplete="off"
 							enterKeyHint="next"
-							placeholder={m.timer_name_placeholder()}
 							value={form.name}
 							onChange={(e) => {
 								const name = e.currentTarget.value;
@@ -157,12 +180,13 @@ function EditorForm({
 				</Field>
 
 				<div className="grid grid-cols-2 gap-x-2.5 gap-y-3">
-					{PROTOCOL_FIELDS.map((f) => (
+					{EDITOR_ORDER.map((f) => (
 						<Field
 							key={f}
 							id={`${id}-${f}`}
 							label={FIELD_LABEL[f]()}
-							problem={shown(f) ? m.timer_field_min({ min: PROTOCOL_MINIMUM[f] }) : null}
+							problem={shown(f) ? refusalOf(f) : null}
+							hint={COUNTS.has(f) ? null : minutesOf(form.fields[f])}
 						>
 							{(props) => (
 								<input
@@ -188,35 +212,54 @@ function EditorForm({
 				</div>
 			</div>
 
-			<div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2.5">
-				<p className="num min-w-0 flex-1 text-[12px] text-ink-faint">
-					{m.timer_total()} <span className="text-chalk">{total}</span>
+			<div className="flex flex-col gap-2 border-t border-line px-3 py-2.5">
+				<p className="num text-[12px] leading-snug text-ink-dim">
+					{m.timer_total()} <span className="text-chalk">{summary}</span>
 				</p>
-				<Dialog.Close className={button({ size: 'md', class: 'min-h-11' })}>
-					{m.btn_cancel()}
-				</Dialog.Close>
-				<button
-					type="submit"
-					disabled={saving}
-					className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
-				>
-					{m.btn_save()}
-				</button>
+				<div className="flex flex-wrap justify-end gap-2">
+					<Dialog.Close className={button({ size: 'md', class: 'min-h-11' })}>
+						{m.btn_cancel()}
+					</Dialog.Close>
+					<button
+						type="submit"
+						disabled={saving}
+						className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
+					>
+						{m.btn_save()}
+					</button>
+				</div>
 			</div>
 		</form>
 	);
 }
 
-/** One labelled input and, under it, what is wrong with it if anything is. */
+/** What a refused field is told: a count is a number, everything else seconds. */
+function refusalOf(f: ProtocolField): string {
+	const min = PROTOCOL_MINIMUM[f];
+	return COUNTS.has(f) ? m.timer_field_count_min({ min }) : m.timer_field_seconds_min({ min });
+}
+
+/** `= 2:00` for a time field typed past a minute, or nothing. */
+function minutesOf(typed: string): string | null {
+	const t = typed.trim();
+	if (!/^\d+$/.test(t)) return null;
+	const seconds = Number(t);
+	return seconds >= 60 ? `= ${clock(seconds)}` : null;
+}
+
+/** One labelled input and, under it, what is wrong with it if anything is —
+ *  otherwise the hint, if it has one. */
 function Field({
 	id,
 	label,
 	problem,
+	hint,
 	children,
 }: {
 	id: string;
 	label: string;
 	problem: string | null;
+	hint?: string | null;
 	children: (props: {
 		id: string;
 		'aria-invalid': boolean;
@@ -224,6 +267,7 @@ function Field({
 	}) => ReactNode;
 }) {
 	const problemId = `${id}-problem`;
+	const note = problem ?? hint ?? null;
 	return (
 		<div className="flex min-w-0 flex-col gap-1">
 			{/* Wraps rather than truncates: pt-BR runs longer. */}
@@ -233,11 +277,14 @@ function Field({
 			{children({
 				id,
 				'aria-invalid': problem !== null,
-				'aria-describedby': problem ? problemId : undefined,
+				'aria-describedby': note ? problemId : undefined,
 			})}
-			{problem ? (
-				<p id={problemId} className="text-[11px] leading-snug text-stop">
-					{problem}
+			{note ? (
+				<p
+					id={problemId}
+					className={cn('text-[12px] leading-snug', problem ? 'text-stop' : 'num text-ink-dim')}
+				>
+					{note}
 				</p>
 			) : null}
 		</div>

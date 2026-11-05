@@ -264,7 +264,11 @@ function TimerScreen() {
 									) : null}
 								</div>
 							))}
-							<NewProtocol onClick={() => openEditor(null)} />
+							{/* Set apart from the row above, whose actions end on the same
+							    line: these are the row's, this one is the list's. */}
+							<div className="mt-2">
+								<NewProtocol onClick={() => openEditor(null)} />
+							</div>
 						</div>
 					) : (
 						// The copy names both ways in; the one that is not a preset's

@@ -95,11 +95,14 @@ describe('making a saved protocol on the Timer screen', () => {
 			// about the name until the athlete has had the chance to type one.
 			expect(fieldOf(editor, 'Work (s)')?.value).toBe('10');
 			expect(fieldOf(editor, 'Name')?.getAttribute('aria-invalid')).toBe('false');
+			// The numbers already make a protocol, so it is said back before any
+			// name is typed: one 10s effort after 10s of prepare.
+			expect(editor.textContent).toContain('10s · 0:20');
 
 			// No work: refused beside the field as soon as it is typed.
 			type(fieldOf(editor, 'Work (s)'), '0');
 			expect(fieldOf(editor, 'Work (s)')?.getAttribute('aria-invalid')).toBe('true');
-			expect(editor.textContent).toContain('Whole number, 1 or more');
+			expect(editor.textContent).toContain('Whole seconds, 1 or more');
 
 			// Save with nothing named and no work: nothing is written, and the name
 			// is now asked for too.
@@ -115,8 +118,10 @@ describe('making a saved protocol on the Timer screen', () => {
 			type(fieldOf(editor, 'Rest (s)'), '10');
 			type(fieldOf(editor, 'Rounds'), '8');
 			type(fieldOf(editor, 'Cooldown (s)'), '120');
-			// The total of what is typed: 10 + 8 × 20 + 7 × 10 + 120.
-			expect(editor.textContent).toContain('6:00');
+			// What is typed, said back as the list will say it: 10 + 8 × 20 +
+			// 7 × 10 + 120 = 6:00. And the cooldown, read back in minutes.
+			expect(editor.textContent).toContain('8 × 20s/10s · 2:00 cooldown · 6:00');
+			expect(editor.textContent).toContain('= 2:00');
 			await press(worded(editor, 'Save'));
 
 			expect(saved()).toHaveLength(before + 1);

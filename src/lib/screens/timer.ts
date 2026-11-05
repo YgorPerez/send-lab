@@ -153,10 +153,12 @@ export interface ProtocolForm {
 	fields: Record<ProtocolField, string>;
 }
 
-/** What the form says, read: a protocol to save, or the fields that stop it. */
+/** What the form says, read: a protocol to save, or the fields that stop it.
+ *  A refused form still carries its protocol when only the name stops it, so
+ *  the editor can show what the numbers add up to before a name is typed. */
 export type FormReading =
 	| { ok: true; name: string; protocol: Protocol }
-	| { ok: false; refused: (ProtocolField | 'name')[] };
+	| { ok: false; refused: (ProtocolField | 'name')[]; protocol: Protocol | null };
 
 /** The editor opened on a protocol — the one being edited, or a blank one's
  *  starting numbers. */
@@ -187,5 +189,7 @@ export function readProtocolForm(form: ProtocolForm): FormReading {
 		if (!(value >= PROTOCOL_MINIMUM[f])) refused.push(f);
 		protocol[f] = value;
 	}
-	return refused.length ? { ok: false, refused } : { ok: true, name, protocol };
+	if (!refused.length) return { ok: true, name, protocol };
+	const numbersRead = refused.every((f) => f === 'name');
+	return { ok: false, refused, protocol: numbersRead ? protocol : null };
 }

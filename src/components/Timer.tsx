@@ -125,6 +125,22 @@ function Face({ seconds, className }: { seconds: number; className?: string }) {
 	);
 }
 
+/**
+ * How large the full-screen face can be and still sit inside the ring.
+ *
+ * One size used to serve every reading, and it was chosen for seconds: two
+ * digits at 30vw fill the ring. `2:00` is four glyphs and a colon at the same
+ * size, and it ran through the ring on both sides. A set rest of three minutes
+ * did it before #104; a cooldown, which is usually minutes, did it on every
+ * protocol that had one. So the size steps down with the number of glyphs, and
+ * each step keeps the reading inside the ring's inner width.
+ */
+function faceSize(seconds: number): string {
+	if (seconds < 60) return 'text-[min(30vw,20dvh)]';
+	if (seconds < 600) return 'text-[min(20vw,13dvh)]';
+	return 'text-[min(16vw,10.5dvh)]';
+}
+
 /** Everything the two faces of the timer both read off the run. */
 interface Reading {
 	run: Run;
@@ -170,6 +186,13 @@ function underway(run: Run): boolean {
 	return run.segment !== 'idle' && run.segment !== 'done';
 }
 
+/** Whether a round and a set are worth saying. Not during the cooldown (#104):
+ *  every round and set is behind the athlete by then, and `Round 8/8 · Set 1/1`
+ *  under it reads as still being in the last effort. */
+function counted(run: Run): boolean {
+	return underway(run) && run.segment !== 'cooldown';
+}
+
 /** Where the run is: `Round 3/6 · Set 2/4`. Only while it is underway — before
  *  the start it is a position nobody is in yet (#99's review). */
 function positionOf({ run, config }: Reading): string {
@@ -192,7 +215,7 @@ function secondsSpoken(seconds: number): string {
 function spokenReading(reading: Reading): string {
 	const { run, shown, next } = reading;
 	const parts = [`${SEGMENT_LABEL[run.segment]()}, ${secondsSpoken(shown)}`];
-	if (underway(run)) parts.push(positionOf(reading));
+	if (counted(run)) parts.push(positionOf(reading));
 	if (next) parts.push(`${m.timer_next()}: ${SEGMENT_LABEL[next.segment]()}`);
 	return parts.join('. ');
 }
@@ -209,7 +232,7 @@ function SegmentAnnouncer({ reading }: { reading: Reading }) {
 	return (
 		<p aria-live="polite" className="sr-only">
 			{SEGMENT_LABEL[run.segment]()}
-			{underway(run) ? ` · ${positionOf(reading)}` : ''}
+			{counted(run) ? ` · ${positionOf(reading)}` : ''}
 		</p>
 	);
 }
@@ -338,7 +361,7 @@ function FullScreenClock({
 							</svg>
 							<Face
 								seconds={shown}
-								className="num absolute text-[min(30vw,20dvh)] leading-none font-bold tabular-nums"
+								className={cn('num absolute leading-none font-bold tabular-nums', faceSize(shown))}
 							/>
 						</span>
 
@@ -346,7 +369,7 @@ function FullScreenClock({
 						    where am I in the protocol, what comes next, how far through the
 						    whole thing am I. The athlete asked for Timer Plus's full set —
 						    the prototype had the first line and nothing else. */}
-						{underway(run) ? (
+						{counted(run) ? (
 							<span className="num flex items-center gap-3 text-[15px] text-ink-dim">
 								<span>{m.timer_round({ n: run.round, total: config.rounds })}</span>
 								<span className="text-ink-faint">·</span>
@@ -629,7 +652,7 @@ export function Timer({
 					style={{ color: accent }}
 				>
 					{SEGMENT_LABEL[run.segment]()}
-					{underway(run)
+					{counted(run)
 						? ` · ${m.timer_round({ n: run.round, total: config.rounds })} · ${run.set}/${config.sets}`
 						: ''}
 				</span>
@@ -697,9 +720,9 @@ export function Timer({
 				</div>
 			</div>
 
-			{/* The six configuration fields are collapsed by default.
+			{/* The seven configuration fields are collapsed by default.
 
-			    They were always visible, which put a 3×2 grid of number inputs
+			    They were always visible, which put a grid of number inputs
 			    between the clock and the sets — the thing the athlete is actually
 			    touching all session. The protocol comes prescribed, so these are
 			    edited once, if at all: "você vai provavelmente tá a maior parte do
@@ -734,8 +757,12 @@ export function Timer({
 			{editable && setupOpen ? (
 				<div id="timer-setup" className="grid grid-cols-3 gap-1.5 px-3 pb-2">
 					{PROTOCOL_FIELDS.map((f) => (
-						<label key={f} className="flex min-w-0 flex-col gap-0.5" htmlFor={`t-${f}`}>
-							<span className="microlabel truncate">{FIELD_LABEL[f]()}</span>
+						// The label wraps rather than truncating — pt-BR's
+						// "Desaquecimento (s)" is wider than a third of 360px — and sits
+						// on the input, so a row's inputs line up under labels of one
+						// line and two.
+						<label key={f} className="flex min-w-0 flex-col justify-end gap-0.5" htmlFor={`t-${f}`}>
+							<span className="microlabel break-words">{FIELD_LABEL[f]()}</span>
 							<input
 								id={`t-${f}`}
 								className={input({ class: 'h-9 py-0' })}

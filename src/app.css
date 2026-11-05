@@ -102,7 +102,9 @@
 	   clock: prepare is gold, work vermilion, both rests teal. Violet is the one
 	   accent the clock was not using, so cooldown takes it rather than a fifth
 	   hue — the four accents stay the only chroma on the screen. 7.2:1 on the
-	   ground, 5.6:1 on a panel. */
+	   ground, 5.6:1 on a panel. Violet also marks the pull/power category
+	   (`catVar`) on other screens; the two never share one, and on the clock
+	   it always comes with the segment's name. */
 	--cooldown: var(--violet);
 
 	/* ---- shadcn semantic tokens, mapped to the dark climbing theme ---- */

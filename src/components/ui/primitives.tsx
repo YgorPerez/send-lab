@@ -124,7 +124,9 @@ export function Empty({
 }) {
 	return (
 		<Bare className={cn('flex flex-col items-start gap-2.5', className)}>
-			<p className="prose-inline text-[13px] leading-snug text-ink-dim">
+			{/* `text-pretty`: a two-line sentence that leaves its last word alone
+			    on a third reads as a mistake (#104's review, the Timer's copy). */}
+			<p className="prose-inline text-[13px] leading-snug text-pretty text-ink-dim">
 				<Prose value={value} />
 			</p>
 			{action}
