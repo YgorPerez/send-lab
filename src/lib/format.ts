@@ -21,6 +21,9 @@ import type { Content, Cost, Exercise, Grip, Quality, Range, Region } from '$lib
 import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { variantOf } from '$lib/prescription';
+import type { ExerciseStudy } from '$lib/progression';
+import type { Protocol } from '$lib/protocol';
+import type { AppLocale } from '$lib/store/locale';
 import type { Confidence } from '$lib/strength';
 import type { WorkingLoadSource } from '$lib/types';
 
@@ -175,6 +178,31 @@ export function qualityLabel(q: string): string {
 export function exerciseLabel(exercise: Exercise, index: number): string {
 	return variantOf(exercise, index).name;
 }
+
+/**
+ * A protocol at a glance: `6 × 7s/3s · 4 sets`, `10s · 3 sets`, `20 × 10s/20s`.
+ *
+ * What a row in a list of protocols says instead of six labelled numbers. A
+ * count of one is left out rather than spelled — one round is a single effort,
+ * one set is the whole thing — and so is the rest of a protocol with one round,
+ * which never runs. The locale is an argument because a screen resolver calls it
+ * (#101), and a resolver is a function of what it was handed.
+ */
+export function protocolShape(p: Protocol, locale?: AppLocale): string {
+	const effort =
+		p.rounds > 1 ? `${p.rounds} × ${p.work}s${p.rest > 0 ? `/${p.rest}s` : ''}` : `${p.work}s`;
+	return p.sets > 1 ? `${effort} · ${m.timer_preset_sets({ sets: p.sets }, { locale })}` : effort;
+}
+
+/** The title of each study the library cites for an exercise. */
+export const STUDY_TITLE: Record<ExerciseStudy, typeof m.study_baar_title> = {
+	baar: m.study_baar_title,
+	ferrer: m.study_ferrer_title,
+	lopez: m.study_lopez_title,
+	nelson: m.study_nelson_title,
+	horst: m.study_horst_title,
+	lattice: m.study_lattice_title,
+};
 
 /** mm:ss for a countdown. */
 export function clock(totalSec: number): string {
