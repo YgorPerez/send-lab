@@ -349,6 +349,31 @@ function FullScreenStopwatch({
 			spoken={spokenOf(watch)}
 			toggleLabel={watch.running ? m.btn_pause() : startLabel(watch)}
 			onToggle={onToggle}
+			detail={
+				watch.marks.length > 0 ? (
+					<>
+						<span className="num text-[15px] text-ink-dim">
+							{m.stopwatch_lap_n({ n: current.n })}{' '}
+							<span className="text-chalk">{written(current.time)}</span>
+						</span>
+						{/* The last three, under the strip table's own heads, so the second
+						    number is not left to be guessed at. The whole list is on the
+						    strip, a tap on Close away. */}
+						<span className="num grid grid-cols-3 gap-x-6 gap-y-1 text-right text-[14px] text-ink-faint">
+							<span className="microlabel text-left">{m.stopwatch_lap()}</span>
+							<span className="microlabel">{m.stopwatch_time()}</span>
+							<span className="microlabel">{m.timer_total()}</span>
+							{laps.slice(0, 3).map((l) => (
+								<Fragment key={l.n}>
+									<span className="text-left">{l.n}</span>
+									<span className="text-ink-dim">{written(l.time)}</span>
+									<span>{written(l.total)}</span>
+								</Fragment>
+							))}
+						</span>
+					</>
+				) : null
+			}
 			controls={
 				<>
 					<button
@@ -385,36 +410,14 @@ function FullScreenStopwatch({
 			}
 		>
 			{/* No ring to fit inside, so `--face` comes from the screen: the width
-			    upright, and on its side the height the lap lines leave. */}
+			    upright, and on its side the left column's width and the full height,
+			    the laps being in the right-hand column. */}
 			<span
-				className="[--face:min(43vw,34dvh)] sideways:[--face:min(22vw,40dvh)]"
+				className="[--face:min(43vw,34dvh)] sideways:[--face:min(23vw,70dvh)]"
 				style={{ color: status.face }}
 			>
 				<Face {...face} className={cn('num leading-none font-bold', faceSize(face.whole))} />
 			</span>
-			{watch.marks.length > 0 ? (
-				<>
-					<span className="num text-[15px] text-ink-dim">
-						{m.stopwatch_lap_n({ n: current.n })}{' '}
-						<span className="text-chalk">{written(current.time)}</span>
-					</span>
-					{/* The last three, under the strip table's own heads, so the second
-					    number is not left to be guessed at. The whole list is on the
-					    strip, a tap on Close away. */}
-					<span className="num grid grid-cols-3 gap-x-6 gap-y-1 text-right text-[14px] text-ink-faint">
-						<span className="microlabel text-left">{m.stopwatch_lap()}</span>
-						<span className="microlabel">{m.stopwatch_time()}</span>
-						<span className="microlabel">{m.timer_total()}</span>
-						{laps.slice(0, 3).map((l) => (
-							<Fragment key={l.n}>
-								<span className="text-left">{l.n}</span>
-								<span className="text-ink-dim">{written(l.time)}</span>
-								<span>{written(l.total)}</span>
-							</Fragment>
-						))}
-					</span>
-				</>
-			) : null}
 		</FullScreenClock>
 	);
 }

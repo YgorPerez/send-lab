@@ -20,8 +20,9 @@
 // its side a phone is 360px tall, and that stack ran Start, skip and back off
 // the bottom of the screen; scrolling reached them, which is a floor and not a
 // layout. So `sideways:` (a short landscape viewport, `app.css`) turns the same
-// three blocks into two columns: the face on the left at the height the screen
-// has, the header and the controls on the right, every control on screen. CSS
+// blocks into two columns: the face on the left at the height the screen has,
+// the header, the detail and the controls on the right, every control on screen,
+// and the screen's whole height spent on the number. CSS
 // only, as ADR 0018 rules for the desktop layout and for the same reason: the
 // shell is baked once, before any window exists.
 import { Dialog } from '@base-ui/react/dialog';
@@ -90,6 +91,7 @@ export function FullScreenClock({
 	toggleLabel,
 	onToggle,
 	children,
+	detail,
 	readout,
 	controls,
 	layer,
@@ -108,8 +110,11 @@ export function FullScreenClock({
 	/** What a tap on the face does: Start, Resume or Pause. */
 	toggleLabel: string;
 	onToggle: () => void;
-	/** The face and the lines under it — all of it the tap target. */
+	/** The face: the number, and the ring if it has one. The tap target. */
 	children: ReactNode;
+	/** The lines that say where the run is — round and set, the lap — under the
+	 *  face upright, and in the middle of the right-hand column on its side. */
+	detail?: ReactNode;
 	/** The line above the controls: a protocol's elapsed, left and total. */
 	readout?: ReactNode;
 	/** The control row. 56px each, in the order the clock asks for. */
@@ -137,7 +142,7 @@ export function FullScreenClock({
 					<p id={readingId} className="sr-only">
 						{spoken}
 					</p>
-					<div className="flex items-start gap-2 px-4 pt-4 sideways:col-start-2 sideways:row-start-1">
+					<div className="flex items-start gap-2 px-4 pt-4 lg:mx-auto lg:w-full lg:max-w-[560px] sideways:col-start-2 sideways:row-start-1">
 						<div className="min-w-0 flex-1">
 							<Dialog.Title
 								className="num text-[13px] tracking-wider uppercase"
@@ -155,21 +160,36 @@ export function FullScreenClock({
 						</Dialog.Close>
 					</div>
 
-					{/* The face. Tapping it starts and pauses — the whole point is not
-					    having to find a control with chalky hands — and the buttons
-					    underneath are the tappable equivalent for anyone who does not
-					    discover that, since a gesture is never the only way in. */}
-					<button
-						type="button"
-						onClick={onToggle}
-						aria-label={toggleLabel}
-						aria-describedby={readingId}
-						className="relative flex flex-1 flex-col items-center justify-center gap-4 px-4 sideways:col-start-1 sideways:row-span-3 sideways:row-start-1 sideways:gap-3 sideways:py-3"
-					>
-						{children}
-					</button>
+					{/* The face and its detail, centred together upright. On its side the
+					    wrapper steps out of the way (`display: contents`, the trick
+					    `Panes` uses) so each becomes a cell of its own: the face down the
+					    whole left column at the screen's full height, the detail in the
+					    middle of the right one, where it would otherwise be empty. */}
+					<div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 sideways:contents">
+						{/* Tapping the face starts and pauses — the whole point is not
+						    having to find a control with chalky hands — and the buttons
+						    underneath are the tappable equivalent for anyone who does not
+						    discover that, since a gesture is never the only way in. Upright
+						    it reaches 48px past the face above and below, over the detail
+						    lines, which do nothing when tapped, with the margin taken back so
+						    the layout does not move: a target as wide as the screen. */}
+						<button
+							type="button"
+							onClick={onToggle}
+							aria-label={toggleLabel}
+							aria-describedby={readingId}
+							className="relative z-[1] -my-12 flex items-center justify-center self-stretch py-12 sideways:col-start-1 sideways:row-span-3 sideways:row-start-1 sideways:my-0 sideways:px-4 sideways:py-0"
+						>
+							{children}
+						</button>
+						{detail ? (
+							<div className="flex flex-col items-center gap-4 sideways:col-start-2 sideways:row-start-2 sideways:gap-3 sideways:self-center sideways:px-4">
+								{detail}
+							</div>
+						) : null}
+					</div>
 
-					<div className="flex flex-col gap-2 px-4 pb-6 sideways:col-start-2 sideways:row-start-3 sideways:pb-4">
+					<div className="flex flex-col gap-2 px-4 pb-6 lg:mx-auto lg:w-full lg:max-w-[560px] sideways:col-start-2 sideways:row-start-3 sideways:pb-4">
 						{readout}
 						<div className="mt-1 flex gap-2">{controls}</div>
 					</div>

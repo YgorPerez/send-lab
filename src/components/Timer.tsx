@@ -323,6 +323,32 @@ function ProtocolFullScreen({
 					/>
 				) : null
 			}
+			detail={
+				counted(run) || next ? (
+					<>
+						{/* The indicators, in the order they are asked for mid-session: where am
+						    I in the protocol, what comes next, how far through the whole thing am
+						    I. The athlete asked for Timer Plus's full set — the prototype had the
+						    first line and nothing else. */}
+						{counted(run) ? (
+							<span className="num flex items-center gap-3 text-[15px] text-ink-dim">
+								<span>{m.timer_round({ n: run.round, total: config.rounds })}</span>
+								<span className="text-ink-faint">·</span>
+								<span>{m.timer_set({ n: run.set, total: config.sets })}</span>
+							</span>
+						) : null}
+						{next ? (
+							<span className="num text-[14px] text-ink-faint">
+								{m.timer_next()}{' '}
+								<span style={{ color: SEGMENT_COLOR[next.segment] }}>
+									{SEGMENT_LABEL[next.segment]()}
+								</span>
+								{next.seconds > 0 ? ` · ${clock(next.seconds)}` : ''}
+							</span>
+						) : null}
+					</>
+				) : null
+			}
 			readout={
 				<>
 					<div className="num flex justify-between text-[12px] text-ink-faint">
@@ -390,8 +416,9 @@ function ProtocolFullScreen({
 		>
 			{/* The ring sets the face's size: `--face` is the share of its inner width
 			    a two-glyph reading fills. On its side the screen's height is what
-			    runs out, so the ring takes what the lines under it leave. */}
-			<span className="relative flex items-center justify-center [--face:calc(var(--ring)*0.385)] [--ring:min(78vw,52dvh)] sideways:[--ring:min(44vw,calc(100dvh-8rem))]">
+			    runs out, and the ring takes all of it: the lines that sat under it
+			    upright are in the right-hand column. */}
+			<span className="relative flex items-center justify-center [--face:calc(var(--ring)*0.385)] [--ring:min(78vw,52dvh)] sideways:[--ring:min(44vw,calc(100dvh-2rem))]">
 				<svg viewBox="0 0 100 100" aria-hidden="true" className="size-(--ring) -rotate-90">
 					<circle cx="50" cy="50" r={R} fill="none" stroke="var(--panel-2)" strokeWidth="3" />
 					<circle
@@ -414,27 +441,6 @@ function ProtocolFullScreen({
 					className={cn('num absolute leading-none font-bold tabular-nums', faceSize(face.whole))}
 				/>
 			</span>
-
-			{/* The indicators, in the order they are asked for mid-session: where am
-			    I in the protocol, what comes next, how far through the whole thing am
-			    I. The athlete asked for Timer Plus's full set — the prototype had the
-			    first line and nothing else. */}
-			{counted(run) ? (
-				<span className="num flex items-center gap-3 text-[15px] text-ink-dim">
-					<span>{m.timer_round({ n: run.round, total: config.rounds })}</span>
-					<span className="text-ink-faint">·</span>
-					<span>{m.timer_set({ n: run.set, total: config.sets })}</span>
-				</span>
-			) : null}
-			{next ? (
-				<span className="num text-[14px] text-ink-faint">
-					{m.timer_next()}{' '}
-					<span style={{ color: SEGMENT_COLOR[next.segment] }}>
-						{SEGMENT_LABEL[next.segment]()}
-					</span>
-					{next.seconds > 0 ? ` · ${clock(next.seconds)}` : ''}
-				</span>
-			) : null}
 		</FullScreenClock>
 	);
 }
