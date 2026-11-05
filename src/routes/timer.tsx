@@ -9,16 +9,21 @@
 //
 // The protocols are the **presets**: every library variant that carries one,
 // read-only, computed by `resolveTimer` and never stored. Saved protocols (#103)
-// join them as a second list, and a Protocols | Stopwatch switch (#108) goes
-// above both. Neither is here yet; the layout leaves them their place rather than
-// drawing it empty.
+// join them as a second list.
+//
+// A Protocols | Stopwatch switch (#108) sits above the clock. Both tabs stay
+// mounted and the one not shown is `hidden`, so a protocol left running keeps
+// counting while the athlete looks at the stopwatch — and the rule that only one
+// runs at a time is the press that starts one pausing the other, through each
+// clock's `ClockHandle`, rather than a tab switch that pauses as a side effect.
+// The screen always opens on Protocols, the common case (spec story 2).
 //
 // Same posture as Train, so the same two rules: the clock is sticky, because the
 // list scrolls under it and Start must stay in reach; and every row is a 44px
 // target, the clock's controls 48px.
 import { createFileRoute } from '@tanstack/react-router';
 import { ExternalLink } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { getContent } from '$lib/content';
 import { clock } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
@@ -26,11 +31,15 @@ import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { type PresetGroup, type PresetRow, resolveTimer } from '$lib/screens/timer';
 import { useTimerSetup } from '$lib/timerSetup';
-import { Timer } from '../components/Timer';
+import { Stopwatch } from '../components/Stopwatch';
+import { type ClockHandle, Timer } from '../components/Timer';
 import { Pane, Section } from '../components/ui/primitives';
+import { Segmented } from '../components/ui/Segmented';
 import { option } from '../components/ui/variants';
 
 export const Route = createFileRoute('/timer')({ component: TimerScreen });
+
+type Tab = 'protocols' | 'stopwatch';
 
 function TimerScreen() {
 	const locale = getLocale();
@@ -57,6 +66,9 @@ function TimerScreen() {
 	// another protocol remounts the clock, and the dialog should not close with it.
 	const [clockOpen, setClockOpen] = useState(false);
 	const current = presets.find((p) => p.preset.key === selected) ?? null;
+	const [tab, setTab] = useState<Tab>('protocols');
+	const protocolClock = useRef<ClockHandle>(null);
+	const stopwatch = useRef<ClockHandle>(null);
 
 	return (
 		// Capped, like Train: one list and one clock, and a wider list says nothing
@@ -66,30 +78,48 @@ function TimerScreen() {
 				<h1 className="h-screen-title min-w-0">{m.nav_timer()}</h1>
 			</header>
 
-			{current ? (
-				<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
-					<Timer
-						key={current.preset.key}
-						slot="timer"
-						protocol={current.preset.protocol}
-						label={`${current.group.name} · ${current.preset.name}`}
-						protocolKey={current.preset.key}
-						clockOpen={clockOpen}
-						onClockOpenChange={setClockOpen}
-						editable={false}
-						openOnStart
-						titled={false}
-					/>
-				</div>
-			) : null}
+			<Segmented<Tab>
+				value={tab}
+				options={[
+					{ id: 'protocols', label: m.timer_tab_protocols() },
+					{ id: 'stopwatch', label: m.timer_tab_stopwatch() },
+				]}
+				onChange={setTab}
+				className="flex gap-1.5 *:text-center"
+			/>
 
-			<Section label={m.timer_presets()}>
-				<div className="flex flex-col gap-5">
-					{screen.presets.map((g) => (
-						<PresetList key={g.exercise} group={g} selected={selected} onSelect={setSelected} />
-					))}
-				</div>
-			</Section>
+			<div hidden={tab !== 'protocols'} className="flex flex-col gap-6">
+				{current ? (
+					<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
+						<Timer
+							key={current.preset.key}
+							ref={protocolClock}
+							onStart={() => stopwatch.current?.pause()}
+							slot="timer"
+							protocol={current.preset.protocol}
+							label={`${current.group.name} · ${current.preset.name}`}
+							protocolKey={current.preset.key}
+							clockOpen={clockOpen}
+							onClockOpenChange={setClockOpen}
+							editable={false}
+							openOnStart
+							titled={false}
+						/>
+					</div>
+				) : null}
+
+				<Section label={m.timer_presets()}>
+					<div className="flex flex-col gap-5">
+						{screen.presets.map((g) => (
+							<PresetList key={g.exercise} group={g} selected={selected} onSelect={setSelected} />
+						))}
+					</div>
+				</Section>
+			</div>
+
+			<div hidden={tab !== 'stopwatch'}>
+				<Stopwatch ref={stopwatch} onStart={() => protocolClock.current?.pause()} />
+			</div>
 		</Pane>
 	);
 }

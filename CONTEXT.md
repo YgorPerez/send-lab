@@ -276,6 +276,14 @@ rounds, or resting between sets. Seconds long, and never a phase: a phase spans
 weeks.
 _Avoid_: phase, interval, stage, step
 
+**Lap**:
+One split recorded on the stopwatch: the time from the previous lap (or from
+the start) to the press, shown beside the running total where it ended. Timed
+on the Timer screen's stopwatch, on this device only, and never training: a lap
+is not a set, a round or an attempt logged anywhere, and resetting the
+stopwatch discards it.
+_Avoid_: split, attempt, interval, round
+
 **Trained**:
 A slot is trained once at least one of its tasks is marked complete — including
 exercises the athlete added off-script, which count toward training rather than

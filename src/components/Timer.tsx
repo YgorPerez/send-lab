@@ -25,7 +25,7 @@
 // athlete's rule is that the clock stays up and picks up the new protocol.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronDown, Maximize2, Pause, Play, RotateCcw, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 import { deliver, releaseCues } from '$lib/cues';
 import { clock, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
@@ -46,6 +46,7 @@ import {
 } from '$lib/protocol';
 import { restored, type TimerSlot, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
+import { useWakeLock } from '$lib/wakeLock';
 import { Eyebrow } from './ui/primitives';
 import { button, input } from './ui/variants';
 
@@ -365,7 +366,19 @@ function FullScreenClock({
 	);
 }
 
+/**
+ * What a screen holding two clocks can do to the one it is not looking at: pause
+ * it. The Timer screen's rule is that only one of the protocol clock and the
+ * stopwatch runs at a time (#108), and the one being started is the one that
+ * knows — so it tells the other, through this, from the press itself.
+ */
+export interface ClockHandle {
+	pause: () => void;
+}
+
 export function Timer({
+	ref,
+	onStart,
 	slot,
 	protocol,
 	label,
@@ -376,6 +389,9 @@ export function Timer({
 	openOnStart = false,
 	titled = true,
 }: {
+	ref?: Ref<ClockHandle>;
+	/** Called on Start, so the screen can pause whatever else it was running. */
+	onStart?: () => void;
 	/** Which screen's clock this is. Each screen keeps its own place, so leaving
 	 *  one clock for the other never costs either its position (#101). */
 	slot: TimerSlot;
@@ -478,39 +494,8 @@ export function Timer({
 
 	// Keep the screen on while the clock is counting — not only while the
 	// full-screen clock is up. This is the one screen where the athlete is
-	// deliberately not touching the phone, and a display that blanks 30 seconds
-	// into a hang is worse than no clock at all. The browser drops the lock on
-	// visibility change either way, so it is re-requested when the page returns.
-	useEffect(() => {
-		if (!running) return;
-		const nav = navigator as Navigator & {
-			wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
-		};
-		if (!nav.wakeLock) return;
-		let sentinel: { release: () => Promise<void> } | null = null;
-		let cancelled = false;
-		const acquire = () => {
-			nav.wakeLock
-				?.request('screen')
-				.then((s) => {
-					if (cancelled) void s.release();
-					else sentinel = s;
-				})
-				// Denied or unsupported. Nothing to do and nothing worth telling the
-				// athlete: the clock still runs, the screen just times out as usual.
-				.catch(() => {});
-		};
-		const onVisible = () => {
-			if (document.visibilityState === 'visible') acquire();
-		};
-		acquire();
-		document.addEventListener('visibilitychange', onVisible);
-		return () => {
-			cancelled = true;
-			document.removeEventListener('visibilitychange', onVisible);
-			void sentinel?.release();
-		};
-	}, [running]);
+	// deliberately not touching the phone.
+	useWakeLock(running);
 
 	// Hand the audio hardware back when the timer goes away — leaving the context
 	// open ducks other audio and shows a media indicator for a timer nobody is
@@ -520,6 +505,7 @@ export function Timer({
 	const start = () => {
 		if (run.segment === 'idle' || run.segment === 'done') setRun(beginning(config));
 		setRunning(true);
+		onStart?.();
 		if (openOnStart) onClockOpenChange(true);
 	};
 	const reset = () => {
@@ -527,6 +513,7 @@ export function Timer({
 		setRun(IDLE);
 	};
 	const toggle = () => (running ? setRunning(false) : start());
+	useImperativeHandle(ref, () => ({ pause: () => setRunning(false) }), []);
 
 	const reading = readingOf(run, config, running);
 	const { accent, shown, left, total } = reading;

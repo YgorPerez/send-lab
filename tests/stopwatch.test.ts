@@ -86,7 +86,7 @@ describe('lap arithmetic', () => {
 	// Three boulder attempts and the rest before a fourth: 21.4s, 19.8s, 23.1s.
 	const s = play(start, 21400, lap, 19800, lap, 23100, lap, 4200);
 
-	test("each lap is its own time and the running total where it ended", () => {
+	test('each lap is its own time and the running total where it ended', () => {
 		expect(lapsOf(s)).toEqual([
 			{ n: 1, time: 21400, total: 21400 },
 			{ n: 2, time: 19800, total: 41200 },

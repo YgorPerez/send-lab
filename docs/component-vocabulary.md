@@ -63,7 +63,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
 | `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
-| `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`). Promoted out of Settings by #64 when a second screen needed it |
+| `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`, the Timer screen's `Protocols` / `Stopwatch`). Promoted out of Settings by #64 when a second screen needed it |
 | `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes |
 
 ## The domain pieces — `src/components/`
@@ -74,6 +74,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
 | `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
 | `Timer` | The tick, the wake lock, and the two faces of the clock |
+| `Stopwatch` | The count-up's tick, its laps, and the same two faces — strip and full-screen — in the clock's type and controls |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
 | `ReadinessCheck` | Nine questions, their rationale, and the study behind each |
@@ -82,7 +83,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
 `ids.ts` (identity), `protocol.ts` (the timer's arithmetic, and which cue
-each transition fires), `cues.ts` (playing those cues: its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
+each transition fires), `stopwatch.ts` (the stopwatch's, and its laps), `cues.ts` (playing those cues: its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
 exercise shows, and what a fresh row is prefilled with), `prescription.ts`
 (what a slot runs, and at what numbers), `workingLoad.ts` (which exercises carry
 a working load and what to start one at), `strength.ts` (the size→20mm

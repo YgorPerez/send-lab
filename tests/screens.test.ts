@@ -252,6 +252,46 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(timer).not.toContain('aria-controls="timer-setup"');
 		});
 
+		// The Stopwatch tab (#108). The screen opens on Protocols, with the switch
+		// above the clock; the stopwatch is rendered behind it, hidden, so a
+		// protocol and the stopwatch can both hold their place at once.
+		test('renders the Protocols | Stopwatch switch and the Stopwatch tab', async () => {
+			const timer = await render('/timer');
+			const [protocols, stopwatch] =
+				locale === 'en-US' ? ['Protocols', 'Stopwatch'] : ['Protocolos', 'Cronômetro'];
+			expect(timer).toMatch(new RegExp(`aria-pressed="true"[^>]*>${protocols}<`));
+			expect(timer).toMatch(new RegExp(`aria-pressed="false"[^>]*>${stopwatch}<`));
+			// The switch comes before the clock, and the protocols before the stopwatch.
+			expect(timer.indexOf(`>${stopwatch}<`)).toBeLessThan(timer.indexOf('>Max Hangs<'));
+
+			// The stopwatch tab, hidden until chosen: zero, in the locale's decimal
+			// mark, its controls, and the laps it has not recorded yet.
+			const tab = timer.slice(timer.lastIndexOf('<div hidden'));
+			expect(tab).toContain(`>${stopwatch}<`);
+			expect(tab).toContain(
+				`0:00<span class="text-[0.5em] text-ink-dim">${locale === 'en-US' ? '.0' : ',0'}</span>`,
+			);
+			expect(tab).toContain(locale === 'en-US' ? '>Start<' : '>Iniciar<');
+			expect(tab).toContain(locale === 'en-US' ? '>Lap<' : '>Volta<');
+			expect(tab).toContain(
+				locale === 'en-US'
+					? 'aria-label="Full-screen stopwatch"'
+					: 'aria-label="Cronômetro em tela cheia"',
+			);
+			expect(tab).toContain(locale === 'en-US' ? 'Laps' : 'Voltas');
+			expect(tab).toContain(locale === 'en-US' ? 'No laps yet.' : 'Nenhuma volta ainda.');
+			// What the number reads out: the count and the lap being timed.
+			expect(tab).toContain(
+				locale === 'en-US' ? '0:00.0 elapsed. Lap 1: 0:00.0' : '0:00,0 decorridos. Volta 1: 0:00,0',
+			);
+			// Lap is offered only once the watch runs.
+			expect(tab).toMatch(
+				new RegExp(
+					`disabled=""[^>]*><svg[^]*?</svg>${locale === 'en-US' ? 'Lap' : 'Volta'}</button>`,
+				),
+			);
+		});
+
 		test('puts the chrome on every screen', async () => {
 			for (const path of ['/', '/train', '/timer', '/log', '/login', '/settings']) {
 				const html = await render(path);
