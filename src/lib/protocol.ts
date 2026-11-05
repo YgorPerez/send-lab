@@ -29,8 +29,9 @@
 // setters cannot advance atomically from inside one tick.
 //
 // Ported from the SvelteKit app's `timerStore.svelte.ts`, whose arithmetic is
-// the behavioural reference. The cues it fired are `lib/cues.ts`; the
-// persistence it did by hand belongs to the store (#18).
+// the behavioural reference. Which cues it fired is `planCues`, at the end of
+// this file; playing them is `lib/cues.ts`. The persistence it did by hand
+// belongs to the store (#18).
 
 /** Every segment, in the order a run passes through them.
  *
@@ -190,4 +191,95 @@ export function nextOf(r: Run, c: Protocol): { segment: Segment; seconds: number
 	const next = step({ ...r, remaining: 1 }, c);
 	if (next.segment === 'done') return { segment: 'done', seconds: 0 };
 	return { segment: next.segment, seconds: next.remaining };
+}
+
+/**
+ * One event in a running protocol the athlete has to be told about while they
+ * are not looking at the screen. Named for what happened, never for what it
+ * sounds like: the glossary's **Cue** is the event, and the sound and the buzz
+ * are two of its deliveries (`Delivery`, below).
+ */
+export type Cue =
+	/** The athlete pressed Start. */
+	| 'start'
+	/** Prepare is over — begin the effort. Distinct on purpose. */
+	| 'go'
+	/** An effort ended; rest begins. */
+	| 'rest'
+	/** A rest ended; the next round begins. */
+	| 'work'
+	/** A set ended; the longer between-sets rest begins. */
+	| 'setRest'
+	/** Three, two, one — the last seconds of any segment. */
+	| 'countdown'
+	/** The protocol is finished. */
+	| 'done';
+
+/** The cues that buzz. The countdown does not: it fires three times in three
+ *  seconds, and a phone buzzing continuously reads as a malfunction rather than
+ *  as a countdown. Typed rather than tabled, so `cues.ts` cannot be asked for a
+ *  buzz pattern the planner never plans. */
+export type BuzzedCue = Exclude<Cue, 'countdown'>;
+
+/**
+ * One way a cue reaches the athlete. A discriminated union, so a new delivery
+ * is a new member here and a new branch in `cues.ts`, and the exhaustive switch
+ * there refuses to compile until it is played.
+ */
+export type Delivery = { kind: 'sound'; cue: Cue } | { kind: 'buzz'; cue: BuzzedCue };
+
+/** Which cue announces arriving in a segment. Mirrors the SvelteKit app exactly. */
+const ARRIVAL: Record<Segment, BuzzedCue | null> = {
+	idle: null,
+	prepare: 'start',
+	work: 'work',
+	rest: 'rest',
+	setRest: 'setRest',
+	done: 'done',
+};
+
+/** The last seconds of a segment get their own cue, the way Timer Plus counts in. */
+const COUNTDOWN_FROM = 3;
+
+/**
+ * What the athlete is told when the clock moves from one run to the next.
+ *
+ * Pure, like `step`: the clock component hands it the run it last saw and the
+ * run it sees now, and plays whatever comes back. Every rule about which cue
+ * follows which transition lives here, where a test can reach it, and none in
+ * the component — a decision made inside an effect is one only a browser can
+ * check.
+ *
+ * `running` is part of the input because the component asks again when the
+ * clock is paused or resumed without the run moving: a paused clock counts
+ * nothing down, and one resumed inside the last seconds counts on from there.
+ *
+ * A move to another segment, round or set announces the place it arrived at.
+ * Anything else is the same segment one second on, which is silent until the
+ * countdown.
+ */
+export function planCues({
+	from,
+	to,
+	running,
+}: {
+	from: Run;
+	to: Run;
+	running: boolean;
+}): Delivery[] {
+	if (from.segment === to.segment && from.round === to.round && from.set === to.set) {
+		return running && to.remaining > 0 && to.remaining <= COUNTDOWN_FROM
+			? [{ kind: 'sound', cue: 'countdown' }]
+			: [];
+	}
+	// Prepare handing over to work is the one transition that gets its own
+	// two-note cue: it is the moment the athlete has to move, and a single beep
+	// identical to every other single beep is not enough to act on blind.
+	const cue = from.segment === 'prepare' && to.segment === 'work' ? 'go' : ARRIVAL[to.segment];
+	return cue
+		? [
+				{ kind: 'sound', cue },
+				{ kind: 'buzz', cue },
+			]
+		: [];
 }

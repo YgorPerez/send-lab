@@ -11,11 +11,12 @@
 //
 // WHY IT IS A MODULE AND NOT PART OF THE TIMER COMPONENT
 // -----------------------------------------------------
-// The interval protocol is a pure function (`step` in `components/Timer.tsx`);
-// this is the imperative half, and mixing them is what made the Svelte version
-// impossible to test. Naming the cues after *what happened* rather than after
-// what they sound like also keeps the component out of the audio business: it
-// says `cue('rest')`, not `beep(440)`.
+// The interval protocol is a pure function (`step` in `lib/protocol.ts`), and so
+// is the decision about which cue a transition fires (`planCues`, beside it).
+// This is the imperative half: it plays what it is handed and decides nothing,
+// and mixing the two is what made the Svelte version impossible to test. Naming
+// the cues after *what happened* rather than after what they sound like keeps
+// the planner out of the audio business: it says `'rest'`, not `beep(440)`.
 //
 // ONE AUDIO CONTEXT, NOT ONE PER BEEP
 // -----------------------------------
@@ -35,42 +36,30 @@
 // app that has it — a segment change nobody is looking at. Reversed here, for the
 // timer only. Everywhere else the decision stands.
 
-/** What happened, not what it sounds like. */
-export type Cue =
-	/** The athlete pressed Start. */
-	| 'start'
-	/** Prepare is over — begin the effort. Distinct on purpose. */
-	| 'go'
-	/** An effort ended; rest begins. */
-	| 'rest'
-	/** A rest ended; the next round begins. */
-	| 'work'
-	/** A set ended; the longer between-sets rest begins. */
-	| 'setRest'
-	/** Three, two, one — the last seconds of any segment. */
-	| 'countdown'
-	/** The protocol is finished. */
-	| 'done';
+import type { BuzzedCue, Cue, Delivery } from './protocol';
 
-interface CueSpec {
-	/** One tone, or several played in sequence for a distinct cue. */
-	tones: number[];
-	/** `navigator.vibrate` argument. */
-	buzz: number | number[];
-}
-
-const CUES: Record<Cue, CueSpec> = {
-	start: { tones: [660], buzz: 80 },
+/** One tone, or several played in sequence for a distinct cue. */
+const TONES: Record<Cue, number[]> = {
+	start: [660],
 	// A rising two-note chime, so "go" is the one cue that cannot be mistaken
 	// for any of the single beeps around it.
-	go: { tones: [784, 1175], buzz: 80 },
-	rest: { tones: [440], buzz: 80 },
-	work: { tones: [660], buzz: 80 },
-	setRest: { tones: [330], buzz: 80 },
-	// No buzz: it fires three times in three seconds, and a phone buzzing
-	// continuously reads as a malfunction rather than as a countdown.
-	countdown: { tones: [1000], buzz: 0 },
-	done: { tones: [880], buzz: [140, 70, 140] },
+	go: [784, 1175],
+	rest: [440],
+	work: [660],
+	setRest: [330],
+	countdown: [1000],
+	done: [880],
+};
+
+/** `navigator.vibrate` argument. No countdown entry: the planner never buzzes
+ *  one, and `BuzzedCue` says so — see `protocol.ts`. */
+const BUZZ: Record<BuzzedCue, number | number[]> = {
+	start: 80,
+	go: 80,
+	rest: 80,
+	work: 80,
+	setRest: 80,
+	done: [140, 70, 140],
 };
 
 const GAIN = 0.14;
@@ -119,32 +108,46 @@ function tone(ctx: AudioContext, frequency: number, at: number): void {
 	osc.stop(at + DECAY_SEC);
 }
 
-/**
- * Play a cue and buzz for it. Never throws and never awaits — a cue that cannot
- * be delivered is not a reason to interrupt a set.
- */
-export function cue(name: Cue): void {
-	if (typeof window === 'undefined') return;
-	const spec = CUES[name];
+function sound(name: Cue): void {
 	const ctx = audio();
-	if (ctx) {
-		try {
-			// A context created before the first gesture, or suspended when the app
-			// was backgrounded mid-session, has to be resumed or every cue after it
-			// is silently dropped.
-			if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
-			spec.tones.forEach((frequency, i) => {
-				tone(ctx, frequency, ctx.currentTime + i * NOTE_GAP_SEC);
-			});
-		} catch {
-			// Ignore: see `audio()`.
-		}
+	if (!ctx) return;
+	try {
+		// A context created before the first gesture, or suspended when the app
+		// was backgrounded mid-session, has to be resumed or every cue after it
+		// is silently dropped.
+		if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+		TONES[name].forEach((frequency, i) => {
+			tone(ctx, frequency, ctx.currentTime + i * NOTE_GAP_SEC);
+		});
+	} catch {
+		// Ignore: see `audio()`.
 	}
-	if (spec.buzz && 'vibrate' in navigator) {
-		try {
-			navigator.vibrate(spec.buzz);
-		} catch {
-			// Denied, or an engagement-gated call. Same reasoning as above.
+}
+
+function buzz(name: BuzzedCue): void {
+	if (!('vibrate' in navigator)) return;
+	try {
+		navigator.vibrate(BUZZ[name]);
+	} catch {
+		// Denied, or an engagement-gated call. Same reasoning as above.
+	}
+}
+
+/**
+ * Deliver what `planCues` decided, in order. Never throws and never awaits — a
+ * cue that cannot be delivered is not a reason to interrupt a set. Decides
+ * nothing: which cue a transition gets, and whether it buzzes, is the planner's.
+ */
+export function deliver(deliveries: readonly Delivery[]): void {
+	if (typeof window === 'undefined') return;
+	for (const d of deliveries) {
+		switch (d.kind) {
+			case 'sound':
+				sound(d.cue);
+				break;
+			case 'buzz':
+				buzz(d.cue);
+				break;
 		}
 	}
 }

@@ -11,6 +11,7 @@ import {
 	IDLE,
 	nextOf,
 	type Protocol,
+	planCues,
 	type Run,
 	remainingOf,
 	type Segment,
@@ -174,5 +175,161 @@ describe('the next-up preview', () => {
 	test('has nothing to preview before the start or after the end', () => {
 		expect(nextOf(IDLE, REPEATERS)).toBeNull();
 		expect(nextOf({ segment: 'done', remaining: 0, round: 1, set: 1 }, REPEATERS)).toBeNull();
+	});
+});
+
+// Which cues a transition fires used to be decided inside the clock component,
+// out of reach of any test. These pin today's behaviour — the SvelteKit app's,
+// carried over — so the cue tickets that follow change it on purpose and not by
+// accident.
+describe('the cue planner', () => {
+	const START = beginning(REPEATERS);
+
+	test('pressing Start sounds and buzzes the start cue', () => {
+		expect(planCues({ from: IDLE, to: START, running: true })).toEqual([
+			{ kind: 'sound', cue: 'start' },
+			{ kind: 'buzz', cue: 'start' },
+		]);
+	});
+
+	// No prepare: the run opens on work, and work is what it announces. Only
+	// prepare handing over earns "go".
+	test('pressing Start with no prepare announces work, not go', () => {
+		const c = { ...REPEATERS, prepare: 0 };
+		expect(planCues({ from: IDLE, to: beginning(c), running: true })).toEqual([
+			{ kind: 'sound', cue: 'work' },
+			{ kind: 'buzz', cue: 'work' },
+		]);
+	});
+
+	test.each<{ name: string; from: Run; to: Run; cue: string }>([
+		{
+			name: 'prepare → work',
+			from: { segment: 'prepare', remaining: 1, round: 1, set: 1 },
+			to: { segment: 'work', remaining: 7, round: 1, set: 1 },
+			cue: 'go',
+		},
+		{
+			name: 'work → rest',
+			from: { segment: 'work', remaining: 1, round: 1, set: 1 },
+			to: { segment: 'rest', remaining: 3, round: 2, set: 1 },
+			cue: 'rest',
+		},
+		{
+			name: 'rest → work',
+			from: { segment: 'rest', remaining: 1, round: 2, set: 1 },
+			to: { segment: 'work', remaining: 7, round: 2, set: 1 },
+			cue: 'work',
+		},
+		{
+			name: 'work → work, with no rest between rounds',
+			from: { segment: 'work', remaining: 1, round: 1, set: 1 },
+			to: { segment: 'work', remaining: 7, round: 2, set: 1 },
+			cue: 'work',
+		},
+		{
+			name: 'end of a set → set rest',
+			from: { segment: 'work', remaining: 1, round: 6, set: 1 },
+			to: { segment: 'setRest', remaining: 180, round: 6, set: 1 },
+			cue: 'setRest',
+		},
+		{
+			name: 'set rest → work',
+			from: { segment: 'setRest', remaining: 1, round: 6, set: 1 },
+			to: { segment: 'work', remaining: 7, round: 1, set: 2 },
+			cue: 'work',
+		},
+		{
+			name: 'end of a set → work, with no set rest',
+			from: { segment: 'work', remaining: 1, round: 6, set: 1 },
+			to: { segment: 'work', remaining: 7, round: 1, set: 2 },
+			cue: 'work',
+		},
+		{
+			name: 'the last effort → done',
+			from: { segment: 'work', remaining: 1, round: 6, set: 2 },
+			to: { segment: 'done', remaining: 0, round: 6, set: 2 },
+			cue: 'done',
+		},
+	])('$name sounds and buzzes $cue', ({ from, to, cue }) => {
+		expect(planCues({ from, to, running: true })).toEqual([
+			{ kind: 'sound', cue },
+			{ kind: 'buzz', cue },
+		]);
+	});
+
+	// Three, two, one — sounded, never buzzed.
+	test('counts down the last three seconds of a segment with a sound and no buzz', () => {
+		const at = (remaining: number) =>
+			planCues({
+				from: { segment: 'work', remaining: remaining + 1, round: 1, set: 1 },
+				to: { segment: 'work', remaining, round: 1, set: 1 },
+				running: true,
+			});
+		expect(at(4)).toEqual([]);
+		for (const remaining of [3, 2, 1]) {
+			expect(at(remaining)).toEqual([{ kind: 'sound', cue: 'countdown' }]);
+		}
+	});
+
+	test('a paused clock counts nothing down', () => {
+		const r: Run = { segment: 'rest', remaining: 2, round: 2, set: 1 };
+		expect(planCues({ from: r, to: r, running: false })).toEqual([]);
+	});
+
+	test('resetting to idle is silent', () => {
+		const r: Run = { segment: 'work', remaining: 5, round: 3, set: 1 };
+		expect(planCues({ from: r, to: IDLE, running: false })).toEqual([]);
+	});
+
+	// The whole session, a second at a time, as the clock drives it. What the
+	// athlete hears on a 2-round, 2-set protocol with every segment in it.
+	test('cues a whole session in the order the athlete hears it', () => {
+		const c: Protocol = { prepare: 4, work: 4, rest: 2, rounds: 2, sets: 2, setRest: 5 };
+		const heard: string[] = [];
+		let before = IDLE;
+		let r = beginning(c);
+		for (;;) {
+			for (const d of planCues({ from: before, to: r, running: true })) {
+				heard.push(`${d.kind}:${d.cue}`);
+			}
+			if (r.segment === 'done') break;
+			before = r;
+			r = step(r, c);
+		}
+		const sounds = heard.filter((h) => h.startsWith('sound:')).map((h) => h.slice(6));
+		const buzzes = heard.filter((h) => h.startsWith('buzz:')).map((h) => h.slice(5));
+		const counted = ['countdown', 'countdown', 'countdown'];
+		expect(sounds).toEqual([
+			'start',
+			...counted,
+			'go',
+			...counted,
+			// A 2s rest is announced at 2 and counted only at 1.
+			'rest',
+			'countdown',
+			'work',
+			...counted,
+			'setRest',
+			...counted,
+			'work',
+			...counted,
+			'rest',
+			'countdown',
+			'work',
+			...counted,
+			'done',
+		]);
+		expect(buzzes).toEqual([
+			'start',
+			'go',
+			'rest',
+			'work',
+			'setRest',
+			'work',
+			'rest',
+			'work',
+			'done',
+		]);
 	});
 });
