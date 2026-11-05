@@ -13,11 +13,12 @@
 // WHAT THIS COMPONENT OWNS, AND WHAT IT DOES NOT
 // ----------------------------------------------
 // The protocol arithmetic is `lib/protocol.ts`, pure and unit-tested, and so is
-// the choice of which cue each transition fires (`planCues`); playing the sounds
-// and the buzz is `lib/cues.ts`. What is left here — the tick, the wake
-// lock, and the shape — is the part that genuinely needs a component. See the
-// header of `protocol.ts` for why the split is what it is: it is the
-// vocabulary's answer for anything that advances on a clock.
+// the choice of which cue each transition fires (`planCues`, under the athlete's
+// cue preferences); playing the sounds and the buzz is `lib/cues.ts`. What is
+// left here — the tick, the wake lock, and the shape — is the part that
+// genuinely needs a component. See the header of `protocol.ts` for why the split
+// is what it is: it is the vocabulary's answer for anything that advances on a
+// clock.
 //
 // The full-screen clock's open state is the *parent's*, not this component's.
 // Re-seeding the timer for a different exercise remounts it (the parent keys on
@@ -25,7 +26,7 @@
 // athlete's rule is that the clock stays up and picks up the new protocol.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronDown, Maximize2, Pause, Play, RotateCcw, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { deliver, releaseCues } from '$lib/cues';
 import { clock, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
@@ -44,6 +45,7 @@ import {
 	step,
 	totalOf,
 } from '$lib/protocol';
+import { usePrefs } from '$lib/store/record';
 import { restored, type TimerSlot, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { Eyebrow } from './ui/primitives';
@@ -469,11 +471,21 @@ export function Timer({
 	//
 	// Which cue a transition gets is `planCues`'s decision, not this effect's:
 	// it only remembers the run it last saw and plays what the planner returns.
+	//
+	// The athlete's cue preferences (#105) are read at the moment of the cue, not
+	// when the clock mounted, so a change made mid-run is heard on the next beat.
+	// They are an effect event and not a dependency on purpose: a dependency
+	// would re-run this effect on the change itself, replan the second the clock
+	// is already in, and play its countdown beat twice.
+	const prefs = usePrefs();
+	const cue = useEffectEvent((from: Run, to: Run, isRunning: boolean) => {
+		deliver(planCues({ from, to, running: isRunning }, prefs));
+	});
 	const previous = useRef<Run>(IDLE);
 	useEffect(() => {
 		const from = previous.current;
 		previous.current = run;
-		deliver(planCues({ from, to: run, running }));
+		cue(from, run, running);
 	}, [run, running]);
 
 	// Keep the screen on while the clock is counting — not only while the

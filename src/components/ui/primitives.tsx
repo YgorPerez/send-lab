@@ -70,6 +70,34 @@ export function Bare({ children, className }: { children: ReactNode; className?:
 	return <div className={cn('border-t border-line-soft pt-3', className)}>{children}</div>;
 }
 
+/** One control on its own line: what it is on the left, the control on the right.
+ *  No horizontal padding of its own — inside a `card` the card supplies it, and
+ *  inside a `Bare` the row sits flush with the rule above it.
+ *
+ *  Promoted out of Settings by #105, when the cue settings needed the same row
+ *  in Settings and in the Timer screen's popover. The label wraps rather than
+ *  truncating: pt-BR runs longer, and the control keeps its width. */
+export function ControlRow({
+	id,
+	label,
+	children,
+}: {
+	/** For the control to name itself by: `Switch`'s `labelledBy`, or a
+	 *  `Segmented` group's. */
+	id?: string;
+	label: ReactNode;
+	children: ReactNode;
+}) {
+	return (
+		<div className="flex min-h-11 items-center justify-between gap-3 py-1.5">
+			<span id={id} className="min-w-0 text-[13px] text-ink">
+				{label}
+			</span>
+			{children}
+		</div>
+	);
+}
+
 /**
  * What a group says when it has nothing to list (#61).
  *

@@ -207,6 +207,28 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(settings).toContain('role="switch"');
 		});
 
+		// Cue preferences (#105): one shared component, here and behind the Timer
+		// screen's header control. Settings shows it in full; it reads the store,
+		// so the countdown pressed is the stored one — three, the default.
+		test('renders the cue settings in Settings', async () => {
+			const settings = await render('/settings');
+			expect(settings).toContain(locale === 'en-US' ? 'Timer cues' : 'Sinais do timer');
+			expect(settings).toContain(locale === 'en-US' ? 'Final countdown' : 'Contagem final');
+			expect(settings).toContain(
+				locale === 'en-US' ? 'Vibrate on each change' : 'Vibrar a cada troca',
+			);
+			// The three lengths, with the default the one pressed, labelled as a
+			// group by the row that names them.
+			expect(settings).toMatch(/<fieldset[^>]*aria-labelledby="[^"]+"/);
+			expect(settings).toMatch(/aria-pressed="true"[^>]*>3s</);
+			expect(settings).toMatch(/aria-pressed="false"[^>]*>5s</);
+			expect(settings).toMatch(/aria-pressed="false"[^>]*>10s</);
+			// The buzz is on by default: a checked switch.
+			expect(settings).toMatch(
+				/role="switch"[^>]*aria-checked="true"|aria-checked="true"[^>]*role="switch"/,
+			);
+		});
+
 		// Timer (#101). The presets come from the library, read in the locale, each
 		// with its shape and its length, each exercise linked to the study the
 		// library cites; and the clock is there to run the one selected.
@@ -250,6 +272,23 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			);
 			// A preset is the library's: there is no setup to edit it from here.
 			expect(timer).not.toContain('aria-controls="timer-setup"');
+		});
+
+		// The cue settings' shortcut (#105): one discreet control in the header,
+		// beside the title, opening the same component Settings shows. A closed
+		// popover renders nothing in a string render, so what is asserted is the
+		// control and what it says it opens.
+		test('puts the cue settings behind a control in the Timer header', async () => {
+			const timer = await render('/timer');
+			const header = timer.slice(
+				timer.indexOf('<h1'),
+				timer.indexOf('</header>', timer.indexOf('<h1')),
+			);
+			expect(header).toContain(
+				locale === 'en-US' ? 'aria-label="Timer cues"' : 'aria-label="Sinais do timer"',
+			);
+			expect(header).toContain('aria-haspopup="dialog"');
+			expect(header).toContain('min-h-11');
 		});
 
 		test('puts the chrome on every screen', async () => {

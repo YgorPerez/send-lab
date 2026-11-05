@@ -26,6 +26,7 @@ import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { type PresetGroup, type PresetRow, resolveTimer } from '$lib/screens/timer';
 import { useTimerSetup } from '$lib/timerSetup';
+import { CueSettingsShortcut } from '../components/CueSettings';
 import { Timer } from '../components/Timer';
 import { Pane, Section } from '../components/ui/primitives';
 import { option } from '../components/ui/variants';
@@ -64,6 +65,7 @@ function TimerScreen() {
 		<Pane className="gap-6">
 			<header className="flex items-baseline justify-between gap-2 pt-1.5">
 				<h1 className="h-screen-title min-w-0">{m.nav_timer()}</h1>
+				<CueSettingsShortcut />
 			</header>
 
 			{current ? (

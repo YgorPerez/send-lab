@@ -45,8 +45,9 @@ import {
 	useRefusedWork,
 	useTrainingRecord,
 } from '$lib/store/record';
+import { CueSettings } from '../components/CueSettings';
 import { AlertDialog } from '../components/ui/AlertDialog';
-import { Bare, Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
+import { Bare, ControlRow, Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { Switch } from '../components/ui/Switch';
 import { button, card } from '../components/ui/variants';
@@ -79,31 +80,14 @@ function Settings() {
 
 			<Units prefs={prefs} />
 			<Language />
+			{/* The same rows the Timer screen opens from its header (#105). Two
+			    rows sharing an edge, so a card, as the units are. */}
+			<Section label={m.cues_title()}>
+				<CueSettings className={card({ pad: 'none', class: '[&>*]:px-3' })} />
+			</Section>
 			<Notifications cueNotices={prefs.cueNotices} />
 			<Account online={online} />
 		</Pane>
-	);
-}
-
-/** One control on its own line: what it is on the left, the control on the right.
- *  No horizontal padding of its own — inside a `card` the card supplies it, and
- *  inside a `Bare` the row sits flush with the rule above it. */
-function ControlRow({
-	id,
-	label,
-	children,
-}: {
-	id?: string;
-	label: ReactNode;
-	children: ReactNode;
-}) {
-	return (
-		<div className="flex min-h-11 items-center justify-between gap-3 py-1.5">
-			<span id={id} className="text-[13px] text-ink">
-				{label}
-			</span>
-			{children}
-		</div>
 	);
 }
 
