@@ -12,8 +12,9 @@
 //
 // WHAT THIS COMPONENT OWNS, AND WHAT IT DOES NOT
 // ----------------------------------------------
-// The protocol arithmetic is `lib/protocol.ts`, pure and unit-tested; the
-// sounds and the buzz are `lib/cues.ts`. What is left here — the tick, the wake
+// The protocol arithmetic is `lib/protocol.ts`, pure and unit-tested, and so is
+// the choice of which cue each transition fires (`planCues`); playing the sounds
+// and the buzz is `lib/cues.ts`. What is left here — the tick, the wake
 // lock, and the shape — is the part that genuinely needs a component. See the
 // header of `protocol.ts` for why the split is what it is: it is the
 // vocabulary's answer for anything that advances on a clock.
@@ -25,7 +26,7 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronDown, Maximize2, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { cue, releaseCues } from '$lib/cues';
+import { deliver, releaseCues } from '$lib/cues';
 import { clock } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
@@ -35,6 +36,7 @@ import {
 	IDLE,
 	nextOf,
 	type Protocol,
+	planCues,
 	type Run,
 	remainingOf,
 	type Segment,
@@ -65,16 +67,6 @@ const SEGMENT_COLOR: Record<Segment, string> = {
 	done: 'var(--ink-dim)',
 };
 
-/** Which cue announces arriving in a segment. Mirrors the SvelteKit app exactly. */
-const SEGMENT_CUE = {
-	idle: null,
-	prepare: 'start',
-	work: 'work',
-	rest: 'rest',
-	setRest: 'setRest',
-	done: 'done',
-} as const;
-
 const FIELDS: { key: keyof Protocol; label: () => string }[] = [
 	{ key: 'prepare', label: m.timer_prepare_s },
 	{ key: 'work', label: m.timer_work_s },
@@ -83,9 +75,6 @@ const FIELDS: { key: keyof Protocol; label: () => string }[] = [
 	{ key: 'sets', label: m.timer_sets },
 	{ key: 'setRest', label: m.timer_setrest_s },
 ];
-
-/** The last seconds of a segment get their own cue, the way Timer Plus counts in. */
-const COUNTDOWN_FROM = 3;
 
 /**
  * The clock face: seconds under a minute, `m:ss` over it.
@@ -390,20 +379,14 @@ export function Timer({
 	// a side effect in a state updater is precisely what `react-doctor` fails the
 	// gate on, and it would fire twice under StrictMode besides. The ref is
 	// written in an effect, never during render.
+	//
+	// Which cue a transition gets is `planCues`'s decision, not this effect's:
+	// it only remembers the run it last saw and plays what the planner returns.
 	const previous = useRef<Run>(IDLE);
 	useEffect(() => {
-		const before = previous.current;
+		const from = previous.current;
 		previous.current = run;
-		if (before.segment === run.segment && before.round === run.round && before.set === run.set) {
-			if (running && run.remaining > 0 && run.remaining <= COUNTDOWN_FROM) cue('countdown');
-			return;
-		}
-		// Prepare handing over to work is the one transition that gets its own
-		// two-note cue: it is the moment the athlete has to move, and a single beep
-		// identical to every other single beep is not enough to act on blind.
-		const name =
-			before.segment === 'prepare' && run.segment === 'work' ? 'go' : SEGMENT_CUE[run.segment];
-		if (name) cue(name);
+		deliver(planCues({ from, to: run, running }));
 	}, [run, running]);
 
 	// Keep the screen on while the clock is counting — not only while the
