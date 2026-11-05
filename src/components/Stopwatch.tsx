@@ -37,9 +37,8 @@ import {
 	type Stopwatch as Watch,
 } from '$lib/stopwatch';
 import { restoredStopwatch, useStopwatchDraft } from '$lib/stopwatchDraft';
-import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
-import { type ClockStatus, Face, FullScreenClock, faceSize } from './FullScreenClock';
+import { type ClockStatus, Face, FullScreenClock } from './FullScreenClock';
 import type { ClockHandle } from './Timer';
 import { Empty, Section, StickyStrip } from './ui/primitives';
 import { button } from './ui/variants';
@@ -416,7 +415,7 @@ function FullScreenStopwatch({
 				className="[--face:min(43vw,34dvh)] sideways:[--face:min(23vw,70dvh)]"
 				style={{ color: status.face }}
 			>
-				<Face {...face} className={cn('num leading-none font-bold', faceSize(face.whole))} />
+				<Face {...face} fill className="num leading-none font-bold" />
 			</span>
 		</FullScreenClock>
 	);

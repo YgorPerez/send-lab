@@ -70,7 +70,7 @@ import { usePrefs } from '$lib/store/record';
 import { type ClockHome, restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
-import { Face, FullScreenClock, faceSize } from './FullScreenClock';
+import { Face, FullScreenClock } from './FullScreenClock';
 import { Eyebrow } from './ui/primitives';
 import { button, input } from './ui/variants';
 
@@ -422,10 +422,7 @@ function ProtocolFullScreen({
 						style={{ transition: 'stroke-dashoffset 1s linear' }}
 					/>
 				</svg>
-				<Face
-					{...face}
-					className={cn('num absolute leading-none font-bold tabular-nums', faceSize(face.whole))}
-				/>
+				<Face {...face} fill className="num absolute leading-none font-bold tabular-nums" />
 			</span>
 		</FullScreenClock>
 	);

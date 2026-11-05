@@ -33,31 +33,6 @@ import { cn } from '$lib/utils';
 import { button } from './ui/variants';
 
 /**
- * A clock reading as it is drawn: the part read from the wall, and the part set
- * smaller beside it. A protocol's seconds carry their unit (`7s`), quiet because
- * it is not data; a stopwatch's tenth (`1:04.3`) is a digit, so it stays legible.
- */
-export function Face({
-	whole,
-	unit,
-	fraction,
-	className,
-}: {
-	whole: string;
-	unit?: string;
-	fraction?: string;
-	className?: string;
-}) {
-	return (
-		<span className={className}>
-			{whole}
-			{unit ? <span className="text-[0.38em] text-ink-faint">{unit}</span> : null}
-			{fraction ? <span className="text-[0.5em] text-ink-dim">{fraction}</span> : null}
-		</span>
-	);
-}
-
-/**
  * The full-screen face's size, stepped by how many glyphs it has to fit, as a
  * share of `--face`: the size a two-glyph reading is drawn at, which each clock
  * sets for itself — the protocol's from its ring, the stopwatch's from the
@@ -68,11 +43,41 @@ export function Face({
  * common case a third smaller than it can be. The steps are the ones each clock
  * had measured on its own, which turned out to be the same steps.
  */
-export function faceSize(whole: string): string {
+function faceSize(whole: string): string {
 	if (whole.length <= 2) return 'text-[length:var(--face)]';
 	if (whole.length <= 4) return 'text-[length:calc(var(--face)*0.65)]';
 	if (whole.length <= 5) return 'text-[length:calc(var(--face)*0.52)]';
 	return 'text-[length:calc(var(--face)*0.38)]';
+}
+
+/**
+ * A clock reading as it is drawn: the part read from the wall, and the part set
+ * smaller beside it. A protocol's seconds carry their unit (`7s`), quiet because
+ * it is not data; a stopwatch's tenth (`1:04.3`) is a digit, so it stays legible.
+ *
+ * `fill` sizes it for the full-screen clock, against the `--face` its clock
+ * sets; without it the caller's class sets the size, as the strips' 46px does.
+ */
+export function Face({
+	whole,
+	unit,
+	fraction,
+	fill = false,
+	className,
+}: {
+	whole: string;
+	unit?: string;
+	fraction?: string;
+	fill?: boolean;
+	className?: string;
+}) {
+	return (
+		<span className={cn(className, fill && faceSize(whole))}>
+			{whole}
+			{unit ? <span className="text-[0.38em] text-ink-faint">{unit}</span> : null}
+			{fraction ? <span className="text-[0.5em] text-ink-dim">{fraction}</span> : null}
+		</span>
+	);
 }
 
 /** Where the clock is, in a word and a colour: a segment, or running/paused. */
