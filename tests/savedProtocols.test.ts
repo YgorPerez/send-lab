@@ -42,11 +42,11 @@ const saved = () => readTrainingRecord(recordStore()).savedProtocols;
 
 describe('duplicating a protocol', () => {
 	it('keeps a copy under the name it is given, with the numbers of its source', async () => {
-		const copy = await duplicateProtocol({ name: 'Repeaters (copy)', protocol: REPEATERS }, T0);
+		const copy = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
 
 		expect(saved()).toMatchObject([copy]);
 		expect(saved()).toHaveLength(1);
-		expect(copy).toMatchObject({ name: 'Repeaters (copy)', protocol: REPEATERS, createdAt: T0 });
+		expect(copy).toMatchObject({ name: 'Copy of Repeaters', protocol: REPEATERS, createdAt: T0 });
 	});
 
 	it('gives every copy its own id, even of the same source', async () => {
@@ -95,7 +95,7 @@ describe('deleting a saved protocol', () => {
 
 describe('surviving a reload', () => {
 	it('is still there in a store built over the same storage', async () => {
-		const copy = await duplicateProtocol({ name: 'Repeaters (copy)', protocol: REPEATERS }, T0);
+		const copy = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
 		const gone = await duplicateProtocol({ name: 'Gone', protocol: REPEATERS }, T0 + 1);
 		await deleteSavedProtocol(gone.id);
 

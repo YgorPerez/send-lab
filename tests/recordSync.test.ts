@@ -423,7 +423,7 @@ describe('a write made with the network down', () => {
 		const protocol = { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180 };
 		store.savedProtocols.insert({
 			id: 'kept',
-			name: 'Repeaters (copy)',
+			name: 'Copy of Repeaters',
 			protocol,
 			createdAt: T1,
 		} as never);

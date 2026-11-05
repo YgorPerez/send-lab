@@ -20,7 +20,7 @@
 // target, the clock's controls 48px.
 import { createFileRoute } from '@tanstack/react-router';
 import { ExternalLink } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getContent } from '$lib/content';
 import { clock } from '$lib/format';
 import { type ProtocolKey, savedProtocolKey } from '$lib/ids';
@@ -83,6 +83,30 @@ function TimerScreen() {
 	// top of the list rather than vanishing.
 	const current = runnable.find((r) => r.key === selected) ?? runnable[0] ?? null;
 
+	// THE TAPPED ROW STAYS UNDER THE FINGER.
+	//
+	// The selected row carries its actions on a line of their own, so moving the
+	// selection down the list takes that line away from above the row just tapped
+	// and lifts it 48px out from under the thumb — and a quick second tap, chalky
+	// and one-handed, lands on its neighbour. So the row's position is read at the
+	// tap and the page scrolled by whatever the re-render moved it, before paint.
+	const anchor = useRef<{ el: HTMLElement; top: number } | null>(null);
+	const select = (key: ProtocolKey, el: HTMLElement) => {
+		anchor.current = { el, top: el.getBoundingClientRect().top };
+		setSelected(key);
+	};
+	const currentKey = current?.key;
+	useLayoutEffect(() => {
+		const held = anchor.current;
+		anchor.current = null;
+		if (!held || !currentKey) return;
+		const moved = held.el.getBoundingClientRect().top - held.top;
+		if (moved) window.scrollBy(0, moved);
+	}, [currentKey]);
+	// The selected row's name, which its actions are described by: "Delete" alone
+	// does not say what goes.
+	const nameId = useId();
+
 	// A copy is made where the athlete is not looking — at the top of the list,
 	// while they tapped a preset further down — so the new row is scrolled to.
 	// Once: the ref is stable, so React calls it when the row first mounts and not
@@ -91,8 +115,15 @@ function TimerScreen() {
 	const reveal = useCallback((el: HTMLElement | null) => {
 		el?.scrollIntoView({ block: 'center' });
 	}, []);
+	// A copy is selected and scrolled to the middle of the screen — where its own
+	// Duplicate then sits, under a thumb that may still be coming down for a
+	// second tap. One copy per tap, not two.
+	const lastCopy = useRef(0);
 	const duplicate = async (source: { copyName: string; protocol: Protocol }) => {
-		const row = await duplicateProtocol({ name: source.copyName, protocol: source.protocol });
+		const now = Date.now();
+		if (now - lastCopy.current < 700) return;
+		lastCopy.current = now;
+		const row = await duplicateProtocol({ name: source.copyName, protocol: source.protocol }, now);
 		const key = savedProtocolKey(row.id);
 		setSelected(key);
 		setMade(key);
@@ -102,6 +133,10 @@ function TimerScreen() {
 	// question is open, so the title does not lose its name while it closes.
 	const [doomed, setDoomed] = useState<SavedRow | null>(null);
 	const [confirming, setConfirming] = useState(false);
+	// A delete waits for the account to answer first (`store/savedProtocols.ts`),
+	// which offline can take a while; the question stays up, its confirm spent,
+	// until the row is gone, rather than closing on a row that is still listed.
+	const [deleting, setDeleting] = useState(false);
 
 	return (
 		// Capped, like Train: one list and one clock, and a wider list says nothing
@@ -140,10 +175,12 @@ function TimerScreen() {
 								<ProtocolButton
 									row={s}
 									on={s.key === current?.key}
-									onSelect={() => setSelected(s.key)}
+									nameId={nameId}
+									onSelect={(el) => select(s.key, el)}
 								/>
 								{s.key === current?.key ? (
 									<RowActions
+										describedBy={nameId}
 										onDuplicate={() => void duplicate(s)}
 										onDelete={() => {
 											setDoomed(s);
@@ -166,7 +203,8 @@ function TimerScreen() {
 							key={g.exercise}
 							group={g}
 							selected={current?.key ?? null}
-							onSelect={setSelected}
+							nameId={nameId}
+							onSelect={select}
 							onDuplicate={(p) => void duplicate(p)}
 						/>
 					))}
@@ -180,8 +218,12 @@ function TimerScreen() {
 				description={m.timer_delete_body()}
 				cancel={m.btn_cancel()}
 				confirm={m.btn_delete()}
-				onConfirm={() => {
-					if (doomed) void deleteSavedProtocol(doomed.id);
+				busy={deleting}
+				onConfirm={async () => {
+					if (!doomed) return;
+					setDeleting(true);
+					await deleteSavedProtocol(doomed.id);
+					setDeleting(false);
 					setConfirming(false);
 				}}
 			/>
@@ -193,12 +235,14 @@ function TimerScreen() {
 function PresetList({
 	group,
 	selected,
+	nameId,
 	onSelect,
 	onDuplicate,
 }: {
 	group: PresetGroup;
 	selected: ProtocolKey | null;
-	onSelect: (key: ProtocolKey) => void;
+	nameId: string;
+	onSelect: (key: ProtocolKey, el: HTMLElement) => void;
 	onDuplicate: (preset: PresetGroup['presets'][number]) => void;
 }) {
 	return (
@@ -223,10 +267,17 @@ function PresetList({
 			<div className="flex flex-col gap-1">
 				{group.presets.map((p) => (
 					<div key={p.key} className="flex flex-col gap-1">
-						<ProtocolButton row={p} on={p.key === selected} onSelect={() => onSelect(p.key)} />
+						<ProtocolButton
+							row={p}
+							on={p.key === selected}
+							nameId={nameId}
+							onSelect={(el) => onSelect(p.key, el)}
+						/>
 						{/* A preset is the library's: the one thing to do with it besides
 						    running it is to keep a copy that is the athlete's. */}
-						{p.key === selected ? <RowActions onDuplicate={() => onDuplicate(p)} /> : null}
+						{p.key === selected ? (
+							<RowActions describedBy={nameId} onDuplicate={() => onDuplicate(p)} />
+						) : null}
 					</div>
 				))}
 			</div>
@@ -242,21 +293,24 @@ function PresetList({
 function ProtocolButton({
 	row,
 	on,
+	nameId,
 	onSelect,
 }: {
 	row: { name: string; shape: string; total: number };
 	on: boolean;
-	onSelect: () => void;
+	/** Given to the name only while selected — one row at a time carries it. */
+	nameId: string;
+	onSelect: (el: HTMLElement) => void;
 }) {
 	return (
 		<button
 			type="button"
 			aria-pressed={on}
-			onClick={onSelect}
+			onClick={(e) => onSelect(e.currentTarget)}
 			className={option({ on, width: 'full', class: 'flex min-h-11 items-center gap-3' })}
 		>
 			<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-				<span>{row.name}</span>
+				<span id={on ? nameId : undefined}>{row.name}</span>
 				<span className="num text-[11px] font-normal text-ink-dim">{row.shape}</span>
 			</span>
 			<span className="num shrink-0 text-[12px] font-normal text-ink-dim">{clock(row.total)}</span>
@@ -269,18 +323,42 @@ function ProtocolButton({
  * protocol, never a preset — delete. Labelled buttons on their own line under
  * the row rather than icons on it, because an icon attached to a larger control
  * does not read as one (`component-vocabulary.md`, the measured rules).
+ *
+ * Tight to the row above and clear of the row below, so the line reads as the
+ * selected row's and not as floating between two. Duplicate takes the right
+ * edge, the easy reach for a right thumb, because it is the common one; Delete
+ * is not coloured apart, since colour here reports state, and its question is
+ * what guards it.
  */
-function RowActions({ onDuplicate, onDelete }: { onDuplicate: () => void; onDelete?: () => void }) {
+function RowActions({
+	describedBy,
+	onDuplicate,
+	onDelete,
+}: {
+	describedBy: string;
+	onDuplicate: () => void;
+	onDelete?: () => void;
+}) {
 	return (
-		<div className="flex flex-wrap justify-end gap-2">
-			<button type="button" onClick={onDuplicate} className={button({ class: 'min-h-11' })}>
-				{m.timer_duplicate()}
-			</button>
+		<div className="mb-2 flex flex-wrap justify-end gap-2">
 			{onDelete ? (
-				<button type="button" onClick={onDelete} className={button({ class: 'min-h-11' })}>
+				<button
+					type="button"
+					aria-describedby={describedBy}
+					onClick={onDelete}
+					className={button({ class: 'min-h-11' })}
+				>
 					{m.btn_delete()}
 				</button>
 			) : null}
+			<button
+				type="button"
+				aria-describedby={describedBy}
+				onClick={onDuplicate}
+				className={button({ class: 'min-h-11' })}
+			>
+				{m.timer_duplicate()}
+			</button>
 		</div>
 	);
 }

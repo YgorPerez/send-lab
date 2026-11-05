@@ -499,14 +499,16 @@ describe('Timer', () => {
 	});
 
 	// #103. A copy is named after what it copies, so a preset's copy carries the
-	// exercise as well as the variant: "7/3 · 20mm…" alone could be any hang.
+	// exercise as well as the variant: "7/3 · 20mm…" alone could be any hang. The
+	// "Copy of" goes first, because a long name is cut at its end on a phone and
+	// the clock must still say it is running the copy.
 	it('names a preset’s copy after its exercise and variant', () => {
 		expect(preset('repeaters', 0)?.copyName).toBe(
-			'Repeaters · 7/3 · 20mm half-crimp + open hand (copy)',
+			'Copy of Repeaters · 7/3 · 20mm half-crimp + open hand',
 		);
 		const pt = resolveTimer(getContent('pt-BR'), NONE, 'pt-BR');
 		expect(pt.presets.find((g) => g.exercise === 'repeaters')?.presets[0].copyName).toBe(
-			'Repeaters · 7/3 · 20mm half-crimp + mão aberta (cópia)',
+			'Cópia de Repeaters · 7/3 · 20mm half-crimp + mão aberta',
 		);
 	});
 
@@ -519,7 +521,7 @@ describe('Timer', () => {
 			name: 'Warm-up hangs',
 			shape: '5 × 10s/20s · 2 sets',
 			total: 330,
-			copyName: 'Warm-up hangs (copy)',
+			copyName: 'Copy of Warm-up hangs',
 		});
 		// Filed under its id, so renaming it keeps the athlete's place.
 		expect(saved[0].key).toBe(`saved:${saved[0].id}`);

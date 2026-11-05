@@ -197,7 +197,7 @@ A protocol the athlete named and kept, as part of the training record — made b
 duplicating a preset or another saved protocol, and listed on the Timer screen
 in the order it was made. Identified by an id minted when it is made, never by
 its name (ADR-0003): the name is the athlete's own text, a copy's default being
-its source's name with "(copy)" after it in the language it was copied in, and it
+its source's name after "Copy of" in the language it was copied in, and it
 stays as written from then on. It syncs like the rest of the record. Running one
 records nothing.
 _Avoid_: timer, preset, workout, favourite
