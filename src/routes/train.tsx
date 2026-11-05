@@ -23,10 +23,10 @@ import {
 	type TaskKey,
 	taskKey,
 } from '$lib/ids';
-import { midOf, nextSet, prefilledSet } from '$lib/loggedSet';
+import { nextSet, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import type { Protocol } from '$lib/protocol';
+import { protocolOf } from '$lib/protocol';
 import {
 	atVariant,
 	libraryTask,
@@ -45,20 +45,6 @@ import { Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
-
-/** The protocol the timer runs for a task, or `null` if it has no timings. */
-function protocolOf(task: PrescribedTask): Protocol | null {
-	if (!task.timed) return null;
-	const s = task.prescription;
-	return {
-		prepare: s.prepareSec ?? 10,
-		work: midOf(s.workSec) ?? 10,
-		rest: midOf(s.restSec) ?? 0,
-		rounds: midOf(s.rounds) ?? 1,
-		sets: midOf(s.sets) ?? 1,
-		setRest: midOf(s.setRestSec) ?? 0,
-	};
-}
 
 function Train() {
 	const record = useTrainingRecord();
@@ -169,7 +155,7 @@ function Train() {
 	);
 
 	const timerTask = tasks.find((t) => t.key === pinnedKey && t.timed) ?? null;
-	const protocol = timerTask ? protocolOf(timerTask) : null;
+	const protocol = timerTask ? protocolOf(timerTask.prescription) : null;
 	// The remount boundary, and — since #59 — the scope the timer's stored setup is
 	// filed under. Changing the pinned task, or the variant of the pinned task, is
 	// a different protocol and reseeds; nothing else here does. Minted through
@@ -205,6 +191,7 @@ function Train() {
 			    survive scrolling to a set row three cards down. */}
 			<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
 				<Timer
+					slot="train"
 					key={protocolKey}
 					protocol={protocol}
 					label={timerTask?.exName ?? null}

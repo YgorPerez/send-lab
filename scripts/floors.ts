@@ -65,7 +65,7 @@ export interface RouteFloor {
 	 * The cross-pass control: on a route that reads the record, measuring the same
 	 * count with and without one means the rows were installed where the app never
 	 * looked, which passes every other check a gate makes. It is declared per
-	 * route rather than inferred from the floor, because three of the seven
+	 * route rather than inferred from the floor, because five of the eight
 	 * screens legitimately do not move:
 	 *
 	 *   `/login`     gates its body on a session that cannot resolve in a gate, so
@@ -73,6 +73,7 @@ export interface RouteFloor {
 	 *                it is the one screen whose interesting state is signed *out*.
 	 *   `/settings`  the preferences half reads defaults that exist with no record;
 	 *                the account panels gate on a session, as on `/login`.
+	 *   `/timer`     the presets are the library's, not the record's (#101).
 	 *   `/week`      the seven slots resolve from the program, and the built-in
 	 *                program is there before any history is.
 	 *   `/welcome`   renders one element *fewer* seeded, not more: the baseline is
@@ -98,6 +99,9 @@ export interface RouteFloor {
  *                seeded, 13 empty — the screen #73 was written about.
  *   `/login`     the sign-in form. 10 either way.
  *   `/settings`  the preferences that work offline. 19 either way.
+ *   `/timer`     the library's presets and the clock for the one selected.
+ *                104 either way — it reads no record until saved protocols
+ *                (#103) land.
  *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
  *                seeded, 176 empty — the grid is prescribed from the program
  *                before any of it has been trained.
@@ -110,6 +114,7 @@ export const SEEDED_FLOORS: Record<string, RouteFloor> = {
 	'/log': { floor: 125, readsRecord: true },
 	'/login': { floor: 6, readsRecord: false },
 	'/settings': { floor: 12, readsRecord: false },
+	'/timer': { floor: 75, readsRecord: false },
 	'/train': { floor: 140, readsRecord: true },
 	'/week': { floor: 20, readsRecord: false },
 	'/welcome': { floor: 15, readsRecord: false },

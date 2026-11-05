@@ -16,8 +16,9 @@
 //      on the one screen the athlete is deliberately not looking at. The tap to
 //      resume is the correction, and it is theirs to make.
 //   2. **It comes back only for the protocol it was saved under.** The Timer is
-//      remounted per pinned task and variant (`train.tsx`'s `protocolKey`), and
-//      one exercise's position shown on another's card is worse than no memory.
+//      remounted per pinned task and variant (`train.tsx`'s `protocolKey`), or
+//      per preset on the Timer screen (`presetKey`), and one exercise's position
+//      shown on another's card is worse than no memory.
 //
 // Both are arithmetic, so both live here and not in the component — the same
 // split `protocol.ts` makes, and for the same reason: a component test
@@ -39,7 +40,26 @@ import {
 	type Segment,
 } from '$lib/protocol';
 
-const KEY = ephemeralKey('timer', 1);
+/**
+ * Which screen's clock this is. Each screen keeps its own, because each keeps
+ * one: a single shared slot meant leaving Train mid-protocol for the Timer screen
+ * (#101) overwrote Train's place, and coming back found it idle. Two slots hold
+ * both positions with no map to grow and prune.
+ *
+ * Train's is the key the timer has always used, so a draft written before the
+ * split still comes back.
+ */
+export type TimerSlot = 'train' | 'timer';
+
+const KEYS: Record<TimerSlot, string> = {
+	train: ephemeralKey('timer', 1),
+	timer: ephemeralKey('timerScreen', 1),
+};
+
+/** The storage key a screen's clock is kept under. */
+export function timerDraftKey(slot: TimerSlot): string {
+	return KEYS[slot];
+}
 
 /** What is worth persisting: the athlete's protocol, and where they were in it.
  *  Not `running` — see rule 1; it is never stored and never restored. */
@@ -63,14 +83,20 @@ export interface RestoredTimer {
  * `seeded` is the protocol resolved for the pinned task — what the athlete is
  * being asked to do. It wins whenever the stored setup is for something else, is
  * unusable, or is absent.
+ *
+ * `fixed` is for a protocol the athlete cannot edit — a preset (#101). The seed
+ * is then the only configuration there is, and a stored one that differs from it
+ * means the library moved on: its numbers are dropped and so is the place in
+ * them, for the reason the scope check drops a place in another protocol.
  */
 export function restored(
 	stored: Scoped<TimerSetup> | undefined,
 	protocolKey: ProtocolKey,
 	seeded: Protocol,
+	{ fixed = false }: { fixed?: boolean } = {},
 ): RestoredTimer {
 	const setup = inScope(stored, protocolKey);
-	if (!isConfig(setup?.config)) {
+	if (!isConfig(setup?.config) || (fixed && !sameProtocol(setup.config, seeded))) {
 		// No usable configuration means no usable *position* either: `round 3 of 6`
 		// describes a protocol we no longer have, and carrying it onto the
 		// prescribed one is the same cross-protocol confusion rule 2 exists to
@@ -90,11 +116,10 @@ export function restored(
  * second and the clock cannot read them back through storage — so this is a sink,
  * not a source. The source is `restored()`, read once at mount.
  */
-export function useTimerSetup(): [
-	Scoped<TimerSetup> | undefined,
-	(protocolKey: ProtocolKey, setup: TimerSetup) => void,
-] {
-	const [stored, setStored] = useLocalStorageState<Scoped<TimerSetup> | undefined>(KEY, {
+export function useTimerSetup(
+	slot: TimerSlot,
+): [Scoped<TimerSetup> | undefined, (protocolKey: ProtocolKey, setup: TimerSetup) => void] {
+	const [stored, setStored] = useLocalStorageState<Scoped<TimerSetup> | undefined>(KEYS[slot], {
 		defaultValue: undefined,
 		storageSync: false,
 	});
@@ -115,6 +140,10 @@ export function useTimerSetup(): [
 function isConfig(value: unknown): value is Protocol {
 	if (!isRecord(value)) return false;
 	return PROTOCOL_FIELDS.every((f) => typeof value[f] === 'number' && Number.isFinite(value[f]));
+}
+
+function sameProtocol(a: Protocol, b: Protocol): boolean {
+	return PROTOCOL_FIELDS.every((f) => a[f] === b[f]);
 }
 
 /** A run worth coming back to. `done` is excluded deliberately: it is a clock

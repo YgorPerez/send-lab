@@ -207,8 +207,53 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(settings).toContain('role="switch"');
 		});
 
+		// Timer (#101). The presets come from the library, read in the locale, each
+		// with its shape and its length, each exercise linked to the study the
+		// library cites; and the clock is there to run the one selected.
+		test('renders the Timer screen: the presets and the clock', async () => {
+			const timer = await render('/timer');
+			expect(timer.length).toBeGreaterThan(2000);
+
+			expect(timer).toContain(locale === 'en-US' ? 'Presets' : 'Predefinidos');
+			// An exercise and one of its variants, in the locale.
+			expect(timer).toContain(locale === 'en-US' ? 'Max Hangs' : 'Max Hangs');
+			expect(timer).toContain(
+				locale === 'en-US'
+					? '7/3 · 20mm half-crimp + open hand'
+					: '7/3 · 20mm half-crimp + mão aberta',
+			);
+			// Its shape and its total, 12:58 for four sets of 7/3 repeaters.
+			expect(timer).toContain(locale === 'en-US' ? '6 × 7s/3s · 4 sets' : '6 × 7s/3s · 4 séries');
+			expect(timer).toContain('12:58');
+			// The study, linked out.
+			expect(timer).toContain('href="https://pubmed.ncbi.nlm.nih.gov/33647876/"');
+			expect(timer).toContain(
+				locale === 'en-US' ? 'Critical force &amp; endurance' : 'Força crítica e resistência',
+			);
+			// The clock: its strip, its Start, and the way into the full-screen face.
+			// The strip is named by the preset it runs, not by "Interval timer",
+			// which would repeat the page's own title.
+			expect(timer).not.toContain(locale === 'en-US' ? 'Interval timer' : 'Timer de intervalos');
+			// What the clock reads, said for a screen reader rather than hidden
+			// behind the button's label (#99's review): the idle number is the
+			// prepare length, and it says so.
+			expect(timer).toContain(
+				locale === 'en-US'
+					? 'Ready, 10 seconds. Next up: Prepare'
+					: 'Pronto, 10 segundos. A seguir: Preparar',
+			);
+			expect(timer).toContain(locale === 'en-US' ? '>Start<' : '>Iniciar<');
+			expect(timer).toContain(
+				locale === 'en-US'
+					? 'aria-label="Full-screen clock"'
+					: 'aria-label="Relógio em tela cheia"',
+			);
+			// A preset is the library's: there is no setup to edit it from here.
+			expect(timer).not.toContain('aria-controls="timer-setup"');
+		});
+
 		test('puts the chrome on every screen', async () => {
-			for (const path of ['/', '/train', '/log', '/login', '/settings']) {
+			for (const path of ['/', '/train', '/timer', '/log', '/login', '/settings']) {
 				const html = await render(path);
 				// The navigation, and the view-transition names the `app.css` rules
 				// pair with. A renamed name silently re-animates the chrome, which is
@@ -233,7 +278,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		// reason that has nothing to do with design. `Prose` tokenises instead of
 		// injecting (never `dangerouslySetInnerHTML` on localized strings).
 		test('renders inline emphasis rather than escaping it', async () => {
-			for (const path of ['/', '/train', '/log']) {
+			for (const path of ['/', '/train', '/timer', '/log']) {
 				const html = await render(path);
 				expect(html).not.toContain('&lt;b&gt;');
 				expect(html).not.toContain('&lt;/b&gt;');
@@ -255,7 +300,7 @@ describe('the vocabulary holds across the screens', () => {
 	// on one page is how that unravels. `/login` is excluded: its body does not
 	// render without a session (see above).
 	test('every screen sets exactly one screen title, in the top rank', async () => {
-		for (const path of ['/', '/train', '/log', '/settings']) {
+		for (const path of ['/', '/train', '/timer', '/log', '/settings']) {
 			const html = await render(path);
 			expect(html.match(/h-screen-title/g) ?? [], path).toHaveLength(1);
 		}
@@ -267,5 +312,12 @@ describe('the vocabulary holds across the screens', () => {
 		const train = await render('/train');
 		expect(train).toMatch(/min-h-1[12]/);
 		expect(train).toContain('min-h-12');
+		// The Timer screen runs the same clock, and its preset rows are picked
+		// between sets: neither goes under the floor.
+		const timer = await render('/timer');
+		// The screen only: the shell's own locale switch is not this rule's.
+		const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+		expect(screen).toContain('min-h-12');
+		expect(screen).not.toMatch(/min-h-(8|9|10)\b/);
 	});
 });

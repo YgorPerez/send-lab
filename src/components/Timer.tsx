@@ -25,9 +25,9 @@
 // athlete's rule is that the clock stays up and picks up the new protocol.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronDown, Maximize2, Pause, Play, RotateCcw, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { deliver, releaseCues } from '$lib/cues';
-import { clock } from '$lib/format';
+import { clock, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -44,7 +44,7 @@ import {
 	step,
 	totalOf,
 } from '$lib/protocol';
-import { restored, useTimerSetup } from '$lib/timerSetup';
+import { restored, type TimerSlot, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { Eyebrow } from './ui/primitives';
 import { button, input } from './ui/variants';
@@ -119,9 +119,67 @@ function readingOf(run: Run, config: Protocol, running: boolean): Reading {
 		left: remainingOf(run, config),
 		total: totalOf(config),
 		accent: SEGMENT_COLOR[run.segment],
-		next: nextOf(run, config),
+		// Before the start, "next" is what the number on the clock is the length
+		// of — otherwise an idle `10s` beside `Ready` says nothing about which ten
+		// seconds they are (#99's review).
+		next: run.segment === 'idle' ? firstOf(config) : nextOf(run, config),
 		running,
 	};
+}
+
+/** The segment a run starts in, and how long it is. */
+function firstOf(config: Protocol): { segment: Segment; seconds: number } {
+	const { segment, remaining } = beginning(config);
+	return { segment, seconds: remaining };
+}
+
+/** Whether the run is inside the protocol, rather than before or after it. */
+function underway(run: Run): boolean {
+	return run.segment !== 'idle' && run.segment !== 'done';
+}
+
+/** Where the run is: `Round 3/6 · Set 2/4`. Only while it is underway — before
+ *  the start it is a position nobody is in yet (#99's review). */
+function positionOf({ run, config }: Reading): string {
+	return `${m.timer_round({ n: run.round, total: config.rounds })} · ${m.timer_set({ n: run.set, total: config.sets })}`;
+}
+
+/** The seconds on the clock, as words a screen reader says well — `0:07` reads
+ *  out as "zero colon zero seven". */
+function secondsSpoken(seconds: number): string {
+	return seconds >= 60 ? clock(seconds) : m.timer_seconds({ n: seconds });
+}
+
+/**
+ * The clock, said rather than shown, for whoever cannot see it (spec story 56).
+ *
+ * The face is a button labelled with what it does, and a label replaces a
+ * control's content, so the number inside it was never read out (#99's review).
+ * This is the description the face and the strip's number point at instead.
+ */
+function spokenReading(reading: Reading): string {
+	const { run, shown, next } = reading;
+	const parts = [`${SEGMENT_LABEL[run.segment]()}, ${secondsSpoken(shown)}`];
+	if (underway(run)) parts.push(positionOf(reading));
+	if (next) parts.push(`${m.timer_next()}: ${SEGMENT_LABEL[next.segment]()}`);
+	return parts.join('. ');
+}
+
+/**
+ * Announces a segment change, politely, and nothing else.
+ *
+ * Its text changes only when the segment, round or set does — never with the
+ * second — so it speaks at the moments the beep sounds and stays quiet between
+ * them. A region that held the countdown would talk over the whole hang.
+ */
+function SegmentAnnouncer({ reading }: { reading: Reading }) {
+	const { run } = reading;
+	return (
+		<p aria-live="polite" className="sr-only">
+			{SEGMENT_LABEL[run.segment]()}
+			{underway(run) ? ` · ${positionOf(reading)}` : ''}
+		</p>
+	);
 }
 
 /** Session progress, under both clocks. */
@@ -173,6 +231,7 @@ function FullScreenClock({
 	// already on the lines underneath.
 	const R = 46;
 	const CIRC = 2 * Math.PI * R;
+	const readingId = useId();
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -181,6 +240,10 @@ function FullScreenClock({
 					aria-label={segmentLabel}
 					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
 				>
+					<SegmentAnnouncer reading={reading} />
+					<p id={readingId} className="sr-only">
+						{spokenReading(reading)}
+					</p>
 					<div className="flex items-start gap-2 px-4 pt-4">
 						<div className="min-w-0 flex-1">
 							<Dialog.Title
@@ -207,6 +270,7 @@ function FullScreenClock({
 						type="button"
 						onClick={onToggle}
 						aria-label={running ? m.btn_pause() : m.btn_start()}
+						aria-describedby={readingId}
 						className="relative flex flex-1 flex-col items-center justify-center gap-4 px-4"
 					>
 						<span className="relative flex items-center justify-center">
@@ -241,13 +305,13 @@ function FullScreenClock({
 						    where am I in the protocol, what comes next, how far through the
 						    whole thing am I. The athlete asked for Timer Plus's full set —
 						    the prototype had the first line and nothing else. */}
-						<span className="num flex items-center gap-3 text-[15px] text-ink-dim">
-							<span>{m.timer_round({ n: run.round, total: config.rounds })}</span>
-							<span className="text-ink-faint">·</span>
-							<span>
-								{m.timer_sets()} {run.set}/{config.sets}
+						{underway(run) ? (
+							<span className="num flex items-center gap-3 text-[15px] text-ink-dim">
+								<span>{m.timer_round({ n: run.round, total: config.rounds })}</span>
+								<span className="text-ink-faint">·</span>
+								<span>{m.timer_set({ n: run.set, total: config.sets })}</span>
 							</span>
-						</span>
+						) : null}
 						{next ? (
 							<span className="num text-[14px] text-ink-faint">
 								{m.timer_next()}{' '}
@@ -302,12 +366,19 @@ function FullScreenClock({
 }
 
 export function Timer({
+	slot,
 	protocol,
 	label,
 	protocolKey,
 	clockOpen,
 	onClockOpenChange,
+	editable = true,
+	openOnStart = false,
+	titled = true,
 }: {
+	/** Which screen's clock this is. Each screen keeps its own place, so leaving
+	 *  one clock for the other never costs either its position (#101). */
+	slot: TimerSlot;
 	protocol: Protocol | null;
 	/** The exercise this protocol came from, shown beside the title. Passed
 	 *  beside the protocol rather than welded into it: it is a localized display
@@ -322,6 +393,17 @@ export function Timer({
 	/** Owned by the parent so re-seeding does not close the clock. */
 	clockOpen: boolean;
 	onClockOpenChange: (open: boolean) => void;
+	/** Whether the athlete may change the protocol here. A preset may not — it
+	 *  is the library's (#101) — so its setup is not offered, and a stored copy
+	 *  that disagrees with the library is not restored. */
+	editable?: boolean;
+	/** Start opens the full-screen clock too. On the Timer screen there is
+	 *  nothing else to look at once it runs; on Train the sets are. */
+	openOnStart?: boolean;
+	/** Whether the strip names itself "Interval timer" before the label. On a
+	 *  screen that is only the timer, the title repeats the page's and costs the
+	 *  label the width it truncates in. */
+	titled?: boolean;
 }) {
 	// A DRAFT THAT PERSISTS, applied to a clock (#59). The setup and the athlete's
 	// place in it survive a reload — which on Android is not a rare event, since
@@ -332,16 +414,21 @@ export function Timer({
 	// `config` are React state from here on, because `run` changes every second
 	// and a clock that read its own position back out of storage would be racing
 	// its own writes. The write is one effect, below.
-	const [storedSetup, persistSetup] = useTimerSetup();
+	const [storedSetup, persistSetup] = useTimerSetup(slot);
 	const [initial] = useState(() =>
-		restored(storedSetup, protocolKey, {
-			prepare: protocol?.prepare ?? 10,
-			work: protocol?.work ?? 10,
-			rest: protocol?.rest ?? 0,
-			rounds: protocol?.rounds ?? 1,
-			sets: protocol?.sets ?? 1,
-			setRest: protocol?.setRest ?? 0,
-		}),
+		restored(
+			storedSetup,
+			protocolKey,
+			{
+				prepare: protocol?.prepare ?? 10,
+				work: protocol?.work ?? 10,
+				rest: protocol?.rest ?? 0,
+				rounds: protocol?.rounds ?? 1,
+				sets: protocol?.sets ?? 1,
+				setRest: protocol?.setRest ?? 0,
+			},
+			{ fixed: !editable },
+		),
 	);
 	const [config, setConfig] = useState<Protocol>(initial.config);
 	const [run, setRun] = useState<Run>(initial.run);
@@ -433,6 +520,7 @@ export function Timer({
 	const start = () => {
 		if (run.segment === 'idle' || run.segment === 'done') setRun(beginning(config));
 		setRunning(true);
+		if (openOnStart) onClockOpenChange(true);
 	};
 	const reset = () => {
 		setRunning(false);
@@ -442,6 +530,7 @@ export function Timer({
 
 	const reading = readingOf(run, config, running);
 	const { accent, shown, left, total } = reading;
+	const readingId = useId();
 
 	return (
 		<div className="rounded-lg border border-line bg-panel">
@@ -453,18 +542,29 @@ export function Timer({
 				onToggle={toggle}
 				onReset={reset}
 			/>
+			{/* One announcer at a time: while the full-screen clock is up it carries
+			    its own, and the strip behind a modal dialog is not read out. */}
+			{clockOpen ? null : <SegmentAnnouncer reading={reading} />}
+			<p id={readingId} className="sr-only">
+				{spokenReading(reading)}
+			</p>
 
 			<div className="flex items-baseline justify-between gap-2 px-3 pt-2.5">
 				<Eyebrow className="min-w-0 truncate">
-					{m.timer_title()}
-					{label ? <span className="text-ink-dim"> · {label}</span> : null}
+					{titled || !label ? m.timer_title() : null}
+					{label ? (
+						<span className="text-ink-dim">
+							{titled ? ' · ' : ''}
+							{label}
+						</span>
+					) : null}
 				</Eyebrow>
 				<span
 					className="num shrink-0 text-[10px] tracking-wider uppercase"
 					style={{ color: accent }}
 				>
 					{SEGMENT_LABEL[run.segment]()}
-					{run.segment !== 'idle' && run.segment !== 'done'
+					{underway(run)
 						? ` · ${m.timer_round({ n: run.round, total: config.rounds })} · ${run.set}/${config.sets}`
 						: ''}
 				</span>
@@ -477,6 +577,7 @@ export function Timer({
 					type="button"
 					onClick={() => onClockOpenChange(true)}
 					aria-label={m.timer_fullscreen()}
+					aria-describedby={readingId}
 					style={{ color: accent }}
 				>
 					<Face seconds={shown} className="num text-[46px] leading-none font-bold" />
@@ -543,25 +644,29 @@ export function Timer({
 			    A summary line replaces them, so the configuration is still *read* at
 			    a glance while it is no longer *editable* at a glance. */}
 			<div className="flex items-center gap-2 border-t border-line-soft px-3 py-1.5">
-				<span className="num min-w-0 flex-1 truncate text-[10.5px] text-ink-faint">
-					{config.work}s · {config.rest}s · {config.rounds}×{config.sets} · {clock(total)}
+				{/* The shape, as the Timer screen's list writes it, rather than four bare
+				    numbers nobody could tell apart (#99's review: was `38s · 0s · 1×3`). */}
+				<span className="num min-w-0 flex-1 truncate text-[11px] text-ink-faint">
+					{protocolShape(config)} · {clock(total)}
 				</span>
-				<button
-					type="button"
-					onClick={() => setSetupOpen((v) => !v)}
-					aria-expanded={setupOpen}
-					aria-controls="timer-setup"
-					className={button({ kind: 'bare', size: 'md', class: 'gap-1 px-1 text-[11px]' })}
-				>
-					{m.timer_setup()}
-					<ChevronDown
-						size={13}
-						className={cn('transition-transform', setupOpen && 'rotate-180')}
-					/>
-				</button>
+				{editable ? (
+					<button
+						type="button"
+						onClick={() => setSetupOpen((v) => !v)}
+						aria-expanded={setupOpen}
+						aria-controls="timer-setup"
+						className={button({ kind: 'bare', size: 'md', class: 'gap-1 px-1 text-[11px]' })}
+					>
+						{m.timer_setup()}
+						<ChevronDown
+							size={13}
+							className={cn('transition-transform', setupOpen && 'rotate-180')}
+						/>
+					</button>
+				) : null}
 			</div>
 
-			{setupOpen ? (
+			{editable && setupOpen ? (
 				<div id="timer-setup" className="grid grid-cols-3 gap-1.5 px-3 pb-2">
 					{FIELDS.map((f) => (
 						<label key={f.key} className="flex min-w-0 flex-col gap-0.5" htmlFor={`t-${f.key}`}>
