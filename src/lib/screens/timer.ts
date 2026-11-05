@@ -13,12 +13,25 @@
 // The names are produced now, from the content for this locale, and nothing
 // here is an identity: a preset is addressed by its `ProtocolKey`, which is the
 // variant (ADR 0003, ADR 0012).
+//
+// Then the athlete's **saved protocols** (#103), from the training record, in
+// the order they were made. A saved protocol's name is the athlete's own text
+// and is shown as written; its key is its id.
 import type { Content } from '$lib/content/types';
 import { protocolShape, STUDY_TITLE } from '$lib/format';
-import { asExerciseId, type ExerciseId, type ProtocolKey, presetKey } from '$lib/ids';
+import {
+	asExerciseId,
+	type ExerciseId,
+	type ProtocolKey,
+	presetKey,
+	type SavedProtocolId,
+	savedProtocolKey,
+} from '$lib/ids';
+import * as m from '$lib/paraglide/messages';
 import { studyOf } from '$lib/progression';
 import { type Protocol, protocolOf, totalOf } from '$lib/protocol';
 import type { AppLocale } from '$lib/store/locale';
+import type { TrainingRecord } from '$lib/store/record';
 import { STUDIES } from '$lib/studies';
 
 export interface PresetRow {
@@ -35,6 +48,21 @@ export interface PresetRow {
 	shape: string;
 	/** How long it runs, prepare included, in seconds. */
 	total: number;
+	/** What a duplicate of it is called until the athlete renames it. */
+	copyName: string;
+}
+
+/** One of the athlete's saved protocols, ready to list and to run. */
+export interface SavedRow {
+	/** The scope its clock is kept under — `saved:<id>`. */
+	key: ProtocolKey;
+	id: SavedProtocolId;
+	/** The athlete's name for it, as they wrote it. */
+	name: string;
+	protocol: Protocol;
+	shape: string;
+	total: number;
+	copyName: string;
 }
 
 export interface PresetGroup {
@@ -48,10 +76,16 @@ export interface PresetGroup {
 
 export interface TimerScreen {
 	presets: PresetGroup[];
+	/** Oldest first, as the record holds them. */
+	saved: SavedRow[];
 }
 
 /** Everything the Timer screen reads, in the locale it is read in. */
-export function resolveTimer(content: Content, locale: AppLocale): TimerScreen {
+export function resolveTimer(
+	content: Content,
+	record: Pick<TrainingRecord, 'savedProtocols'>,
+	locale: AppLocale,
+): TimerScreen {
 	const presets: PresetGroup[] = [];
 	for (const [id, ex] of Object.entries(content.exercises)) {
 		const exercise = asExerciseId(id);
@@ -67,13 +101,31 @@ export function resolveTimer(content: Content, locale: AppLocale): TimerScreen {
 					protocol,
 					shape: protocolShape(protocol, locale),
 					total: totalOf(protocol),
+					// The exercise as well as the variant: a copy leaves the group that
+					// said which exercise "7/3 · 20mm…" was.
+					copyName: copyNameOf(`${ex.name} · ${v.name}`, locale),
 				},
 			];
 		});
 		if (rows.length)
 			presets.push({ exercise, name: ex.name, study: studyFor(id, locale), presets: rows });
 	}
-	return { presets };
+	const saved = record.savedProtocols.map(
+		(p): SavedRow => ({
+			key: savedProtocolKey(p.id),
+			id: p.id,
+			name: p.name,
+			protocol: p.protocol,
+			shape: protocolShape(p.protocol, locale),
+			total: totalOf(p.protocol),
+			copyName: copyNameOf(p.name, locale),
+		}),
+	);
+	return { presets, saved };
+}
+
+function copyNameOf(name: string, locale: AppLocale): string {
+	return m.timer_copy_name({ name }, { locale });
 }
 
 function studyFor(exercise: string, locale: AppLocale): PresetGroup['study'] {
