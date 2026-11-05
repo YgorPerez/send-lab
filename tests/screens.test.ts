@@ -213,10 +213,15 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		test('renders the cue settings in Settings', async () => {
 			const settings = await render('/settings');
 			expect(settings).toContain(locale === 'en-US' ? 'Timer cues' : 'Sinais do timer');
-			expect(settings).toContain(locale === 'en-US' ? 'Final countdown' : 'Contagem final');
+			expect(settings).toContain(locale === 'en-US' ? 'Count down the last' : 'Contar os últimos');
 			expect(settings).toContain(
-				locale === 'en-US' ? 'Vibrate on each change' : 'Vibrar a cada troca',
+				locale === 'en-US'
+					? 'Vibrate when work or rest begins'
+					: 'Vibrar quando começa esforço ou descanso',
 			);
+			// Whether this device can vibrate is the client's to say. The string
+			// render is the server's, which cannot know, so it says nothing.
+			expect(settings).not.toContain(locale === 'en-US' ? 'This device' : 'Este aparelho');
 			// The three lengths, with the default the one pressed, labelled as a
 			// group by the row that names them.
 			expect(settings).toMatch(/<fieldset[^>]*aria-labelledby="[^"]+"/);

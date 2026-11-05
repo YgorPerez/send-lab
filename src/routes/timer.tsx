@@ -63,7 +63,10 @@ function TimerScreen() {
 		// Capped, like Train: one list and one clock, and a wider list says nothing
 		// more about a protocol.
 		<Pane className="gap-6">
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
+			{/* Centred, not baseline-aligned like the other screens' headers: the
+			    cue settings' 44px control would otherwise leave the title riding
+			    high beside it. The title is one word in both locales. */}
+			<header className="flex items-center justify-between gap-2 pt-1.5">
 				<h1 className="h-screen-title min-w-0">{m.nav_timer()}</h1>
 				<CueSettingsShortcut />
 			</header>

@@ -19,7 +19,7 @@
 // (#106) and the flash (#107) are each a line there, and nothing above them moves.
 import { Popover } from '@base-ui/react/popover';
 import { SlidersHorizontal } from 'lucide-react';
-import { useId } from 'react';
+import { useId, useSyncExternalStore } from 'react';
 import * as m from '$lib/paraglide/messages';
 import { COUNTDOWN_LENGTHS, type CuePrefs } from '$lib/protocol';
 import { writePrefs } from '$lib/store/prefs';
@@ -35,11 +35,40 @@ type CueSwitch = {
 	[K in keyof CuePrefs]: CuePrefs[K] extends boolean ? K : never;
 }[keyof CuePrefs];
 
-/** The switches, in the order they are read. Message functions, not strings,
- *  so each reads the locale when it renders. */
-const SWITCHES: readonly { field: CueSwitch; label: () => string }[] = [
-	{ field: 'buzz', label: m.cues_buzz },
+/** Whether this device can vibrate at all. iOS Safari has no
+ *  `navigator.vibrate`, and `cues.ts` stays silent there. */
+const canVibrate = () =>
+	typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+
+/**
+ * The switches, in the order they are read. Message functions, not strings, so
+ * each reads the locale when it renders.
+ *
+ * `supported` is for a delivery this device cannot make. The switch stays live
+ * there rather than disabled: the preference is the account's, and an athlete on
+ * an iPhone may be setting it for the Android phone they train with. What the
+ * row may not do is pretend, so it says the device cannot (`unsupported`).
+ */
+const SWITCHES: readonly {
+	field: CueSwitch;
+	label: () => string;
+	supported?: () => boolean;
+	unsupported?: () => string;
+}[] = [
+	{
+		field: 'buzz',
+		label: m.cues_buzz,
+		supported: canVibrate,
+		unsupported: m.cues_buzz_unsupported,
+	},
 ];
+
+/** Nothing about the device changes while the page is open. */
+const noSubscription = () => () => {};
+/** The server cannot know, so it claims nothing; the client answers on
+ *  hydration, without a mismatch, because `useSyncExternalStore` renders the
+ *  server's answer first. */
+const assumeSupported = () => true;
 
 /** The lengths as the athlete reads them. `s` is the SI symbol and the same in
  *  both locales, as it is in a protocol's shape (`7s/3s`). */
@@ -60,12 +89,14 @@ export function CueSettings({ className }: { className?: string }) {
 					className="num flex w-[156px] shrink-0 gap-1.5"
 				/>
 			</ControlRow>
-			{SWITCHES.map(({ field, label }) => (
+			{SWITCHES.map(({ field, label, supported, unsupported }) => (
 				<SwitchRow
 					key={field}
 					label={label()}
 					checked={prefs[field]}
 					onChange={(on) => void writePrefs({ [field]: on })}
+					supported={supported}
+					unsupported={unsupported}
 				/>
 			))}
 		</div>
@@ -77,11 +108,15 @@ export function CueSettings({ className }: { className?: string }) {
  * same rows over the page.
  *
  * Discreet on purpose. The screen is the clock and the list; this is reached
- * for between sets, never mid-hang, so it is an icon in the header rather than
- * a section in the flow. It still carries its own border and its 44px — an icon
- * without them does not read as a control (the vocabulary's measured rule) —
- * and a popover rather than a dialog, as the menu is, so the protocol the
- * athlete is about to run stays visible behind it.
+ * for before Start, or with the full-screen clock closed between sets — never
+ * mid-hang — so it is an icon in the header rather than a section in the flow.
+ * It still carries its own border and its 44px (an icon without them does not
+ * read as a control, the vocabulary's measured rule), and it is a popover, as
+ * the menu is, so the page stays in view around it.
+ *
+ * Its title is an eyebrow where Settings gives the same words a section
+ * heading: the popover sits under the page in rank, and the title is there to
+ * name the dialog for a screen reader more than to head it.
  */
 export function CueSettingsShortcut() {
 	return (
@@ -108,15 +143,35 @@ function SwitchRow({
 	label,
 	checked,
 	onChange,
+	supported = assumeSupported,
+	unsupported,
 }: {
 	label: string;
 	checked: boolean;
 	onChange: (on: boolean) => void;
+	supported?: () => boolean;
+	unsupported?: () => string;
 }) {
 	const id = useId();
+	const noteId = useId();
+	const here = useSyncExternalStore(noSubscription, supported, assumeSupported);
+	const note = here || !unsupported ? null : unsupported();
 	return (
-		<ControlRow id={id} label={label}>
-			<Switch checked={checked} onCheckedChange={onChange} labelledBy={id} />
-		</ControlRow>
+		<div>
+			<ControlRow id={id} label={label}>
+				<Switch
+					checked={checked}
+					onCheckedChange={onChange}
+					labelledBy={id}
+					describedBy={note ? noteId : undefined}
+				/>
+			</ControlRow>
+			{note ? (
+				// Gold, like Settings' caveats: a warning about this device, not a stop.
+				<p id={noteId} className="pb-2.5 text-[12.5px] leading-snug text-gold">
+					{note}
+				</p>
+			) : null}
+		</div>
 	);
 }
