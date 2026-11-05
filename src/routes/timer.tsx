@@ -13,8 +13,14 @@
 // stored. The one row the clock is pointed at carries the actions — duplicate,
 // and for a saved protocol edit and delete — so twenty-six rows do not each carry
 // three buttons. A new one is made from scratch under the saved list (#104), in
-// the same sheet that edits one. The Protocols | Stopwatch switch (#108) goes
-// above both lists.
+// the same sheet that edits one.
+//
+// A Protocols | Stopwatch switch (#108) sits above the clock. Both tabs stay
+// mounted and the one not shown is `hidden`, so a protocol left running keeps
+// counting while the athlete looks at the stopwatch — and the rule that only one
+// runs at a time is the press that starts one pausing the other, through each
+// clock's `ClockHandle`, rather than a tab switch that pauses as a side effect.
+// The screen always opens on Protocols, the common case (spec story 2).
 //
 // Same posture as Train, so the same two rules: the clock is sticky, because the
 // list scrolls under it and Start must stay in reach; and every row is a 44px
@@ -40,12 +46,16 @@ import {
 import { useTimerSetup } from '$lib/timerSetup';
 import { CueSettingsShortcut } from '../components/CueSettings';
 import { type EditorTarget, ProtocolEditor } from '../components/ProtocolEditor';
-import { Timer } from '../components/Timer';
+import { Stopwatch } from '../components/Stopwatch';
+import { type ClockHandle, Timer } from '../components/Timer';
 import { AlertDialog } from '../components/ui/AlertDialog';
 import { Empty, Pane, Section } from '../components/ui/primitives';
+import { Segmented } from '../components/ui/Segmented';
 import { button, option } from '../components/ui/variants';
 
 export const Route = createFileRoute('/timer')({ component: TimerScreen });
+
+type Tab = 'protocols' | 'stopwatch';
 
 /** Anything the clock can run, as the list shows it. */
 interface Runnable {
@@ -91,6 +101,9 @@ function TimerScreen() {
 	// A deleted saved protocol takes the selection with it; the clock moves to the
 	// top of the list rather than vanishing.
 	const current = runnable.find((r) => r.key === selected) ?? runnable[0] ?? null;
+	const [tab, setTab] = useState<Tab>('protocols');
+	const protocolClock = useRef<ClockHandle>(null);
+	const stopwatch = useRef<ClockHandle>(null);
 
 	// THE TAPPED ROW STAYS UNDER THE FINGER.
 	//
@@ -188,82 +201,100 @@ function TimerScreen() {
 				<CueSettingsShortcut />
 			</header>
 
-			{current ? (
-				<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
-					<Timer
-						// Remounted when the protocol's numbers change, not only when
-						// another one is picked: an edited saved protocol (#104) is a
-						// different protocol, and its clock starts clean on it — the
-						// draft's own rule for a protocol that is not the one it was
-						// left in. A rename keeps the clock where it is.
-						key={`${current.key}|${PROTOCOL_FIELDS.map((f) => current.protocol[f]).join(',')}`}
-						slot="timer"
-						protocol={current.protocol}
-						label={current.label}
-						protocolKey={current.key}
-						clockOpen={clockOpen}
-						onClockOpenChange={setClockOpen}
-						editable={false}
-						openOnStart
-						titled={false}
-					/>
-				</div>
-			) : null}
+			<Segmented<Tab>
+				value={tab}
+				options={[
+					{ id: 'protocols', label: m.timer_tab_protocols() },
+					{ id: 'stopwatch', label: m.timer_tab_stopwatch() },
+				]}
+				onChange={setTab}
+				className="flex gap-1.5 *:text-center"
+			/>
 
-			<Section label={m.timer_saved()}>
-				{screen.saved.length ? (
-					<div className="flex flex-col gap-1">
-						{screen.saved.map((s) => (
-							<div
-								key={s.key}
-								ref={s.key === made ? reveal : undefined}
-								className="flex scroll-my-40 flex-col gap-1"
-							>
-								<ProtocolButton
-									row={s}
-									on={s.key === current?.key}
-									nameId={nameId}
-									onSelect={(el) => select(s.key, el)}
-								/>
-								{s.key === current?.key ? (
-									<RowActions
-										describedBy={nameId}
-										onDuplicate={() => void duplicate(s)}
-										onEdit={() => openEditor(s)}
-										onDelete={() => {
-											setDoomed(s);
-											setConfirming(true);
-										}}
-									/>
-								) : null}
-							</div>
-						))}
-						<NewProtocol onClick={() => openEditor(null)} />
-					</div>
-				) : (
-					// The copy names both ways in; the one that is not a preset's
-					// action is right under it.
-					<Empty
-						value={m.timer_saved_empty()}
-						action={<NewProtocol onClick={() => openEditor(null)} />}
-					/>
-				)}
-			</Section>
-
-			<Section label={m.timer_presets()}>
-				<div className="flex flex-col gap-5">
-					{screen.presets.map((g) => (
-						<PresetList
-							key={g.exercise}
-							group={g}
-							selected={current?.key ?? null}
-							nameId={nameId}
-							onSelect={select}
-							onDuplicate={(p) => void duplicate(p)}
+			<div hidden={tab !== 'protocols'} className="flex flex-col gap-6">
+				{current ? (
+					<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
+						<Timer
+							// Remounted when the protocol's numbers change, not only when
+							// another one is picked: an edited saved protocol (#104) is a
+							// different protocol, and its clock starts clean on it — the
+							// draft's own rule for a protocol that is not the one it was
+							// left in. A rename keeps the clock where it is.
+							key={`${current.key}|${PROTOCOL_FIELDS.map((f) => current.protocol[f]).join(',')}`}
+							ref={protocolClock}
+							onStart={() => stopwatch.current?.pause()}
+							slot="timer"
+							protocol={current.protocol}
+							label={current.label}
+							protocolKey={current.key}
+							clockOpen={clockOpen}
+							onClockOpenChange={setClockOpen}
+							editable={false}
+							openOnStart
+							titled={false}
 						/>
-					))}
-				</div>
-			</Section>
+					</div>
+				) : null}
+
+				<Section label={m.timer_saved()}>
+					{screen.saved.length ? (
+						<div className="flex flex-col gap-1">
+							{screen.saved.map((s) => (
+								<div
+									key={s.key}
+									ref={s.key === made ? reveal : undefined}
+									className="flex scroll-my-40 flex-col gap-1"
+								>
+									<ProtocolButton
+										row={s}
+										on={s.key === current?.key}
+										nameId={nameId}
+										onSelect={(el) => select(s.key, el)}
+									/>
+									{s.key === current?.key ? (
+										<RowActions
+											describedBy={nameId}
+											onDuplicate={() => void duplicate(s)}
+											onEdit={() => openEditor(s)}
+											onDelete={() => {
+												setDoomed(s);
+												setConfirming(true);
+											}}
+										/>
+									) : null}
+								</div>
+							))}
+							<NewProtocol onClick={() => openEditor(null)} />
+						</div>
+					) : (
+						// The copy names both ways in; the one that is not a preset's
+						// action is right under it.
+						<Empty
+							value={m.timer_saved_empty()}
+							action={<NewProtocol onClick={() => openEditor(null)} />}
+						/>
+					)}
+				</Section>
+
+				<Section label={m.timer_presets()}>
+					<div className="flex flex-col gap-5">
+						{screen.presets.map((g) => (
+							<PresetList
+								key={g.exercise}
+								group={g}
+								selected={current?.key ?? null}
+								nameId={nameId}
+								onSelect={select}
+								onDuplicate={(p) => void duplicate(p)}
+							/>
+						))}
+					</div>
+				</Section>
+			</div>
+
+			<div hidden={tab !== 'stopwatch'}>
+				<Stopwatch ref={stopwatch} onStart={() => protocolClock.current?.pause()} />
+			</div>
 
 			<ProtocolEditor
 				open={editorOpen}

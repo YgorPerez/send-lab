@@ -90,6 +90,7 @@ describe('switching writes both', () => {
 			locale: null,
 			countdown: 10,
 			buzz: false,
+			voice: false,
 		});
 
 		chooseLocale('pt-BR');
@@ -103,6 +104,7 @@ describe('switching writes both', () => {
 			locale: 'pt-BR',
 			countdown: 10,
 			buzz: false,
+			voice: false,
 		});
 	});
 });

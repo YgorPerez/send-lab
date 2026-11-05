@@ -16,10 +16,11 @@
 // ADDING A CUE PREFERENCE
 // -----------------------
 // A switch is one entry in `SWITCHES` once its field is on `CuePrefs`: the voice
-// (#106) and the flash (#107) are each a line there, and nothing above them moves.
+// (#106) is one, the flash (#107) another, and nothing above them moves.
 import { Popover } from '@base-ui/react/popover';
 import { SlidersHorizontal } from 'lucide-react';
 import { useId, useSyncExternalStore } from 'react';
+import { canSpeak, subscribeVoices } from '$lib/cues';
 import * as m from '$lib/paraglide/messages';
 import { COUNTDOWN_LENGTHS, type CuePrefs } from '$lib/protocol';
 import { writePrefs } from '$lib/store/prefs';
@@ -48,13 +49,25 @@ const canVibrate = () =>
  * there rather than disabled: the preference is the account's, and an athlete on
  * an iPhone may be setting it for the Android phone they train with. What the
  * row may not do is pretend, so it says the device cannot (`unsupported`).
+ * `subscribe` is for an answer that can change while the page is open: a
+ * browser lists its voices only after it is first asked for them.
+ *
+ * The voice comes first: it carries the most when the athlete is not looking.
  */
 const SWITCHES: readonly {
 	field: CueSwitch;
 	label: () => string;
 	supported?: () => boolean;
+	subscribe?: (notify: () => void) => () => void;
 	unsupported?: () => string;
 }[] = [
+	{
+		field: 'voice',
+		label: m.cues_voice,
+		supported: canSpeak,
+		subscribe: subscribeVoices,
+		unsupported: m.cues_voice_unsupported,
+	},
 	{
 		field: 'buzz',
 		label: m.cues_buzz,
@@ -63,7 +76,8 @@ const SWITCHES: readonly {
 	},
 ];
 
-/** Nothing about the device changes while the page is open. */
+/** Nothing about the device changes while the page is open, unless a switch
+ *  says otherwise. */
 const noSubscription = () => () => {};
 /** The server cannot know, so it claims nothing; the client answers on
  *  hydration, without a mismatch, because `useSyncExternalStore` renders the
@@ -89,13 +103,14 @@ export function CueSettings({ className }: { className?: string }) {
 					className="num flex w-[156px] shrink-0 gap-1.5"
 				/>
 			</ControlRow>
-			{SWITCHES.map(({ field, label, supported, unsupported }) => (
+			{SWITCHES.map(({ field, label, supported, subscribe, unsupported }) => (
 				<SwitchRow
 					key={field}
 					label={label()}
 					checked={prefs[field]}
 					onChange={(on) => void writePrefs({ [field]: on })}
 					supported={supported}
+					subscribe={subscribe}
 					unsupported={unsupported}
 				/>
 			))}
@@ -144,17 +159,19 @@ function SwitchRow({
 	checked,
 	onChange,
 	supported = assumeSupported,
+	subscribe = noSubscription,
 	unsupported,
 }: {
 	label: string;
 	checked: boolean;
 	onChange: (on: boolean) => void;
 	supported?: () => boolean;
+	subscribe?: (notify: () => void) => () => void;
 	unsupported?: () => string;
 }) {
 	const id = useId();
 	const noteId = useId();
-	const here = useSyncExternalStore(noSubscription, supported, assumeSupported);
+	const here = useSyncExternalStore(subscribe, supported, assumeSupported);
 	const note = here || !unsupported ? null : unsupported();
 	return (
 		<div>

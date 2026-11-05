@@ -134,8 +134,10 @@ describe('making a saved protocol on the Timer screen', () => {
 			});
 			expect(host.textContent).toContain('8 × 20s/10s · 2:00 cooldown');
 			// Made, so it is the one selected, with its own actions under it.
-			const selected = host.querySelector('main [aria-pressed="true"]');
-			expect(selected?.textContent).toContain('Hangboard finisher');
+			const selected = [...host.querySelectorAll('main [aria-pressed="true"]')].map(
+				(el) => el.textContent,
+			);
+			expect(selected.some((text) => text?.includes('Hangboard finisher'))).toBe(true);
 			expect(worded(host, 'Edit')).toBeTruthy();
 		} finally {
 			act(() => root.unmount());

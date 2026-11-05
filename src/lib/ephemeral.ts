@@ -2,9 +2,10 @@
 //
 // WHAT BELONGS HERE, AND WHAT DOES NOT
 // ------------------------------------
-// Three stores: the rest timer, the readiness draft and the session draft. The
-// rest timer keeps one clock per screen that runs one — Train's and the Timer
-// screen's (#101) — under two keys of the same shape. ADR
+// Four stores: the rest timer, the readiness draft, the session draft and the
+// stopwatch (#108, `stopwatchDraft.ts`). The rest timer keeps one clock per
+// screen that runs one — Train's and the Timer screen's (#101) — under two keys
+// of the same shape. ADR
 // 0008's rule is that ephemeral UI stays local-only and **never syncs** — it is
 // not account data, it never reaches `/api/state`, and it never goes through
 // TanStack DB. Losing it costs the athlete a re-entry; losing account data costs
@@ -30,9 +31,11 @@
 //
 // THE SCOPE RULE
 // --------------
-// Every one of the three is only meaningful while the thing it belongs to is
-// still on screen: the readiness draft belongs to a **day**, the session draft to
-// a **slot**, the timer's setup to a **protocol**. Restoring one out of its scope
+// Every one of the scoped three is only meaningful while the thing it belongs to
+// is still on screen: the readiness draft belongs to a **day**, the session draft
+// to a **slot**, the timer's setup to a **protocol**. (The stopwatch belongs to
+// nothing but itself, and is current until the athlete resets it, so it carries
+// no scope.) Restoring one out of its scope
 // looks like the app remembering and is the app lying — yesterday's answers
 // offered as today's, one exercise's clock on another's card.
 //

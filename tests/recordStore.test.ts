@@ -203,6 +203,7 @@ describe('an account with nothing in it', () => {
 			locale: null,
 			countdown: 3,
 			buzz: true,
+			voice: true,
 		});
 	});
 
@@ -226,6 +227,7 @@ describe('an account with nothing in it', () => {
 		expect(prefs).toMatchObject({ weight: 'lb', length: 'in', locale: 'pt-BR' });
 		expect(prefs.countdown).toBe(3);
 		expect(prefs.buzz).toBe(true);
+		expect(prefs.voice).toBe(true);
 	});
 });
 
