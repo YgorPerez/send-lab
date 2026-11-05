@@ -30,7 +30,7 @@ import {
 	variantOf,
 } from '../src/lib/prescription.ts';
 import { resolveLog } from '../src/lib/screens/log.ts';
-import { resolveTimer } from '../src/lib/screens/timer.ts';
+import { formOf, readProtocolForm, resolveTimer } from '../src/lib/screens/timer.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
 import { resolveWeek } from '../src/lib/screens/week.ts';
@@ -601,5 +601,72 @@ describe('Timer', () => {
 		const repeaters = pt.presets.find((g) => g.exercise === 'repeaters');
 		expect(repeaters?.presets[0].shape).toBe('6 × 7s/3s · 4 séries');
 		expect(repeaters?.study?.title).toBe('Força crítica e resistência');
+	});
+});
+
+// #104. What the saved-protocol editor accepts. The editor holds what was typed,
+// as text, and this is the one place that decides whether it is a protocol: the
+// screen shows each refusal beside its field and saves nothing until there are
+// none.
+describe('the saved-protocol editor', () => {
+	const TABATA = {
+		prepare: 10,
+		work: 20,
+		rest: 10,
+		rounds: 8,
+		sets: 1,
+		setRest: 0,
+		cooldown: 120,
+	};
+	const typed = (fields: Partial<Record<keyof typeof TABATA, string>>, name = 'Tabata') => ({
+		name,
+		fields: { ...formOf('', TABATA).fields, ...fields },
+	});
+
+	it('opens on the protocol it edits, as written', () => {
+		expect(formOf('Tabata', TABATA)).toEqual({
+			name: 'Tabata',
+			fields: {
+				prepare: '10',
+				work: '20',
+				rest: '10',
+				rounds: '8',
+				sets: '1',
+				setRest: '0',
+				cooldown: '120',
+			},
+		});
+	});
+
+	it('reads a filled-in form as a name and a protocol', () => {
+		expect(readProtocolForm(typed({}, '  Tabata finisher '))).toEqual({
+			ok: true,
+			name: 'Tabata finisher',
+			protocol: TABATA,
+		});
+	});
+
+	it('takes no prepare, no rest, no set rest and no cooldown', () => {
+		const none = typed({ prepare: '0', rest: '0', setRest: '0', cooldown: '0' });
+		expect(readProtocolForm(none)).toMatchObject({
+			ok: true,
+			protocol: { prepare: 0, rest: 0, setRest: 0, cooldown: 0 },
+		});
+	});
+
+	it.each([
+		['zero work', { work: '0' }, ['work']],
+		['zero rounds', { rounds: '0' }, ['rounds']],
+		['zero sets', { sets: '0' }, ['sets']],
+		['negative seconds', { rest: '-5', cooldown: '-1' }, ['rest', 'cooldown']],
+		['a fraction', { work: '7.5' }, ['work']],
+		['a field left empty', { setRest: '' }, ['setRest']],
+		['something that is not a number', { prepare: 'ten' }, ['prepare']],
+	])('refuses %s, and says which field', (_what, fields, refused) => {
+		expect(readProtocolForm(typed(fields))).toEqual({ ok: false, refused });
+	});
+
+	it('refuses a protocol with no name', () => {
+		expect(readProtocolForm(typed({}, '   '))).toEqual({ ok: false, refused: ['name'] });
 	});
 });

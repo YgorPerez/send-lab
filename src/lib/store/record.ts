@@ -256,7 +256,7 @@ function assemble(rows: Rows): TrainingRecord {
 		savedProtocols: rows.savedProtocols
 			.flatMap((p) => {
 				const protocol = readProtocol(p.protocol);
-				return protocol ? [{ ...p, protocol }] : [];
+				return protocol ? [{ id: p.id, name: p.name, protocol, createdAt: p.createdAt }] : [];
 			})
 			.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)),
 	};
