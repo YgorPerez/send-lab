@@ -210,6 +210,27 @@ export function clock(totalSec: number): string {
 	return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/**
+ * A stopwatch reading, in two parts so the face can set the tenths smaller:
+ * `{ whole: '1:04', fraction: '.3' }`, and `1:02:03` once an hour has passed.
+ *
+ * Tenths are floored, never rounded: a stopwatch that read 21.5 at 21.46 would
+ * be showing time that has not run yet. The decimal mark is the locale's — a
+ * Brazilian stopwatch reads `0:21,4` — so the locale is an argument, for the
+ * reason `protocolShape` takes one.
+ */
+export function stopwatchClock(ms: number, locale: AppLocale): { whole: string; fraction: string } {
+	const tenths = Math.floor(Math.max(0, ms) / 100);
+	const s = Math.floor(tenths / 10);
+	const h = Math.floor(s / 3600);
+	const mm = Math.floor(s / 60) % 60;
+	const ss = String(s % 60).padStart(2, '0');
+	const whole = h > 0 ? `${h}:${String(mm).padStart(2, '0')}:${ss}` : `${mm}:${ss}`;
+	return { whole, fraction: `${DECIMAL_MARK[locale]}${tenths % 10}` };
+}
+
+const DECIMAL_MARK: Record<AppLocale, string> = { 'en-US': '.', 'pt-BR': ',' };
+
 /** The five wellness dimensions, in the order the readiness score reads them. */
 export const WELLNESS_LABEL: Record<string, () => string> = {
 	sleep: m.rd_sleep,

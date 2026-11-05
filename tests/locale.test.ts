@@ -91,6 +91,7 @@ describe('switching writes both', () => {
 			countdown: 10,
 			buzz: false,
 			flash: false,
+			voice: false,
 		});
 
 		chooseLocale('pt-BR');
@@ -105,6 +106,7 @@ describe('switching writes both', () => {
 			countdown: 10,
 			buzz: false,
 			flash: false,
+			voice: false,
 		});
 	});
 });

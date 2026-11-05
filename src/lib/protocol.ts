@@ -303,14 +303,40 @@ export type Cue =
  *  buzz pattern the planner never plans. */
 export type BuzzedCue = Exclude<Cue, 'countdown'>;
 
+/** The segments a voice names on arrival. Idle is never arrived at with a cue:
+ *  reset is silent. */
+type SpokenSegment = Exclude<Segment, 'idle'>;
+
+/**
+ * The message key that names a segment aloud: `cues_say_work`, `cues_say_setrest`
+ * and so on (#106). A key and never a string, so the phrase is said in the
+ * locale the athlete has when it is said, not the one the clock planned it in
+ * (ADR 0012).
+ *
+ * Derived from the segment's name rather than tabled beside it, so a segment
+ * added to `SEGMENTS` (the cooldown, #104) is planned a phrase with no edit
+ * here; what it needs is its message, which `PHRASES` in `cues.ts` refuses to
+ * compile without. Lower-cased because the message catalogue is
+ * (`timer_setrest`).
+ */
+export type SegmentPhrase = `cues_say_${Lowercase<SpokenSegment>}`;
+
+/** The key that says one beat of the countdown, a number, in the locale's words. */
+export type CountPhrase = 'cues_say_count';
+
 /**
  * One way a cue reaches the athlete. A discriminated union, so a new delivery
  * is a new member here and a new branch in `cues.ts`, and the exhaustive switch
  * there refuses to compile until it is played.
+ *
+ * Speech carries a message key and, for a countdown beat, the number it says;
+ * `cues.ts` turns the key into words in the active locale when it speaks.
  */
 export type Delivery =
 	| { kind: 'sound'; cue: Cue }
 	| { kind: 'buzz'; cue: BuzzedCue }
+	| { kind: 'speech'; key: SegmentPhrase }
+	| { kind: 'speech'; key: CountPhrase; n: number }
 	/** The screen washing over in the colour of the segment arrived in (#107),
 	 *  fading out over `ms`. The clock draws it; `cues.ts` hands it over. */
 	| { kind: 'flash'; segment: Segment; ms: number };
@@ -319,6 +345,11 @@ export type Delivery =
  *  eye with both hands on a board; short enough to be over before the second
  *  it marks is half gone. */
 const FLASH_MS = 450;
+
+/** The phrase that names arriving in `segment`. */
+function phraseOf(segment: SpokenSegment): SegmentPhrase {
+	return `cues_say_${segment.toLowerCase() as Lowercase<SpokenSegment>}`;
+}
 
 /** Which cue announces arriving in a segment. Mirrors the SvelteKit app exactly. */
 const ARRIVAL: Record<Segment, BuzzedCue | null> = {
@@ -352,13 +383,16 @@ export interface CuePrefs {
 	countdown: CountdownLength;
 	/** Whether segment changes vibrate. The sound plays either way. */
 	buzz: boolean;
+	/** Whether a voice names each segment as it begins and says the countdown
+	 *  (#106). The sound plays either way, so the timing never depends on it. */
+	voice: boolean;
 	/** Whether segment changes flash the full-screen clock (#107). */
 	flash: boolean;
 }
 
 /** What an athlete who never opened the setting gets, and what a row written
  *  before the setting existed reads as: exactly the clock before #105. */
-export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true, flash: true };
+export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true, voice: true, flash: true };
 
 /**
  * What the athlete is told when the clock moves from one run to the next.
@@ -385,8 +419,15 @@ export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true, flash: true };
  * on".
  *
  * `prefs` is the athlete's say in how (#105): how long the countdown is, and
- * whether a change buzzes as well as sounds. Left out, it is `CUE_DEFAULTS`,
- * which is the clock as it was before anyone could choose.
+ * whether a change buzzes, is spoken and flashes as well as sounded. Left out,
+ * it is `CUE_DEFAULTS`.
+ *
+ * The voice (#106) follows the sound exactly: it names the segment arrived in
+ * and says each countdown beat as a number. It names the segment and not the
+ * cue, so prepare handing over says "work" while the sound plays its own "go".
+ *
+ * The flash (#107) marks a segment change only, in the colour of the segment
+ * arrived in. A countdown beat is the same segment, so it never flashes.
  *
  * `reducedMotion` is the device's say (#107): whether the athlete asked their
  * system for reduced motion. It is a fact about the device rather than a
@@ -410,19 +451,20 @@ export function planCues(
 	prefs: CuePrefs = CUE_DEFAULTS,
 ): Delivery[] {
 	if (samePlace(from, to) && to.remaining <= from.remaining) {
-		return running && to.remaining > 0 && to.remaining <= prefs.countdown
-			? [{ kind: 'sound', cue: 'countdown' }]
-			: [];
+		if (!running || to.remaining <= 0 || to.remaining > prefs.countdown) return [];
+		const beat: Delivery[] = [{ kind: 'sound', cue: 'countdown' }];
+		if (prefs.voice) beat.push({ kind: 'speech', key: 'cues_say_count', n: to.remaining });
+		return beat;
 	}
 	// Prepare handing over to work is the one transition that gets its own
 	// two-note cue: it is the moment the athlete has to move, and a single beep
 	// identical to every other single beep is not enough to act on blind.
 	const cue = from.segment === 'prepare' && to.segment === 'work' ? 'go' : ARRIVAL[to.segment];
-	if (!cue) return [];
-	const planned: Delivery[] = [{ kind: 'sound', cue }];
-	if (prefs.buzz) planned.push({ kind: 'buzz', cue });
-	if (prefs.flash) {
-		planned.push({ kind: 'flash', segment: to.segment, ms: reducedMotion ? 0 : FLASH_MS });
-	}
-	return planned;
+	if (!cue || to.segment === 'idle') return [];
+	const out: Delivery[] = [{ kind: 'sound', cue }];
+	if (prefs.buzz) out.push({ kind: 'buzz', cue });
+	if (prefs.voice) out.push({ kind: 'speech', key: phraseOf(to.segment) });
+	if (prefs.flash)
+		out.push({ kind: 'flash', segment: to.segment, ms: reducedMotion ? 0 : FLASH_MS });
+	return out;
 }

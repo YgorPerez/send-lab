@@ -335,6 +335,9 @@ const COLLECTIONS: Readonly<Record<string, CollectionSpec<any>>> = {
 			// `CUE_DEFAULTS`, and so is what the client's own read fills in.
 			countdown: z.literal(COUNTDOWN_LENGTHS).default(CUE_DEFAULTS.countdown),
 			buzz: z.boolean().default(CUE_DEFAULTS.buzz),
+			// The voice (#106), on the same terms: absent reads as on.
+			voice: z.boolean().default(CUE_DEFAULTS.voice),
+			// The flash (#107), likewise.
 			flash: z.boolean().default(CUE_DEFAULTS.flash),
 		}),
 	),

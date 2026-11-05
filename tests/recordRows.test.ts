@@ -43,6 +43,7 @@ const PREFS = {
 	countdown: 3,
 	buzz: true,
 	flash: true,
+	voice: true,
 } as const;
 
 /** A `StorageApi` backed by a `Map` — the collections persist nowhere. */
@@ -446,5 +447,17 @@ describe('preferences carry how cues are delivered', () => {
 
 	it('refuses a flash that is not a switch', () => {
 		expect(sanitizeRow('prefs', SINGLETON_KEY, { ...PREFS, flash: 1 }).ok).toBe(false);
+	});
+
+	// #106. The voice switch rides on the same row and follows the same rule: a
+	// row from before it reads as the voice on, the default.
+	it('carries the voice switch, and reads a row from before it as the voice on', () => {
+		const silent = { ...chosen, voice: false };
+		const check = sanitizeRow('prefs', SINGLETON_KEY, silent);
+		expect(check.ok ? check.row : check.reason).toEqual(silent);
+		const { voice: _v, ...before } = silent;
+		const old = sanitizeRow('prefs', SINGLETON_KEY, before);
+		expect(old.ok ? old.row : old.reason).toEqual({ ...before, voice: true });
+		expect(sanitizeRow('prefs', SINGLETON_KEY, { ...chosen, voice: 'on' }).ok).toBe(false);
 	});
 });

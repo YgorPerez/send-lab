@@ -241,6 +241,28 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			);
 		});
 
+		// The voice (#106) is one more switch in the same component, on by
+		// default, and read before the buzz: it is the cue that carries the most.
+		test('renders the voice switch in the cue settings, on, above the buzz', async () => {
+			const settings = await render('/settings');
+			const voice =
+				locale === 'en-US'
+					? 'Say each segment and the countdown aloud'
+					: 'Falar cada segmento e a contagem em voz alta';
+			const buzz =
+				locale === 'en-US'
+					? 'Vibrate when work or rest begins'
+					: 'Vibrar quando começa esforço ou descanso';
+			expect(settings).toContain(voice);
+			expect(settings.indexOf(voice)).toBeLessThan(settings.indexOf(buzz));
+			const row = settings.slice(settings.indexOf(voice), settings.indexOf(buzz));
+			expect(row).toMatch(
+				/role="switch"[^>]*aria-checked="true"|aria-checked="true"[^>]*role="switch"/,
+			);
+			// Whether this device has a voice is the client's to say, as for the buzz.
+			expect(settings).not.toContain(locale === 'en-US' ? 'no voice' : 'não tem voz');
+		});
+
 		// Timer (#101). The presets come from the library, read in the locale, each
 		// with its shape and its length, each exercise linked to the study the
 		// library cites; and the clock is there to run the one selected.
@@ -284,6 +306,46 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			);
 			// A preset is the library's: there is no setup to edit it from here.
 			expect(timer).not.toContain('aria-controls="timer-setup"');
+		});
+
+		// The Stopwatch tab (#108). The screen opens on Protocols, with the switch
+		// above the clock; the stopwatch is rendered behind it, hidden, so a
+		// protocol and the stopwatch can both hold their place at once.
+		test('renders the Protocols | Stopwatch switch and the Stopwatch tab', async () => {
+			const timer = await render('/timer');
+			const [protocols, stopwatch] =
+				locale === 'en-US' ? ['Protocols', 'Stopwatch'] : ['Protocolos', 'Cronômetro'];
+			expect(timer).toMatch(new RegExp(`aria-pressed="true"[^>]*>${protocols}<`));
+			expect(timer).toMatch(new RegExp(`aria-pressed="false"[^>]*>${stopwatch}<`));
+			// The switch comes before the clock, and the protocols before the stopwatch.
+			expect(timer.indexOf(`>${stopwatch}<`)).toBeLessThan(timer.indexOf('>Max Hangs<'));
+
+			// The stopwatch tab, hidden until chosen: zero, in the locale's decimal
+			// mark, its controls, and the laps it has not recorded yet.
+			const tab = timer.slice(timer.lastIndexOf('<div hidden'));
+			expect(tab).toContain(locale === 'en-US' ? '>Ready<' : '>Pronto<');
+			expect(tab).toContain(
+				`0:00<span class="text-[0.5em] text-ink-dim">${locale === 'en-US' ? '.0' : ',0'}</span>`,
+			);
+			expect(tab).toContain(locale === 'en-US' ? '>Start<' : '>Iniciar<');
+			expect(tab).toContain(locale === 'en-US' ? '>Lap<' : '>Volta<');
+			expect(tab).toContain(
+				locale === 'en-US'
+					? 'aria-label="Full-screen stopwatch"'
+					: 'aria-label="Cronômetro em tela cheia"',
+			);
+			expect(tab).toContain(locale === 'en-US' ? 'Laps' : 'Voltas');
+			expect(tab).toContain(locale === 'en-US' ? 'No laps yet.' : 'Nenhuma volta ainda.');
+			// What the number reads out: the count and the lap being timed.
+			expect(tab).toContain(
+				locale === 'en-US' ? '0:00.0 elapsed. Lap 1: 0:00.0' : '0:00,0 decorridos. Volta 1: 0:00,0',
+			);
+			// Lap is offered only once the watch runs.
+			expect(tab).toMatch(
+				new RegExp(
+					`disabled=""[^>]*><svg[^]*?</svg>${locale === 'en-US' ? 'Lap' : 'Volta'}</button>`,
+				),
+			);
 		});
 
 		// The cue settings' shortcut (#105): one discreet control in the header,
@@ -398,12 +460,15 @@ describe('the full-screen clock on Train', () => {
 			history: createMemoryHistory({ initialEntries: ['/train'] }),
 		});
 		await router.load();
-		// The root route renders the whole document, so React warns about an
-		// `<html>` inside this `<div>`. That is the price of mounting the real
-		// route rather than a copy of the clock, and nothing here hydrates.
-		const host = document.createElement('div');
-		document.body.append(host);
-		const root = createRoot(host);
+		// The root route renders the whole document, so it is mounted on the
+		// document itself. Under a `<div>` the root would sit inside the `<body>` it
+		// renders, and once a dialog's portal has mounted, a click outside it sends
+		// React's event dispatch round that loop forever — and a `<div>` root left
+		// behind holds the document's `<body>` against the next test's. That is the
+		// price of mounting the real route rather than a copy of the clock; nothing
+		// here hydrates.
+		const host = document;
+		const root = createRoot(document);
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
 			press(labelled(host, 'Full-screen clock'));
@@ -440,7 +505,76 @@ describe('the full-screen clock on Train', () => {
 			expect(clock.getAttribute('aria-label')).toBe(first);
 		} finally {
 			act(() => root.unmount());
-			host.remove();
+		}
+	});
+});
+
+// Only one of the Timer screen's two clocks runs at a time (#108): the press
+// that starts one pauses the other. Mounted on the document, as Train's is and
+// for the same reason, and pressed on the strips, where both tabs stay mounted
+// and the hidden one keeps its place.
+describe('the Timer screen runs one clock at a time', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	/** The strip a full-screen control sits in: the protocol clock's or the stopwatch's. */
+	const strip = (host: ParentNode, fullScreen: string) => {
+		const el = host
+			.querySelector(`button[aria-label="${fullScreen}"]`)
+			?.closest<HTMLElement>('.rounded-lg');
+		if (!el) throw new Error(`no strip holds "${fullScreen}"`);
+		return el;
+	};
+	const runs = (scope: ParentNode) => worded(scope, 'Pause') !== undefined;
+
+	test('starting the stopwatch pauses the protocol, and starting the protocol pauses the stopwatch', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const host = document;
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			const protocol = strip(host, 'Full-screen clock');
+			const stopwatch = strip(host, 'Full-screen stopwatch');
+
+			const close = () =>
+				press(
+					document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]'),
+				);
+
+			// Start opens the full-screen clock; the athlete closes it to reach the tab.
+			press(worded(protocol, 'Start'));
+			expect(runs(protocol)).toBe(true);
+			close();
+
+			press(worded(host, 'Stopwatch'));
+			// Looking at the other tab pauses nothing: the protocol keeps counting.
+			expect(runs(protocol)).toBe(true);
+
+			press(worded(stopwatch, 'Start'));
+			expect(runs(stopwatch)).toBe(true);
+			expect(runs(protocol)).toBe(false);
+			close();
+
+			press(worded(host, 'Protocols'));
+			press(worded(protocol, 'Start'));
+			expect(runs(protocol)).toBe(true);
+			expect(runs(stopwatch)).toBe(false);
+			// Paused, not reset: it offers to resume what it counted, never Start.
+			expect(worded(stopwatch, 'Lap')?.disabled).toBe(true);
+		} finally {
+			act(() => root.unmount());
 		}
 	});
 });
@@ -467,18 +601,19 @@ describe('the flash on the full-screen clock', () => {
 			history: createMemoryHistory({ initialEntries: [path] }),
 		});
 		await router.load();
-		const host = document.createElement('div');
-		document.body.append(host);
-		const root = createRoot(host);
+		const root = createRoot(document);
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
-			press(host.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
+			press(document.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
 			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
 			if (!clock) throw new Error(`the full-screen clock on ${path} did not open`);
+			// From the top: an earlier test may have left this screen's draft paused
+			// mid-protocol, and resuming there is no segment change.
+			const reset = clock.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
+			if (reset && !reset.disabled) press(reset);
 			body(clock);
 		} finally {
 			act(() => root.unmount());
-			host.remove();
 		}
 	}
 	const worded = (clock: HTMLElement, text: string) =>

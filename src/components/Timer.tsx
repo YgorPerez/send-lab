@@ -14,7 +14,7 @@
 // ----------------------------------------------
 // The protocol arithmetic is `lib/protocol.ts`, pure and unit-tested, and so is
 // the choice of which cue each transition fires (`planCues`, under the athlete's
-// cue preferences); playing the sounds and the buzz is `lib/cues.ts`. What is
+// cue preferences); playing the sounds, the buzz and the voice is `lib/cues.ts`. What is
 // left here — the tick, the wake lock, the shape, and drawing the flash the
 // planner asks for — is the part that
 // genuinely needs a component. See the header of `protocol.ts` for why the split
@@ -36,7 +36,15 @@ import {
 	SkipForward,
 	X,
 } from 'lucide-react';
-import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import {
+	type Ref,
+	useEffect,
+	useEffectEvent,
+	useId,
+	useImperativeHandle,
+	useRef,
+	useState,
+} from 'react';
 import { deliver, releaseCues } from '$lib/cues';
 import { clock, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
@@ -60,6 +68,7 @@ import {
 import { usePrefs } from '$lib/store/record';
 import { restored, type TimerSlot, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
+import { useWakeLock } from '$lib/wakeLock';
 import { Eyebrow } from './ui/primitives';
 import { button, input } from './ui/variants';
 
@@ -459,7 +468,19 @@ function FullScreenClock({
 	);
 }
 
+/**
+ * What a screen holding two clocks can do to the one it is not looking at: pause
+ * it. The Timer screen's rule is that only one of the protocol clock and the
+ * stopwatch runs at a time (#108), and the one being started is the one that
+ * knows — so it tells the other, through this, from the press itself.
+ */
+export interface ClockHandle {
+	pause: () => void;
+}
+
 export function Timer({
+	ref,
+	onStart,
 	slot,
 	protocol,
 	label,
@@ -470,6 +491,9 @@ export function Timer({
 	openOnStart = false,
 	titled = true,
 }: {
+	ref?: Ref<ClockHandle>;
+	/** Called on Start, so the screen can pause whatever else it was running. */
+	onStart?: () => void;
 	/** Which screen's clock this is. Each screen keeps its own place, so leaving
 	 *  one clock for the other never costs either its position (#101). */
 	slot: TimerSlot;
@@ -578,10 +602,11 @@ export function Timer({
 	// is already in, and play its countdown beat twice.
 	//
 	// The flash is the one delivery drawn rather than played, so it comes back
-	// here as state for the full-screen clock. Only while that clock is up: the
-	// strip is not looked at mid-hang, and a flash kept for a closed clock would
-	// replay, stale, the moment it opened. A flash of no length is over before a
-	// frame is drawn, which is what the planner asks for under reduced motion.
+	// here as state for the full-screen clock. A closed clock draws nothing, and
+	// opening or closing it drops whatever flash is held (`showClock`), so one
+	// planned while the strip was all there was never replays, stale, the moment
+	// the clock opens. A flash of no length is over before a frame is drawn,
+	// which is what the planner asks for under reduced motion.
 	const prefs = usePrefs();
 	const [flash, setFlash] = useState<Flash | null>(null);
 	const cue = useEffectEvent((from: Run, to: Run, isRunning: boolean) => {
@@ -591,7 +616,7 @@ export function Timer({
 		);
 		deliver(planned, {
 			flash: (segment, ms) => {
-				if (clockOpen && ms > 0) setFlash((f) => ({ segment, ms, n: (f?.n ?? 0) + 1 }));
+				if (ms > 0) setFlash((f) => ({ segment, ms, n: (f?.n ?? 0) + 1 }));
 			},
 		});
 	});
@@ -604,55 +629,32 @@ export function Timer({
 
 	// Keep the screen on while the clock is counting — not only while the
 	// full-screen clock is up. This is the one screen where the athlete is
-	// deliberately not touching the phone, and a display that blanks 30 seconds
-	// into a hang is worse than no clock at all. The browser drops the lock on
-	// visibility change either way, so it is re-requested when the page returns.
-	useEffect(() => {
-		if (!running) return;
-		const nav = navigator as Navigator & {
-			wakeLock?: { request: (type: 'screen') => Promise<{ release: () => Promise<void> }> };
-		};
-		if (!nav.wakeLock) return;
-		let sentinel: { release: () => Promise<void> } | null = null;
-		let cancelled = false;
-		const acquire = () => {
-			nav.wakeLock
-				?.request('screen')
-				.then((s) => {
-					if (cancelled) void s.release();
-					else sentinel = s;
-				})
-				// Denied or unsupported. Nothing to do and nothing worth telling the
-				// athlete: the clock still runs, the screen just times out as usual.
-				.catch(() => {});
-		};
-		const onVisible = () => {
-			if (document.visibilityState === 'visible') acquire();
-		};
-		acquire();
-		document.addEventListener('visibilitychange', onVisible);
-		return () => {
-			cancelled = true;
-			document.removeEventListener('visibilitychange', onVisible);
-			void sentinel?.release();
-		};
-	}, [running]);
+	// deliberately not touching the phone.
+	useWakeLock(running);
 
 	// Hand the audio hardware back when the timer goes away — leaving the context
 	// open ducks other audio and shows a media indicator for a timer nobody is
 	// running. Re-created lazily on the next cue.
 	useEffect(() => releaseCues, []);
 
+	// Every way the full-screen clock opens or closes goes through here.
+	const showClock = (open: boolean) => {
+		setFlash(null);
+		onClockOpenChange(open);
+	};
+
 	const start = () => {
 		if (run.segment === 'idle' || run.segment === 'done') setRun(beginning(config));
 		setRunning(true);
-		if (openOnStart) onClockOpenChange(true);
+		onStart?.();
+		if (openOnStart) showClock(true);
 	};
 	const reset = () => {
 		setRunning(false);
 		setRun(IDLE);
 	};
 	const toggle = () => (running ? setRunning(false) : start());
+	useImperativeHandle(ref, () => ({ pause: () => setRunning(false) }), []);
 	// Paused stays paused and running stays running: a jump moves the clock and
 	// leaves its state alone, so a skip made while paused lands paused.
 	const jump = (to: (r: Run, c: Protocol) => Run) => {
@@ -668,10 +670,7 @@ export function Timer({
 		<div className="rounded-lg border border-line bg-panel">
 			<FullScreenClock
 				open={clockOpen}
-				onOpenChange={(open) => {
-					setFlash(null);
-					onClockOpenChange(open);
-				}}
+				onOpenChange={showClock}
 				label={label}
 				reading={reading}
 				onToggle={toggle}
@@ -714,7 +713,7 @@ export function Timer({
 				    costs nothing to keep — but it is no longer the *only* way in. */}
 				<button
 					type="button"
-					onClick={() => onClockOpenChange(true)}
+					onClick={() => showClock(true)}
 					aria-label={m.timer_fullscreen()}
 					aria-describedby={readingId}
 					style={{ color: accent }}
@@ -762,7 +761,7 @@ export function Timer({
 						<button
 							type="button"
 							aria-label={m.timer_fullscreen()}
-							onClick={() => onClockOpenChange(true)}
+							onClick={() => showClock(true)}
 							className={button({ size: 'touch', class: 'w-12 px-0' })}
 						>
 							<Maximize2 size={16} />
