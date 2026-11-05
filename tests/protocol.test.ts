@@ -580,9 +580,9 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 				),
 			),
 		).toEqual([{ kind: 'sound', cue: 'go' }]);
-		expect(heardAndFelt(planCues({ from: IDLE, to: beginning(REPEATERS), running: true }, off))).toEqual([
-			{ kind: 'sound', cue: 'start' },
-		]);
+		expect(
+			heardAndFelt(planCues({ from: IDLE, to: beginning(REPEATERS), running: true }, off)),
+		).toEqual([{ kind: 'sound', cue: 'start' }]);
 	});
 
 	test('with the buzz off, a whole session never buzzes and sounds exactly what it did', () => {
@@ -628,8 +628,7 @@ describe('the flash on a segment change', () => {
 		}
 		return out;
 	};
-	const flashes = (planned: Delivery[][]) =>
-		planned.flat().filter((d) => d.kind === 'flash');
+	const flashes = (planned: Delivery[][]) => planned.flat().filter((d) => d.kind === 'flash');
 
 	test('flashes once on every segment change, in the segment it arrives in', () => {
 		expect(flashes(session()).map((d) => d.segment)).toEqual([
@@ -703,9 +702,7 @@ describe('the flash on a segment change', () => {
 		const c: Protocol = { prepare: 5, work: 10, rest: 6, rounds: 2, sets: 1, setRest: 0 };
 		const late: Run = { segment: 'work', remaining: 2, round: 1, set: 1 };
 		expect(
-			planCues({ from: late, to: back(late, c), running: true }).filter(
-				(d) => d.kind === 'flash',
-			),
+			planCues({ from: late, to: back(late, c), running: true }).filter((d) => d.kind === 'flash'),
 		).toEqual([{ kind: 'flash', segment: 'work', ms: expect.any(Number) }]);
 	});
 

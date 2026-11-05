@@ -486,7 +486,7 @@ describe('the flash on the full-screen clock', () => {
 	const flashed = (clock: HTMLElement) =>
 		clock.querySelector<HTMLElement>('[data-flash]')?.dataset.flash ?? null;
 
-	test.each(['/train', '/timer'])('%s flashes the segment each change lands on', async (path) => {
+	test.each(['/timer', '/train'])('%s flashes the segment each change lands on', async (path) => {
 		await withClock(path, (clock) => {
 			expect(flashed(clock)).toBeNull();
 			press(worded(clock, 'Start'));
@@ -498,7 +498,9 @@ describe('the flash on the full-screen clock', () => {
 			expect(flash?.className).toContain('pointer-events-none');
 			expect(flash?.style.animationDuration).toMatch(/^[1-9]\d*ms$/);
 
-			press(clock.querySelector<HTMLButtonElement>('button[aria-label="Skip to the next segment"]'));
+			press(
+				clock.querySelector<HTMLButtonElement>('button[aria-label="Skip to the next segment"]'),
+			);
 			expect(flashed(clock)).toBe(
 				{ Work: 'work', Rest: 'rest', 'Set rest': 'setRest', Done: 'done' }[
 					clock.getAttribute('aria-label') ?? ''
