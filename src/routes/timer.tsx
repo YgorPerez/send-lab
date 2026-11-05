@@ -49,7 +49,7 @@ import { type EditorTarget, ProtocolEditor } from '../components/ProtocolEditor'
 import { Stopwatch } from '../components/Stopwatch';
 import { type ClockHandle, Timer } from '../components/Timer';
 import { AlertDialog } from '../components/ui/AlertDialog';
-import { Empty, Pane, Section } from '../components/ui/primitives';
+import { Empty, Pane, Section, StickyStrip } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { button, option } from '../components/ui/variants';
 
@@ -214,7 +214,7 @@ function TimerScreen() {
 
 			<div hidden={tab !== 'protocols'} className="flex flex-col gap-6">
 				{current ? (
-					<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
+					<StickyStrip>
 						<Timer
 							// Remounted when the protocol's numbers change, not only when
 							// another one is picked: an edited saved protocol (#104) is a
@@ -234,7 +234,7 @@ function TimerScreen() {
 							openOnStart
 							titled={false}
 						/>
-					</div>
+					</StickyStrip>
 				) : null}
 
 				<Section label={m.timer_saved()}>

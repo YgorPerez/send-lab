@@ -41,7 +41,7 @@ import type { WorkingLoad, WorkingLoadSource } from '$lib/types';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
-import { Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
+import { Empty, Eyebrow, Pane, Section, StickyStrip } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -189,7 +189,7 @@ function Train() {
 
 			{/* Sticky under the 44px app bar. The clock is the one element that has to
 			    survive scrolling to a set row three cards down. */}
-			<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
+			<StickyStrip>
 				<Timer
 					home="train"
 					key={protocolKey}
@@ -199,7 +199,7 @@ function Train() {
 					clockOpen={clockOpen}
 					onClockOpenChange={setClockOpen}
 				/>
-			</div>
+			</StickyStrip>
 
 			{/* Nothing scheduled — a rest day, or a slot the program left empty. It
 			    says so where the cards would be, and the add-exercise picker below is
