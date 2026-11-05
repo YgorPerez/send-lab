@@ -146,6 +146,8 @@ describe('a preferences write', () => {
 		dailyNotice: false,
 		timeZone: 'America/Sao_Paulo',
 		locale: 'pt-BR',
+		countdown: 5,
+		buzz: false,
 	};
 	const write = (row: unknown) => ({ collection: 'prefs', key: 'only', row, at: T1 });
 

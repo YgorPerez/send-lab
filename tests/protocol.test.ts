@@ -8,6 +8,7 @@ import { describe, expect, test } from 'vitest';
 import {
 	back,
 	beginning,
+	CUE_DEFAULTS,
 	elapsedOf,
 	IDLE,
 	nextOf,
@@ -521,6 +522,79 @@ describe('the cue planner', () => {
 			'work',
 			'done',
 		]);
+	});
+});
+
+// The athlete's cue preferences (#105). The planner takes them as a second
+// argument, and leaving it out has to be exactly the behaviour pinned above —
+// which is also what an athlete who never opens the setting hears.
+describe("the cue planner, under the athlete's cue preferences", () => {
+	/** What one second of a long work segment plans, at `remaining` left. */
+	const at = (remaining: number, prefs?: Parameters<typeof planCues>[1]) =>
+		planCues(
+			{
+				from: { segment: 'work', remaining: remaining + 1, round: 1, set: 1 },
+				to: { segment: 'work', remaining, round: 1, set: 1 },
+				running: true,
+			},
+			prefs,
+		);
+	const COUNT = [{ kind: 'sound', cue: 'countdown' }];
+
+	test.each([
+		3, 5, 10,
+	] as const)('a %is countdown counts exactly the last %i seconds', (countdown) => {
+		const counted = Array.from({ length: 20 }, (_, i) => 20 - i).filter(
+			(remaining) => at(remaining, { ...CUE_DEFAULTS, countdown }).length > 0,
+		);
+		expect(counted).toEqual(
+			{ 3: [3, 2, 1], 5: [5, 4, 3, 2, 1], 10: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1] }[countdown],
+		);
+		expect(at(1, { ...CUE_DEFAULTS, countdown })).toEqual(COUNT);
+	});
+
+	test('the defaults are today: three seconds, and the buzz on', () => {
+		expect(CUE_DEFAULTS).toEqual({ countdown: 3, buzz: true });
+		expect(at(4)).toEqual([]);
+		expect(at(3)).toEqual(COUNT);
+	});
+
+	test('with the buzz off, a segment change only sounds', () => {
+		const off = { ...CUE_DEFAULTS, buzz: false };
+		expect(
+			planCues(
+				{
+					from: { segment: 'prepare', remaining: 1, round: 1, set: 1 },
+					to: { segment: 'work', remaining: 7, round: 1, set: 1 },
+					running: true,
+				},
+				off,
+			),
+		).toEqual([{ kind: 'sound', cue: 'go' }]);
+		expect(planCues({ from: IDLE, to: beginning(REPEATERS), running: true }, off)).toEqual([
+			{ kind: 'sound', cue: 'start' },
+		]);
+	});
+
+	test('with the buzz off, a whole session never buzzes and sounds exactly what it did', () => {
+		const heard = (prefs?: Parameters<typeof planCues>[1]) => {
+			const out: string[] = [];
+			let before = IDLE;
+			let r = beginning(REPEATERS);
+			for (;;) {
+				for (const d of planCues({ from: before, to: r, running: true }, prefs)) {
+					out.push(`${d.kind}:${d.cue}`);
+				}
+				if (r.segment === 'done') break;
+				before = r;
+				r = step(r, REPEATERS);
+			}
+			return out;
+		};
+		const quiet = heard({ ...CUE_DEFAULTS, buzz: false });
+		expect(quiet.filter((h) => h.startsWith('buzz:'))).toEqual([]);
+		expect(quiet).toEqual(heard().filter((h) => h.startsWith('sound:')));
+		expect(quiet.at(-1)).toBe('sound:done');
 	});
 });
 

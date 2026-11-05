@@ -40,6 +40,8 @@ const PREFS = {
 	dailyNotice: false,
 	timeZone: null,
 	locale: null,
+	countdown: 3,
+	buzz: true,
 } as const;
 
 /** A `StorageApi` backed by a `Map` — the collections persist nowhere. */
@@ -359,5 +361,34 @@ describe('preferences carry two switches and a time zone', () => {
 		const hydrated: unknown = JSON.parse(JSON.stringify(written.ok && written.row));
 		expect(hydrated).toEqual(full);
 		expect(sanitizeRow('prefs', SINGLETON_KEY, hydrated).ok).toBe(true);
+	});
+});
+
+describe('preferences carry how cues are delivered', () => {
+	// #105. The countdown length and the buzz switch ride on the prefs row, so
+	// they follow the account. A client from before them still sends rows
+	// without them, and those must keep being accepted — read as today's clock,
+	// which is what that client is running.
+	const chosen = { ...PREFS, countdown: 10, buzz: false };
+
+	it('accepts a row carrying them', () => {
+		const check = sanitizeRow('prefs', SINGLETON_KEY, chosen);
+		expect(check.ok ? check.row : check.reason).toEqual(chosen);
+	});
+
+	it('reads a row from before them as three seconds and the buzz on', () => {
+		const { countdown: _c, buzz: _b, ...before } = chosen;
+		const check = sanitizeRow('prefs', SINGLETON_KEY, before);
+		expect(check.ok ? check.row : check.reason).toEqual({ ...before, countdown: 3, buzz: true });
+	});
+
+	it.each([0, 4, 7, 30, '5'])('refuses a countdown of %j', (countdown) => {
+		const check = sanitizeRow('prefs', SINGLETON_KEY, { ...chosen, countdown });
+		expect(check.ok).toBe(false);
+		expect(check.ok === false && check.reason).toContain('countdown');
+	});
+
+	it('refuses a buzz that is not a switch', () => {
+		expect(sanitizeRow('prefs', SINGLETON_KEY, { ...chosen, buzz: 'off' }).ok).toBe(false);
 	});
 });

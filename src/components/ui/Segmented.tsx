@@ -21,6 +21,7 @@
 // nothing is pressed, and no answer is implied by a default (`screens/welcome.ts`
 // — an intake question has no default). Settings never passes null; it always has
 // a stored preference.
+import { cn } from '$lib/utils';
 import { option } from './variants';
 
 /**
@@ -34,14 +35,22 @@ export function Segmented<T extends string | number | boolean>({
 	options,
 	onChange,
 	className,
+	labelledBy,
 }: {
 	value: T | null;
 	options: readonly { id: T; label: string }[];
 	onChange: (next: T) => void;
 	className: string;
+	/** The id of the text that says what the choice is about. Without it the
+	 *  buttons announce as bare tokens — "5s, toggle button, not pressed" — and a
+	 *  screen reader has to guess what five seconds of. */
+	labelledBy?: string;
 }) {
 	return (
-		<div className={className}>
+		// A fieldset, so a group whether or not it is named: the buttons are one
+		// answer. Preflight strips its border, padding and margin, so it lays out
+		// as the `div` it replaced; `min-w-0` undoes its min-content floor.
+		<fieldset className={cn('min-w-0', className)} aria-labelledby={labelledBy}>
 			{options.map((o) => (
 				<button
 					key={String(o.id)}
@@ -63,6 +72,6 @@ export function Segmented<T extends string | number | boolean>({
 					{o.label}
 				</button>
 			))}
-		</div>
+		</fieldset>
 	);
 }

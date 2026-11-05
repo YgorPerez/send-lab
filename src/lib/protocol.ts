@@ -291,14 +291,15 @@ export type Cue =
 	| 'work'
 	/** A set ended; the longer between-sets rest begins. */
 	| 'setRest'
-	/** Three, two, one — the last seconds of any segment. */
+	/** The last seconds of any segment, one beat each: three of them unless
+	 *  the athlete chose five or ten (`CuePrefs.countdown`). */
 	| 'countdown'
 	/** The protocol is finished. */
 	| 'done';
 
-/** The cues that buzz. The countdown does not: it fires three times in three
- *  seconds, and a phone buzzing continuously reads as a malfunction rather than
- *  as a countdown. Typed rather than tabled, so `cues.ts` cannot be asked for a
+/** The cues that buzz. The countdown does not: it fires once a second for up
+ *  to ten seconds, and a phone buzzing continuously reads as a malfunction
+ *  rather than as a countdown. Typed rather than tabled, so `cues.ts` cannot be asked for a
  *  buzz pattern the planner never plans. */
 export type BuzzedCue = Exclude<Cue, 'countdown'>;
 
@@ -319,8 +320,33 @@ const ARRIVAL: Record<Segment, BuzzedCue | null> = {
 	done: 'done',
 };
 
-/** The last seconds of a segment get their own cue, the way Timer Plus counts in. */
-const COUNTDOWN_FROM = 3;
+/** How many final seconds of a segment are counted down, one cue each. The
+ *  athlete's choice (#105), from this closed set: Timer Plus offers the same
+ *  three, and a free number would be a field to validate for no protocol the
+ *  library prescribes. */
+export const COUNTDOWN_LENGTHS = [3, 5, 10] as const;
+export type CountdownLength = (typeof COUNTDOWN_LENGTHS)[number];
+
+/**
+ * How the athlete wants cues delivered. Part of their preferences (the prefs row
+ * extends this), so it follows the account; read by the planner rather than by
+ * `cues.ts`, because whether a delivery happens is a decision and the player
+ * makes none.
+ *
+ * Each field is one delivery or one parameter of one. A new one is a field here,
+ * a default below, a column on the server's prefs row and a row in
+ * `CueSettings` — nothing else has to move.
+ */
+export interface CuePrefs {
+	/** Seconds counted down at the end of every segment. */
+	countdown: CountdownLength;
+	/** Whether segment changes vibrate. The sound plays either way. */
+	buzz: boolean;
+}
+
+/** What an athlete who never opened the setting gets, and what a row written
+ *  before the setting existed reads as: exactly the clock before #105. */
+export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true };
 
 /**
  * What the athlete is told when the clock moves from one run to the next.
@@ -345,18 +371,25 @@ const COUNTDOWN_FROM = 3;
  * never counts down on landing, even on a segment short enough that its first
  * second is inside the countdown window, because a jump is never "one second
  * on".
+ *
+ * `prefs` is the athlete's say in how (#105): how long the countdown is, and
+ * whether a change buzzes as well as sounds. Left out, it is `CUE_DEFAULTS`,
+ * which is the clock as it was before anyone could choose.
  */
-export function planCues({
-	from,
-	to,
-	running,
-}: {
-	from: Run;
-	to: Run;
-	running: boolean;
-}): Delivery[] {
+export function planCues(
+	{
+		from,
+		to,
+		running,
+	}: {
+		from: Run;
+		to: Run;
+		running: boolean;
+	},
+	prefs: CuePrefs = CUE_DEFAULTS,
+): Delivery[] {
 	if (samePlace(from, to) && to.remaining <= from.remaining) {
-		return running && to.remaining > 0 && to.remaining <= COUNTDOWN_FROM
+		return running && to.remaining > 0 && to.remaining <= prefs.countdown
 			? [{ kind: 'sound', cue: 'countdown' }]
 			: [];
 	}
@@ -364,10 +397,11 @@ export function planCues({
 	// two-note cue: it is the moment the athlete has to move, and a single beep
 	// identical to every other single beep is not enough to act on blind.
 	const cue = from.segment === 'prepare' && to.segment === 'work' ? 'go' : ARRIVAL[to.segment];
-	return cue
+	if (!cue) return [];
+	return prefs.buzz
 		? [
 				{ kind: 'sound', cue },
 				{ kind: 'buzz', cue },
 			]
-		: [];
+		: [{ kind: 'sound', cue }];
 }
