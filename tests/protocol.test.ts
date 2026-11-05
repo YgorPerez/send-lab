@@ -12,6 +12,7 @@ import {
 	nextOf,
 	type Protocol,
 	planCues,
+	protocolOf,
 	type Run,
 	remainingOf,
 	type Segment,
@@ -331,5 +332,42 @@ describe('the cue planner', () => {
 			'work',
 			'done',
 		]);
+	});
+});
+
+// The one place a library variant becomes something the clock can run. Train's
+// pinned task and the Timer screen's presets both go through it (#101), so a
+// preset and a prescription of the same variant cannot run different numbers.
+describe("a variant's protocol", () => {
+	test('runs the middle of each prescribed range', () => {
+		// Repeaters 7/3, as the library writes it: three to four sets.
+		expect(
+			protocolOf({
+				workSec: { min: 7, max: 7 },
+				restSec: { min: 3, max: 3 },
+				rounds: { min: 6, max: 6 },
+				sets: { min: 3, max: 4 },
+				setRestSec: { min: 180, max: 180 },
+			}),
+		).toEqual({ prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180 });
+	});
+
+	test('reads a single effort per set when the variant names no rounds', () => {
+		expect(protocolOf({ workSec: { min: 10, max: 10 }, sets: { min: 3, max: 3 } })).toEqual({
+			prepare: 10,
+			work: 10,
+			rest: 0,
+			rounds: 1,
+			sets: 3,
+			setRest: 0,
+		});
+	});
+
+	test('keeps a prepare length the variant sets', () => {
+		expect(protocolOf({ workSec: { min: 5, max: 5 }, prepareSec: 3 })?.prepare).toBe(3);
+	});
+
+	test('has nothing to run for a variant with no work length', () => {
+		expect(protocolOf({ reps: { min: 4, max: 6 }, sets: { min: 3, max: 4 } })).toBeNull();
 	});
 });
