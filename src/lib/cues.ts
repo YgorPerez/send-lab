@@ -1,5 +1,6 @@
 // Timer cues: the sounds and the buzz that tell the athlete a segment changed
-// while they are hanging off a board and not looking at the phone.
+// while they are hanging off a board and not looking at the phone. The flash
+// (#107) is planned beside them and passed through here, but drawn by the clock.
 //
 // **Segment, not phase** — the glossary reserves *phase* for a stretch of weeks
 // and lists it on Segment's `_Avoid_` list (#75).
@@ -52,7 +53,7 @@
 
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import type { BuzzedCue, Cue, Delivery, SegmentPhrase } from './protocol';
+import type { BuzzedCue, Cue, Delivery, Segment, SegmentPhrase } from './protocol';
 
 /** One tone, or several played in sequence for a distinct cue. */
 const TONES: Record<Cue, number[]> = {
@@ -235,11 +236,21 @@ function speak(d: Speech): void {
 }
 
 /**
+ * The deliveries a module cannot make because they are drawn. The clock that
+ * asks for the cues passes how to draw them; one it leaves out is not drawn.
+ */
+export interface Drawn {
+	/** Wash the screen in `segment`'s colour, fading over `ms` (#107). */
+	flash?: (segment: Segment, ms: number) => void;
+}
+
+/**
  * Deliver what `planCues` decided, in order. Never throws and never awaits — a
  * cue that cannot be delivered is not a reason to interrupt a set. Decides
- * nothing: which cue a transition gets, and whether it buzzes, is the planner's.
+ * nothing: which cue a transition gets, whether it buzzes, and whether it
+ * flashes and for how long, is the planner's.
  */
-export function deliver(deliveries: readonly Delivery[]): void {
+export function deliver(deliveries: readonly Delivery[], drawn: Drawn = {}): void {
 	if (typeof window === 'undefined') return;
 	for (const d of deliveries) {
 		switch (d.kind) {
@@ -248,6 +259,9 @@ export function deliver(deliveries: readonly Delivery[]): void {
 				break;
 			case 'buzz':
 				buzz(d.cue);
+				break;
+			case 'flash':
+				drawn.flash?.(d.segment, d.ms);
 				break;
 			case 'speech':
 				speak(d);

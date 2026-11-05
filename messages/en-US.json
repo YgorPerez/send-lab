@@ -327,6 +327,7 @@
 	"cues_countdown": "Count down the last",
 	"cues_buzz": "Vibrate when work or rest begins",
 	"cues_buzz_unsupported": "This device can't vibrate. The choice still follows your account to one that can.",
+	"cues_flash": "Flash the clock at each segment change",
 	"cues_voice": "Say each segment and the countdown aloud",
 	"cues_voice_unsupported": "This device has no voice for this language. The choice still follows your account to one that has.",
 	"cues_say_prepare": "Get ready",

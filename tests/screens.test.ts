@@ -38,7 +38,7 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
-import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { PINNED_NOW } from '../scripts/seeded-record.ts';
 import { getContent } from '../src/lib/content/index.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
@@ -219,6 +219,12 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				locale === 'en-US'
 					? 'Vibrate when work or rest begins'
 					: 'Vibrar quando começa esforço ou descanso',
+			);
+			// The flash switch (#107), on every device alike.
+			expect(settings).toContain(
+				locale === 'en-US'
+					? 'Flash the clock at each segment change'
+					: 'Piscar o relógio a cada troca de segmento',
 			);
 			// Whether this device can vibrate is the client's to say. The string
 			// render is the server's, which cannot know, so it says nothing.
@@ -570,6 +576,92 @@ describe('the Timer screen runs one clock at a time', () => {
 		} finally {
 			act(() => root.unmount());
 		}
+	});
+});
+
+// The flash (#107), on both screens that run the clock, mounted as above and for
+// the same reason. Which transitions flash, and for how long, is the planner's
+// and pinned in `protocol.test.ts`; this is the clock drawing what it is handed.
+describe('the flash on the full-screen clock', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+	afterEach(() => vi.unstubAllGlobals());
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+
+	/** Mount `path`, open its full-screen clock, run `body` against it. */
+	async function withClock(path: string, body: (clock: HTMLElement) => void) {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: [path] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			press(document.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
+			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!clock) throw new Error(`the full-screen clock on ${path} did not open`);
+			// From the top: an earlier test may have left this screen's draft paused
+			// mid-protocol, and resuming there is no segment change.
+			const reset = clock.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
+			if (reset && !reset.disabled) press(reset);
+			body(clock);
+		} finally {
+			act(() => root.unmount());
+		}
+	}
+	const worded = (clock: HTMLElement, text: string) =>
+		[...clock.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	const flashed = (clock: HTMLElement) =>
+		clock.querySelector<HTMLElement>('[data-flash]')?.dataset.flash ?? null;
+
+	test.each(['/timer', '/train'])('%s flashes the segment each change lands on', async (path) => {
+		await withClock(path, (clock) => {
+			expect(flashed(clock)).toBeNull();
+			press(worded(clock, 'Start'));
+			const first = flashed(clock);
+			expect(first).toBeTruthy();
+			const flash = clock.querySelector<HTMLElement>('[data-flash]');
+			// Out of the way of every tap, and silent: the announcer says the change.
+			expect(flash?.getAttribute('aria-hidden')).toBe('true');
+			expect(flash?.className).toContain('pointer-events-none');
+			expect(flash?.style.animationDuration).toMatch(/^[1-9]\d*ms$/);
+
+			press(
+				clock.querySelector<HTMLButtonElement>('button[aria-label="Skip to the next segment"]'),
+			);
+			expect(flashed(clock)).toBe(
+				{ Work: 'work', Rest: 'rest', 'Set rest': 'setRest', Done: 'done' }[
+					clock.getAttribute('aria-label') ?? ''
+				],
+			);
+		});
+	});
+
+	// ADR 0011, through the real media query: the planner is told, plans a flash
+	// of no length, and the clock draws nothing.
+	test('draws nothing when the device asks for reduced motion', async () => {
+		vi.stubGlobal(
+			'matchMedia',
+			(query: string) =>
+				({
+					matches: query === '(prefers-reduced-motion: reduce)',
+					media: query,
+					addEventListener: () => {},
+					removeEventListener: () => {},
+				}) as unknown as MediaQueryList,
+		);
+		await withClock('/train', (clock) => {
+			press(worded(clock, 'Start'));
+			expect(worded(clock, 'Pause')).toBeTruthy();
+			expect(flashed(clock)).toBeNull();
+		});
 	});
 });
 
