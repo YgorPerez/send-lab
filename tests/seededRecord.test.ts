@@ -43,7 +43,7 @@ import { weekdayKeyOf } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { createRecordStore } from '../src/lib/store/collections.ts';
 import { seedRecordStore } from '../src/lib/store/seed.ts';
-import type { Session } from '../src/lib/types.ts';
+import type { SavedProtocol, Session } from '../src/lib/types.ts';
 
 // Paraglide's real strategy is `localStorage` first (ADR 0006) and jsdom under
 // Vitest has none, so an un-overridden `getLocale()` throws where content is
@@ -122,14 +122,25 @@ describe('the record the gates install', () => {
 	// legitimately differs is athlete-typed free text — `store/seed.ts` is explicit
 	// that a session note is frozen in the language it was typed in, and that this
 	// is what ADR 0012 distinguishes a stored *label* from.
-	it('writes the same rows in both locales, apart from the athlete-typed notes', () => {
+	it('writes the same rows in both locales, apart from what the athlete typed', () => {
 		expect(Object.keys(pt).sort()).toEqual(Object.keys(en).sort());
 
-		// Every collection but `sessions` decodes identically — everything stored is
-		// an id, a number or an ISO date.
-		for (const collection of collections.filter((c) => c !== 'sessions')) {
+		// Every collection but `sessions` and `savedProtocols` decodes identically —
+		// everything stored is an id, a number or an ISO date.
+		const typed = ['sessions', 'savedProtocols'];
+		for (const collection of collections.filter((c) => !typed.includes(c))) {
 			expect(rows(pt, collection), collection).toEqual(rows(en, collection));
 		}
+
+		// A saved protocol's name is the athlete's (#103), typed in their language;
+		// everything else about it is the same row.
+		const unnamed = (cells: Cells) =>
+			rows<SavedProtocol>(cells, 'savedProtocols').map(({ name, ...rest }) => {
+				void name;
+				return rest;
+			});
+		expect(unnamed(pt)).toEqual(unnamed(en));
+		expect(unnamed(en)).toHaveLength(2);
 
 		// And in `sessions` the difference really is only the note. Strip them and
 		// the two locales agree row for row.

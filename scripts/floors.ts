@@ -65,7 +65,7 @@ export interface RouteFloor {
 	 * The cross-pass control: on a route that reads the record, measuring the same
 	 * count with and without one means the rows were installed where the app never
 	 * looked, which passes every other check a gate makes. It is declared per
-	 * route rather than inferred from the floor, because three of the seven
+	 * route rather than inferred from the floor, because four of the eight
 	 * screens legitimately do not move:
 	 *
 	 *   `/login`     gates its body on a session that cannot resolve in a gate, so
@@ -98,6 +98,14 @@ export interface RouteFloor {
  *                seeded, 13 empty — the screen #73 was written about.
  *   `/login`     the sign-in form. 10 either way.
  *   `/settings`  the preferences that work offline. 19 either way.
+ *   `/timer`     the Protocols | Stopwatch switch, the saved protocols, the
+ *                library's presets, and the clock for the one selected. 116
+ *                seeded, 113 empty — two seeded saved protocols (rows, and
+ *                Delete and Edit on the selected one) against the empty list's
+ *                copy, which names both ways in, and its New protocol button
+ *                (#103, #104). With one seeded protocol the two tied: the empty
+ *                state grew as much as the one row did. The Stopwatch tab is
+ *                `hidden` until chosen, so only its switch counts (#108).
  *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
  *                seeded, 176 empty — the grid is prescribed from the program
  *                before any of it has been trained.
@@ -110,6 +118,7 @@ export const SEEDED_FLOORS: Record<string, RouteFloor> = {
 	'/log': { floor: 125, readsRecord: true },
 	'/login': { floor: 6, readsRecord: false },
 	'/settings': { floor: 12, readsRecord: false },
+	'/timer': { floor: 75, readsRecord: true },
 	'/train': { floor: 140, readsRecord: true },
 	'/week': { floor: 20, readsRecord: false },
 	'/welcome': { floor: 15, readsRecord: false },

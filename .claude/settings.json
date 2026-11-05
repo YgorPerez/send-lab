@@ -19,6 +19,9 @@
 		"These require the `serena-hooks` executable on PATH (installed with serena-agent). If Serena is",
 		"not installed the hooks fail harmlessly, but see README.md for the one-time setup."
 	],
+	"permissions": {
+		"allow": ["Bash(.claude/skills/impeccable/scripts/impeccable:*)"]
+	},
 	"extraKnownMarketplaces": {
 		"mattpocock": {
 			"source": {

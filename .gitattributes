@@ -15,3 +15,10 @@
 
 # Lockfiles are generated: keep them out of diffs and merges by hand.
 pnpm-lock.yaml -diff linguist-generated
+
+# Impeccable, vendored (docs/agents/impeccable.md). cmd.exe parses a batch file by byte offset, so an
+# LF-only `.cmd` breaks its `call :label` and `goto`: the Windows launcher keeps CRLF, as upstream's
+# own .gitattributes pins it. The tree is upstream's build output, so it is collapsed in PR diffs.
+.claude/skills/impeccable/scripts/impeccable.cmd text eol=crlf
+.claude/skills/impeccable/** linguist-generated
+.claude/agents/impeccable-*.md linguist-generated

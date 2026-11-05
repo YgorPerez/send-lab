@@ -83,6 +83,11 @@ const COPY = {
 		finish: 'Finish &amp; log session',
 		microcycle: 'Microcycle',
 		thursday: 'Thu',
+		noSaved: 'No saved protocols yet.',
+		newProtocol: '>New protocol<',
+		create: '>Create</b>',
+		saved: 'Saved protocols',
+		delete: '>Delete<',
 	},
 	'pt-BR': {
 		noCheck: 'Nenhum check de prontidão hoje ainda',
@@ -97,6 +102,11 @@ const COPY = {
 		finish: 'Concluir e registrar treino',
 		microcycle: 'Microciclo',
 		thursday: 'Qui',
+		noSaved: 'Nenhum protocolo salvo ainda.',
+		newProtocol: '>Novo protocolo<',
+		create: '>Crie</b>',
+		saved: 'Protocolos salvos',
+		delete: '>Excluir<',
 	},
 } as const;
 
@@ -179,6 +189,21 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// `aria-expanded` on every page, which would fail a test whose subject is
 			// the Log list.
 			expect(screenOf(log)).not.toContain('aria-expanded');
+		});
+
+		// Timer (#103): the saved list is empty, and says how to fill it, under its
+		// own heading — the presets below are what the copy points at.
+		test('Timer says how to keep a saved protocol', async () => {
+			const timer = screenOf(await render('/timer', THURSDAY, locale));
+			expect(timer).toContain(copy.saved);
+			expect(timer).toContain(copy.noSaved);
+			// Nothing saved, so nothing to delete: only a preset is selected.
+			expect(timer).not.toContain(copy.delete);
+			// The copy names the two ways in, and the one that is not a preset's
+			// action is right under it (#104).
+			expect(timer).toContain(copy.create);
+			expect(timer).toContain(copy.newProtocol);
+			expect(timer.indexOf(copy.noSaved)).toBeLessThan(timer.indexOf(copy.newProtocol));
 		});
 	});
 }

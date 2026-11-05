@@ -24,6 +24,26 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
 }
 
 /**
+ * A strip held under the 44px app bar while the page scrolls beneath it.
+ *
+ * The clock on Train and on the Timer screen, and the stopwatch: each is the one
+ * element that has to survive scrolling to a set row three cards down, or to the
+ * twentieth protocol in a list. Bled to the page edge so the list does not show
+ * through its sides, and blurred rather than opaque so the scroll still reads.
+ *
+ * Its `backdrop-blur` makes it the containing block for any fixed descendant,
+ * which is why the full-screen clock inside it is a portalled dialog
+ * (`FullScreenClock.tsx`).
+ */
+export function StickyStrip({ children }: { children: ReactNode }) {
+	return (
+		<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
+			{children}
+		</div>
+	);
+}
+
+/**
  * A screen section: heading, optional right-hand meta, body.
  *
  * The gap under the heading is deliberately larger than the gaps within the
@@ -70,6 +90,34 @@ export function Bare({ children, className }: { children: ReactNode; className?:
 	return <div className={cn('border-t border-line-soft pt-3', className)}>{children}</div>;
 }
 
+/** One control on its own line: what it is on the left, the control on the right.
+ *  No horizontal padding of its own — inside a `card` the card supplies it, and
+ *  inside a `Bare` the row sits flush with the rule above it.
+ *
+ *  Promoted out of Settings by #105, when the cue settings needed the same row
+ *  in Settings and in the Timer screen's popover. The label wraps rather than
+ *  truncating: pt-BR runs longer, and the control keeps its width. */
+export function ControlRow({
+	id,
+	label,
+	children,
+}: {
+	/** For the control to name itself by: `Switch`'s `labelledBy`, or a
+	 *  `Segmented` group's. */
+	id?: string;
+	label: ReactNode;
+	children: ReactNode;
+}) {
+	return (
+		<div className="flex min-h-11 items-center justify-between gap-3 py-1.5">
+			<span id={id} className="min-w-0 text-[13px] text-ink">
+				{label}
+			</span>
+			{children}
+		</div>
+	);
+}
+
 /**
  * What a group says when it has nothing to list (#61).
  *
@@ -96,7 +144,9 @@ export function Empty({
 }) {
 	return (
 		<Bare className={cn('flex flex-col items-start gap-2.5', className)}>
-			<p className="prose-inline text-[13px] leading-snug text-ink-dim">
+			{/* `text-pretty`: a two-line sentence that leaves its last word alone
+			    on a third reads as a mistake (#104's review, the Timer's copy). */}
+			<p className="prose-inline text-[13px] leading-snug text-pretty text-ink-dim">
 				<Prose value={value} />
 			</p>
 			{action}

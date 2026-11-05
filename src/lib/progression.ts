@@ -5,8 +5,12 @@
 // ceiling, so gains compound more slowly. Citations map to ids on the Studies tab.
 import type { Level } from './types';
 
+/** The studies the library cites for an exercise. A closed set, so a label for
+ *  each can be checked complete at compile time (`STUDY_TITLE` in `format.ts`). */
+export type ExerciseStudy = 'baar' | 'ferrer' | 'lopez' | 'nelson' | 'horst' | 'lattice';
+
 /** Base weekly load gain (%) per exercise, with the study that informs it. */
-const PROGRESSION: Record<string, { weeklyPct: number; study: string }> = {
+const PROGRESSION: Record<string, { weeklyPct: number; study: ExerciseStudy }> = {
 	abra: { weeklyPct: 3, study: 'baar' },
 	density: { weeklyPct: 2.5, study: 'baar' },
 	slopdens: { weeklyPct: 2.5, study: 'ferrer' },
@@ -16,6 +20,18 @@ const PROGRESSION: Record<string, { weeklyPct: number; study: string }> = {
 	pull: { weeklyPct: 2, study: 'horst' },
 	repeaters: { weeklyPct: 1.5, study: 'lattice' },
 };
+
+/**
+ * The study the library cites for an exercise, or `null` if it cites none.
+ *
+ * The one exercise→study map the app has, exposed rather than copied: the Timer
+ * screen's presets (#101) link to the same study the progression engine reads,
+ * so a citation corrected here is corrected in both. It is per exercise, not per
+ * variant — the library cites the method, and every variant runs that method.
+ */
+export function studyOf(exercise: string): ExerciseStudy | null {
+	return PROGRESSION[exercise]?.study ?? null;
+}
 
 /** Exercises whose adaptation is amplified when a partner is also programmed. */
 export const SYNERGY: Record<string, string> = { abra: 'maxhang' };

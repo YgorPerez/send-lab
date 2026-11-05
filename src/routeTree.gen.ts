@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TimerRouteImport } from './routes/timer'
 import { Route as TrainRouteImport } from './routes/train'
 import { Route as WeekRouteImport } from './routes/week'
 import { Route as WelcomeRouteImport } from './routes/welcome'
@@ -38,6 +39,11 @@ const LoginRoute = LoginRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TimerRoute = TimerRouteImport.update({
+  id: '/timer',
+  path: '/timer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TrainRoute = TrainRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/log': typeof LogRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/timer': typeof TimerRoute
   '/train': typeof TrainRoute
   '/week': typeof WeekRoute
   '/welcome': typeof WelcomeRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/log': typeof LogRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/timer': typeof TimerRoute
   '/train': typeof TrainRoute
   '/week': typeof WeekRoute
   '/welcome': typeof WelcomeRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/log': typeof LogRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/timer': typeof TimerRoute
   '/train': typeof TrainRoute
   '/week': typeof WeekRoute
   '/welcome': typeof WelcomeRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/log'
     | '/login'
     | '/settings'
+    | '/timer'
     | '/train'
     | '/week'
     | '/welcome'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/log'
     | '/login'
     | '/settings'
+    | '/timer'
     | '/train'
     | '/week'
     | '/welcome'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/log'
     | '/login'
     | '/settings'
+    | '/timer'
     | '/train'
     | '/week'
     | '/welcome'
@@ -152,6 +164,7 @@ export interface RootRouteChildren {
   LogRoute: typeof LogRoute
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
+  TimerRoute: typeof TimerRoute
   TrainRoute: typeof TrainRoute
   WeekRoute: typeof WeekRoute
   WelcomeRoute: typeof WelcomeRoute
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/timer': {
+      id: '/timer'
+      path: '/timer'
+      fullPath: '/timer'
+      preLoaderRoute: typeof TimerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/train': {
@@ -240,6 +260,7 @@ const rootRouteChildren: RootRouteChildren = {
   LogRoute: LogRoute,
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
+  TimerRoute: TimerRoute,
   TrainRoute: TrainRoute,
   WeekRoute: WeekRoute,
   WelcomeRoute: WelcomeRoute,

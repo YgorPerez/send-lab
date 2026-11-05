@@ -21,6 +21,9 @@ import type { Content, Cost, Exercise, Grip, Quality, Range, Region } from '$lib
 import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { variantOf } from '$lib/prescription';
+import type { ExerciseStudy } from '$lib/progression';
+import type { Protocol, ProtocolField } from '$lib/protocol';
+import type { AppLocale } from '$lib/store/locale';
 import type { Confidence } from '$lib/strength';
 import type { WorkingLoadSource } from '$lib/types';
 
@@ -176,11 +179,79 @@ export function exerciseLabel(exercise: Exercise, index: number): string {
 	return variantOf(exercise, index).name;
 }
 
+/**
+ * A protocol at a glance: `6 × 7s/3s · 4 sets`, `10s · 3 sets`, `20 × 10s/20s`,
+ * `8 × 20s/10s · 2:00 cooldown`.
+ *
+ * What a row in a list of protocols says instead of six labelled numbers. A
+ * count of one is left out rather than spelled — one round is a single effort,
+ * one set is the whole thing — and so is the rest of a protocol with one round,
+ * which never runs. The locale is an argument because a screen resolver calls it
+ * (#101), and a resolver is a function of what it was handed.
+ */
+export function protocolShape(p: Protocol, locale?: AppLocale): string {
+	const effort =
+		p.rounds > 1 ? `${p.rounds} × ${p.work}s${p.rest > 0 ? `/${p.rest}s` : ''}` : `${p.work}s`;
+	const parts = [effort];
+	if (p.sets > 1) parts.push(m.timer_preset_sets({ sets: p.sets }, { locale }));
+	// A cooldown (#104) is usually minutes, so it reads as a clock past one; and
+	// it is named, because a bare `2:00` at the end reads as the total.
+	if (p.cooldown > 0) {
+		const time = p.cooldown >= 60 ? clock(p.cooldown) : `${p.cooldown}s`;
+		parts.push(m.timer_shape_cooldown({ time }, { locale }));
+	}
+	return parts.join(' · ');
+}
+
+/** The title of each study the library cites for an exercise. */
+export const STUDY_TITLE: Record<ExerciseStudy, typeof m.study_baar_title> = {
+	baar: m.study_baar_title,
+	ferrer: m.study_ferrer_title,
+	lopez: m.study_lopez_title,
+	nelson: m.study_nelson_title,
+	horst: m.study_horst_title,
+	lattice: m.study_lattice_title,
+};
+
 /** mm:ss for a countdown. */
 export function clock(totalSec: number): string {
 	const s = Math.max(0, Math.round(totalSec));
 	return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+
+/**
+ * A stopwatch reading, in two parts so the face can set the tenths smaller:
+ * `{ whole: '1:04', fraction: '.3' }`, and `1:02:03` once an hour has passed.
+ *
+ * Tenths are floored, never rounded: a stopwatch that read 21.5 at 21.46 would
+ * be showing time that has not run yet. The decimal mark is the locale's — a
+ * Brazilian stopwatch reads `0:21,4` — so the locale is an argument, for the
+ * reason `protocolShape` takes one.
+ */
+export function stopwatchClock(ms: number, locale: AppLocale): { whole: string; fraction: string } {
+	const tenths = Math.floor(Math.max(0, ms) / 100);
+	const s = Math.floor(tenths / 10);
+	const h = Math.floor(s / 3600);
+	const mm = Math.floor(s / 60) % 60;
+	const ss = String(s % 60).padStart(2, '0');
+	const whole = h > 0 ? `${h}:${String(mm).padStart(2, '0')}:${ss}` : `${mm}:${ss}`;
+	return { whole, fraction: `${DECIMAL_MARK[locale]}${tenths % 10}` };
+}
+
+const DECIMAL_MARK: Record<AppLocale, string> = { 'en-US': '.', 'pt-BR': ',' };
+
+/** What each protocol field is called where it is typed in — Train's clock
+ *  setup and the saved-protocol editor. A record over the fields rather than a
+ *  list, so a field added to the protocol does not compile until it is named. */
+export const FIELD_LABEL: Record<ProtocolField, () => string> = {
+	prepare: m.timer_prepare_s,
+	work: m.timer_work_s,
+	rest: m.timer_rest_s,
+	rounds: m.timer_rounds,
+	sets: m.timer_sets,
+	setRest: m.timer_setrest_s,
+	cooldown: m.timer_cooldown_s,
+};
 
 /** The five wellness dimensions, in the order the readiness score reads them. */
 export const WELLNESS_LABEL: Record<string, () => string> = {

@@ -117,6 +117,17 @@ export type OverrideKey = Identity<'OverrideKey'>;
  */
 export type LoadKey = Identity<'LoadKey'>;
 
+/**
+ * One saved protocol (#103): a protocol the athlete named and kept. Opaque,
+ * minted on the device that made it.
+ *
+ * Minted rather than derived from anything the protocol holds, because nothing
+ * it holds is stable: the name is the athlete's to change, and two saved
+ * protocols can have the same numbers. `savedPrograms` keys by name and its own
+ * comment records what that costs (ADR 0003) — this one does not repeat it.
+ */
+export type SavedProtocolId = Identity<'SavedProtocolId'>;
+
 /** The seven weekday keys, in ISO week order. */
 export const WEEKDAY_KEYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
@@ -270,6 +281,31 @@ export function protocolKey(task: TaskKey, variantIndex: number): ProtocolKey {
 	return `${task}@${variantIndex}` as ProtocolKey;
 }
 
+/**
+ * The key of one preset's clock (#101): this library variant, run on the Timer
+ * screen. Shaped `preset:repeaters@0`.
+ *
+ * A preset is the variant itself, not a task in a slot, so nothing about the
+ * day goes into it — the same preset is the same clock on Monday and Friday. The
+ * `preset:` head keeps it apart from a task's protocol key (`w5-Thu:repeaters@0`)
+ * running the very same variant: a task key always starts with its week
+ * (`w5-`), so no task key begins `preset:`.
+ */
+export function presetKey(exercise: ExerciseId, variantIndex: number): ProtocolKey {
+	return `preset:${exercise}@${variantIndex}` as ProtocolKey;
+}
+
+/**
+ * The key of one saved protocol's clock (#103), shaped `saved:<id>`.
+ *
+ * Its id and nothing else, so renaming it keeps the athlete's place and a copy
+ * of it starts clean. The `saved:` head keeps it apart from a preset's
+ * (`preset:`) and a task's (`w5-Thu:…`), for the reason `presetKey` gives.
+ */
+export function savedProtocolKey(id: SavedProtocolId): ProtocolKey {
+	return `saved:${id}` as ProtocolKey;
+}
+
 /** What the timer is scoped to when no task is pinned. A real value rather than
  *  `null`, because "no protocol" is still a scope the stored setup can be filed
  *  under and compared against — and one the athlete can configure a clock in. */
@@ -338,6 +374,39 @@ export function parseOverrideKey(value: unknown): OverrideParts | null {
  */
 export function loadKey(exercise: ExerciseId, variantIndex: number): LoadKey {
 	return `${exercise}@${variantIndex}` as LoadKey;
+}
+
+// ----------------------------------------------------------- saved protocol
+
+/**
+ * A fresh saved-protocol id.
+ *
+ * A UUID, because two devices create saved protocols without asking each other
+ * and the server keys the row by this alone: a collision would be one athlete's
+ * protocol overwriting another of theirs under last-write-wins. `randomUUID` is
+ * only defined in a secure context, so a phone reaching a dev build over the LAN
+ * gets the same 122 random bits spelled by hand.
+ */
+export function newSavedProtocolId(): SavedProtocolId {
+	if (typeof crypto.randomUUID === 'function') return crypto.randomUUID() as SavedProtocolId;
+	const b = crypto.getRandomValues(new Uint8Array(16));
+	b[6] = (b[6] & 0x0f) | 0x40;
+	b[8] = (b[8] & 0x3f) | 0x80;
+	const hex = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}` as SavedProtocolId;
+}
+
+/** A saved-protocol id that is known to be one — the seeded scenario's. */
+export function asSavedProtocolId(value: string): SavedProtocolId {
+	if (value === '') throw new Error('A saved protocol id is never empty');
+	return value as SavedProtocolId;
+}
+
+/** A saved-protocol id from untrusted input — a stored row, the wire — or
+ *  `null`. Any non-empty string: the ids are opaque, and an older client's
+ *  spelling of one is still the row it names. */
+export function parseSavedProtocolId(value: unknown): SavedProtocolId | null {
+	return typeof value === 'string' && value !== '' ? (value as SavedProtocolId) : null;
 }
 
 // ------------------------------------------------------------------ athlete

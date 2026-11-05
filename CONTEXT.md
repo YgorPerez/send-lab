@@ -69,9 +69,9 @@ _Avoid_: gear, kit, apparatus, hardware
 
 **Preferences**:
 What the athlete has chosen about how the app reads and behaves — display units,
-locale, time zone, and whether each notice reaches them. Part of the training
-record and carried between devices with it, rather than a setting belonging to
-one phone. **Settings** is the screen that edits them; the preferences are what
+locale, time zone, whether each notice reaches them, and how the clock's cues
+do (the countdown's length, the buzz, the voice, the flash). Part of the training record and carried
+between devices with it, rather than a setting belonging to one phone. **Settings** is the screen that edits them; the preferences are what
 it edits.
 _Avoid_: profile, user settings, app config
 
@@ -182,6 +182,27 @@ studies and the rest timer both use the word; never a program, a day type or a
 session.
 _Avoid_: interval scheme, routine
 
+**Preset**:
+A read-only protocol taken from a library variant that carries one — repeaters
+7/3, a max hang, an Abrahang — offered on the Timer screen to run as it is. Never
+stored: it is computed from the library each time it is read, so it cannot drift
+from what the library prescribes, and it cites the study the library cites for
+its exercise. Not a program template: `presets.ts` and the `preset_*` messages
+use the same word for ready-made programs, which build a whole block and are a
+different thing.
+_Avoid_: template, built-in timer, default protocol
+
+**Saved protocol**:
+A protocol the athlete named and kept, as part of the training record — made from
+scratch or by duplicating a preset or another saved protocol, editable in every
+field including its name, and listed on the Timer screen in the order it was
+made (an edit does not move it). Identified by an id minted when it is made, never by
+its name (ADR-0003): the name is the athlete's own text, a copy's default being
+its source's name after "Copy of" in the language it was copied in, and it
+stays as written from then on. It syncs like the rest of the record. Running one
+records nothing.
+_Avoid_: timer, preset, workout, favourite
+
 **Override**:
 A stored deviation from a built-in target, set by the athlete, and addressed by
 the weekday it applies to. Feeds into the prescription; anything not overridden
@@ -262,9 +283,25 @@ _Avoid_: cycle, interval, rep
 
 **Segment**:
 The part of a protocol running right now — preparing, working, resting between
-rounds, or resting between sets. Seconds long, and never a phase: a phase spans
-weeks.
+rounds, resting between sets, or cooling down. Seconds long, and never a phase: a
+phase spans weeks.
 _Avoid_: phase, interval, stage, step
+
+**Cooldown**:
+The segment after the last set: the easy minutes that close a protocol, run
+once, before it is done. Seconds long and optional — zero means none, and then it
+is not in the segment order at all. A protocol written before it existed has
+none. Presets and Train's prescriptions run none, because the library prescribes
+none; the athlete sets one on a saved protocol.
+_Avoid_: warm-down, recovery, rest
+
+**Lap**:
+One split recorded on the stopwatch: the time from the previous lap (or from
+the start) to the press, shown beside the running total where it ended. Timed
+on the Timer screen's stopwatch, on this device only, and never training: a lap
+is not a set, a round or an attempt logged anywhere, and resetting the
+stopwatch discards it.
+_Avoid_: split, attempt, interval, round
 
 **Trained**:
 A slot is trained once at least one of its tasks is marked complete — including
@@ -364,10 +401,15 @@ _Avoid_: pending, partial, autosave, unsaved, in-flight
 
 **Cue**:
 One event in a running protocol the athlete has to be told about while they are
-not looking at the screen — a segment beginning or ending, the last three
-seconds, the protocol finishing. It is the event and not the sound: one cue has
-three deliveries, a sound, a buzz and a notification, and a cue with all three
-switched off is still the same cue.
+not looking at the screen — a segment beginning or ending, the final countdown
+(the last 3, 5 or 10 seconds, the athlete's choice), the protocol finishing. It
+is the event and not the sound: one cue has several deliveries, a sound, a buzz,
+a spoken phrase, a flash and a notification, and a cue with all of them switched
+off is still the same cue. The phrase names the segment arrived in, or says the
+countdown's number, in the app's language at the moment it is said. The flash
+washes the full-screen clock in the colour of the segment arrived in, so it marks
+a segment change and never a countdown beat; under reduced motion it finishes
+inside one frame, as every animation does (ADR 0011).
 _Avoid_: beep, alert
 
 **Daily notice**:

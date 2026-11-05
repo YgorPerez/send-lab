@@ -12,7 +12,7 @@ import { isoDayOf } from '../src/lib/dates.ts';
 import { asAthleteId, asWeekId, parseTaskKey, weekdayKeyOf } from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { trainableExerciseIds } from '../src/lib/prescription.ts';
-import { createRecordStore } from '../src/lib/store/collections.ts';
+import { createRecordStore, type PrefsRow, SINGLETON_KEY } from '../src/lib/store/collections.ts';
 import { readTrainingRecord } from '../src/lib/store/record.ts';
 import { scenarioRows, seedRecordStore } from '../src/lib/store/seed.ts';
 
@@ -201,7 +201,35 @@ describe('an account with nothing in it', () => {
 			dailyNotice: false,
 			timeZone: null,
 			locale: null,
+			countdown: 3,
+			buzz: true,
+			flash: true,
+			voice: true,
 		});
+	});
+
+	it('reads a prefs row from before the cue preferences with them at their defaults', () => {
+		// A row this device stored, or the server handed back, before #105 has no
+		// `countdown` and no `buzz`. It is still the athlete's row — their units
+		// and locale have to survive — and the missing half reads as today's clock.
+		const store = createRecordStore(ACCOUNT, undefined, memoryStorage());
+		const before = {
+			id: SINGLETON_KEY,
+			weight: 'lb',
+			length: 'in',
+			cueNotices: true,
+			dailyNotice: false,
+			timeZone: 'America/Sao_Paulo',
+			locale: 'pt-BR',
+		};
+		store.prefs.insert(before as unknown as PrefsRow);
+
+		const { prefs } = readTrainingRecord(store);
+		expect(prefs).toMatchObject({ weight: 'lb', length: 'in', locale: 'pt-BR' });
+		expect(prefs.countdown).toBe(3);
+		expect(prefs.buzz).toBe(true);
+		expect(prefs.flash).toBe(true);
+		expect(prefs.voice).toBe(true);
 	});
 });
 
@@ -232,5 +260,9 @@ function withLocale<T>(locale: 'en-US' | 'pt-BR', fn: () => T): T {
 
 /** The rows with every athlete-typed string removed. */
 function strip(rows: ReturnType<typeof scenarioRows>) {
-	return { ...rows, sessions: rows.sessions.map((s) => ({ ...s, note: '' })) };
+	return {
+		...rows,
+		sessions: rows.sessions.map((s) => ({ ...s, note: '' })),
+		savedProtocols: rows.savedProtocols.map((p) => ({ ...p, name: '' })),
+	};
 }

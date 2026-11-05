@@ -15,7 +15,13 @@
 import type { StorageApi } from '@tanstack/db';
 import { describe, expect, it } from 'vitest';
 import { computeReadiness, getContent } from '../src/lib/content/index.ts';
-import { asAthleteId, asExerciseId, asWeekdayKey, taskKey } from '../src/lib/ids.ts';
+import {
+	asAthleteId,
+	asExerciseId,
+	asSavedProtocolId,
+	asWeekdayKey,
+	taskKey,
+} from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import {
 	effectiveVariant,
@@ -24,6 +30,7 @@ import {
 	variantOf,
 } from '../src/lib/prescription.ts';
 import { resolveLog } from '../src/lib/screens/log.ts';
+import { formOf, readProtocolForm, resolveTimer } from '../src/lib/screens/timer.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
 import { resolveWeek } from '../src/lib/screens/week.ts';
@@ -428,3 +435,266 @@ function seededWith(now: number) {
 	seedRecordStore(store, content, 'en-US', now);
 	return store;
 }
+
+// Timer (#101). The presets are the library's own protocols, computed at read
+// time and never stored, so every number below is the library's: a preset that
+// ran something the exercise library does not prescribe would be a protocol with
+// no study behind it.
+describe('Timer', () => {
+	const NONE = { savedProtocols: [] };
+	const TIMER = resolveTimer(getContent('en-US'), NONE, 'en-US');
+	const group = (exercise: string) => TIMER.presets.find((g) => g.exercise === exercise);
+	const preset = (exercise: string, variant: number) =>
+		group(exercise)?.presets.find((p) => p.variant === variant);
+
+	it('offers every library variant that carries a protocol, and nothing else', () => {
+		expect(TIMER.presets.map((g) => g.exercise)).toEqual([
+			'recruit',
+			'pinch',
+			'wrist',
+			'repeaters',
+			'slopdens',
+			'maxhang',
+			'density',
+			'abra',
+		]);
+		expect(TIMER.presets.flatMap((g) => g.presets)).toHaveLength(24);
+		// Recruitment's second variant is a set of reps with no work length: it
+		// stays out, and the variants either side keep their own positions.
+		expect(group('recruit')?.presets.map((p) => p.variant)).toEqual([0, 2]);
+	});
+
+	it('reads each preset as its shape and how long it takes', () => {
+		// 10s prepare, four sets of 6 × (7s on / 3s off), 3 minutes between sets.
+		expect(preset('repeaters', 0)).toMatchObject({
+			name: '7/3 · 20mm half-crimp + open hand',
+			shape: '6 × 7s/3s · 4 sets',
+			total: 778,
+		});
+		// One hang per set needs no round count.
+		expect(preset('maxhang', 0)).toMatchObject({ shape: '10s · 3 sets', total: 400 });
+		// One set needs no set count.
+		expect(preset('abra', 0)).toMatchObject({ shape: '20 × 10s/20s', total: 590 });
+	});
+
+	it('runs what the library prescribes, at the middle of each range', () => {
+		expect(preset('repeaters', 0)?.protocol).toEqual({
+			prepare: 10,
+			work: 7,
+			rest: 3,
+			rounds: 6,
+			sets: 4,
+			setRest: 180,
+			cooldown: 0,
+		});
+	});
+
+	it('files each preset’s clock under its own variant', () => {
+		expect(preset('repeaters', 1)?.key).toBe('preset:repeaters@1');
+		const keys = TIMER.presets.flatMap((g) => g.presets.map((p) => p.key));
+		expect(new Set(keys).size).toBe(keys.length);
+	});
+
+	it('links each exercise to the study the library cites for it', () => {
+		expect(group('repeaters')?.study).toEqual({
+			title: 'Critical force & endurance',
+			url: 'https://pubmed.ncbi.nlm.nih.gov/33647876/',
+		});
+		expect(group('maxhang')?.study?.url).toBe('https://pubmed.ncbi.nlm.nih.gov/30988852/');
+		// The library cites nothing for wrist work, and the screen does not invent it.
+		expect(group('wrist')?.study).toBeNull();
+	});
+
+	// #103. A copy is named after what it copies, so a preset's copy carries the
+	// exercise as well as the variant: "7/3 · 20mm…" alone could be any hang. The
+	// "Copy of" goes first, because a long name is cut at its end on a phone and
+	// the clock must still say it is running the copy.
+	it('names a preset’s copy after its exercise and variant', () => {
+		expect(preset('repeaters', 0)?.copyName).toBe(
+			'Copy of Repeaters · 7/3 · 20mm half-crimp + open hand',
+		);
+		const pt = resolveTimer(getContent('pt-BR'), NONE, 'pt-BR');
+		expect(pt.presets.find((g) => g.exercise === 'repeaters')?.presets[0].copyName).toBe(
+			'Cópia de Repeaters · 7/3 · 20mm half-crimp + mão aberta',
+		);
+	});
+
+	it('lists the saved protocols, each with its shape and how long it takes', () => {
+		const seeded = readTrainingRecord(seededWith(NOW));
+		const { saved } = resolveTimer(getContent('en-US'), seeded, 'en-US');
+		// Oldest first.
+		expect(saved.map((s) => s.name)).toEqual(['Warm-up hangs', 'Tabata finisher']);
+		// 10s prepare, two sets of 5 × 10s/20s, a minute between.
+		expect(saved[0]).toMatchObject({
+			name: 'Warm-up hangs',
+			shape: '5 × 10s/20s · 2 sets',
+			total: 330,
+			copyName: 'Copy of Warm-up hangs',
+		});
+		// 10s prepare, 8 × 20s/10s, then two minutes of cooldown (#104).
+		expect(saved[1]).toMatchObject({ shape: '8 × 20s/10s · 2:00 cooldown', total: 360 });
+		// Filed under its id, so renaming it keeps the athlete's place.
+		expect(saved[0].key).toBe(`saved:${saved[0].id}`);
+	});
+
+	// #104. A cooldown is part of what the protocol is, so the shape says it and
+	// the total counts it: two protocols that differ only by one must not look
+	// the same in the list.
+	it('shows a saved protocol’s cooldown in its shape and its total', () => {
+		const cooled = (cooldown: number) =>
+			resolveTimer(
+				getContent('en-US'),
+				{
+					savedProtocols: [
+						{
+							id: asSavedProtocolId('5eed0000-0000-4000-8000-0000000000c0'),
+							name: 'Finisher',
+							protocol: {
+								prepare: 10,
+								work: 20,
+								rest: 10,
+								rounds: 8,
+								sets: 1,
+								setRest: 0,
+								cooldown,
+							},
+							createdAt: 0,
+						},
+					],
+				},
+				'en-US',
+			).saved[0];
+		// 10 + 8 × 20 + 7 × 10 = 240, then the cooldown.
+		expect(cooled(0)).toMatchObject({ shape: '8 × 20s/10s', total: 240 });
+		expect(cooled(120)).toMatchObject({ shape: '8 × 20s/10s · 2:00 cooldown', total: 360 });
+		expect(cooled(45)).toMatchObject({ shape: '8 × 20s/10s · 45s cooldown', total: 285 });
+		const pt = resolveTimer(
+			getContent('pt-BR'),
+			{
+				savedProtocols: [
+					{
+						id: asSavedProtocolId('5eed0000-0000-4000-8000-0000000000c1'),
+						name: 'Finisher',
+						protocol: {
+							prepare: 0,
+							work: 7,
+							rest: 3,
+							rounds: 6,
+							sets: 2,
+							setRest: 60,
+							cooldown: 300,
+						},
+						createdAt: 0,
+					},
+				],
+			},
+			'pt-BR',
+		);
+		expect(pt.saved[0].shape).toBe('6 × 7s/3s · 2 séries · 5:00 de desaquecimento');
+	});
+
+	// What the clock can run, in the order it is listed, each named the way its
+	// strip names it. The screen used to build this itself, and to spell a
+	// preset's label a second time beside `copyName`.
+	it('lists everything the clock can run, saved first, each with the strip’s name', () => {
+		const seeded = readTrainingRecord(seededWith(NOW));
+		const screen = resolveTimer(getContent('en-US'), seeded, 'en-US');
+		expect(screen.runnable.map((r) => r.key)).toEqual([
+			...screen.saved.map((s) => s.key),
+			...screen.presets.flatMap((g) => g.presets.map((p) => p.key)),
+		]);
+		// A saved protocol is its own name; a preset leaves its group heading
+		// behind, so it carries the exercise with it — the same words a copy of it
+		// is named after.
+		expect(screen.saved[0].label).toBe('Warm-up hangs');
+		const repeaters = screen.presets.find((g) => g.exercise === 'repeaters')?.presets[0];
+		expect(repeaters?.label).toBe(`Repeaters · ${repeaters?.name}`);
+		expect(repeaters?.copyName).toBe(`Copy of ${repeaters?.label}`);
+	});
+
+	it('has nothing saved on an account that has kept nothing', () => {
+		expect(TIMER.saved).toEqual([]);
+	});
+
+	it('reads in the locale it is resolved in', () => {
+		const pt = resolveTimer(getContent('pt-BR'), NONE, 'pt-BR');
+		const wrist = pt.presets.find((g) => g.exercise === 'wrist');
+		expect(wrist?.name).toBe('Força de Punho / Sloper');
+		const repeaters = pt.presets.find((g) => g.exercise === 'repeaters');
+		expect(repeaters?.presets[0].shape).toBe('6 × 7s/3s · 4 séries');
+		expect(repeaters?.study?.title).toBe('Força crítica e resistência');
+	});
+});
+
+// #104. What the saved-protocol editor accepts. The editor holds what was typed,
+// as text, and this is the one place that decides whether it is a protocol: the
+// screen shows each refusal beside its field and saves nothing until there are
+// none.
+describe('the saved-protocol editor', () => {
+	const TABATA = {
+		prepare: 10,
+		work: 20,
+		rest: 10,
+		rounds: 8,
+		sets: 1,
+		setRest: 0,
+		cooldown: 120,
+	};
+	const typed = (fields: Partial<Record<keyof typeof TABATA, string>>, name = 'Tabata') => ({
+		name,
+		fields: { ...formOf('', TABATA).fields, ...fields },
+	});
+
+	it('opens on the protocol it edits, as written', () => {
+		expect(formOf('Tabata', TABATA)).toEqual({
+			name: 'Tabata',
+			fields: {
+				prepare: '10',
+				work: '20',
+				rest: '10',
+				rounds: '8',
+				sets: '1',
+				setRest: '0',
+				cooldown: '120',
+			},
+		});
+	});
+
+	it('reads a filled-in form as a name and a protocol', () => {
+		expect(readProtocolForm(typed({}, '  Tabata finisher '))).toEqual({
+			ok: true,
+			name: 'Tabata finisher',
+			protocol: TABATA,
+		});
+	});
+
+	it('takes no prepare, no rest, no set rest and no cooldown', () => {
+		const none = typed({ prepare: '0', rest: '0', setRest: '0', cooldown: '0' });
+		expect(readProtocolForm(none)).toMatchObject({
+			ok: true,
+			protocol: { prepare: 0, rest: 0, setRest: 0, cooldown: 0 },
+		});
+	});
+
+	it.each([
+		['zero work', { work: '0' }, ['work']],
+		['zero rounds', { rounds: '0' }, ['rounds']],
+		['zero sets', { sets: '0' }, ['sets']],
+		['negative seconds', { rest: '-5', cooldown: '-1' }, ['rest', 'cooldown']],
+		['a fraction', { work: '7.5' }, ['work']],
+		['a field left empty', { setRest: '' }, ['setRest']],
+		['something that is not a number', { prepare: 'ten' }, ['prepare']],
+	])('refuses %s, and says which field', (_what, fields, refused) => {
+		expect(readProtocolForm(typed(fields))).toEqual({ ok: false, refused, protocol: null });
+	});
+
+	// Refused for its name alone, the numbers still read: the editor shows what
+	// they add up to while the athlete has not got to the name yet.
+	it('refuses a protocol with no name, and still reads its numbers', () => {
+		expect(readProtocolForm(typed({}, '   '))).toEqual({
+			ok: false,
+			refused: ['name'],
+			protocol: TABATA,
+		});
+	});
+});
