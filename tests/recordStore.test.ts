@@ -256,5 +256,9 @@ function withLocale<T>(locale: 'en-US' | 'pt-BR', fn: () => T): T {
 
 /** The rows with every athlete-typed string removed. */
 function strip(rows: ReturnType<typeof scenarioRows>) {
-	return { ...rows, sessions: rows.sessions.map((s) => ({ ...s, note: '' })) };
+	return {
+		...rows,
+		sessions: rows.sessions.map((s) => ({ ...s, note: '' })),
+		savedProtocols: rows.savedProtocols.map((p) => ({ ...p, name: '' })),
+	};
 }

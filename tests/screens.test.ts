@@ -297,6 +297,34 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(header).toContain('min-h-11');
 		});
 
+		// Saved protocols (#103). The seeded one is listed above the presets, with
+		// its shape and length, and the clock opens on it: the athlete's own come
+		// first. Selected, it offers its two actions — duplicate and delete.
+		test('lists the saved protocol and opens the clock on it', async () => {
+			const timer = await render('/timer');
+			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+
+			expect(screen).toContain(locale === 'en-US' ? 'Saved protocols' : 'Protocolos salvos');
+			// The athlete's own words, as they wrote them: the suite seeds once, in
+			// en-US, and a saved protocol's name is not translated after the fact.
+			const name = 'Warm-up hangs';
+			expect(screen).toContain(name);
+			expect(screen).toContain(
+				locale === 'en-US' ? '5 × 10s/20s · 2 sets' : '5 × 10s/20s · 2 séries',
+			);
+			expect(screen).toContain('5:30');
+			// Above the presets, not after twenty-four of them.
+			expect(screen.indexOf(name)).toBeLessThan(
+				screen.indexOf(locale === 'en-US' ? 'Presets' : 'Predefinidos'),
+			);
+			// Selected, so it carries its actions; no empty copy beside a real row.
+			expect(screen).toContain(locale === 'en-US' ? '>Duplicate<' : '>Duplicar<');
+			expect(screen).toContain(locale === 'en-US' ? '>Delete<' : '>Excluir<');
+			expect(screen).not.toContain(
+				locale === 'en-US' ? 'No saved protocols yet' : 'Nenhum protocolo salvo ainda',
+			);
+		});
+
 		test('puts the chrome on every screen', async () => {
 			for (const path of ['/', '/train', '/timer', '/log', '/login', '/settings']) {
 				const html = await render(path);

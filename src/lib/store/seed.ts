@@ -45,6 +45,7 @@ import type { Readiness } from '$lib/content/logic';
 import type { Content, Variant } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import {
+	asSavedProtocolId,
 	asWeekId,
 	type ExerciseId,
 	taskKey,
@@ -62,6 +63,7 @@ import type {
 	LoggedReadinessCheck,
 	LoggedSet,
 	Program,
+	SavedProtocol,
 	SelfCheck,
 	Session,
 } from '$lib/types';
@@ -148,6 +150,7 @@ export interface SeedRows {
 	readinessLog: LoggedReadinessCheck[];
 	bodyweight: BodyweightReading[];
 	selfCheckLog: SelfCheck[];
+	savedProtocols: SavedProtocol[];
 }
 
 const DAY_MS = 86_400_000;
@@ -452,7 +455,28 @@ export function scenarioRows(content: Content, locale: string, now: number): See
 		readinessLog: [...behind, todayCheck(now, readiness)],
 		bodyweight: bodyweightHistory(now),
 		selfCheckLog: selfCheckHistory(now),
+		savedProtocols: savedProtocols(locale, now),
 	};
+}
+
+/**
+ * The one saved protocol the athlete has kept (#103): a warm-up, which is the
+ * case the spec names for a protocol the library does not have. Shaped by hand
+ * rather than copied from a preset, so the screen shows a saved protocol whose
+ * numbers no preset has. Its name is the athlete's, so it is prose and differs
+ * by locale; its id is fixed, because a seeded scenario that minted a fresh one
+ * per seeding could not be compared with itself.
+ */
+function savedProtocols(locale: string, now: number): SavedProtocol[] {
+	return [
+		{
+			id: asSavedProtocolId('5eed0000-0000-4000-8000-000000000001'),
+			name: prose(locale, 'saved_protocol_warmup'),
+			// 10s to get on, two sets of 5 × 10s/20s, a minute between: 5:30.
+			protocol: { prepare: 10, work: 10, rest: 20, rounds: 5, sets: 2, setRest: 60 },
+			createdAt: now - 12 * DAY_MS,
+		},
+	];
 }
 
 /** Whether a store holds nothing at all. Every collection, not a representative
@@ -489,5 +513,6 @@ export function seedRecordStore(
 	if (rows.readinessLog.length) store.readinessLog.insert(rows.readinessLog);
 	if (rows.bodyweight.length) store.bodyweight.insert(rows.bodyweight);
 	if (rows.selfCheckLog.length) store.selfCheckLog.insert(rows.selfCheckLog);
+	if (rows.savedProtocols.length) store.savedProtocols.insert(rows.savedProtocols);
 	return true;
 }
