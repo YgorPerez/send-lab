@@ -41,6 +41,12 @@ refuses it unless its sha256 matches `engine-checksums.txt`, and caches it in
 `IMPECCABLE_BIN` to a preinstalled engine. `.gitignore` keeps a locally installed
 `scripts/bin/` out of the repo.
 
+**The launcher is pre-approved.** `.claude/settings.json` allows
+`Bash(.claude/skills/impeccable/scripts/impeccable:*)`, so the skill's first step
+(`scripts/impeccable context`) does not stop at a permission prompt. Claude Code ignores a project's
+allow rules until the folder has been trusted once, interactively. Before that, the skill falls back
+to reading the project files and says so. It still works, just without the engine's signals.
+
 **The edit hooks are not installed.** Upstream can add `SessionStart` / `PostToolUse` / `Stop` hooks
 that run the detector after every UI edit. They would sit next to the Serena hooks in
 `.claude/settings.json` and fire on every edit in every session. Instead, the skill tells you to run
