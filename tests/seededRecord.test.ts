@@ -140,7 +140,7 @@ describe('the record the gates install', () => {
 				return rest;
 			});
 		expect(unnamed(pt)).toEqual(unnamed(en));
-		expect(unnamed(en)).toHaveLength(1);
+		expect(unnamed(en)).toHaveLength(2);
 
 		// And in `sessions` the difference really is only the note. Strip them and
 		// the two locales agree row for row.

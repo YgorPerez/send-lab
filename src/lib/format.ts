@@ -180,7 +180,8 @@ export function exerciseLabel(exercise: Exercise, index: number): string {
 }
 
 /**
- * A protocol at a glance: `6 × 7s/3s · 4 sets`, `10s · 3 sets`, `20 × 10s/20s`.
+ * A protocol at a glance: `6 × 7s/3s · 4 sets`, `10s · 3 sets`, `20 × 10s/20s`,
+ * `8 × 20s/10s · 2:00 cooldown`.
  *
  * What a row in a list of protocols says instead of six labelled numbers. A
  * count of one is left out rather than spelled — one round is a single effort,
@@ -191,7 +192,15 @@ export function exerciseLabel(exercise: Exercise, index: number): string {
 export function protocolShape(p: Protocol, locale?: AppLocale): string {
 	const effort =
 		p.rounds > 1 ? `${p.rounds} × ${p.work}s${p.rest > 0 ? `/${p.rest}s` : ''}` : `${p.work}s`;
-	return p.sets > 1 ? `${effort} · ${m.timer_preset_sets({ sets: p.sets }, { locale })}` : effort;
+	const parts = [effort];
+	if (p.sets > 1) parts.push(m.timer_preset_sets({ sets: p.sets }, { locale }));
+	// A cooldown (#104) is usually minutes, so it reads as a clock past one; and
+	// it is named, because a bare `2:00` at the end reads as the total.
+	if (p.cooldown > 0) {
+		const time = p.cooldown >= 60 ? clock(p.cooldown) : `${p.cooldown}s`;
+		parts.push(m.timer_shape_cooldown({ time }, { locale }));
+	}
+	return parts.join(' · ');
 }
 
 /** The title of each study the library cites for an exercise. */

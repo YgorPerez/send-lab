@@ -17,6 +17,9 @@
 // Then the athlete's **saved protocols** (#103), from the training record, in
 // the order they were made. A saved protocol's name is the athlete's own text
 // and is shown as written; its key is its id.
+//
+// And what the saved-protocol editor accepts (#104), at the end: the one place
+// that decides whether what was typed is a protocol.
 import type { Content } from '$lib/content/types';
 import { protocolShape, STUDY_TITLE } from '$lib/format';
 import {
@@ -29,7 +32,14 @@ import {
 } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { studyOf } from '$lib/progression';
-import { type Protocol, protocolOf, totalOf } from '$lib/protocol';
+import {
+	PROTOCOL_FIELDS,
+	PROTOCOL_MINIMUM,
+	type Protocol,
+	type ProtocolField,
+	protocolOf,
+	totalOf,
+} from '$lib/protocol';
 import type { AppLocale } from '$lib/store/locale';
 import type { TrainingRecord } from '$lib/store/record';
 import { STUDIES } from '$lib/studies';
@@ -132,4 +142,54 @@ function studyFor(exercise: string, locale: AppLocale): PresetGroup['study'] {
 	const id = studyOf(exercise);
 	const url = id ? STUDIES.find((s) => s.id === id)?.url : undefined;
 	return id && url ? { title: STUDY_TITLE[id]({}, { locale }), url } : null;
+}
+
+/** What the saved-protocol editor holds: what was typed, as typed. Text rather
+ *  than numbers, because a field mid-edit is often not a number yet — empty, or
+ *  a lone minus — and turning it into one on every keystroke is how a `0`
+ *  appears under the athlete's cursor while they are clearing the field. */
+export interface ProtocolForm {
+	name: string;
+	fields: Record<ProtocolField, string>;
+}
+
+/** What the form says, read: a protocol to save, or the fields that stop it.
+ *  A refused form still carries its protocol when only the name stops it, so
+ *  the editor can show what the numbers add up to before a name is typed. */
+export type FormReading =
+	| { ok: true; name: string; protocol: Protocol }
+	| { ok: false; refused: (ProtocolField | 'name')[]; protocol: Protocol | null };
+
+/** The editor opened on a protocol — the one being edited, or a blank one's
+ *  starting numbers. */
+export function formOf(name: string, protocol: Protocol): ProtocolForm {
+	const fields = {} as Record<ProtocolField, string>;
+	for (const f of PROTOCOL_FIELDS) fields[f] = String(protocol[f]);
+	return { name, fields };
+}
+
+/**
+ * The form, read as a saved protocol, or every field that stops it being one.
+ *
+ * Each field is whole and at least its minimum (`PROTOCOL_MINIMUM`): an effort,
+ * a round and a set at least, and no negative seconds — the protocol the
+ * server's row schema will accept, refused here first so the athlete is told
+ * beside the field rather than by a write that bounces later. The name is
+ * trimmed and must be left with something: it is the only way the athlete tells
+ * one saved protocol from another in the list.
+ */
+export function readProtocolForm(form: ProtocolForm): FormReading {
+	const refused: (ProtocolField | 'name')[] = [];
+	const name = form.name.trim();
+	if (!name) refused.push('name');
+	const protocol = {} as Protocol;
+	for (const f of PROTOCOL_FIELDS) {
+		const typed = form.fields[f].trim();
+		const value = /^\d+$/.test(typed) ? Number(typed) : Number.NaN;
+		if (!(value >= PROTOCOL_MINIMUM[f])) refused.push(f);
+		protocol[f] = value;
+	}
+	if (!refused.length) return { ok: true, name, protocol };
+	const numbersRead = refused.every((f) => f === 'name');
+	return { ok: false, refused, protocol: numbersRead ? protocol : null };
 }

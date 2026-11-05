@@ -37,6 +37,7 @@ const CONFIG: Protocol = {
 	rounds: 6,
 	sets: 3,
 	setRest: 60,
+	cooldown: 0,
 };
 
 const SEEDED: Protocol = { ...CONFIG, work: 5 };
@@ -102,6 +103,16 @@ describe('what the clock comes back as', () => {
 		expect(back.run).toEqual(IDLE);
 	});
 
+	it('comes back from a draft stored before cooldown existed, with none', () => {
+		// Every draft written before #104 has six fields. Refusing one for the
+		// seventh would reset every clock on the first load after the update.
+		const { cooldown: _, ...before } = CONFIG;
+		const back = restored(stored({ config: before, run: MID } as never), PULL, SEEDED);
+
+		expect(back.config).toEqual({ ...CONFIG, cooldown: 0 });
+		expect(back.run).toEqual(MID);
+	});
+
 	it('refuses a run that is not a state the protocol can be in', () => {
 		const back = restored(
 			stored({ config: CONFIG, run: { segment: 'sideways', remaining: 4 } } as never),
@@ -147,6 +158,20 @@ describe('a preset’s clock', () => {
 		expect(back.config).toEqual(SEEDED);
 		expect(back.run).toEqual(MID);
 		expect(back.running).toBe(false);
+	});
+
+	it('keeps its place across the update that added cooldown', () => {
+		// A preset runs no cooldown, so a draft from before it is the same
+		// protocol as the library's — not one that "disagrees" and loses its place.
+		const { cooldown: _, ...before } = SEEDED;
+		const back = restored(
+			stored({ config: before, run: MID } as never, REPEATERS),
+			REPEATERS,
+			SEEDED,
+			fixed,
+		);
+
+		expect(back.run).toEqual(MID);
 	});
 
 	it('runs the library’s numbers when the stored copy disagrees with them', () => {

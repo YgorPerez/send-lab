@@ -15,7 +15,13 @@
 import type { StorageApi } from '@tanstack/db';
 import { describe, expect, it } from 'vitest';
 import { computeReadiness, getContent } from '../src/lib/content/index.ts';
-import { asAthleteId, asExerciseId, asWeekdayKey, taskKey } from '../src/lib/ids.ts';
+import {
+	asAthleteId,
+	asExerciseId,
+	asSavedProtocolId,
+	asWeekdayKey,
+	taskKey,
+} from '../src/lib/ids.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import {
 	effectiveVariant,
@@ -24,7 +30,7 @@ import {
 	variantOf,
 } from '../src/lib/prescription.ts';
 import { resolveLog } from '../src/lib/screens/log.ts';
-import { resolveTimer } from '../src/lib/screens/timer.ts';
+import { formOf, readProtocolForm, resolveTimer } from '../src/lib/screens/timer.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
 import { resolveWeek } from '../src/lib/screens/week.ts';
@@ -479,6 +485,7 @@ describe('Timer', () => {
 			rounds: 6,
 			sets: 4,
 			setRest: 180,
+			cooldown: 0,
 		});
 	});
 
@@ -515,7 +522,8 @@ describe('Timer', () => {
 	it('lists the saved protocols, each with its shape and how long it takes', () => {
 		const seeded = readTrainingRecord(seededWith(NOW));
 		const { saved } = resolveTimer(getContent('en-US'), seeded, 'en-US');
-		expect(saved).toHaveLength(1);
+		// Oldest first.
+		expect(saved.map((s) => s.name)).toEqual(['Warm-up hangs', 'Tabata finisher']);
 		// 10s prepare, two sets of 5 × 10s/20s, a minute between.
 		expect(saved[0]).toMatchObject({
 			name: 'Warm-up hangs',
@@ -523,8 +531,66 @@ describe('Timer', () => {
 			total: 330,
 			copyName: 'Copy of Warm-up hangs',
 		});
+		// 10s prepare, 8 × 20s/10s, then two minutes of cooldown (#104).
+		expect(saved[1]).toMatchObject({ shape: '8 × 20s/10s · 2:00 cooldown', total: 360 });
 		// Filed under its id, so renaming it keeps the athlete's place.
 		expect(saved[0].key).toBe(`saved:${saved[0].id}`);
+	});
+
+	// #104. A cooldown is part of what the protocol is, so the shape says it and
+	// the total counts it: two protocols that differ only by one must not look
+	// the same in the list.
+	it('shows a saved protocol’s cooldown in its shape and its total', () => {
+		const cooled = (cooldown: number) =>
+			resolveTimer(
+				getContent('en-US'),
+				{
+					savedProtocols: [
+						{
+							id: asSavedProtocolId('5eed0000-0000-4000-8000-0000000000c0'),
+							name: 'Finisher',
+							protocol: {
+								prepare: 10,
+								work: 20,
+								rest: 10,
+								rounds: 8,
+								sets: 1,
+								setRest: 0,
+								cooldown,
+							},
+							createdAt: 0,
+						},
+					],
+				},
+				'en-US',
+			).saved[0];
+		// 10 + 8 × 20 + 7 × 10 = 240, then the cooldown.
+		expect(cooled(0)).toMatchObject({ shape: '8 × 20s/10s', total: 240 });
+		expect(cooled(120)).toMatchObject({ shape: '8 × 20s/10s · 2:00 cooldown', total: 360 });
+		expect(cooled(45)).toMatchObject({ shape: '8 × 20s/10s · 45s cooldown', total: 285 });
+		const pt = resolveTimer(
+			getContent('pt-BR'),
+			{
+				savedProtocols: [
+					{
+						id: asSavedProtocolId('5eed0000-0000-4000-8000-0000000000c1'),
+						name: 'Finisher',
+						protocol: {
+							prepare: 0,
+							work: 7,
+							rest: 3,
+							rounds: 6,
+							sets: 2,
+							setRest: 60,
+							cooldown: 300,
+						},
+						createdAt: 0,
+					},
+				],
+			},
+			'pt-BR',
+		);
+		expect(pt.saved[0].shape).toBe('6 × 7s/3s · 2 séries · 5:00 de desaquecimento');
 	});
 
 	it('has nothing saved on an account that has kept nothing', () => {
@@ -538,5 +604,78 @@ describe('Timer', () => {
 		const repeaters = pt.presets.find((g) => g.exercise === 'repeaters');
 		expect(repeaters?.presets[0].shape).toBe('6 × 7s/3s · 4 séries');
 		expect(repeaters?.study?.title).toBe('Força crítica e resistência');
+	});
+});
+
+// #104. What the saved-protocol editor accepts. The editor holds what was typed,
+// as text, and this is the one place that decides whether it is a protocol: the
+// screen shows each refusal beside its field and saves nothing until there are
+// none.
+describe('the saved-protocol editor', () => {
+	const TABATA = {
+		prepare: 10,
+		work: 20,
+		rest: 10,
+		rounds: 8,
+		sets: 1,
+		setRest: 0,
+		cooldown: 120,
+	};
+	const typed = (fields: Partial<Record<keyof typeof TABATA, string>>, name = 'Tabata') => ({
+		name,
+		fields: { ...formOf('', TABATA).fields, ...fields },
+	});
+
+	it('opens on the protocol it edits, as written', () => {
+		expect(formOf('Tabata', TABATA)).toEqual({
+			name: 'Tabata',
+			fields: {
+				prepare: '10',
+				work: '20',
+				rest: '10',
+				rounds: '8',
+				sets: '1',
+				setRest: '0',
+				cooldown: '120',
+			},
+		});
+	});
+
+	it('reads a filled-in form as a name and a protocol', () => {
+		expect(readProtocolForm(typed({}, '  Tabata finisher '))).toEqual({
+			ok: true,
+			name: 'Tabata finisher',
+			protocol: TABATA,
+		});
+	});
+
+	it('takes no prepare, no rest, no set rest and no cooldown', () => {
+		const none = typed({ prepare: '0', rest: '0', setRest: '0', cooldown: '0' });
+		expect(readProtocolForm(none)).toMatchObject({
+			ok: true,
+			protocol: { prepare: 0, rest: 0, setRest: 0, cooldown: 0 },
+		});
+	});
+
+	it.each([
+		['zero work', { work: '0' }, ['work']],
+		['zero rounds', { rounds: '0' }, ['rounds']],
+		['zero sets', { sets: '0' }, ['sets']],
+		['negative seconds', { rest: '-5', cooldown: '-1' }, ['rest', 'cooldown']],
+		['a fraction', { work: '7.5' }, ['work']],
+		['a field left empty', { setRest: '' }, ['setRest']],
+		['something that is not a number', { prepare: 'ten' }, ['prepare']],
+	])('refuses %s, and says which field', (_what, fields, refused) => {
+		expect(readProtocolForm(typed(fields))).toEqual({ ok: false, refused, protocol: null });
+	});
+
+	// Refused for its name alone, the numbers still read: the editor shows what
+	// they add up to while the athlete has not got to the name yet.
+	it('refuses a protocol with no name, and still reads its numbers', () => {
+		expect(readProtocolForm(typed({}, '   '))).toEqual({
+			ok: false,
+			refused: ['name'],
+			protocol: TABATA,
+		});
 	});
 });

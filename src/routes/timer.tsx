@@ -11,8 +11,9 @@
 // are theirs and there are few of them; under them the **presets**: every library
 // variant that carries a protocol, read-only, computed by `resolveTimer` and never
 // stored. The one row the clock is pointed at carries the actions — duplicate,
-// and for a saved protocol delete — so twenty-six rows do not each carry two
-// buttons. Creating and editing one is #104's, and goes beside them.
+// and for a saved protocol edit and delete — so twenty-six rows do not each carry
+// three buttons. A new one is made from scratch under the saved list (#104), in
+// the same sheet that edits one.
 //
 // A Protocols | Stopwatch switch (#108) sits above the clock. Both tabs stay
 // mounted and the one not shown is `hidden`, so a protocol left running keeps
@@ -25,19 +26,26 @@
 // list scrolls under it and Start must stay in reach; and every row is a 44px
 // target, the clock's controls 48px.
 import { createFileRoute } from '@tanstack/react-router';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Plus } from 'lucide-react';
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getContent } from '$lib/content';
 import { clock } from '$lib/format';
 import { type ProtocolKey, savedProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import type { Protocol } from '$lib/protocol';
+import { BLANK_PROTOCOL, PROTOCOL_FIELDS, type Protocol } from '$lib/protocol';
 import { type PresetGroup, resolveTimer, type SavedRow } from '$lib/screens/timer';
 import { useTrainingRecord } from '$lib/store/record';
-import { deleteSavedProtocol, duplicateProtocol } from '$lib/store/savedProtocols';
+import {
+	createSavedProtocol,
+	deleteSavedProtocol,
+	duplicateProtocol,
+	type SavedProtocolDraft,
+	updateSavedProtocol,
+} from '$lib/store/savedProtocols';
 import { useTimerSetup } from '$lib/timerSetup';
 import { CueSettingsShortcut } from '../components/CueSettings';
+import { type EditorTarget, ProtocolEditor } from '../components/ProtocolEditor';
 import { Stopwatch } from '../components/Stopwatch';
 import { type ClockHandle, Timer } from '../components/Timer';
 import { AlertDialog } from '../components/ui/AlertDialog';
@@ -143,6 +151,35 @@ function TimerScreen() {
 		setMade(key);
 	};
 
+	// THE EDITOR (#104): one sheet for a new protocol and an edited one. What it
+	// is open on is kept apart from whether it is open, as the delete question's
+	// is, so its title does not change while it slides away.
+	const [editorOpen, setEditorOpen] = useState(false);
+	const [editing, setEditing] = useState<{ target: EditorTarget; row: SavedRow | null } | null>(
+		null,
+	);
+	const openEditor = (row: SavedRow | null) => {
+		setEditing({
+			target: row
+				? { kind: 'edit', name: row.name, protocol: row.protocol }
+				: { kind: 'new', protocol: BLANK_PROTOCOL },
+			row,
+		});
+		setEditorOpen(true);
+	};
+	const save = async (draft: SavedProtocolDraft) => {
+		if (editing?.row) {
+			await updateSavedProtocol(editing.row.id, draft);
+			return;
+		}
+		// A new one goes to the bottom of the saved list, which may be off the
+		// screen: it is pointed at and scrolled to, as a copy is.
+		const row = await createSavedProtocol(draft);
+		const key = savedProtocolKey(row.id);
+		setSelected(key);
+		setMade(key);
+	};
+
 	// The protocol the delete question is about, kept apart from whether the
 	// question is open, so the title does not lose its name while it closes.
 	const [doomed, setDoomed] = useState<SavedRow | null>(null);
@@ -178,7 +215,12 @@ function TimerScreen() {
 				{current ? (
 					<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
 						<Timer
-							key={current.key}
+							// Remounted when the protocol's numbers change, not only when
+							// another one is picked: an edited saved protocol (#104) is a
+							// different protocol, and its clock starts clean on it — the
+							// draft's own rule for a protocol that is not the one it was
+							// left in. A rename keeps the clock where it is.
+							key={`${current.key}|${PROTOCOL_FIELDS.map((f) => current.protocol[f]).join(',')}`}
 							ref={protocolClock}
 							onStart={() => stopwatch.current?.pause()}
 							slot="timer"
@@ -213,6 +255,7 @@ function TimerScreen() {
 										<RowActions
 											describedBy={nameId}
 											onDuplicate={() => void duplicate(s)}
+											onEdit={() => openEditor(s)}
 											onDelete={() => {
 												setDoomed(s);
 												setConfirming(true);
@@ -221,9 +264,19 @@ function TimerScreen() {
 									) : null}
 								</div>
 							))}
+							{/* Set apart from the row above, whose actions end on the same
+							    line: these are the row's, this one is the list's. */}
+							<div className="mt-2">
+								<NewProtocol onClick={() => openEditor(null)} />
+							</div>
 						</div>
 					) : (
-						<Empty value={m.timer_saved_empty()} />
+						// The copy names both ways in; the one that is not a preset's
+						// action is right under it.
+						<Empty
+							value={m.timer_saved_empty()}
+							action={<NewProtocol onClick={() => openEditor(null)} />}
+						/>
 					)}
 				</Section>
 
@@ -246,6 +299,13 @@ function TimerScreen() {
 			<div hidden={tab !== 'stopwatch'}>
 				<Stopwatch ref={stopwatch} onStart={() => protocolClock.current?.pause()} />
 			</div>
+
+			<ProtocolEditor
+				open={editorOpen}
+				onOpenChange={setEditorOpen}
+				target={editing?.target ?? null}
+				onSave={save}
+			/>
 
 			<AlertDialog
 				open={confirming}
@@ -354,9 +414,24 @@ function ProtocolButton({
 	);
 }
 
+/** Make a saved protocol from scratch. Quiet, not primary: the screen's one
+ *  primary is the clock's Start, and this is done once in a while. */
+function NewProtocol({ onClick }: { onClick: () => void }) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className={button({ class: 'min-h-11 gap-1.5 self-start' })}
+		>
+			<Plus size={14} aria-hidden="true" />
+			{m.timer_new()}
+		</button>
+	);
+}
+
 /**
  * What the selected row can do besides run: duplicate, and — for a saved
- * protocol, never a preset — delete. Labelled buttons on their own line under
+ * protocol, never a preset — edit and delete. Labelled buttons on their own line under
  * the row rather than icons on it, because an icon attached to a larger control
  * does not read as one (`component-vocabulary.md`, the measured rules).
  *
@@ -369,10 +444,12 @@ function ProtocolButton({
 function RowActions({
 	describedBy,
 	onDuplicate,
+	onEdit,
 	onDelete,
 }: {
 	describedBy: string;
 	onDuplicate: () => void;
+	onEdit?: () => void;
 	onDelete?: () => void;
 }) {
 	return (
@@ -385,6 +462,16 @@ function RowActions({
 					className={button({ class: 'min-h-11' })}
 				>
 					{m.btn_delete()}
+				</button>
+			) : null}
+			{onEdit ? (
+				<button
+					type="button"
+					aria-describedby={describedBy}
+					onClick={onEdit}
+					className={button({ class: 'min-h-11' })}
+				>
+					{m.timer_edit()}
 				</button>
 			) : null}
 			<button

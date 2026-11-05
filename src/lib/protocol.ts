@@ -1,4 +1,5 @@
-// The interval protocol: prepare → (work → rest) × rounds → set rest → … → done.
+// The interval protocol: prepare → (work → rest) × rounds → set rest → … →
+// cooldown → done.
 //
 // THE FIRST OF THE THREE RECURRING PATTERNS (#53, obligation 3)
 // -------------------------------------------------------------
@@ -34,6 +35,7 @@
 // belongs to the store (#18).
 
 import type { VariantParams } from '$lib/content/types';
+import { isRecord } from '$lib/ephemeral';
 import { midOf } from '$lib/loggedSet';
 
 /** Every segment, in the order a run passes through them.
@@ -44,7 +46,7 @@ import { midOf } from '$lib/loggedSet';
  *  something. Written as a second hand-kept list, a segment added here would not
  *  fail to compile there, and the check would silently start rejecting a real
  *  state. Same shape as `DAY_TYPE_IDS` in `content/types.ts`. */
-export const SEGMENTS = ['idle', 'prepare', 'work', 'rest', 'setRest', 'done'] as const;
+export const SEGMENTS = ['idle', 'prepare', 'work', 'rest', 'setRest', 'cooldown', 'done'] as const;
 
 export type Segment = (typeof SEGMENTS)[number];
 
@@ -52,10 +54,71 @@ export type Segment = (typeof SEGMENTS)[number];
  *  `Protocol` — for the same reason as `SEGMENTS`: `timerSetup.ts` checks a
  *  parsed config field by field, and a field added to the type but not to the
  *  check is a config that passes validation with a hole in it. */
-export const PROTOCOL_FIELDS = ['prepare', 'work', 'rest', 'rounds', 'sets', 'setRest'] as const;
+export const PROTOCOL_FIELDS = [
+	'prepare',
+	'work',
+	'rest',
+	'rounds',
+	'sets',
+	'setRest',
+	'cooldown',
+] as const;
 
-/** The protocol to run. Seconds throughout; counts are whole. */
-export type Protocol = Record<(typeof PROTOCOL_FIELDS)[number], number>;
+export type ProtocolField = (typeof PROTOCOL_FIELDS)[number];
+
+/** The protocol to run. Seconds throughout; counts are whole. `cooldown` (#104)
+ *  is the easy minutes after the last set, and zero means none. */
+export type Protocol = Record<ProtocolField, number>;
+
+/** The least each field can be and still describe a protocol that runs what it
+ *  says: an effort, a round and a set at least, and no negative seconds. The
+ *  saved-protocol editor refuses below these (#104), and so does the server's
+ *  row schema, which states the same floors in its own terms. */
+export const PROTOCOL_MINIMUM: Record<ProtocolField, 0 | 1> = {
+	prepare: 0,
+	work: 1,
+	rest: 0,
+	rounds: 1,
+	sets: 1,
+	setRest: 0,
+	cooldown: 0,
+};
+
+/** What the clock runs when it has nothing to run: ten seconds to get on the
+ *  board, one ten-second effort. Also the starting numbers of a protocol made
+ *  from scratch. */
+export const BLANK_PROTOCOL: Protocol = {
+	prepare: 10,
+	work: 10,
+	rest: 0,
+	rounds: 1,
+	sets: 1,
+	setRest: 0,
+	cooldown: 0,
+};
+
+/**
+ * A protocol read back from somewhere the app does not control — a draft in
+ * `localStorage`, a row from another device — or `null` if it is not one.
+ *
+ * Parsed, not trusted: a field that is missing or not a finite number leaves
+ * the clock counting from `NaN`, which renders as `NaN` and never advances.
+ *
+ * Except `cooldown`, which a build before #104 never wrote. Missing, it reads as
+ * zero — none — so every draft and every saved protocol from before it runs
+ * exactly as it did. Refusing it instead would have thrown away the athlete's
+ * place in every protocol on the first load after the update.
+ */
+export function readProtocol(value: unknown): Protocol | null {
+	if (!isRecord(value)) return null;
+	const filled: Record<string, unknown> = { ...value, cooldown: value.cooldown ?? 0 };
+	if (!PROTOCOL_FIELDS.every((f) => typeof filled[f] === 'number' && Number.isFinite(filled[f]))) {
+		return null;
+	}
+	const protocol = {} as Protocol;
+	for (const f of PROTOCOL_FIELDS) protocol[f] = filled[f] as number;
+	return protocol;
+}
 
 /**
  * The protocol a library variant runs, or `null` if it carries none.
@@ -78,6 +141,9 @@ export function protocolOf(v: VariantParams): Protocol | null {
 		rounds: midOf(v.rounds) ?? 1,
 		sets: midOf(v.sets) ?? 1,
 		setRest: midOf(v.setRestSec) ?? 0,
+		// The library prescribes no cooldown, so a preset and Train's clock run
+		// none: they end on the last set, as they always have.
+		cooldown: 0,
 	};
 }
 
@@ -119,11 +185,15 @@ export function step(r: Run, c: Protocol): Run {
 					? { ...r, segment: 'setRest', remaining: c.setRest }
 					: { segment: 'work', set: r.set + 1, round: 1, remaining: Math.max(1, c.work) };
 			}
-			return { ...r, segment: 'done', remaining: 0 };
+			return c.cooldown > 0
+				? { ...r, segment: 'cooldown', remaining: c.cooldown }
+				: { ...r, segment: 'done', remaining: 0 };
 		case 'rest':
 			return { ...r, segment: 'work', remaining: Math.max(1, c.work) };
 		case 'setRest':
 			return { segment: 'work', set: r.set + 1, round: 1, remaining: Math.max(1, c.work) };
+		case 'cooldown':
+			return { ...r, segment: 'done', remaining: 0 };
 		default:
 			return r;
 	}
@@ -202,6 +272,11 @@ function perSetOf(c: Protocol): number {
  * (`tests/protocol.test.ts`), not by reading either expression.
  */
 export function totalOf(c: Protocol): number {
+	return beforeCooldownOf(c) + c.cooldown;
+}
+
+/** Everything up to the end of the last set. */
+function beforeCooldownOf(c: Protocol): number {
 	return c.prepare + c.sets * perSetOf(c) + Math.max(0, c.sets - 1) * c.setRest;
 }
 
@@ -222,6 +297,8 @@ export function segmentLengthOf(r: Run, c: Protocol): number {
 			return c.rest;
 		case 'setRest':
 			return c.setRest;
+		case 'cooldown':
+			return c.cooldown;
 		default:
 			return 0;
 	}
@@ -242,6 +319,7 @@ export function elapsedOf(r: Run, c: Protocol): number {
 	if (r.segment === 'idle') return 0;
 	if (r.segment === 'done') return totalOf(c);
 	if (r.segment === 'prepare') return c.prepare - r.remaining;
+	if (r.segment === 'cooldown') return beforeCooldownOf(c) + (c.cooldown - r.remaining);
 
 	const beforeSet = c.prepare + (r.set - 1) * (perSetOf(c) + c.setRest);
 	if (r.segment === 'setRest') {
@@ -291,6 +369,10 @@ export type Cue =
 	| 'work'
 	/** A set ended; the longer between-sets rest begins. */
 	| 'setRest'
+	/** The last set ended and the protocol has a cooldown (#104): the easy
+	 *  minutes begin. Its own cue rather than `rest`'s, because nothing comes
+	 *  after it but `done`, and the athlete does not have to get ready for it. */
+	| 'cooldown'
 	/** The last seconds of any segment, one beat each: three of them unless
 	 *  the athlete chose five or ten (`CuePrefs.countdown`). */
 	| 'countdown'
@@ -358,6 +440,7 @@ const ARRIVAL: Record<Segment, BuzzedCue | null> = {
 	work: 'work',
 	rest: 'rest',
 	setRest: 'setRest',
+	cooldown: 'cooldown',
 	done: 'done',
 };
 

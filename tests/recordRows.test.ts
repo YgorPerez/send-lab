@@ -330,8 +330,23 @@ describe('a saved protocol is a protocol that can run', () => {
 		['a negative rest', { rest: -1 }],
 		['a negative prepare', { prepare: -5 }],
 		['a fraction of a round', { rounds: 2.5 }],
+		['a negative cooldown', { cooldown: -30 }],
+		['a fraction of a second of cooldown', { cooldown: 0.5 }],
 	])('refuses %s', (_what, protocol) => {
 		expect(check(protocol).ok).toBe(false);
+	});
+
+	// A client from before #104 writes no cooldown. Its rows still sync, and are
+	// stored as the protocol they always were: one with none.
+	it('accepts one with no cooldown, as one with none', () => {
+		const { cooldown: _, ...before } = row.protocol;
+		const result = sanitizeRow('savedProtocols', row.id, { ...row, protocol: before });
+		expect(result.ok && (result.row as typeof row).protocol.cooldown).toBe(0);
+	});
+
+	it('keeps a cooldown', () => {
+		const result = check({ cooldown: 120 });
+		expect(result.ok && (result.row as typeof row).protocol.cooldown).toBe(120);
 	});
 
 	it('refuses a protocol with no name', () => {

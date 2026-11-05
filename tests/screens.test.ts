@@ -381,6 +381,10 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				locale === 'en-US' ? '5 × 10s/20s · 2 sets' : '5 × 10s/20s · 2 séries',
 			);
 			expect(screen).toContain('5:30');
+			// The second one has a cooldown, and its shape says so (#104).
+			expect(screen).toContain(
+				locale === 'en-US' ? '8 × 20s/10s · 2:00 cooldown' : '8 × 20s/10s · 2:00 de desaquecimento',
+			);
 			// Above the presets, not after twenty-four of them.
 			expect(screen.indexOf(name)).toBeLessThan(
 				screen.indexOf(locale === 'en-US' ? 'Presets' : 'Predefinidos'),
@@ -388,6 +392,9 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// Selected, so it carries its actions; no empty copy beside a real row.
 			expect(screen).toContain(locale === 'en-US' ? '>Duplicate<' : '>Duplicar<');
 			expect(screen).toContain(locale === 'en-US' ? '>Delete<' : '>Excluir<');
+			// And, being the athlete's, it can be edited; and a new one made (#104).
+			expect(screen).toContain(locale === 'en-US' ? '>Edit<' : '>Editar<');
+			expect(screen).toContain(locale === 'en-US' ? '>New protocol<' : '>Novo protocolo<');
 			expect(screen).not.toContain(
 				locale === 'en-US' ? 'No saved protocols yet' : 'Nenhum protocolo salvo ainda',
 			);

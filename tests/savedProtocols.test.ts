@@ -7,9 +7,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createRecordStore } from '../src/lib/store/collections.ts';
 import { readTrainingRecord, recordStore, resetRecordStore } from '../src/lib/store/record.ts';
-import { deleteSavedProtocol, duplicateProtocol } from '../src/lib/store/savedProtocols.ts';
+import {
+	createSavedProtocol,
+	deleteSavedProtocol,
+	duplicateProtocol,
+	updateSavedProtocol,
+} from '../src/lib/store/savedProtocols.ts';
 
-const REPEATERS = { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180 };
+const REPEATERS = { prepare: 10, work: 7, rest: 3, rounds: 6, sets: 4, setRest: 180, cooldown: 0 };
 const T0 = 1_755_000_000_000;
 
 let original: PropertyDescriptor | undefined;
@@ -74,6 +79,68 @@ describe('duplicating a protocol', () => {
 	});
 });
 
+// #104: a saved protocol made from scratch, and every field of one changed.
+describe('creating a saved protocol', () => {
+	const TABATA = { prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 0, cooldown: 120 };
+
+	it('keeps it under its name, after the ones already there', async () => {
+		const first = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
+		const made = await createSavedProtocol({ name: 'Tabata finisher', protocol: TABATA }, T0 + 1);
+
+		expect(made).toMatchObject({ name: 'Tabata finisher', protocol: TABATA, createdAt: T0 + 1 });
+		expect(made.id).not.toBe(first.id);
+		expect(saved().map((p) => p.name)).toEqual(['Copy of Repeaters', 'Tabata finisher']);
+	});
+});
+
+describe('editing a saved protocol', () => {
+	it('changes its name and every number, and nothing else', async () => {
+		const kept = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
+		const other = await duplicateProtocol({ name: 'Other', protocol: REPEATERS }, T0 + 1);
+		const tuned = { prepare: 5, work: 8, rest: 4, rounds: 7, sets: 3, setRest: 150, cooldown: 300 };
+
+		await updateSavedProtocol(kept.id, { name: 'Repeaters, tuned', protocol: tuned });
+
+		expect(saved()).toEqual([
+			{ id: kept.id, name: 'Repeaters, tuned', protocol: tuned, createdAt: T0 },
+			other,
+		]);
+	});
+
+	it('keeps its place in the list and its id', async () => {
+		const a = await duplicateProtocol({ name: 'A', protocol: REPEATERS }, T0);
+		const b = await duplicateProtocol({ name: 'B', protocol: REPEATERS }, T0 + 1);
+
+		await updateSavedProtocol(a.id, { name: 'Z', protocol: REPEATERS });
+
+		expect(saved().map((p) => p.id)).toEqual([a.id, b.id]);
+	});
+
+	// Deleted on another device while this one had the editor open. Saving
+	// would otherwise bring back a protocol the athlete already threw away.
+	it('does not bring back one that is gone', async () => {
+		const gone = await duplicateProtocol({ name: 'Gone', protocol: REPEATERS }, T0);
+		await deleteSavedProtocol(gone.id);
+
+		await updateSavedProtocol(gone.id, { name: 'Back?', protocol: REPEATERS });
+
+		expect(saved()).toEqual([]);
+	});
+
+	it('is still edited in a store built over the same storage', async () => {
+		const kept = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
+		await updateSavedProtocol(kept.id, {
+			name: 'Renamed',
+			protocol: { ...REPEATERS, cooldown: 60 },
+		});
+
+		const reloaded = readTrainingRecord(createRecordStore(null));
+		expect(reloaded.savedProtocols).toMatchObject([
+			{ id: kept.id, name: 'Renamed', protocol: { cooldown: 60 } },
+		]);
+	});
+});
+
 describe('deleting a saved protocol', () => {
 	it('removes that one and leaves the rest', async () => {
 		const keep = await duplicateProtocol({ name: 'Keep', protocol: REPEATERS }, T0);
@@ -90,6 +157,22 @@ describe('deleting a saved protocol', () => {
 		await deleteSavedProtocol(gone.id);
 		await expect(deleteSavedProtocol(gone.id)).resolves.toBeUndefined();
 		expect(saved()).toEqual([]);
+	});
+});
+
+// Rows written before #104 — on this device, or synced from one still running an
+// older build — have no cooldown. They read as having none.
+describe('a saved protocol from before cooldown', () => {
+	it('reads with none, and runs as it did', () => {
+		const { cooldown: _, ...before } = REPEATERS;
+		recordStore().savedProtocols.insert({
+			id: 'older',
+			name: 'Older',
+			protocol: before,
+			createdAt: T0,
+		} as never);
+
+		expect(saved()[0].protocol).toEqual({ ...REPEATERS, cooldown: 0 });
 	});
 });
 

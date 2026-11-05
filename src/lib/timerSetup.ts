@@ -36,6 +36,7 @@ import {
 	PROTOCOL_FIELDS,
 	type Protocol,
 	type Run,
+	readProtocol,
 	SEGMENTS,
 	type Segment,
 } from '$lib/protocol';
@@ -96,7 +97,10 @@ export function restored(
 	{ fixed = false }: { fixed?: boolean } = {},
 ): RestoredTimer {
 	const setup = inScope(stored, protocolKey);
-	if (!isConfig(setup?.config) || (fixed && !sameProtocol(setup.config, seeded))) {
+	// A draft from before cooldown (#104) has none, and reads as none: the same
+	// protocol it was, so its place is kept.
+	const config = readProtocol(setup?.config);
+	if (!config || (fixed && !sameProtocol(config, seeded))) {
 		// No usable configuration means no usable *position* either: `round 3 of 6`
 		// describes a protocol we no longer have, and carrying it onto the
 		// prescribed one is the same cross-protocol confusion rule 2 exists to
@@ -105,7 +109,7 @@ export function restored(
 	}
 	// The configuration outlives any one run of it, so a stored run that is
 	// unusable costs the athlete their place and not their setup.
-	return { config: setup.config, run: isResumable(setup.run) ? setup.run : IDLE, running: false };
+	return { config, run: isResumable(setup?.run) ? setup.run : IDLE, running: false };
 }
 
 /**
@@ -132,14 +136,6 @@ export function useTimerSetup(
 		[setStored],
 	);
 	return [stored, persist];
-}
-
-/** Storage is parsed, not trusted: an older build wrote it, or a hand edit did.
- *  A config that is missing a field leaves the clock counting from `undefined`,
- *  which renders as `NaN` and never advances. */
-function isConfig(value: unknown): value is Protocol {
-	if (!isRecord(value)) return false;
-	return PROTOCOL_FIELDS.every((f) => typeof value[f] === 'number' && Number.isFinite(value[f]));
 }
 
 function sameProtocol(a: Protocol, b: Protocol): boolean {

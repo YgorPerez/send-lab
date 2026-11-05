@@ -5,20 +5,49 @@
 // hydrate. Their rule — wait, then update or insert — exists because they
 // address a row by a key another device may already hold, and an insert over
 // a key the hydrate is about to bring in throws, or invents a row that then
-// beats the real one. A **duplicate** has neither problem: its key is minted
-// here, fresh, so no other device can hold it and there is nothing to update.
-// Inserting at once is what lets the copy appear under the athlete's finger
-// offline, where the hydrate may not answer for a long time.
+// beats the real one. A **new row** — made from scratch, or a duplicate — has
+// neither problem: its key is minted here, fresh, so no other device can hold
+// it and there is nothing to update. Inserting at once is what lets it appear
+// under the athlete's finger offline, where the hydrate may not answer for a
+// long time.
 //
-// A **delete** does wait. It names a row the athlete can see, so the row is
-// already here — but a hydrate still in flight could put it back a moment
-// after it went, and the athlete would watch their delete undo itself.
-//
-// Editing a saved protocol is #104's, and is an update by id like the delete.
+// A **delete** and an **edit** (#104) do wait. Each names a row the athlete can
+// see, so the row is already here — but a hydrate still in flight could put the
+// old row back a moment after it changed, and the athlete would watch their
+// delete or their edit undo itself.
 import { newSavedProtocolId, type SavedProtocolId } from '$lib/ids';
 import type { Protocol } from '$lib/protocol';
 import type { SavedProtocol } from '$lib/types';
 import { recordStore, recordSync } from './record';
+
+/** What the athlete gives a saved protocol: its name and its numbers. */
+export interface SavedProtocolDraft {
+	name: string;
+	protocol: Protocol;
+}
+
+/**
+ * Keep a new saved protocol, made from scratch (#104). Listed last, since the
+ * list is in the order protocols were made.
+ *
+ * The draft has been read by the editor (`readProtocolForm`) — named, whole,
+ * runnable — so it is written as given.
+ */
+export async function createSavedProtocol(
+	draft: SavedProtocolDraft,
+	now: number = Date.now(),
+): Promise<SavedProtocol> {
+	const row: SavedProtocol = {
+		id: newSavedProtocolId(),
+		name: draft.name,
+		// A copy of the numbers, not the caller's object: the collection holds
+		// what it is handed, and a preset's protocol is shared by every render.
+		protocol: { ...draft.protocol },
+		createdAt: now,
+	};
+	recordStore().savedProtocols.insert(row);
+	return row;
+}
 
 /**
  * Keep a copy of a protocol as a new saved protocol, under `name`.
@@ -30,19 +59,34 @@ import { recordStore, recordSync } from './record';
  * Resolves to the row it wrote, so the screen can point the clock at it.
  */
 export async function duplicateProtocol(
-	source: { name: string; protocol: Protocol },
+	source: SavedProtocolDraft,
 	now: number = Date.now(),
 ): Promise<SavedProtocol> {
-	const row: SavedProtocol = {
-		id: newSavedProtocolId(),
-		name: source.name,
-		// A copy of the numbers, not the source's object: the collection holds
-		// what it is handed, and a preset's protocol is shared by every render.
-		protocol: { ...source.protocol },
-		createdAt: now,
-	};
-	recordStore().savedProtocols.insert(row);
-	return row;
+	return createSavedProtocol(source, now);
+}
+
+/**
+ * Change a saved protocol's name and numbers (#104). Its id and its place in
+ * the list stay: the id is what it is, and the list is in the order protocols
+ * were made, not edited.
+ *
+ * One that is gone by the time the account answers — deleted on another
+ * device while this one had the editor open — stays gone. Writing it back
+ * would undo a delete the athlete made on purpose.
+ */
+export async function updateSavedProtocol(
+	id: SavedProtocolId,
+	draft: SavedProtocolDraft,
+): Promise<void> {
+	const sync = recordSync();
+	if (sync) await sync.settled();
+
+	const saved = recordStore().savedProtocols;
+	if (!saved.has(id)) return;
+	saved.update(id, (row) => {
+		row.name = draft.name;
+		row.protocol = { ...draft.protocol };
+	});
 }
 
 /** Remove a saved protocol from the account, on every device. Already gone is

@@ -36,7 +36,7 @@ import {
 	type TaskKey,
 } from '$lib/ids';
 import type { ResolverState } from '$lib/prescription';
-import { CUE_DEFAULTS } from '$lib/protocol';
+import { CUE_DEFAULTS, readProtocol } from '$lib/protocol';
 import type {
 	BodyweightReading,
 	LoggedReadinessCheck,
@@ -249,9 +249,16 @@ function assemble(rows: Rows): TrainingRecord {
 		// Oldest first, the order they were made in (#98: no reordering). The id
 		// breaks a tie, so two made in the same millisecond on two devices still
 		// list the same way on both.
-		savedProtocols: [...rows.savedProtocols].sort(
-			(a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id),
-		),
+		//
+		// Each protocol is read rather than trusted: a row written before #104 has
+		// no cooldown and reads as none, and one too broken to run is left out
+		// rather than handed to a clock that would count from `NaN`.
+		savedProtocols: rows.savedProtocols
+			.flatMap((p) => {
+				const protocol = readProtocol(p.protocol);
+				return protocol ? [{ id: p.id, name: p.name, protocol, createdAt: p.createdAt }] : [];
+			})
+			.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id)),
 	};
 }
 
