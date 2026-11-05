@@ -78,6 +78,7 @@ function TimerScreen() {
 						onClockOpenChange={setClockOpen}
 						editable={false}
 						openOnStart
+						titled={false}
 					/>
 				</div>
 			) : null}
@@ -112,7 +113,10 @@ function PresetList({
 						href={group.study.url}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="inline-flex min-h-11 items-center gap-1 text-[11px] text-ink-dim underline decoration-line underline-offset-2 hover:text-ink"
+						// 44px to the finger without 44px in the layout: the padding is
+						// taken back by the margin, so a group with a study sits as close
+						// to its rows as one without.
+						className="-my-3.5 inline-flex items-center gap-1 py-3.5 text-[11px] text-ink-dim underline decoration-line underline-offset-2 hover:text-ink"
 					>
 						{group.study.title}
 						<ExternalLink size={10} aria-hidden="true" />

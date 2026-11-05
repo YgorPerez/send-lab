@@ -231,7 +231,17 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				locale === 'en-US' ? 'Critical force &amp; endurance' : 'Força crítica e resistência',
 			);
 			// The clock: its strip, its Start, and the way into the full-screen face.
-			expect(timer).toContain(locale === 'en-US' ? 'Interval timer' : 'Timer de intervalos');
+			// The strip is named by the preset it runs, not by "Interval timer",
+			// which would repeat the page's own title.
+			expect(timer).not.toContain(locale === 'en-US' ? 'Interval timer' : 'Timer de intervalos');
+			// What the clock reads, said for a screen reader rather than hidden
+			// behind the button's label (#99's review): the idle number is the
+			// prepare length, and it says so.
+			expect(timer).toContain(
+				locale === 'en-US'
+					? 'Ready, 10 seconds. Next up: Prepare'
+					: 'Pronto, 10 segundos. A seguir: Preparar',
+			);
 			expect(timer).toContain(locale === 'en-US' ? '>Start<' : '>Iniciar<');
 			expect(timer).toContain(
 				locale === 'en-US'

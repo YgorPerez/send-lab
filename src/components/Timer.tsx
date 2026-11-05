@@ -119,9 +119,18 @@ function readingOf(run: Run, config: Protocol, running: boolean): Reading {
 		left: remainingOf(run, config),
 		total: totalOf(config),
 		accent: SEGMENT_COLOR[run.segment],
-		next: nextOf(run, config),
+		// Before the start, "next" is what the number on the clock is the length
+		// of — otherwise an idle `10s` beside `Ready` says nothing about which ten
+		// seconds they are (#99's review).
+		next: run.segment === 'idle' ? firstOf(config) : nextOf(run, config),
 		running,
 	};
+}
+
+/** The segment a run starts in, and how long it is. */
+function firstOf(config: Protocol): { segment: Segment; seconds: number } {
+	const { segment, remaining } = beginning(config);
+	return { segment, seconds: remaining };
 }
 
 /** Whether the run is inside the protocol, rather than before or after it. */
@@ -365,6 +374,7 @@ export function Timer({
 	onClockOpenChange,
 	editable = true,
 	openOnStart = false,
+	titled = true,
 }: {
 	/** Which screen's clock this is. Each screen keeps its own place, so leaving
 	 *  one clock for the other never costs either its position (#101). */
@@ -390,6 +400,10 @@ export function Timer({
 	/** Start opens the full-screen clock too. On the Timer screen there is
 	 *  nothing else to look at once it runs; on Train the sets are. */
 	openOnStart?: boolean;
+	/** Whether the strip names itself "Interval timer" before the label. On a
+	 *  screen that is only the timer, the title repeats the page's and costs the
+	 *  label the width it truncates in. */
+	titled?: boolean;
 }) {
 	// A DRAFT THAT PERSISTS, applied to a clock (#59). The setup and the athlete's
 	// place in it survive a reload — which on Android is not a rare event, since
@@ -537,8 +551,13 @@ export function Timer({
 
 			<div className="flex items-baseline justify-between gap-2 px-3 pt-2.5">
 				<Eyebrow className="min-w-0 truncate">
-					{m.timer_title()}
-					{label ? <span className="text-ink-dim"> · {label}</span> : null}
+					{titled || !label ? m.timer_title() : null}
+					{label ? (
+						<span className="text-ink-dim">
+							{titled ? ' · ' : ''}
+							{label}
+						</span>
+					) : null}
 				</Eyebrow>
 				<span
 					className="num shrink-0 text-[10px] tracking-wider uppercase"
@@ -627,7 +646,7 @@ export function Timer({
 			<div className="flex items-center gap-2 border-t border-line-soft px-3 py-1.5">
 				{/* The shape, as the Timer screen's list writes it, rather than four bare
 				    numbers nobody could tell apart (#99's review: was `38s · 0s · 1×3`). */}
-				<span className="num min-w-0 flex-1 truncate text-[10.5px] text-ink-faint">
+				<span className="num min-w-0 flex-1 truncate text-[11px] text-ink-faint">
 					{protocolShape(config)} · {clock(total)}
 				</span>
 				{editable ? (
