@@ -130,6 +130,60 @@ export function step(r: Run, c: Protocol): Run {
 }
 
 /**
+ * Skip: jump to the first second of the segment that follows — from the last
+ * one, to `done`. Pure and total like `step`, and for the same reason idle and
+ * done return themselves.
+ *
+ * It is `step` taken from the segment's final second, so the segment it lands on
+ * is the one the clock would have reached anyway. The skip has no transition
+ * table of its own that could disagree with the clock. A segment added to
+ * `step` (cooldown, #104) can be skipped into and out of with no change here.
+ */
+export function skip(r: Run, c: Protocol): Run {
+	if (r.segment === 'idle' || r.segment === 'done') return r;
+	return step({ ...r, remaining: 1 }, c);
+}
+
+/** How long a segment has to have run before back restarts it rather than
+ *  going to the one before. Short enough that a botched hang is still caught a
+ *  few seconds in, and long enough that a tap just after a change goes back
+ *  across that change. Music players draw the same line in the same place. */
+const BACK_RESTARTS_AFTER = 3;
+
+/** Whether two runs are in the same segment of the same round of the same set. */
+function samePlace(a: Run, b: Run): boolean {
+	return a.segment === b.segment && a.round === b.round && a.set === b.set;
+}
+
+/**
+ * Back: restart the segment if it has run for more than a few seconds,
+ * otherwise go to the first second of the one before. From the first segment it
+ * restarts it; from `done` it goes to the start of the last segment, which is
+ * the botched final hang; idle returns itself. Pure and total, like `step`.
+ *
+ * The segment before is found by walking the protocol forward from the
+ * beginning, one segment at a time through `skip`, rather than by a reverse
+ * transition table. A second table, written backwards, is one more place a new
+ * segment has to be taught about and one more chance to disagree with `step`.
+ * The walk is as long as the protocol has segments, which is a few dozen.
+ */
+export function back(r: Run, c: Protocol): Run {
+	if (r.segment === 'idle') return r;
+	let before: Run | null = null;
+	for (let s = beginning(c); s.segment !== 'done'; s = skip(s, c)) {
+		if (r.segment !== 'done' && samePlace(s, r)) {
+			return s.remaining - r.remaining > BACK_RESTARTS_AFTER || !before ? s : before;
+		}
+		before = s;
+	}
+	if (r.segment === 'done') return before ?? r;
+	// A place the protocol no longer passes through, because a field was edited
+	// mid-run (round 4 of what is now two rounds). There is no "before" to find,
+	// so redo the segment the clock is in.
+	return { ...r, remaining: Math.max(1, segmentLengthOf(r, c)) };
+}
+
+/**
  * One set: every round's effort, with a rest between rounds but not after the
  * last one — the set rest takes that place.
  */
@@ -209,13 +263,13 @@ export function remainingOf(r: Run, c: Protocol): number {
  * The segment that follows this one, and how long it lasts — the "next up" line
  * Timer Plus shows and this app did not.
  *
- * Computed by stepping the protocol to the end of the current segment rather than
- * by a second switch statement. One transition table, so the preview cannot
- * disagree with what actually happens next.
+ * Computed by skipping the current segment rather than by a second switch
+ * statement. One transition table, so the preview cannot disagree with what
+ * actually happens next, nor with where the skip button goes.
  */
 export function nextOf(r: Run, c: Protocol): { segment: Segment; seconds: number } | null {
 	if (r.segment === 'idle' || r.segment === 'done') return null;
-	const next = step({ ...r, remaining: 1 }, c);
+	const next = skip(r, c);
 	if (next.segment === 'done') return { segment: 'done', seconds: 0 };
 	return { segment: next.segment, seconds: next.remaining };
 }
@@ -237,14 +291,15 @@ export type Cue =
 	| 'work'
 	/** A set ended; the longer between-sets rest begins. */
 	| 'setRest'
-	/** Three, two, one — the last seconds of any segment. */
+	/** The last seconds of any segment, one beat each: three of them unless
+	 *  the athlete chose five or ten (`CuePrefs.countdown`). */
 	| 'countdown'
 	/** The protocol is finished. */
 	| 'done';
 
-/** The cues that buzz. The countdown does not: it fires three times in three
- *  seconds, and a phone buzzing continuously reads as a malfunction rather than
- *  as a countdown. Typed rather than tabled, so `cues.ts` cannot be asked for a
+/** The cues that buzz. The countdown does not: it fires once a second for up
+ *  to ten seconds, and a phone buzzing continuously reads as a malfunction
+ *  rather than as a countdown. Typed rather than tabled, so `cues.ts` cannot be asked for a
  *  buzz pattern the planner never plans. */
 export type BuzzedCue = Exclude<Cue, 'countdown'>;
 
@@ -265,8 +320,33 @@ const ARRIVAL: Record<Segment, BuzzedCue | null> = {
 	done: 'done',
 };
 
-/** The last seconds of a segment get their own cue, the way Timer Plus counts in. */
-const COUNTDOWN_FROM = 3;
+/** How many final seconds of a segment are counted down, one cue each. The
+ *  athlete's choice (#105), from this closed set: Timer Plus offers the same
+ *  three, and a free number would be a field to validate for no protocol the
+ *  library prescribes. */
+export const COUNTDOWN_LENGTHS = [3, 5, 10] as const;
+export type CountdownLength = (typeof COUNTDOWN_LENGTHS)[number];
+
+/**
+ * How the athlete wants cues delivered. Part of their preferences (the prefs row
+ * extends this), so it follows the account; read by the planner rather than by
+ * `cues.ts`, because whether a delivery happens is a decision and the player
+ * makes none.
+ *
+ * Each field is one delivery or one parameter of one. A new one is a field here,
+ * a default below, a column on the server's prefs row and a row in
+ * `CueSettings` — nothing else has to move.
+ */
+export interface CuePrefs {
+	/** Seconds counted down at the end of every segment. */
+	countdown: CountdownLength;
+	/** Whether segment changes vibrate. The sound plays either way. */
+	buzz: boolean;
+}
+
+/** What an athlete who never opened the setting gets, and what a row written
+ *  before the setting existed reads as: exactly the clock before #105. */
+export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true };
 
 /**
  * What the athlete is told when the clock moves from one run to the next.
@@ -281,21 +361,35 @@ const COUNTDOWN_FROM = 3;
  * clock is paused or resumed without the run moving: a paused clock counts
  * nothing down, and one resumed inside the last seconds counts on from there.
  *
- * A move to another segment, round or set announces the place it arrived at.
- * Anything else is the same segment one second on, which is silent until the
- * countdown.
+ * A move to another segment, round or set announces the place it arrived at,
+ * and so does the same place with more time left than before: the clock only
+ * ever counts down, so that is the segment restarted by `back`. Anything else is
+ * the same segment one second on, which is silent until the countdown.
+ *
+ * Skip and back go through the same rules as the tick, with no case of their
+ * own. A jump announces where it landed, as the clock getting there would. It
+ * never counts down on landing, even on a segment short enough that its first
+ * second is inside the countdown window, because a jump is never "one second
+ * on".
+ *
+ * `prefs` is the athlete's say in how (#105): how long the countdown is, and
+ * whether a change buzzes as well as sounds. Left out, it is `CUE_DEFAULTS`,
+ * which is the clock as it was before anyone could choose.
  */
-export function planCues({
-	from,
-	to,
-	running,
-}: {
-	from: Run;
-	to: Run;
-	running: boolean;
-}): Delivery[] {
-	if (from.segment === to.segment && from.round === to.round && from.set === to.set) {
-		return running && to.remaining > 0 && to.remaining <= COUNTDOWN_FROM
+export function planCues(
+	{
+		from,
+		to,
+		running,
+	}: {
+		from: Run;
+		to: Run;
+		running: boolean;
+	},
+	prefs: CuePrefs = CUE_DEFAULTS,
+): Delivery[] {
+	if (samePlace(from, to) && to.remaining <= from.remaining) {
+		return running && to.remaining > 0 && to.remaining <= prefs.countdown
 			? [{ kind: 'sound', cue: 'countdown' }]
 			: [];
 	}
@@ -303,10 +397,11 @@ export function planCues({
 	// two-note cue: it is the moment the athlete has to move, and a single beep
 	// identical to every other single beep is not enough to act on blind.
 	const cue = from.segment === 'prepare' && to.segment === 'work' ? 'go' : ARRIVAL[to.segment];
-	return cue
+	if (!cue) return [];
+	return prefs.buzz
 		? [
 				{ kind: 'sound', cue },
 				{ kind: 'buzz', cue },
 			]
-		: [];
+		: [{ kind: 'sound', cue }];
 }

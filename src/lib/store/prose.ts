@@ -2,9 +2,10 @@
 //
 // Everything else on the screens is app copy (`messages/`) or training content
 // (`src/lib/content/`), both of which are already bilingual and already guarded.
-// What is left is the handful of strings a person typed — session notes — which
-// have no home in either store and would otherwise be English-only in an app that
-// is used in pt-BR, where the layout breaks first.
+// What is left is the handful of strings a person typed — session notes, the
+// name of a saved protocol — which have no home in either store and would
+// otherwise be English-only in an app that is used in pt-BR, where the layout
+// breaks first.
 //
 // A note is free text, so once written it stays in the language it was written
 // in; that is what ADR 0012 distinguishes a stored *label* from. This module is
@@ -20,6 +21,7 @@ export const SEED_PROSE: Record<string, Record<string, string>> = {
 		note_elbow: 'Right elbow grumbled on the pulls. Dropped the added load and it settled.',
 		activity_note_deload: 'Last week of the block — everything at reduced load.',
 		activity_note_check: 'Finger self-check, worth repeating in a fortnight.',
+		saved_protocol_warmup: 'Warm-up hangs',
 	},
 	'pt-BR': {
 		note_strong: 'Me senti forte nas duas últimas séries — coloquei 2,5kg e ainda subiu bem.',
@@ -28,5 +30,6 @@ export const SEED_PROSE: Record<string, Record<string, string>> = {
 		note_elbow: 'O cotovelo direito reclamou nas puxadas. Tirei a carga extra e acalmou.',
 		activity_note_deload: 'Última semana do bloco — tudo com carga reduzida.',
 		activity_note_check: 'Autoavaliação dos dedos, vale repetir daqui a duas semanas.',
+		saved_protocol_warmup: 'Suspensões de aquecimento',
 	},
 };

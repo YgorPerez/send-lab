@@ -44,7 +44,8 @@
 // than a screen that renders correctly in English.
 import type { SelfCheckBand } from '$lib/content/logic';
 import type { BodyArea, DayTypeId, Grip, RehabStage, VerdictId } from '$lib/content/types';
-import type { ExerciseId, OverrideKey, WeekdayKey } from '$lib/ids';
+import type { ExerciseId, OverrideKey, SavedProtocolId, WeekdayKey } from '$lib/ids';
+import type { Protocol } from '$lib/protocol';
 
 /** `BodyArea` and `RehabStage` are declared a layer down, in `content/types.ts`,
  *  and re-exported here so the entities below and their app-side consumers read
@@ -319,6 +320,26 @@ export interface Program {
 export interface SavedProgram {
 	name: string;
 	program: Program;
+}
+
+/**
+ * A protocol the athlete named and kept (#103) — `CONTEXT.md`, **Saved
+ * protocol**. Made by duplicating a preset or another saved protocol.
+ *
+ * The protocol is nested rather than spread beside the name, so the protocol
+ * shape can grow a field (the cooldown, #104) without this row's own fields
+ * moving.
+ *
+ * `name` is free text the athlete owns, not a label: a copy's default name is
+ * the source's name in the language it was copied in, and from then on it stays
+ * as written, the way a session note does (ADR 0012).
+ */
+export interface SavedProtocol {
+	id: SavedProtocolId;
+	name: string;
+	protocol: Protocol;
+	/** Epoch ms. Saved protocols list in the order they were made. */
+	createdAt: number;
 }
 
 /** The mode where the program is replaced by a conservative plan for one injured

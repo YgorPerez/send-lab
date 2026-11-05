@@ -35,7 +35,8 @@
 // horizontal overflow are measured in a real browser by `pnpm check:contrast`,
 // and reduced motion by `pnpm check:motion`.
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
-import { createElement } from 'react';
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { PINNED_NOW } from '../scripts/seeded-record.ts';
@@ -207,6 +208,33 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(settings).toContain('role="switch"');
 		});
 
+		// Cue preferences (#105): one shared component, here and behind the Timer
+		// screen's header control. Settings shows it in full; it reads the store,
+		// so the countdown pressed is the stored one — three, the default.
+		test('renders the cue settings in Settings', async () => {
+			const settings = await render('/settings');
+			expect(settings).toContain(locale === 'en-US' ? 'Timer cues' : 'Sinais do timer');
+			expect(settings).toContain(locale === 'en-US' ? 'Count down the last' : 'Contar os últimos');
+			expect(settings).toContain(
+				locale === 'en-US'
+					? 'Vibrate when work or rest begins'
+					: 'Vibrar quando começa esforço ou descanso',
+			);
+			// Whether this device can vibrate is the client's to say. The string
+			// render is the server's, which cannot know, so it says nothing.
+			expect(settings).not.toContain(locale === 'en-US' ? 'This device' : 'Este aparelho');
+			// The three lengths, with the default the one pressed, labelled as a
+			// group by the row that names them.
+			expect(settings).toMatch(/<fieldset[^>]*aria-labelledby="[^"]+"/);
+			expect(settings).toMatch(/aria-pressed="true"[^>]*>3s</);
+			expect(settings).toMatch(/aria-pressed="false"[^>]*>5s</);
+			expect(settings).toMatch(/aria-pressed="false"[^>]*>10s</);
+			// The buzz is on by default: a checked switch.
+			expect(settings).toMatch(
+				/role="switch"[^>]*aria-checked="true"|aria-checked="true"[^>]*role="switch"/,
+			);
+		});
+
 		// Timer (#101). The presets come from the library, read in the locale, each
 		// with its shape and its length, each exercise linked to the study the
 		// library cites; and the clock is there to run the one selected.
@@ -292,6 +320,51 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			);
 		});
 
+		// The cue settings' shortcut (#105): one discreet control in the header,
+		// beside the title, opening the same component Settings shows. A closed
+		// popover renders nothing in a string render, so what is asserted is the
+		// control and what it says it opens.
+		test('puts the cue settings behind a control in the Timer header', async () => {
+			const timer = await render('/timer');
+			const header = timer.slice(
+				timer.indexOf('<h1'),
+				timer.indexOf('</header>', timer.indexOf('<h1')),
+			);
+			expect(header).toContain(
+				locale === 'en-US' ? 'aria-label="Timer cues"' : 'aria-label="Sinais do timer"',
+			);
+			expect(header).toContain('aria-haspopup="dialog"');
+			expect(header).toContain('min-h-11');
+		});
+
+		// Saved protocols (#103). The seeded one is listed above the presets, with
+		// its shape and length, and the clock opens on it: the athlete's own come
+		// first. Selected, it offers its two actions — duplicate and delete.
+		test('lists the saved protocol and opens the clock on it', async () => {
+			const timer = await render('/timer');
+			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+
+			expect(screen).toContain(locale === 'en-US' ? 'Saved protocols' : 'Protocolos salvos');
+			// The athlete's own words, as they wrote them: the suite seeds once, in
+			// en-US, and a saved protocol's name is not translated after the fact.
+			const name = 'Warm-up hangs';
+			expect(screen).toContain(name);
+			expect(screen).toContain(
+				locale === 'en-US' ? '5 × 10s/20s · 2 sets' : '5 × 10s/20s · 2 séries',
+			);
+			expect(screen).toContain('5:30');
+			// Above the presets, not after twenty-four of them.
+			expect(screen.indexOf(name)).toBeLessThan(
+				screen.indexOf(locale === 'en-US' ? 'Presets' : 'Predefinidos'),
+			);
+			// Selected, so it carries its actions; no empty copy beside a real row.
+			expect(screen).toContain(locale === 'en-US' ? '>Duplicate<' : '>Duplicar<');
+			expect(screen).toContain(locale === 'en-US' ? '>Delete<' : '>Excluir<');
+			expect(screen).not.toContain(
+				locale === 'en-US' ? 'No saved protocols yet' : 'Nenhum protocolo salvo ainda',
+			);
+		});
+
 		test('puts the chrome on every screen', async () => {
 			for (const path of ['/', '/train', '/timer', '/log', '/login', '/settings']) {
 				const html = await render(path);
@@ -328,6 +401,83 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		});
 	});
 }
+
+// The full-screen clock is a closed Base UI dialog in a string render, and an
+// open one renders nothing either, because its portal mounts in an effect. So
+// the clock's controls are asserted the way the athlete reaches them: mount Train
+// in the (jsdom) DOM, open the clock, press the buttons, read what the clock says.
+//
+// en-US only. A mounted app runs the root's effects, and one of them applies the
+// seeded account's locale (`useResolvedLocale`), which is en-US: a pt-BR pass
+// here would be the app and the test fighting over the language, not a test of
+// the clock. The pt-BR labels are held to the en-US keys by `check:i18n`.
+describe('the full-screen clock on Train', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const labelled = (scope: ParentNode, label: string) =>
+		scope.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+
+	test('skips and goes back a segment, with labelled 48px+ controls', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/train'] }),
+		});
+		await router.load();
+		// The root route renders the whole document, so React warns about an
+		// `<html>` inside this `<div>`. That is the price of mounting the real
+		// route rather than a copy of the clock, and nothing here hydrates.
+		const host = document.createElement('div');
+		document.body.append(host);
+		const root = createRoot(host);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			press(labelled(host, 'Full-screen clock'));
+			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!clock) throw new Error('the full-screen clock did not open');
+			const skip = labelled(clock, 'Skip to the next segment');
+			const back = labelled(clock, 'Back a segment');
+			// Named for a screen reader, and big enough for a chalky finger: 56px.
+			for (const control of [skip, back]) {
+				expect(control).toBeTruthy();
+				expect(control?.className).toContain('h-14');
+				expect(control?.className).toContain('w-14');
+			}
+			// Nothing to jump within before the clock has started.
+			expect(skip?.disabled).toBe(true);
+			expect(back?.disabled).toBe(true);
+
+			press(worded(clock, 'Start'));
+			press(worded(clock, 'Pause'));
+			const first = clock.getAttribute('aria-label');
+			// The "Next up" line names the segment a skip has to land on.
+			const line = [...clock.querySelectorAll('span')].find(
+				(el) => !el.closest('.sr-only') && el.textContent?.startsWith('Next up'),
+			);
+			const next = line?.querySelector('span')?.textContent;
+			expect(next).toBeTruthy();
+			expect(next).not.toBe(first);
+
+			press(skip);
+			expect(clock.getAttribute('aria-label')).toBe(next);
+			// Paused before the jump, paused after it.
+			expect(worded(clock, 'Start')).toBeTruthy();
+			press(back);
+			expect(clock.getAttribute('aria-label')).toBe(first);
+		} finally {
+			act(() => root.unmount());
+			host.remove();
+		}
+	});
+});
 
 // The three ranks of the type scale, and the 44px touch floor, are properties of
 // the vocabulary rather than of any one screen — so they are asserted against

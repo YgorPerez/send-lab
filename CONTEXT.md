@@ -69,9 +69,9 @@ _Avoid_: gear, kit, apparatus, hardware
 
 **Preferences**:
 What the athlete has chosen about how the app reads and behaves — display units,
-locale, time zone, and whether each notice reaches them. Part of the training
-record and carried between devices with it, rather than a setting belonging to
-one phone. **Settings** is the screen that edits them; the preferences are what
+locale, time zone, whether each notice reaches them, and how the clock's cues
+do (the countdown's length, the buzz). Part of the training record and carried
+between devices with it, rather than a setting belonging to one phone. **Settings** is the screen that edits them; the preferences are what
 it edits.
 _Avoid_: profile, user settings, app config
 
@@ -191,6 +191,16 @@ its exercise. Not a program template: `presets.ts` and the `preset_*` messages
 use the same word for ready-made programs, which build a whole block and are a
 different thing.
 _Avoid_: template, built-in timer, default protocol
+
+**Saved protocol**:
+A protocol the athlete named and kept, as part of the training record — made by
+duplicating a preset or another saved protocol, and listed on the Timer screen
+in the order it was made. Identified by an id minted when it is made, never by
+its name (ADR-0003): the name is the athlete's own text, a copy's default being
+its source's name after "Copy of" in the language it was copied in, and it
+stays as written from then on. It syncs like the rest of the record. Running one
+records nothing.
+_Avoid_: timer, preset, workout, favourite
 
 **Override**:
 A stored deviation from a built-in target, set by the athlete, and addressed by
@@ -382,10 +392,10 @@ _Avoid_: pending, partial, autosave, unsaved, in-flight
 
 **Cue**:
 One event in a running protocol the athlete has to be told about while they are
-not looking at the screen — a segment beginning or ending, the last three
-seconds, the protocol finishing. It is the event and not the sound: one cue has
-three deliveries, a sound, a buzz and a notification, and a cue with all three
-switched off is still the same cue.
+not looking at the screen — a segment beginning or ending, the final countdown
+(the last 3, 5 or 10 seconds, the athlete's choice), the protocol finishing. It
+is the event and not the sound: one cue has three deliveries, a sound, a buzz
+and a notification, and a cue with all three switched off is still the same cue.
 _Avoid_: beep, alert
 
 **Daily notice**:

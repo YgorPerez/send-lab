@@ -10,13 +10,13 @@
 // ADR 0007 made the unit of the write a **row**, so the guard changes with it:
 //
 //   * **A bad row is rejected, not coerced.** Rejecting one row keeps the other
-//     fifteen collections and every other row in this one, so the reason a
+//     sixteen collections and every other row in this one, so the reason a
 //     document sanitizer had to guess is gone. Coercion at this granularity would
 //     be worse than useless — it would silently store a *different* row than the
 //     athlete's device sent, under the key the athlete's device chose, and the
 //     next hydrate would read the lie back as fact.
 //   * **There is no default document.** Absence is representable per key now: a
-//     brand-new account is sixteen empty collections, and the client already has
+//     brand-new account is seventeen empty collections, and the client already has
 //     its own answer for each one (`store/record.ts`'s `NO_PROGRAM`, `NO_PREFS`,
 //     `FIRST_WEEK`). A server-side skeleton would be a second copy of those
 //     defaults, one HTTP hop away from the first.
@@ -66,15 +66,18 @@ import {
 	type OverrideKey,
 	parseExerciseId,
 	parseOverrideKey,
+	parseSavedProtocolId,
 	parseSlotKey,
 	parseTaskKey,
 	parseWeekdayKey,
 	parseWeekId,
+	type SavedProtocolId,
 	type SlotKey,
 	type TaskKey,
 	type WeekdayKey,
 	type WeekId,
 } from '$lib/ids';
+import { COUNTDOWN_LENGTHS, CUE_DEFAULTS } from '$lib/protocol';
 import { EQUIPMENT, FOCUSES, GOALS, LEVELS, WORKING_LOAD_SOURCES } from '$lib/types';
 
 /** The fixed key every singleton collection files its one row under. Mirrors
@@ -97,6 +100,10 @@ const id = {
 	task: z.custom<TaskKey>((v) => parseTaskKey(v) !== null, 'not a task key'),
 	slot: z.custom<SlotKey>((v) => parseSlotKey(v) !== null, 'not a slot key'),
 	override: z.custom<OverrideKey>((v) => parseOverrideKey(v) !== null, 'not an override key'),
+	savedProtocol: z.custom<SavedProtocolId>(
+		(v) => parseSavedProtocolId(v) !== null,
+		'not a saved protocol id',
+	),
 };
 
 /** The key a singleton row must carry, and the only key its collection accepts. */
@@ -233,6 +240,33 @@ const baseline = z.object({
 	completedAt: z.string(),
 });
 
+/** Whole seconds, none allowed. */
+const seconds = z.number().int().min(0);
+/** A whole count of at least one. */
+const count = z.number().int().min(1);
+
+/**
+ * A protocol that can run (#103). The clock already refuses to stall on a zero
+ * work length (`protocol.ts`, `step`), but a saved protocol with no work, no
+ * rounds or no sets is one the athlete cannot have meant, and storing it would
+ * hand every device a protocol that runs something other than what it says.
+ */
+const protocol = z.object({
+	prepare: seconds,
+	work: count,
+	rest: seconds,
+	rounds: count,
+	sets: count,
+	setRest: seconds,
+});
+
+const savedProtocol = z.object({
+	id: id.savedProtocol,
+	name: z.string().min(1),
+	protocol,
+	createdAt: epochMs,
+});
+
 const rehab = z.object({
 	area: z.enum(BODY_AREAS),
 	stage: z.enum(REHAB_STAGES),
@@ -246,7 +280,7 @@ const rehab = z.object({
  *
  *  `keyOf` is the server's copy of the collection's `getKey`, and
  *  `tests/recordRows.test.ts` holds them together two ways: the registry names
- *  exactly the sixteen collections `createRecordStore()` builds, and each one's
+ *  exactly the seventeen collections `createRecordStore()` builds, and each one's
  *  two derivations are run over the same row and required to agree. The second
  *  assertion arrived late: for two tickets only the *names* were checked, so a
  *  `getKey` could move without its twin and nothing failed. */
@@ -265,7 +299,7 @@ function singleton<Row extends { id: typeof ONLY }>(row: z.ZodType<Row>): Collec
 	return spec(row, () => ONLY);
 }
 
-// The registry is heterogeneous by construction — sixteen row types under one
+// The registry is heterogeneous by construction — seventeen row types under one
 // map — and the variance is contained here. Everything public below takes
 // `unknown` in and hands `unknown` out, so no caller ever sees an `any`.
 // biome-ignore lint/suspicious/noExplicitAny: see above
@@ -294,6 +328,13 @@ const COLLECTIONS: Readonly<Record<string, CollectionSpec<any>>> = {
 			// that now falls back to the device. Checked as a string, resolved by
 			// `store/locale.ts`.
 			locale: z.string().nullable(),
+			// How cues reach the athlete (#105). Defaulted rather than required: a
+			// client from before them sends rows without them, and refusing those
+			// would strand that device's units and locale along with them. Absent
+			// reads as the clock it is running — three seconds, buzz on — which is
+			// `CUE_DEFAULTS`, and so is what the client's own read fills in.
+			countdown: z.literal(COUNTDOWN_LENGTHS).default(CUE_DEFAULTS.countdown),
+			buzz: z.boolean().default(CUE_DEFAULTS.buzz),
 		}),
 	),
 	swaps: spec(
@@ -318,6 +359,9 @@ const COLLECTIONS: Readonly<Record<string, CollectionSpec<any>>> = {
 	// picks the key and this re-derives it, so a second spelling would reject
 	// every working load the athlete ever answers (ADR 0020).
 	workingLoads: spec(workingLoad, (r) => loadKey(r.exercise, r.variant)),
+	// The seventeenth (#103). Keyed by its own id, never its name — the note on
+	// `savedPrograms` above is the reason, and this one was built not to need it.
+	savedProtocols: spec(savedProtocol, (r) => r.id),
 };
 
 /** Every collection name the write path accepts, in the order a hydrate returns

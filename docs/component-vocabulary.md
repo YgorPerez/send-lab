@@ -63,7 +63,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
 | `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
-| `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`, the Timer screen's `Protocols` / `Stopwatch`). Promoted out of Settings by #64 when a second screen needed it |
+| `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`, the Timer screen's `Protocols` / `Stopwatch`). Promoted out of Settings by #64 when a second screen needed it. A `fieldset`; `labelledBy` names the group after the row that asks it |
+| `ControlRow` | `primitives.tsx` | One control on its own 44px line: what it is on the left, the control on the right. Promoted out of Settings by #105 when the cue settings needed it on a second screen |
 | `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes |
 
 ## The domain pieces — `src/components/`
@@ -75,6 +76,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
 | `Timer` | The tick, the wake lock, and the two faces of the clock |
 | `Stopwatch` | The count-up's tick, its laps, and the same two faces — strip and full-screen — in the clock's type and controls |
+| `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
 | `ReadinessCheck` | Nine questions, their rationale, and the study behind each |
@@ -114,7 +116,7 @@ above and reads from exactly two things:
 
 | Layer | Lives in | What it is |
 |---|---|---|
-| The store | `src/lib/store/` | Sixteen keyed row sets (ADR 0007), and `useTrainingRecord()`, which assembles them into one `TrainingRecord` |
+| The store | `src/lib/store/` | Seventeen keyed row sets (ADR 0007), and `useTrainingRecord()`, which assembles them into one `TrainingRecord` |
 | The screen resolver | `src/lib/screens/` | `resolveToday` / `resolveTrain` / `resolveLog` — pure functions of `(content, record, now)` |
 
 What the three built screens do with it, which is idiom 2 and idiom 3 one layer

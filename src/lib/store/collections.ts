@@ -74,6 +74,7 @@ import {
 	type TaskKey,
 	type WeekId,
 } from '$lib/ids';
+import type { CuePrefs } from '$lib/protocol';
 import type { UnsyncedWrite } from '$lib/recordWire';
 import type {
 	Baseline,
@@ -82,6 +83,7 @@ import type {
 	Program,
 	Rehab,
 	SavedProgram,
+	SavedProtocol,
 	SelfCheck,
 	Session,
 	WorkingLoad,
@@ -189,7 +191,7 @@ export type PushWrites = (writes: readonly UnsyncedWrite[]) => void;
 
 /** The shape of a mutation, as much of it as a handler here reads. Written out
  *  rather than imported: the library's own type is generic over the row and all
- *  sixteen collections share this one handler. */
+ *  seventeen collections share this one handler. */
 interface Mutated {
 	readonly key: unknown;
 	readonly modified?: unknown;
@@ -305,7 +307,12 @@ export interface RehabRow {
  *  has never reported one is a fact the server should be able to read, and
  *  defaulting it to `UTC` would look identical to an athlete who really is in
  *  London. */
-export interface PrefsRow {
+/** The prefs row also carries the clock's `CuePrefs` (#105): the countdown
+ *  length and the buzz, and the voice and flash switches after them. Extended
+ *  rather than restated, so a cue preference added to the planner is a
+ *  preference the row stores without a second edit here. A row written before
+ *  them lacks them; `record.ts` reads it over `NO_PREFS`. */
+export interface PrefsRow extends CuePrefs {
 	id: typeof ONLY;
 	weight: 'kg' | 'lb';
 	length: 'mm' | 'in';
@@ -345,6 +352,7 @@ export interface RecordStore {
 	readonly bodyweight: ReturnType<typeof bodyweightCollection>;
 	readonly savedPrograms: ReturnType<typeof savedProgramsCollection>;
 	readonly workingLoads: ReturnType<typeof workingLoadsCollection>;
+	readonly savedProtocols: ReturnType<typeof savedProtocolsCollection>;
 }
 
 /**
@@ -560,6 +568,21 @@ const savedProgramsCollection = (o: CollectionOptions) =>
 	);
 
 /**
+ * Keyed by the saved protocol's own id (#103), minted by `ids.ts` when it is
+ * made — never by its name, which is the mistake `savedPrograms` above records
+ * and this collection was built not to repeat.
+ *
+ * The seventeenth collection.
+ */
+const savedProtocolsCollection = (o: CollectionOptions) =>
+	createCollection(
+		localStorageCollectionOptions<SavedProtocol, string>({
+			...o,
+			getKey: (row) => row.id,
+		}),
+	);
+
+/**
  * The storage to hand the collections instead of the library's default, or
  * `undefined` to take the default.
  *
@@ -567,7 +590,7 @@ const savedProgramsCollection = (o: CollectionOptions) =>
  * server render. It does **not** cover a `window` whose `localStorage` is present
  * but not functional — which is exactly what jsdom under Vitest hands over, and
  * what Safari hands over in private browsing with storage denied. Left
- * unguarded, every one of the sixteen collections logs a stack trace on
+ * unguarded, every one of the seventeen collections logs a stack trace on
  * construction and then works anyway, which is the shape of failure that gets
  * ignored rather than fixed.
  *
@@ -667,6 +690,7 @@ export function createRecordStore(
 		bodyweight: bodyweightCollection(options('bodyweight')),
 		savedPrograms: savedProgramsCollection(options('savedPrograms')),
 		workingLoads: workingLoadsCollection(options('workingLoads')),
+		savedProtocols: savedProtocolsCollection(options('savedProtocols')),
 	};
 }
 

@@ -23,6 +23,7 @@ export function Switch({
 	onCheckedChange,
 	disabled,
 	labelledBy,
+	describedBy,
 	className,
 }: {
 	checked: boolean;
@@ -31,6 +32,9 @@ export function Switch({
 	/** The id of the text that names this switch. A switch carries no label of
 	 *  its own, so the row it sits in has to say what it switches. */
 	labelledBy: string;
+	/** The id of a line saying something more about it — that this device
+	 *  cannot do what it switches, say. */
+	describedBy?: string;
 	className?: string;
 }) {
 	return (
@@ -39,6 +43,7 @@ export function Switch({
 			onCheckedChange={onCheckedChange}
 			disabled={disabled}
 			aria-labelledby={labelledBy}
+			aria-describedby={describedBy}
 			className={cn(
 				'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border border-line bg-panel-3 p-0.5 transition-colors',
 				"before:absolute before:-inset-x-1 before:-inset-y-2 before:content-['']",
