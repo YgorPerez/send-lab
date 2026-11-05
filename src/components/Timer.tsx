@@ -25,13 +25,23 @@
 // the protocol), and an open dialog owned here would close on that remount — the
 // athlete's rule is that the clock stays up and picks up the new protocol.
 import { Dialog } from '@base-ui/react/dialog';
-import { ChevronDown, Maximize2, Pause, Play, RotateCcw, X } from 'lucide-react';
+import {
+	ChevronDown,
+	Maximize2,
+	Pause,
+	Play,
+	RotateCcw,
+	SkipBack,
+	SkipForward,
+	X,
+} from 'lucide-react';
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import { deliver, releaseCues } from '$lib/cues';
 import { clock, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import {
+	back,
 	beginning,
 	elapsedOf,
 	IDLE,
@@ -42,6 +52,7 @@ import {
 	remainingOf,
 	type Segment,
 	segmentLengthOf,
+	skip,
 	step,
 	totalOf,
 } from '$lib/protocol';
@@ -210,6 +221,11 @@ function ProgressBar({ reading }: { reading: Reading }) {
  * `backdrop-filter` ancestor becomes the containing block for fixed descendants,
  * so a plain overlay would have been trapped inside a 120px-tall strip. The
  * portal also brings the focus trap and Escape handling for free.
+ *
+ * It scrolls when it does not fit. A phone on its side is 360px tall, and the
+ * ring, the indicators and the control row together are taller than that: with
+ * no scroll, Start, skip and back sat below the screen with no way to reach them.
+ * Scrolling is the floor, not the landscape layout. That one is still to design.
  */
 function FullScreenClock({
 	open,
@@ -218,6 +234,8 @@ function FullScreenClock({
 	reading,
 	onToggle,
 	onReset,
+	onSkip,
+	onBack,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
@@ -225,6 +243,8 @@ function FullScreenClock({
 	reading: Reading;
 	onToggle: () => void;
 	onReset: () => void;
+	onSkip: () => void;
+	onBack: () => void;
 }) {
 	const { run, config, shown, segmentLength, accent, left, elapsed, running, next } = reading;
 	const segmentLabel = SEGMENT_LABEL[run.segment]();
@@ -240,7 +260,7 @@ function FullScreenClock({
 			<Dialog.Portal>
 				<Dialog.Popup
 					aria-label={segmentLabel}
-					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
+					className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col overflow-y-auto bg-bg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0"
 				>
 					<SegmentAnnouncer reading={reading} />
 					<p id={readingId} className="sr-only">
@@ -338,7 +358,23 @@ function FullScreenClock({
 							</span>
 						</div>
 						<ProgressBar reading={reading} />
+						{/* Back and skip flank Start, the order every media control uses,
+						    so the one the athlete reaches for is found by direction rather
+						    than by reading an icon. Reset is kept at the far end, away
+						    from skip: a slip from skip onto reset loses the whole session.
+						    Before the start there is nothing to jump within, and after the
+						    end nothing to skip to, so those are disabled rather than
+						    hidden: the row keeps its shape. */}
 						<div className="mt-1 flex gap-2">
+							<button
+								type="button"
+								aria-label={m.timer_back()}
+								onClick={onBack}
+								disabled={run.segment === 'idle'}
+								className={button({ size: 'touch', class: 'h-14 w-14 shrink-0 px-0' })}
+							>
+								<SkipBack size={20} />
+							</button>
 							<button
 								type="button"
 								onClick={onToggle}
@@ -353,9 +389,18 @@ function FullScreenClock({
 							</button>
 							<button
 								type="button"
+								aria-label={m.timer_skip()}
+								onClick={onSkip}
+								disabled={run.segment === 'idle' || run.segment === 'done'}
+								className={button({ size: 'touch', class: 'h-14 w-14 shrink-0 px-0' })}
+							>
+								<SkipForward size={20} />
+							</button>
+							<button
+								type="button"
 								aria-label={m.btn_reset()}
 								onClick={onReset}
-								className={button({ size: 'touch', class: 'h-14 w-14 px-0' })}
+								className={button({ size: 'touch', class: 'ml-2 h-14 w-14 shrink-0 px-0' })}
 							>
 								<RotateCcw size={20} />
 							</button>
@@ -454,11 +499,18 @@ export function Timer({
 	// closure to hold in a ref — see `protocol.ts`. Re-created when the
 	// configuration changes, so a field edited mid-session takes effect on the
 	// next tick rather than on the next session.
+	//
+	// A skip or a back starts the second over as well. The interval would
+	// otherwise fire on its old schedule, anywhere from a few milliseconds to a
+	// second after the jump, and the segment just landed on would lose up to a
+	// second of its first count. `jumps` exists only to re-create the interval.
+	const [jumps, setJumps] = useState(0);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `jumps` is read by no line of the effect on purpose; a jump changing it is what re-creates the interval.
 	useEffect(() => {
 		if (!running) return;
 		const id = setInterval(() => setRun((r) => step(r, config)), 1000);
 		return () => clearInterval(id);
-	}, [running, config]);
+	}, [running, config, jumps]);
 
 	useEffect(() => {
 		if (run.segment === 'done') setRunning(false);
@@ -539,6 +591,12 @@ export function Timer({
 		setRun(IDLE);
 	};
 	const toggle = () => (running ? setRunning(false) : start());
+	// Paused stays paused and running stays running: a jump moves the clock and
+	// leaves its state alone, so a skip made while paused lands paused.
+	const jump = (to: (r: Run, c: Protocol) => Run) => {
+		setRun((r) => to(r, config));
+		setJumps((n) => n + 1);
+	};
 
 	const reading = readingOf(run, config, running);
 	const { accent, shown, left, total } = reading;
@@ -553,6 +611,8 @@ export function Timer({
 				reading={reading}
 				onToggle={toggle}
 				onReset={reset}
+				onSkip={() => jump(skip)}
+				onBack={() => jump(back)}
 			/>
 			{/* One announcer at a time: while the full-screen clock is up it carries
 			    its own, and the strip behind a modal dialog is not read out. */}
