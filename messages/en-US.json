@@ -306,6 +306,8 @@
 	"timer_total": "Total",
 	"timer_left": "Left",
 	"timer_use": "Use in timer",
+	"timer_skip": "Skip to the next segment",
+	"timer_back": "Back a segment",
 	"nav_timer": "Timer",
 	"timer_presets": "Presets",
 	"timer_preset_sets": "{sets} sets",

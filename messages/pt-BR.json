@@ -306,6 +306,8 @@
 	"timer_total": "Total",
 	"timer_left": "Falta",
 	"timer_use": "Usar no timer",
+	"timer_skip": "Pular para o próximo segmento",
+	"timer_back": "Voltar um segmento",
 	"nav_timer": "Timer",
 	"timer_presets": "Predefinidos",
 	"timer_preset_sets": "{sets} séries",

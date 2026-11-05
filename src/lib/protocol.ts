@@ -130,6 +130,60 @@ export function step(r: Run, c: Protocol): Run {
 }
 
 /**
+ * Skip: jump to the first second of the segment that follows — from the last
+ * one, to `done`. Pure and total like `step`, and for the same reason idle and
+ * done return themselves.
+ *
+ * It is `step` taken from the segment's final second, so the segment it lands on
+ * is the one the clock would have reached anyway. The skip has no transition
+ * table of its own that could disagree with the clock. A segment added to
+ * `step` (cooldown, #104) can be skipped into and out of with no change here.
+ */
+export function skip(r: Run, c: Protocol): Run {
+	if (r.segment === 'idle' || r.segment === 'done') return r;
+	return step({ ...r, remaining: 1 }, c);
+}
+
+/** How long a segment has to have run before back restarts it rather than
+ *  going to the one before. Short enough that a botched hang is still caught a
+ *  few seconds in, and long enough that a tap just after a change goes back
+ *  across that change. Music players draw the same line in the same place. */
+const BACK_RESTARTS_AFTER = 3;
+
+/** Whether two runs are in the same segment of the same round of the same set. */
+function samePlace(a: Run, b: Run): boolean {
+	return a.segment === b.segment && a.round === b.round && a.set === b.set;
+}
+
+/**
+ * Back: restart the segment if it has run for more than a few seconds,
+ * otherwise go to the first second of the one before. From the first segment it
+ * restarts it; from `done` it goes to the start of the last segment, which is
+ * the botched final hang; idle returns itself. Pure and total, like `step`.
+ *
+ * The segment before is found by walking the protocol forward from the
+ * beginning, one segment at a time through `skip`, rather than by a reverse
+ * transition table. A second table, written backwards, is one more place a new
+ * segment has to be taught about and one more chance to disagree with `step`.
+ * The walk is as long as the protocol has segments, which is a few dozen.
+ */
+export function back(r: Run, c: Protocol): Run {
+	if (r.segment === 'idle') return r;
+	let before: Run | null = null;
+	for (let s = beginning(c); s.segment !== 'done'; s = skip(s, c)) {
+		if (r.segment !== 'done' && samePlace(s, r)) {
+			return s.remaining - r.remaining > BACK_RESTARTS_AFTER || !before ? s : before;
+		}
+		before = s;
+	}
+	if (r.segment === 'done') return before ?? r;
+	// A place the protocol no longer passes through, because a field was edited
+	// mid-run (round 4 of what is now two rounds). There is no "before" to find,
+	// so redo the segment the clock is in.
+	return { ...r, remaining: Math.max(1, segmentLengthOf(r, c)) };
+}
+
+/**
  * One set: every round's effort, with a rest between rounds but not after the
  * last one — the set rest takes that place.
  */
@@ -209,13 +263,13 @@ export function remainingOf(r: Run, c: Protocol): number {
  * The segment that follows this one, and how long it lasts — the "next up" line
  * Timer Plus shows and this app did not.
  *
- * Computed by stepping the protocol to the end of the current segment rather than
- * by a second switch statement. One transition table, so the preview cannot
- * disagree with what actually happens next.
+ * Computed by skipping the current segment rather than by a second switch
+ * statement. One transition table, so the preview cannot disagree with what
+ * actually happens next, nor with where the skip button goes.
  */
 export function nextOf(r: Run, c: Protocol): { segment: Segment; seconds: number } | null {
 	if (r.segment === 'idle' || r.segment === 'done') return null;
-	const next = step({ ...r, remaining: 1 }, c);
+	const next = skip(r, c);
 	if (next.segment === 'done') return { segment: 'done', seconds: 0 };
 	return { segment: next.segment, seconds: next.remaining };
 }
@@ -281,9 +335,16 @@ const COUNTDOWN_FROM = 3;
  * clock is paused or resumed without the run moving: a paused clock counts
  * nothing down, and one resumed inside the last seconds counts on from there.
  *
- * A move to another segment, round or set announces the place it arrived at.
- * Anything else is the same segment one second on, which is silent until the
- * countdown.
+ * A move to another segment, round or set announces the place it arrived at,
+ * and so does the same place with more time left than before: the clock only
+ * ever counts down, so that is the segment restarted by `back`. Anything else is
+ * the same segment one second on, which is silent until the countdown.
+ *
+ * Skip and back go through the same rules as the tick, with no case of their
+ * own. A jump announces where it landed, as the clock getting there would. It
+ * never counts down on landing, even on a segment short enough that its first
+ * second is inside the countdown window, because a jump is never "one second
+ * on".
  */
 export function planCues({
 	from,
@@ -294,7 +355,7 @@ export function planCues({
 	to: Run;
 	running: boolean;
 }): Delivery[] {
-	if (from.segment === to.segment && from.round === to.round && from.set === to.set) {
+	if (samePlace(from, to) && to.remaining <= from.remaining) {
 		return running && to.remaining > 0 && to.remaining <= COUNTDOWN_FROM
 			? [{ kind: 'sound', cue: 'countdown' }]
 			: [];
