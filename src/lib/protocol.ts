@@ -71,9 +71,9 @@ export type ProtocolField = (typeof PROTOCOL_FIELDS)[number];
 export type Protocol = Record<ProtocolField, number>;
 
 /** The least each field can be and still describe a protocol that runs what it
- *  says: an effort, a round and a set at least, and no negative seconds. The
- *  saved-protocol editor refuses below these (#104), and so does the server's
- *  row schema, which states the same floors in its own terms. */
+ *  says: an effort, a round and a set at least, and no negative seconds. The one
+ *  statement of them: the saved-protocol editor refuses below these (#104), and
+ *  the server's row schema builds its `protocol` from them. */
 export const PROTOCOL_MINIMUM: Record<ProtocolField, 0 | 1> = {
 	prepare: 0,
 	work: 1,

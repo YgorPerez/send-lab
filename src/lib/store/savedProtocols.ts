@@ -16,53 +16,34 @@
 // old row back a moment after it changed, and the athlete would watch their
 // delete or their edit undo itself.
 import { newSavedProtocolId, type SavedProtocolId } from '$lib/ids';
-import type { Protocol } from '$lib/protocol';
-import type { SavedProtocol } from '$lib/types';
+import type { NamedProtocol, SavedProtocol } from '$lib/types';
 import { recordStore, recordSync } from './record';
 
-/** What the athlete gives a saved protocol: its name and its numbers. */
-export interface SavedProtocolDraft {
-	name: string;
-	protocol: Protocol;
-}
-
 /**
- * Keep a new saved protocol, made from scratch (#104). Listed last, since the
- * list is in the order protocols were made.
+ * Keep a new saved protocol: made from scratch in the editor (#104), or a copy
+ * of a preset or of another saved protocol (#103). Listed last, since the list
+ * is in the order protocols were made. Resolves to the row it wrote, so the
+ * screen can point the clock at it.
  *
- * The draft has been read by the editor (`readProtocolForm`) — named, whole,
- * runnable — so it is written as given.
+ * Made from scratch, the protocol has been read by the editor
+ * (`readProtocolForm`) — named, whole, runnable. Copied, its source is left
+ * untouched and `name` is the copy's default, which the caller builds in the
+ * locale (`resolveTimer`'s `copyName`); from here on it is the athlete's.
  */
 export async function createSavedProtocol(
-	draft: SavedProtocolDraft,
+	named: NamedProtocol,
 	now: number = Date.now(),
 ): Promise<SavedProtocol> {
 	const row: SavedProtocol = {
 		id: newSavedProtocolId(),
-		name: draft.name,
+		name: named.name,
 		// A copy of the numbers, not the caller's object: the collection holds
 		// what it is handed, and a preset's protocol is shared by every render.
-		protocol: { ...draft.protocol },
+		protocol: { ...named.protocol },
 		createdAt: now,
 	};
 	recordStore().savedProtocols.insert(row);
 	return row;
-}
-
-/**
- * Keep a copy of a protocol as a new saved protocol, under `name`.
- *
- * The source is either a preset or another saved protocol; neither is touched.
- * `name` is the copy's default name, which the caller builds in the locale
- * (`resolveTimer`'s `copyName`) — from here on it is the athlete's.
- *
- * Resolves to the row it wrote, so the screen can point the clock at it.
- */
-export async function duplicateProtocol(
-	source: SavedProtocolDraft,
-	now: number = Date.now(),
-): Promise<SavedProtocol> {
-	return createSavedProtocol(source, now);
 }
 
 /**
@@ -76,7 +57,7 @@ export async function duplicateProtocol(
  */
 export async function updateSavedProtocol(
 	id: SavedProtocolId,
-	draft: SavedProtocolDraft,
+	named: NamedProtocol,
 ): Promise<void> {
 	const sync = recordSync();
 	if (sync) await sync.settled();
@@ -84,8 +65,8 @@ export async function updateSavedProtocol(
 	const saved = recordStore().savedProtocols;
 	if (!saved.has(id)) return;
 	saved.update(id, (row) => {
-		row.name = draft.name;
-		row.protocol = { ...draft.protocol };
+		row.name = named.name;
+		row.protocol = { ...named.protocol };
 	});
 }
 

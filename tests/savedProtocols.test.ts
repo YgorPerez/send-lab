@@ -10,7 +10,6 @@ import { readTrainingRecord, recordStore, resetRecordStore } from '../src/lib/st
 import {
 	createSavedProtocol,
 	deleteSavedProtocol,
-	duplicateProtocol,
 	updateSavedProtocol,
 } from '../src/lib/store/savedProtocols.ts';
 
@@ -47,7 +46,7 @@ const saved = () => readTrainingRecord(recordStore()).savedProtocols;
 
 describe('duplicating a protocol', () => {
 	it('keeps a copy under the name it is given, with the numbers of its source', async () => {
-		const copy = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
+		const copy = await createSavedProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
 
 		expect(saved()).toMatchObject([copy]);
 		expect(saved()).toHaveLength(1);
@@ -55,8 +54,8 @@ describe('duplicating a protocol', () => {
 	});
 
 	it('gives every copy its own id, even of the same source', async () => {
-		const a = await duplicateProtocol({ name: 'Warm-up', protocol: REPEATERS }, T0);
-		const b = await duplicateProtocol({ name: 'Warm-up', protocol: REPEATERS }, T0 + 1);
+		const a = await createSavedProtocol({ name: 'Warm-up', protocol: REPEATERS }, T0);
+		const b = await createSavedProtocol({ name: 'Warm-up', protocol: REPEATERS }, T0 + 1);
 
 		expect(a.id).not.toBe(b.id);
 		expect(saved().map((p) => p.id)).toEqual([a.id, b.id]);
@@ -64,7 +63,7 @@ describe('duplicating a protocol', () => {
 
 	it('copies the numbers rather than sharing them with the source', async () => {
 		const source = { name: 'Repeaters', protocol: { ...REPEATERS } };
-		const copy = await duplicateProtocol(source, T0);
+		const copy = await createSavedProtocol(source, T0);
 		source.protocol.work = 99;
 
 		expect(saved()[0].protocol.work).toBe(7);
@@ -72,8 +71,8 @@ describe('duplicating a protocol', () => {
 	});
 
 	it('lists copies in the order they were made, not the order they arrived', async () => {
-		const later = await duplicateProtocol({ name: 'Later', protocol: REPEATERS }, T0 + 5);
-		const earlier = await duplicateProtocol({ name: 'Earlier', protocol: REPEATERS }, T0);
+		const later = await createSavedProtocol({ name: 'Later', protocol: REPEATERS }, T0 + 5);
+		const earlier = await createSavedProtocol({ name: 'Earlier', protocol: REPEATERS }, T0);
 
 		expect(saved().map((p) => p.id)).toEqual([earlier.id, later.id]);
 	});
@@ -84,7 +83,7 @@ describe('creating a saved protocol', () => {
 	const TABATA = { prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 0, cooldown: 120 };
 
 	it('keeps it under its name, after the ones already there', async () => {
-		const first = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
+		const first = await createSavedProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
 		const made = await createSavedProtocol({ name: 'Tabata finisher', protocol: TABATA }, T0 + 1);
 
 		expect(made).toMatchObject({ name: 'Tabata finisher', protocol: TABATA, createdAt: T0 + 1 });
@@ -95,8 +94,8 @@ describe('creating a saved protocol', () => {
 
 describe('editing a saved protocol', () => {
 	it('changes its name and every number, and nothing else', async () => {
-		const kept = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
-		const other = await duplicateProtocol({ name: 'Other', protocol: REPEATERS }, T0 + 1);
+		const kept = await createSavedProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
+		const other = await createSavedProtocol({ name: 'Other', protocol: REPEATERS }, T0 + 1);
 		const tuned = { prepare: 5, work: 8, rest: 4, rounds: 7, sets: 3, setRest: 150, cooldown: 300 };
 
 		await updateSavedProtocol(kept.id, { name: 'Repeaters, tuned', protocol: tuned });
@@ -108,8 +107,8 @@ describe('editing a saved protocol', () => {
 	});
 
 	it('keeps its place in the list and its id', async () => {
-		const a = await duplicateProtocol({ name: 'A', protocol: REPEATERS }, T0);
-		const b = await duplicateProtocol({ name: 'B', protocol: REPEATERS }, T0 + 1);
+		const a = await createSavedProtocol({ name: 'A', protocol: REPEATERS }, T0);
+		const b = await createSavedProtocol({ name: 'B', protocol: REPEATERS }, T0 + 1);
 
 		await updateSavedProtocol(a.id, { name: 'Z', protocol: REPEATERS });
 
@@ -119,7 +118,7 @@ describe('editing a saved protocol', () => {
 	// Deleted on another device while this one had the editor open. Saving
 	// would otherwise bring back a protocol the athlete already threw away.
 	it('does not bring back one that is gone', async () => {
-		const gone = await duplicateProtocol({ name: 'Gone', protocol: REPEATERS }, T0);
+		const gone = await createSavedProtocol({ name: 'Gone', protocol: REPEATERS }, T0);
 		await deleteSavedProtocol(gone.id);
 
 		await updateSavedProtocol(gone.id, { name: 'Back?', protocol: REPEATERS });
@@ -128,7 +127,7 @@ describe('editing a saved protocol', () => {
 	});
 
 	it('is still edited in a store built over the same storage', async () => {
-		const kept = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
+		const kept = await createSavedProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
 		await updateSavedProtocol(kept.id, {
 			name: 'Renamed',
 			protocol: { ...REPEATERS, cooldown: 60 },
@@ -143,8 +142,8 @@ describe('editing a saved protocol', () => {
 
 describe('deleting a saved protocol', () => {
 	it('removes that one and leaves the rest', async () => {
-		const keep = await duplicateProtocol({ name: 'Keep', protocol: REPEATERS }, T0);
-		const gone = await duplicateProtocol({ name: 'Gone', protocol: REPEATERS }, T0 + 1);
+		const keep = await createSavedProtocol({ name: 'Keep', protocol: REPEATERS }, T0);
+		const gone = await createSavedProtocol({ name: 'Gone', protocol: REPEATERS }, T0 + 1);
 
 		await deleteSavedProtocol(gone.id);
 
@@ -153,7 +152,7 @@ describe('deleting a saved protocol', () => {
 	});
 
 	it('is a no-op for one already gone', async () => {
-		const gone = await duplicateProtocol({ name: 'Gone', protocol: REPEATERS }, T0);
+		const gone = await createSavedProtocol({ name: 'Gone', protocol: REPEATERS }, T0);
 		await deleteSavedProtocol(gone.id);
 		await expect(deleteSavedProtocol(gone.id)).resolves.toBeUndefined();
 		expect(saved()).toEqual([]);
@@ -178,8 +177,8 @@ describe('a saved protocol from before cooldown', () => {
 
 describe('surviving a reload', () => {
 	it('is still there in a store built over the same storage', async () => {
-		const copy = await duplicateProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
-		const gone = await duplicateProtocol({ name: 'Gone', protocol: REPEATERS }, T0 + 1);
+		const copy = await createSavedProtocol({ name: 'Copy of Repeaters', protocol: REPEATERS }, T0);
+		const gone = await createSavedProtocol({ name: 'Gone', protocol: REPEATERS }, T0 + 1);
 		await deleteSavedProtocol(gone.id);
 
 		const reloaded = readTrainingRecord(createRecordStore(null));

@@ -28,12 +28,12 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
 import { type FormEvent, type ReactNode, useId, useState } from 'react';
-import { clock, protocolShape } from '$lib/format';
+import { clock, FIELD_LABEL, protocolShape } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
 import { PROTOCOL_MINIMUM, type Protocol, type ProtocolField, totalOf } from '$lib/protocol';
 import { formOf, type ProtocolForm, readProtocolForm } from '$lib/screens/timer';
+import type { NamedProtocol } from '$lib/types';
 import { cn } from '$lib/utils';
-import { FIELD_LABEL } from './Timer';
 import { button, input } from './ui/variants';
 
 /** The fields in the order the sheet pairs them, two to a row. */
@@ -51,9 +51,7 @@ const EDITOR_ORDER: readonly ProtocolField[] = [
 const COUNTS: ReadonlySet<ProtocolField> = new Set(['rounds', 'sets']);
 
 /** What the editor is open on: a protocol to make, or one to change. */
-export type EditorTarget =
-	| { kind: 'new'; protocol: Protocol }
-	| { kind: 'edit'; name: string; protocol: Protocol };
+export type EditorTarget = { kind: 'new'; protocol: Protocol } | ({ kind: 'edit' } & NamedProtocol);
 
 export function ProtocolEditor({
 	open,
@@ -67,7 +65,7 @@ export function ProtocolEditor({
 	 *  under the closing animation. */
 	target: EditorTarget | null;
 	/** Writes the protocol. The sheet stays up, its Save spent, until it resolves. */
-	onSave: (draft: { name: string; protocol: Protocol }) => Promise<void>;
+	onSave: (named: NamedProtocol) => Promise<void>;
 }) {
 	return (
 		// Not closed by a tap outside it: on a phone the dimmed clock above the
@@ -99,7 +97,7 @@ function EditorForm({
 	onDone,
 }: {
 	target: EditorTarget;
-	onSave: (draft: { name: string; protocol: Protocol }) => Promise<void>;
+	onSave: (named: NamedProtocol) => Promise<void>;
 	onDone: () => void;
 }) {
 	const [form, setForm] = useState<ProtocolForm>(() =>

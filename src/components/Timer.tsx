@@ -44,7 +44,7 @@ import {
 	useState,
 } from 'react';
 import { deliver, releaseCues } from '$lib/cues';
-import { clock, protocolShape } from '$lib/format';
+import { clock, FIELD_LABEL, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -57,7 +57,6 @@ import {
 	PROTOCOL_FIELDS,
 	PROTOCOL_MINIMUM,
 	type Protocol,
-	type ProtocolField,
 	planCues,
 	type Run,
 	remainingOf,
@@ -117,19 +116,6 @@ function prefersReducedMotion(): boolean {
 		window.matchMedia('(prefers-reduced-motion: reduce)').matches
 	);
 }
-
-/** What each protocol field is called where it is typed in — Train's setup
- *  here, and the saved-protocol editor. A record over the fields rather than a
- *  list, so a field added to the protocol does not compile until it is named. */
-export const FIELD_LABEL: Record<ProtocolField, () => string> = {
-	prepare: m.timer_prepare_s,
-	work: m.timer_work_s,
-	rest: m.timer_rest_s,
-	rounds: m.timer_rounds,
-	sets: m.timer_sets,
-	setRest: m.timer_setrest_s,
-	cooldown: m.timer_cooldown_s,
-};
 
 /**
  * The clock face: seconds under a minute, `m:ss` over it.

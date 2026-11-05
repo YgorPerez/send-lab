@@ -77,7 +77,12 @@ import {
 	type WeekdayKey,
 	type WeekId,
 } from '$lib/ids';
-import { COUNTDOWN_LENGTHS, CUE_DEFAULTS } from '$lib/protocol';
+import {
+	COUNTDOWN_LENGTHS,
+	CUE_DEFAULTS,
+	PROTOCOL_MINIMUM,
+	type ProtocolField,
+} from '$lib/protocol';
 import { EQUIPMENT, FOCUSES, GOALS, LEVELS, WORKING_LOAD_SOURCES } from '$lib/types';
 
 /** The fixed key every singleton collection files its one row under. Mirrors
@@ -240,10 +245,11 @@ const baseline = z.object({
 	completedAt: z.string(),
 });
 
-/** Whole seconds, none allowed. */
-const seconds = z.number().int().min(0);
-/** A whole count of at least one. */
-const count = z.number().int().min(1);
+/** A whole field of a protocol, at least its floor. The floors are
+ *  `PROTOCOL_MINIMUM`'s, the same ones the saved-protocol editor refuses below
+ *  (`readProtocolForm`), so the editor and this schema cannot come to disagree
+ *  about what a protocol is. */
+const field = (f: ProtocolField) => z.number().int().min(PROTOCOL_MINIMUM[f]);
 
 /**
  * A protocol that can run (#103). The clock already refuses to stall on a zero
@@ -252,15 +258,15 @@ const count = z.number().int().min(1);
  * hand every device a protocol that runs something other than what it says.
  */
 const protocol = z.object({
-	prepare: seconds,
-	work: count,
-	rest: seconds,
-	rounds: count,
-	sets: count,
-	setRest: seconds,
+	prepare: field('prepare'),
+	work: field('work'),
+	rest: field('rest'),
+	rounds: field('rounds'),
+	sets: field('sets'),
+	setRest: field('setRest'),
 	// A client from before #104 sends none, and means none.
-	cooldown: seconds.default(0),
-});
+	cooldown: field('cooldown').default(0),
+} satisfies Record<ProtocolField, z.ZodType>);
 
 const savedProtocol = z.object({
 	id: id.savedProtocol,

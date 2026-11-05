@@ -585,7 +585,7 @@ export function useSendableWork(): number {
  *
  * For a component that needs one thing from the record while a page it sits on
  * may not hold the rest: the clock asks for its cue preferences on two screens,
- * and the cue settings sit on two more. One subscription rather than sixteen, so
+ * and the cue settings sit on two more. One subscription rather than one per collection, so
  * a ticked task does not re-render a running clock.
  */
 export function usePrefs(): Prefs {
