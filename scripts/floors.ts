@@ -100,7 +100,7 @@ export interface RouteFloor {
  *   `/login`     the sign-in form. 10 either way.
  *   `/settings`  the preferences that work offline. 19 either way.
  *   `/timer`     the library's presets and the clock for the one selected.
- *                MEASURE either way — it reads no record until saved protocols
+ *                104 either way — it reads no record until saved protocols
  *                (#103) land.
  *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
  *                seeded, 176 empty — the grid is prescribed from the program
@@ -114,7 +114,7 @@ export const SEEDED_FLOORS: Record<string, RouteFloor> = {
 	'/log': { floor: 125, readsRecord: true },
 	'/login': { floor: 6, readsRecord: false },
 	'/settings': { floor: 12, readsRecord: false },
-	'/timer': { floor: 60, readsRecord: false },
+	'/timer': { floor: 75, readsRecord: false },
 	'/train': { floor: 140, readsRecord: true },
 	'/week': { floor: 20, readsRecord: false },
 	'/welcome': { floor: 15, readsRecord: false },
