@@ -23,7 +23,7 @@
 // nothing remounts it.
 import { Dialog } from '@base-ui/react/dialog';
 import { Flag, Maximize2, Pause, Play, RotateCcw, X } from 'lucide-react';
-import { type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
+import { Fragment, type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 import { stopwatchClock } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
@@ -39,9 +39,10 @@ import {
 	type Stopwatch as Watch,
 } from '$lib/stopwatch';
 import { restoredStopwatch, useStopwatchDraft } from '$lib/stopwatchDraft';
+import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
 import type { ClockHandle } from './Timer';
-import { Empty, Eyebrow, Section } from './ui/primitives';
+import { Empty, Section } from './ui/primitives';
 import { button } from './ui/variants';
 
 /** How often the face redraws while it runs. Tenths are shown, so a tenth. */
@@ -73,11 +74,45 @@ function Face({ ms, className }: { ms: number; className?: string }) {
 	);
 }
 
-/** Ready, running or paused — what the colour beside the number reports. */
-function statusOf(watch: Watch): { label: string; color: string } {
-	if (watch.running) return { label: m.stopwatch_running(), color: 'var(--ok)' };
-	if (watch.elapsed > 0) return { label: m.stopwatch_paused(), color: 'var(--warn)' };
-	return { label: m.timer_ready(), color: 'var(--ink-dim)' };
+/** Ready, running or paused: the label's colour, and the digits'.
+ *
+ *  The digits carry it too, as the clock's take the segment's accent: from the
+ *  floor the label is unreadable, and a face tapped by accident has to *look*
+ *  paused, not only say so (#108's review). Running stays chalk, the most
+ *  legible colour there is for the number being read. */
+interface Status {
+	label: string;
+	color: string;
+	face: string;
+}
+
+function statusOf(watch: Watch): Status {
+	if (watch.running)
+		return { label: m.stopwatch_running(), color: 'var(--ok)', face: 'var(--chalk)' };
+	if (watch.elapsed > 0) {
+		return { label: m.stopwatch_paused(), color: 'var(--warn)', face: 'var(--warn)' };
+	}
+	return { label: m.timer_ready(), color: 'var(--ink-dim)', face: 'var(--ink-dim)' };
+}
+
+/**
+ * Whether Reset is offered. Not while it runs, and not at zero: a reset takes
+ * every lap with it and cannot be undone, and in both rows it sits beside Lap —
+ * the button a thumb is reaching for mid-run (#108's review). Pause first, then
+ * reset, which is the order every stopwatch the athlete has used asks for.
+ */
+function resettable(watch: Watch): boolean {
+	return !watch.running && watch.elapsed > 0;
+}
+
+/** The full-screen face's size, stepped by how many characters it has to fit:
+ *  `9:59`, `59:59`, `1:00:00`, each with its tenth. One size for the longest
+ *  would leave the common case — an attempt, a rest — a third smaller than it
+ *  can be. */
+function faceSize(ms: number): string {
+	if (ms < 600_000) return 'text-[min(28vw,22dvh)]';
+	if (ms < 3_600_000) return 'text-[min(22vw,18dvh)]';
+	return 'text-[min(16vw,14dvh)]';
 }
 
 /** What the number says, for whoever cannot see it. */
@@ -171,30 +206,35 @@ export function Stopwatch({
 					<p id={readingId} className="sr-only">
 						{spokenOf(watch)}
 					</p>
-					<div className="flex items-baseline justify-between gap-2 px-3 pt-2.5">
-						<Eyebrow className="min-w-0 truncate">{m.timer_tab_stopwatch()}</Eyebrow>
-						<span
-							className="num shrink-0 text-[10px] tracking-wider uppercase"
-							style={{ color: status.color }}
-						>
-							{status.label}
-						</span>
-					</div>
-
-					<div className="flex items-end justify-between gap-3 px-3 pt-1.5">
-						<button
-							type="button"
-							onClick={() => setOpen(true)}
-							aria-label={m.stopwatch_fullscreen()}
-							aria-describedby={readingId}
-							className="text-chalk"
-						>
-							<Face ms={watch.elapsed} className="num text-[46px] leading-none font-bold" />
-						</button>
-						<span className="num shrink-0 pb-1 text-right text-[12px] text-ink-faint">
-							{m.stopwatch_lap_n({ n: current.n })}{' '}
-							<span className="text-ink-dim">{written(current.time)}</span>
-						</span>
+					{/* No "Stopwatch" eyebrow: the switch pressed right above already
+					    says it, where the clock's strip names the protocol it runs. */}
+					<div className="flex items-end justify-between gap-3 px-3 pt-2.5">
+						<div className="flex min-w-0 flex-col gap-1.5">
+							<span
+								className="num text-[10px] tracking-wider uppercase"
+								style={{ color: status.color }}
+							>
+								{status.label}
+							</span>
+							<button
+								type="button"
+								onClick={() => setOpen(true)}
+								aria-label={m.stopwatch_fullscreen()}
+								aria-describedby={readingId}
+								className="self-start"
+								style={{ color: status.face }}
+							>
+								<Face ms={watch.elapsed} className="num text-[46px] leading-none font-bold" />
+							</button>
+						</div>
+						{/* The lap being timed, once there is a lap to time it from.
+						    Before the first mark it is the face again. */}
+						{watch.marks.length > 0 ? (
+							<span className="num shrink-0 pb-1 text-right text-[12px] text-ink-faint">
+								{m.stopwatch_lap_n({ n: current.n })}{' '}
+								<span className="text-ink-dim">{written(current.time)}</span>
+							</span>
+						) : null}
 					</div>
 
 					<div className="flex gap-1.5 px-3 pt-2 pb-2.5">
@@ -223,6 +263,7 @@ export function Stopwatch({
 							type="button"
 							aria-label={m.btn_reset()}
 							onClick={clear}
+							disabled={!resettable(watch)}
 							className={button({ size: 'touch', class: 'w-12 px-0' })}
 						>
 							<RotateCcw size={16} />
@@ -311,7 +352,7 @@ function FullScreenStopwatch({
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
 	watch: Watch;
-	status: { label: string; color: string };
+	status: Status;
 	current: Lap;
 	laps: Lap[];
 	onToggle: () => void;
@@ -319,8 +360,6 @@ function FullScreenStopwatch({
 	onReset: () => void;
 }) {
 	const readingId = useId();
-	// An hour adds three characters; the face steps down rather than overflow.
-	const long = watch.elapsed >= 3_600_000;
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
@@ -356,27 +395,34 @@ function FullScreenStopwatch({
 						aria-describedby={readingId}
 						className="flex flex-1 flex-col items-center justify-center gap-4 px-4"
 					>
-						<Face
-							ms={watch.elapsed}
-							className={
-								long
-									? 'num text-[min(16vw,14dvh)] leading-none font-bold tabular-nums text-chalk'
-									: 'num text-[min(22vw,18dvh)] leading-none font-bold tabular-nums text-chalk'
-							}
-						/>
-						<span className="num text-[15px] text-ink-dim">
-							{m.stopwatch_lap_n({ n: current.n })}{' '}
-							<span className="text-chalk">{written(current.time)}</span>
+						<span style={{ color: status.face }}>
+							<Face
+								ms={watch.elapsed}
+								className={cn('num leading-none font-bold', faceSize(watch.elapsed))}
+							/>
 						</span>
-						{laps.length > 0 ? (
-							<span className="num flex flex-col items-center gap-1 text-[14px] text-ink-faint">
-								{laps.slice(0, 3).map((l) => (
-									<span key={l.n}>
-										{m.stopwatch_lap_n({ n: l.n })}{' '}
-										<span className="text-ink-dim">{written(l.time)}</span> · {written(l.total)}
-									</span>
-								))}
-							</span>
+						{watch.marks.length > 0 ? (
+							<>
+								<span className="num text-[15px] text-ink-dim">
+									{m.stopwatch_lap_n({ n: current.n })}{' '}
+									<span className="text-chalk">{written(current.time)}</span>
+								</span>
+								{/* The last three, under the strip table's own heads, so the
+								    second number is not left to be guessed at. The whole list
+								    is on the strip, a tap on Close away. */}
+								<span className="num grid grid-cols-3 gap-x-6 gap-y-1 text-right text-[14px] text-ink-faint">
+									<span className="microlabel text-left">{m.stopwatch_lap()}</span>
+									<span className="microlabel">{m.stopwatch_time()}</span>
+									<span className="microlabel">{m.timer_total()}</span>
+									{laps.slice(0, 3).map((l) => (
+										<Fragment key={l.n}>
+											<span className="text-left">{l.n}</span>
+											<span className="text-ink-dim">{written(l.time)}</span>
+											<span>{written(l.total)}</span>
+										</Fragment>
+									))}
+								</span>
+							</>
 						) : null}
 					</button>
 
@@ -406,6 +452,7 @@ function FullScreenStopwatch({
 							type="button"
 							aria-label={m.btn_reset()}
 							onClick={onReset}
+							disabled={!resettable(watch)}
 							className={button({ size: 'touch', class: 'h-14 w-14 px-0' })}
 						>
 							<RotateCcw size={20} />

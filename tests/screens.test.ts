@@ -267,7 +267,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// The stopwatch tab, hidden until chosen: zero, in the locale's decimal
 			// mark, its controls, and the laps it has not recorded yet.
 			const tab = timer.slice(timer.lastIndexOf('<div hidden'));
-			expect(tab).toContain(`>${stopwatch}<`);
+			expect(tab).toContain(locale === 'en-US' ? '>Ready<' : '>Pronto<');
 			expect(tab).toContain(
 				`0:00<span class="text-[0.5em] text-ink-dim">${locale === 'en-US' ? '.0' : ',0'}</span>`,
 			);
