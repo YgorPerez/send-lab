@@ -313,6 +313,10 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				locale === 'en-US' ? '5 × 10s/20s · 2 sets' : '5 × 10s/20s · 2 séries',
 			);
 			expect(screen).toContain('5:30');
+			// The second one has a cooldown, and its shape says so (#104).
+			expect(screen).toContain(
+				locale === 'en-US' ? '8 × 20s/10s · 2:00 cooldown' : '8 × 20s/10s · 2:00 de desaquecimento',
+			);
 			// Above the presets, not after twenty-four of them.
 			expect(screen.indexOf(name)).toBeLessThan(
 				screen.indexOf(locale === 'en-US' ? 'Presets' : 'Predefinidos'),

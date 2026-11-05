@@ -110,7 +110,7 @@ describe('making a saved protocol on the Timer screen', () => {
 			// And the athlete is put where the fix is.
 			expect(document.activeElement).toBe(fieldOf(editor, 'Name'));
 
-			type(fieldOf(editor, 'Name'), 'Tabata finisher');
+			type(fieldOf(editor, 'Name'), 'Hangboard finisher');
 			type(fieldOf(editor, 'Work (s)'), '20');
 			type(fieldOf(editor, 'Rest (s)'), '10');
 			type(fieldOf(editor, 'Rounds'), '8');
@@ -121,7 +121,7 @@ describe('making a saved protocol on the Timer screen', () => {
 
 			expect(saved()).toHaveLength(before + 1);
 			expect(saved().at(-1)).toMatchObject({
-				name: 'Tabata finisher',
+				name: 'Hangboard finisher',
 				protocol: {
 					prepare: 10,
 					work: 20,
@@ -135,7 +135,7 @@ describe('making a saved protocol on the Timer screen', () => {
 			expect(host.textContent).toContain('8 × 20s/10s · 2:00 cooldown');
 			// Made, so it is the one selected, with its own actions under it.
 			const selected = host.querySelector('main [aria-pressed="true"]');
-			expect(selected?.textContent).toContain('Tabata finisher');
+			expect(selected?.textContent).toContain('Hangboard finisher');
 			expect(worded(host, 'Edit')).toBeTruthy();
 		} finally {
 			act(() => root.unmount());

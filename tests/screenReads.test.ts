@@ -522,7 +522,8 @@ describe('Timer', () => {
 	it('lists the saved protocols, each with its shape and how long it takes', () => {
 		const seeded = readTrainingRecord(seededWith(NOW));
 		const { saved } = resolveTimer(getContent('en-US'), seeded, 'en-US');
-		expect(saved).toHaveLength(1);
+		// Oldest first.
+		expect(saved.map((s) => s.name)).toEqual(['Warm-up hangs', 'Tabata finisher']);
 		// 10s prepare, two sets of 5 × 10s/20s, a minute between.
 		expect(saved[0]).toMatchObject({
 			name: 'Warm-up hangs',
@@ -530,6 +531,8 @@ describe('Timer', () => {
 			total: 330,
 			copyName: 'Copy of Warm-up hangs',
 		});
+		// 10s prepare, 8 × 20s/10s, then two minutes of cooldown (#104).
+		expect(saved[1]).toMatchObject({ shape: '8 × 20s/10s · 2:00 cooldown', total: 360 });
 		// Filed under its id, so renaming it keeps the athlete's place.
 		expect(saved[0].key).toBe(`saved:${saved[0].id}`);
 	});

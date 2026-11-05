@@ -99,9 +99,11 @@ export interface RouteFloor {
  *   `/login`     the sign-in form. 10 either way.
  *   `/settings`  the preferences that work offline. 19 either way.
  *   `/timer`     the saved protocols, the library's presets, and the clock
- *                for the one selected. 109 seeded, 108 empty — one seeded
- *                saved protocol (its row and its Delete) against the empty
- *                list's one line of copy (#103).
+ *                for the one selected. 114 seeded, 111 empty — two seeded
+ *                saved protocols (rows, and Delete and Edit on the selected
+ *                one) against the empty list's copy, which names both ways in
+ *                (#103, #104). With one seeded protocol the two tied at 111:
+ *                the empty state grew as much as the one row did.
  *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
  *                seeded, 176 empty — the grid is prescribed from the program
  *                before any of it has been trained.

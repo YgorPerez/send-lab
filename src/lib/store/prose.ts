@@ -22,6 +22,7 @@ export const SEED_PROSE: Record<string, Record<string, string>> = {
 		activity_note_deload: 'Last week of the block — everything at reduced load.',
 		activity_note_check: 'Finger self-check, worth repeating in a fortnight.',
 		saved_protocol_warmup: 'Warm-up hangs',
+		saved_protocol_finisher: 'Tabata finisher',
 	},
 	'pt-BR': {
 		note_strong: 'Me senti forte nas duas últimas séries — coloquei 2,5kg e ainda subiu bem.',
@@ -31,5 +32,6 @@ export const SEED_PROSE: Record<string, Record<string, string>> = {
 		activity_note_deload: 'Última semana do bloco — tudo com carga reduzida.',
 		activity_note_check: 'Autoavaliação dos dedos, vale repetir daqui a duas semanas.',
 		saved_protocol_warmup: 'Suspensões de aquecimento',
+		saved_protocol_finisher: 'Tabata de fechamento',
 	},
 };

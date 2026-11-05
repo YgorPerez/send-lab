@@ -460,12 +460,14 @@ export function scenarioRows(content: Content, locale: string, now: number): See
 }
 
 /**
- * The one saved protocol the athlete has kept (#103): a warm-up, which is the
- * case the spec names for a protocol the library does not have. Shaped by hand
- * rather than copied from a preset, so the screen shows a saved protocol whose
- * numbers no preset has. Its name is the athlete's, so it is prose and differs
- * by locale; its id is fixed, because a seeded scenario that minted a fresh one
- * per seeding could not be compared with itself.
+ * The saved protocols the athlete has kept: a warm-up (#103) and a finisher with
+ * a cooldown (#104) — the two cases the spec names for a protocol the library
+ * does not have. Shaped by hand rather than copied from a preset, so the screen
+ * shows saved protocols whose numbers no preset has, and the second puts a
+ * cooldown in front of every gate that measures the seeded screen. Their names
+ * are the athlete's, so they are prose and differ by locale; their ids are
+ * fixed, because a seeded scenario that minted fresh ones per seeding could not
+ * be compared with itself.
  */
 function savedProtocols(locale: string, now: number): SavedProtocol[] {
 	return [
@@ -476,6 +478,13 @@ function savedProtocols(locale: string, now: number): SavedProtocol[] {
 			// No cooldown: a warm-up leads into the session rather than out of it.
 			protocol: { prepare: 10, work: 10, rest: 20, rounds: 5, sets: 2, setRest: 60, cooldown: 0 },
 			createdAt: now - 12 * DAY_MS,
+		},
+		{
+			id: asSavedProtocolId('5eed0000-0000-4000-8000-000000000002'),
+			name: prose(locale, 'saved_protocol_finisher'),
+			// 10s to get on, 8 × 20s/10s, then two easy minutes: 6:00.
+			protocol: { prepare: 10, work: 20, rest: 10, rounds: 8, sets: 1, setRest: 0, cooldown: 120 },
+			createdAt: now - 3 * DAY_MS,
 		},
 	];
 }
