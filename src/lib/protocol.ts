@@ -308,7 +308,17 @@ export type BuzzedCue = Exclude<Cue, 'countdown'>;
  * is a new member here and a new branch in `cues.ts`, and the exhaustive switch
  * there refuses to compile until it is played.
  */
-export type Delivery = { kind: 'sound'; cue: Cue } | { kind: 'buzz'; cue: BuzzedCue };
+export type Delivery =
+	| { kind: 'sound'; cue: Cue }
+	| { kind: 'buzz'; cue: BuzzedCue }
+	/** The screen washing over in the colour of the segment arrived in (#107),
+	 *  fading out over `ms`. The clock draws it; `cues.ts` hands it over. */
+	| { kind: 'flash'; segment: Segment; ms: number };
+
+/** How long a flash takes to fade. Long enough to catch from the corner of the
+ *  eye with both hands on a board; short enough to be over before the second
+ *  it marks is half gone. */
+const FLASH_MS = 450;
 
 /** Which cue announces arriving in a segment. Mirrors the SvelteKit app exactly. */
 const ARRIVAL: Record<Segment, BuzzedCue | null> = {
@@ -342,11 +352,13 @@ export interface CuePrefs {
 	countdown: CountdownLength;
 	/** Whether segment changes vibrate. The sound plays either way. */
 	buzz: boolean;
+	/** Whether segment changes flash the full-screen clock (#107). */
+	flash: boolean;
 }
 
 /** What an athlete who never opened the setting gets, and what a row written
  *  before the setting existed reads as: exactly the clock before #105. */
-export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true };
+export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true, flash: true };
 
 /**
  * What the athlete is told when the clock moves from one run to the next.
@@ -375,16 +387,25 @@ export const CUE_DEFAULTS: CuePrefs = { countdown: 3, buzz: true };
  * `prefs` is the athlete's say in how (#105): how long the countdown is, and
  * whether a change buzzes as well as sounds. Left out, it is `CUE_DEFAULTS`,
  * which is the clock as it was before anyone could choose.
+ *
+ * `reducedMotion` is the device's say (#107): whether the athlete asked their
+ * system for reduced motion. It is a fact about the device rather than a
+ * preference the account carries, so it sits with the move, not with `prefs`.
+ * Under it the flash is still planned — the athlete did not switch it off — but
+ * it finishes inside one frame, as everything in the app does (ADR 0011), which
+ * means it is over before it is drawn.
  */
 export function planCues(
 	{
 		from,
 		to,
 		running,
+		reducedMotion = false,
 	}: {
 		from: Run;
 		to: Run;
 		running: boolean;
+		reducedMotion?: boolean;
 	},
 	prefs: CuePrefs = CUE_DEFAULTS,
 ): Delivery[] {
@@ -398,10 +419,10 @@ export function planCues(
 	// identical to every other single beep is not enough to act on blind.
 	const cue = from.segment === 'prepare' && to.segment === 'work' ? 'go' : ARRIVAL[to.segment];
 	if (!cue) return [];
-	return prefs.buzz
-		? [
-				{ kind: 'sound', cue },
-				{ kind: 'buzz', cue },
-			]
-		: [{ kind: 'sound', cue }];
+	const planned: Delivery[] = [{ kind: 'sound', cue }];
+	if (prefs.buzz) planned.push({ kind: 'buzz', cue });
+	if (prefs.flash) {
+		planned.push({ kind: 'flash', segment: to.segment, ms: reducedMotion ? 0 : FLASH_MS });
+	}
+	return planned;
 }
