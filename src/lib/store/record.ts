@@ -36,6 +36,7 @@ import {
 	type TaskKey,
 } from '$lib/ids';
 import type { ResolverState } from '$lib/prescription';
+import { CUE_DEFAULTS } from '$lib/protocol';
 import type {
 	BodyweightReading,
 	LoggedReadinessCheck,
@@ -62,8 +63,9 @@ import {
 } from './collections';
 import { createRecordSync, type RecordSync } from './sync';
 
-/** Display units, the notification switches, the athlete's language and their
- *  time zone, without the key the singleton row is filed under. */
+/** Display units, the notification switches, the athlete's language, their
+ *  time zone and how the clock's cues reach them, without the key the singleton
+ *  row is filed under. */
 export type Prefs = Omit<PrefsRow, 'id'>;
 
 /**
@@ -110,6 +112,7 @@ export const NO_PREFS: Prefs = {
 	dailyNotice: false,
 	timeZone: null,
 	locale: null,
+	...CUE_DEFAULTS,
 };
 
 /** The first training week, for an account that has not started a block. */
@@ -189,7 +192,10 @@ function assemble(rows: Rows): TrainingRecord {
 		program: rows.program[0]?.program ?? NO_PROGRAM,
 		baseline: rows.baseline[0]?.baseline ?? null,
 		rehab: rows.rehab[0]?.rehab ?? null,
-		prefs: rows.prefs[0] ?? NO_PREFS,
+		// Over the defaults, not instead of them: a row written before a field
+		// existed (the cue preferences, #105) is still the athlete's row, and the
+		// field it lacks reads as what the athlete had before it existed.
+		prefs: { ...NO_PREFS, ...rows.prefs[0] },
 		swaps: byKey<SwapRow, ExerciseId, number>(
 			rows.swaps,
 			(r) => r.exercise,
@@ -554,6 +560,22 @@ export function useRefusedWork(): boolean {
  */
 export function useSendableWork(): number {
 	return useSyncExternalStore(useSyncWatch(), sendableWork, noSendableWork);
+}
+
+/**
+ * The preferences alone, live, read the way `useTrainingRecord` reads them.
+ *
+ * For a component that needs one thing from the record while a page it sits on
+ * may not hold the rest: the clock asks for its cue preferences on two screens,
+ * and the cue settings sit on two more. One subscription rather than sixteen, so
+ * a ticked task does not re-render a running clock.
+ */
+export function usePrefs(): Prefs {
+	const account = useActiveAccount();
+	const s = recordStore();
+	const rows = useLiveQuery(() => s.prefs, [account]).data;
+	const row = rows?.[0];
+	return useMemo(() => ({ ...NO_PREFS, ...row }), [row]);
 }
 
 /**

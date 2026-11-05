@@ -74,6 +74,7 @@ import {
 	type TaskKey,
 	type WeekId,
 } from '$lib/ids';
+import type { CuePrefs } from '$lib/protocol';
 import type { UnsyncedWrite } from '$lib/recordWire';
 import type {
 	Baseline,
@@ -305,7 +306,12 @@ export interface RehabRow {
  *  has never reported one is a fact the server should be able to read, and
  *  defaulting it to `UTC` would look identical to an athlete who really is in
  *  London. */
-export interface PrefsRow {
+/** The prefs row also carries the clock's `CuePrefs` (#105): the countdown
+ *  length and the buzz, and the voice and flash switches after them. Extended
+ *  rather than restated, so a cue preference added to the planner is a
+ *  preference the row stores without a second edit here. A row written before
+ *  them lacks them; `record.ts` reads it over `NO_PREFS`. */
+export interface PrefsRow extends CuePrefs {
 	id: typeof ONLY;
 	weight: 'kg' | 'lb';
 	length: 'mm' | 'in';

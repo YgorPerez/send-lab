@@ -75,6 +75,7 @@ import {
 	type WeekdayKey,
 	type WeekId,
 } from '$lib/ids';
+import { COUNTDOWN_LENGTHS, CUE_DEFAULTS } from '$lib/protocol';
 import { EQUIPMENT, FOCUSES, GOALS, LEVELS, WORKING_LOAD_SOURCES } from '$lib/types';
 
 /** The fixed key every singleton collection files its one row under. Mirrors
@@ -294,6 +295,13 @@ const COLLECTIONS: Readonly<Record<string, CollectionSpec<any>>> = {
 			// that now falls back to the device. Checked as a string, resolved by
 			// `store/locale.ts`.
 			locale: z.string().nullable(),
+			// How cues reach the athlete (#105). Defaulted rather than required: a
+			// client from before them sends rows without them, and refusing those
+			// would strand that device's units and locale along with them. Absent
+			// reads as the clock it is running — three seconds, buzz on — which is
+			// `CUE_DEFAULTS`, and so is what the client's own read fills in.
+			countdown: z.literal(COUNTDOWN_LENGTHS).default(CUE_DEFAULTS.countdown),
+			buzz: z.boolean().default(CUE_DEFAULTS.buzz),
 		}),
 	),
 	swaps: spec(

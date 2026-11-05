@@ -88,6 +88,8 @@ describe('switching writes both', () => {
 			dailyNotice: true,
 			timeZone: 'America/Sao_Paulo',
 			locale: null,
+			countdown: 10,
+			buzz: false,
 		});
 
 		chooseLocale('pt-BR');
@@ -99,6 +101,8 @@ describe('switching writes both', () => {
 			dailyNotice: true,
 			timeZone: 'America/Sao_Paulo',
 			locale: 'pt-BR',
+			countdown: 10,
+			buzz: false,
 		});
 	});
 });
