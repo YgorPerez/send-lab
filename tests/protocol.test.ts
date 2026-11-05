@@ -305,10 +305,11 @@ describe('going back a segment', () => {
 describe('the cue planner', () => {
 	const START = beginning(REPEATERS);
 
-	test('pressing Start sounds and buzzes the start cue', () => {
+	test('pressing Start sounds and buzzes the start cue, and says prepare', () => {
 		expect(planCues({ from: IDLE, to: START, running: true })).toEqual([
 			{ kind: 'sound', cue: 'start' },
 			{ kind: 'buzz', cue: 'start' },
+			{ kind: 'speech', key: 'cues_say_prepare' },
 		]);
 	});
 
@@ -319,67 +320,77 @@ describe('the cue planner', () => {
 		expect(planCues({ from: IDLE, to: beginning(c), running: true })).toEqual([
 			{ kind: 'sound', cue: 'work' },
 			{ kind: 'buzz', cue: 'work' },
+			{ kind: 'speech', key: 'cues_say_work' },
 		]);
 	});
 
-	test.each<{ name: string; from: Run; to: Run; cue: string }>([
+	test.each<{ name: string; from: Run; to: Run; cue: string; say: string }>([
 		{
 			name: 'prepare → work',
 			from: { segment: 'prepare', remaining: 1, round: 1, set: 1 },
 			to: { segment: 'work', remaining: 7, round: 1, set: 1 },
 			cue: 'go',
+			say: 'cues_say_work',
 		},
 		{
 			name: 'work → rest',
 			from: { segment: 'work', remaining: 1, round: 1, set: 1 },
 			to: { segment: 'rest', remaining: 3, round: 2, set: 1 },
 			cue: 'rest',
+			say: 'cues_say_rest',
 		},
 		{
 			name: 'rest → work',
 			from: { segment: 'rest', remaining: 1, round: 2, set: 1 },
 			to: { segment: 'work', remaining: 7, round: 2, set: 1 },
 			cue: 'work',
+			say: 'cues_say_work',
 		},
 		{
 			name: 'work → work, with no rest between rounds',
 			from: { segment: 'work', remaining: 1, round: 1, set: 1 },
 			to: { segment: 'work', remaining: 7, round: 2, set: 1 },
 			cue: 'work',
+			say: 'cues_say_work',
 		},
 		{
 			name: 'end of a set → set rest',
 			from: { segment: 'work', remaining: 1, round: 6, set: 1 },
 			to: { segment: 'setRest', remaining: 180, round: 6, set: 1 },
 			cue: 'setRest',
+			say: 'cues_say_setrest',
 		},
 		{
 			name: 'set rest → work',
 			from: { segment: 'setRest', remaining: 1, round: 6, set: 1 },
 			to: { segment: 'work', remaining: 7, round: 1, set: 2 },
 			cue: 'work',
+			say: 'cues_say_work',
 		},
 		{
 			name: 'end of a set → work, with no set rest',
 			from: { segment: 'work', remaining: 1, round: 6, set: 1 },
 			to: { segment: 'work', remaining: 7, round: 1, set: 2 },
 			cue: 'work',
+			say: 'cues_say_work',
 		},
 		{
 			name: 'the last effort → done',
 			from: { segment: 'work', remaining: 1, round: 6, set: 2 },
 			to: { segment: 'done', remaining: 0, round: 6, set: 2 },
 			cue: 'done',
+			say: 'cues_say_done',
 		},
-	])('$name sounds and buzzes $cue', ({ from, to, cue }) => {
+	])('$name sounds and buzzes $cue, and says $say', ({ from, to, cue, say }) => {
 		expect(planCues({ from, to, running: true })).toEqual([
 			{ kind: 'sound', cue },
 			{ kind: 'buzz', cue },
+			{ kind: 'speech', key: say },
 		]);
 	});
 
-	// Three, two, one — sounded, never buzzed.
-	test('counts down the last three seconds of a segment with a sound and no buzz', () => {
+	// Three, two, one — sounded and spoken, never buzzed.
+	test('counts down the last three seconds of a segment aloud, with no buzz', () => {
 		const at = (remaining: number) =>
 			planCues({
 				from: { segment: 'work', remaining: remaining + 1, round: 1, set: 1 },
@@ -388,7 +399,10 @@ describe('the cue planner', () => {
 			});
 		expect(at(4)).toEqual([]);
 		for (const remaining of [3, 2, 1]) {
-			expect(at(remaining)).toEqual([{ kind: 'sound', cue: 'countdown' }]);
+			expect(at(remaining)).toEqual([
+				{ kind: 'sound', cue: 'countdown' },
+				{ kind: 'speech', key: 'cues_say_count', n: remaining },
+			]);
 		}
 	});
 
@@ -404,41 +418,48 @@ describe('the cue planner', () => {
 
 	// A skip is a change of segment the athlete asked for, and it sounds like one:
 	// the segment it lands on is announced exactly as if the clock had got there.
-	test.each<{ name: string; from: Run; cue: string }>([
+	test.each<{ name: string; from: Run; cue: string; say: string }>([
 		{
 			name: 'skipping prepare',
 			from: { segment: 'prepare', remaining: 2, round: 1, set: 1 },
 			cue: 'go',
+			say: 'cues_say_work',
 		},
 		{
 			name: 'skipping an effort',
 			from: { segment: 'work', remaining: 2, round: 1, set: 1 },
 			cue: 'rest',
+			say: 'cues_say_rest',
 		},
 		{
 			name: 'skipping a rest',
 			from: { segment: 'rest', remaining: 1, round: 2, set: 1 },
 			cue: 'work',
+			say: 'cues_say_work',
 		},
 		{
 			name: 'skipping the last effort of a set',
 			from: { segment: 'work', remaining: 2, round: 2, set: 1 },
 			cue: 'setRest',
+			say: 'cues_say_setrest',
 		},
 		{
 			name: 'skipping the set rest',
 			from: { segment: 'setRest', remaining: 3, round: 2, set: 1 },
 			cue: 'work',
+			say: 'cues_say_work',
 		},
 		{
 			name: 'skipping the last effort',
 			from: { segment: 'work', remaining: 2, round: 2, set: 2 },
 			cue: 'done',
+			say: 'cues_say_done',
 		},
-	])('$name announces $cue, as the clock getting there would', ({ from, cue }) => {
+	])('$name announces $cue, as the clock getting there would', ({ from, cue, say }) => {
 		expect(planCues({ from, to: skip(from, SMALL), running: true })).toEqual([
 			{ kind: 'sound', cue },
 			{ kind: 'buzz', cue },
+			{ kind: 'speech', key: say },
 		]);
 	});
 
@@ -449,6 +470,7 @@ describe('the cue planner', () => {
 		const from: Run = { segment: 'work', remaining: 2, round: 1, set: 1 };
 		const heard = planCues({ from, to: skip(from, SMALL), running: true });
 		expect(heard).not.toContainEqual({ kind: 'sound', cue: 'countdown' });
+		expect(heard).not.toContainEqual(expect.objectContaining({ key: 'cues_say_count' }));
 	});
 
 	test('going back to the segment before announces that segment', () => {
@@ -456,6 +478,7 @@ describe('the cue planner', () => {
 		expect(planCues({ from: work, to: back(work, SMALL), running: true })).toEqual([
 			{ kind: 'sound', cue: 'rest' },
 			{ kind: 'buzz', cue: 'rest' },
+			{ kind: 'speech', key: 'cues_say_rest' },
 		]);
 	});
 
@@ -470,6 +493,7 @@ describe('the cue planner', () => {
 		expect(planCues({ from: late, to: restarted, running: true })).toEqual([
 			{ kind: 'sound', cue: 'work' },
 			{ kind: 'buzz', cue: 'work' },
+			{ kind: 'speech', key: 'cues_say_work' },
 		]);
 	});
 
@@ -482,7 +506,11 @@ describe('the cue planner', () => {
 		let r = beginning(c);
 		for (;;) {
 			for (const d of planCues({ from: before, to: r, running: true })) {
-				heard.push(`${d.kind}:${d.cue}`);
+				heard.push(
+					d.kind === 'speech'
+						? `speech:${d.key.slice(9)}${'n' in d ? d.n : ''}`
+						: `${d.kind}:${d.cue}`,
+				);
 			}
 			if (r.segment === 'done') break;
 			before = r;
@@ -522,6 +550,29 @@ describe('the cue planner', () => {
 			'work',
 			'done',
 		]);
+		// The voice says what the beeps mean: each place by name, and the
+		// countdown as numbers, beat for beat with its sound.
+		const said = heard.filter((h) => h.startsWith('speech:')).map((h) => h.slice(7));
+		const spoken = ['count3', 'count2', 'count1'];
+		expect(said).toEqual([
+			'prepare',
+			...spoken,
+			'work',
+			...spoken,
+			'rest',
+			'count1',
+			'work',
+			...spoken,
+			'setrest',
+			...spoken,
+			'work',
+			...spoken,
+			'rest',
+			'count1',
+			'work',
+			...spoken,
+			'done',
+		]);
 	});
 });
 
@@ -539,7 +590,28 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 			},
 			prefs,
 		);
-	const COUNT = [{ kind: 'sound', cue: 'countdown' }];
+	const count = (n: number) => [
+		{ kind: 'sound', cue: 'countdown' },
+		{ kind: 'speech', key: 'cues_say_count', n },
+	];
+
+	/** Everything a whole REPEATERS session plans, in order, as `kind:what`. */
+	const heard = (prefs?: Parameters<typeof planCues>[1]) => {
+		const out: string[] = [];
+		let before = IDLE;
+		let r = beginning(REPEATERS);
+		for (;;) {
+			for (const d of planCues({ from: before, to: r, running: true }, prefs)) {
+				out.push(
+					d.kind === 'speech' ? `speech:${d.key}${'n' in d ? d.n : ''}` : `${d.kind}:${d.cue}`,
+				);
+			}
+			if (r.segment === 'done') break;
+			before = r;
+			r = step(r, REPEATERS);
+		}
+		return out;
+	};
 
 	test.each([
 		3, 5, 10,
@@ -550,13 +622,14 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 		expect(counted).toEqual(
 			{ 3: [3, 2, 1], 5: [5, 4, 3, 2, 1], 10: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1] }[countdown],
 		);
-		expect(at(1, { ...CUE_DEFAULTS, countdown })).toEqual(COUNT);
+		expect(at(1, { ...CUE_DEFAULTS, countdown })).toEqual(count(1));
+		expect(at(countdown, { ...CUE_DEFAULTS, countdown })).toEqual(count(countdown));
 	});
 
-	test('the defaults are today: three seconds, and the buzz on', () => {
-		expect(CUE_DEFAULTS).toEqual({ countdown: 3, buzz: true });
+	test('the defaults are three seconds, the buzz on and the voice on', () => {
+		expect(CUE_DEFAULTS).toEqual({ countdown: 3, buzz: true, voice: true });
 		expect(at(4)).toEqual([]);
-		expect(at(3)).toEqual(COUNT);
+		expect(at(3)).toEqual(count(3));
 	});
 
 	test('with the buzz off, a segment change only sounds', () => {
@@ -570,31 +643,36 @@ describe("the cue planner, under the athlete's cue preferences", () => {
 				},
 				off,
 			),
-		).toEqual([{ kind: 'sound', cue: 'go' }]);
+		).toEqual([
+			{ kind: 'sound', cue: 'go' },
+			{ kind: 'speech', key: 'cues_say_work' },
+		]);
 		expect(planCues({ from: IDLE, to: beginning(REPEATERS), running: true }, off)).toEqual([
 			{ kind: 'sound', cue: 'start' },
+			{ kind: 'speech', key: 'cues_say_prepare' },
 		]);
 	});
 
 	test('with the buzz off, a whole session never buzzes and sounds exactly what it did', () => {
-		const heard = (prefs?: Parameters<typeof planCues>[1]) => {
-			const out: string[] = [];
-			let before = IDLE;
-			let r = beginning(REPEATERS);
-			for (;;) {
-				for (const d of planCues({ from: before, to: r, running: true }, prefs)) {
-					out.push(`${d.kind}:${d.cue}`);
-				}
-				if (r.segment === 'done') break;
-				before = r;
-				r = step(r, REPEATERS);
-			}
-			return out;
-		};
 		const quiet = heard({ ...CUE_DEFAULTS, buzz: false });
 		expect(quiet.filter((h) => h.startsWith('buzz:'))).toEqual([]);
-		expect(quiet).toEqual(heard().filter((h) => h.startsWith('sound:')));
-		expect(quiet.at(-1)).toBe('sound:done');
+		expect(quiet).toEqual(heard().filter((h) => !h.startsWith('buzz:')));
+		expect(quiet.filter((h) => h.startsWith('sound:')).at(-1)).toBe('sound:done');
+	});
+
+	// #106. Nothing is planned for the voice when it is off — not a phrase, not
+	// a number — and nothing else moves: the beeps carry the timing alone.
+	test('with the voice off, a whole session says nothing and sounds and buzzes exactly what it did', () => {
+		const silent = heard({ ...CUE_DEFAULTS, voice: false });
+		expect(silent.filter((h) => h.startsWith('speech:'))).toEqual([]);
+		expect(silent).toEqual(heard().filter((h) => !h.startsWith('speech:')));
+		expect(silent.at(-1)).toBe('buzz:done');
+	});
+
+	test('with the voice off, the countdown only beeps', () => {
+		expect(at(2, { ...CUE_DEFAULTS, voice: false, countdown: 5 })).toEqual([
+			{ kind: 'sound', cue: 'countdown' },
+		]);
 	});
 });
 
