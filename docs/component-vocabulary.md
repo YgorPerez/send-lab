@@ -58,6 +58,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Stat` | `primitives.tsx` | One reading in a divider-separated strip |
 | `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure |
 | `Panes` | `primitives.tsx` | A page's two panes from `lg`, stacked below it |
+| `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train and the Timer screen, and the stopwatch. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
@@ -74,9 +75,10 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
 | `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
-| `Timer` | The tick, the wake lock, and the two faces of the clock |
+| `Timer` | The protocol clock: its tick, the cues it asks the planner for, its setup, and its two faces — the strip and its run in the full-screen clock. Which screen's draft it keeps is its `home` (`ClockHome`, `'train' \| 'timer'`), never a "slot" |
+| `FullScreenClock` | The one full-screen dialog both clocks run in (spec #98: it "takes either a protocol run or a stopwatch run"): the header, the face as a tap target, the detail, the readout and the 56px control row, and the layout on a phone held sideways. Each clock hands in its status, reading and controls; `Face` and `faceSize` draw and size the number for both |
 | `ProtocolEditor` | How a saved protocol is typed in: a name and the seven numbers as text, and when to say a field cannot run (`readProtocolForm` decides that it cannot). A sheet, two fields to a row, for pt-BR's labels |
-| `Stopwatch` | The count-up's tick, its laps, and the same two faces — strip and full-screen — in the clock's type and controls |
+| `Stopwatch` | The count-up's tick, its laps, and the same two faces — strip and full-screen — in the clock's type and controls, through the same `FullScreenClock` |
 | `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
@@ -86,7 +88,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
 `ids.ts` (identity), `protocol.ts` (the timer's arithmetic, and which cue
-each transition fires), `stopwatch.ts` (the stopwatch's, and its laps), `cues.ts` (playing those cues: its beeps and haptics), `loggedSet.ts` (which of the seven per-set fields an
+each transition fires), `stopwatch.ts` (the stopwatch's, and its laps), `cues.ts` (playing those cues: its beeps, haptics and voice), `timerSetup.ts` (the clock's draft: restored paused, one per screen, and on the Timer screen one per protocol), `stopwatchDraft.ts` (the stopwatch's draft, paused and unscoped), `wakeLock.ts` (keeping the screen on while either clock counts), `loggedSet.ts` (which of the seven per-set fields an
 exercise shows, and what a fresh row is prefilled with), `prescription.ts`
 (what a slot runs, and at what numbers), `workingLoad.ts` (which exercises carry
 a working load and what to start one at), `strength.ts` (the size→20mm
@@ -118,7 +120,7 @@ above and reads from exactly two things:
 | Layer | Lives in | What it is |
 |---|---|---|
 | The store | `src/lib/store/` | Seventeen keyed row sets (ADR 0007), and `useTrainingRecord()`, which assembles them into one `TrainingRecord` |
-| The screen resolver | `src/lib/screens/` | `resolveToday` / `resolveTrain` / `resolveLog` — pure functions of `(content, record, now)` |
+| The screen resolver | `src/lib/screens/` | `resolveToday` / `resolveTrain` / `resolveLog` — pure functions of `(content, record, now)` — and `resolveTimer(content, record, locale)`, which lists the presets and saved protocols as `ProtocolListing`s, names each the way the clock's strip does, and orders what the clock can run |
 
 What the three built screens do with it, which is idiom 2 and idiom 3 one layer
 down: **each holds `useState` over what a resolver returned, never over what it
@@ -430,7 +432,20 @@ updater* and *ref mutated during render*.
   `(run, config)` each render, so editing a field mid-session cannot let the
   progress bar drift from the clock.
 - **Side effects come from the transition, not from the updater.** Cues fire in
-  an effect that compares the previous run against the current one.
+  an effect that compares the previous run against the current one. The previous
+  run starts as the one the clock opened on, not idle: a clock restored paused
+  has not moved, and counted from idle its mount was an arrival that beeped,
+  buzzed and spoke.
+
+**The one ref: a clock that hands in elapsed time.** The stopwatch shows tenths,
+so its tick cannot be "one more step": `tick(watch, ms)` takes the milliseconds
+since the watch was last brought up to date, read off `performance.now()`. The
+instant last accounted for is a ref (`accountedAt` in `Stopwatch.tsx`), because
+a lap and a pause bring the watch up to date between ticks, and that instant
+must not re-render anything. It is written in the interval and in the handlers,
+never during render, and every updater is still handed a plain number and stays
+pure. The exception is for wall-clock time only; a clock that steps in whole
+units, like the protocol, needs no ref.
 
 ### 2. A draft that persists — the readiness check
 
