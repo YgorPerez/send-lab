@@ -13,6 +13,13 @@ measuring rather than arguing.
 
 Issues live in GitHub Issues on `YgorPerez/send-lab`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
+### Design review
+
+`/impeccable` is a project skill (`.claude/skills/impeccable/`). **A ticket that ships UI closes only
+after an `/impeccable` pass on what it changed**, with each finding fixed or answered in writing on the
+ticket. The measuring gates still apply. See `docs/agents/impeccable.md` for the rule, the pinned
+version, and why the engine binary and the edit hooks are not committed.
+
 ### Domain docs
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

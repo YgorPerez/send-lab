@@ -44,3 +44,9 @@ vite.config.ts.timestamp-*
 # is what the glossary and ADRs exist to prevent. Serena is pointed at the curated docs through
 # `initial_prompt` in project.yml instead.
 .serena/memories/
+
+# Impeccable (.claude/skills/impeccable, vendored from upstream; see docs/agents/impeccable.md).
+# The engine is a per-platform ~20 MB binary. The launcher downloads the one pinned in
+# scripts/VERSION on first run, checks it against scripts/engine-checksums.txt, and caches it in
+# ~/.impeccable/bin/, so a copy next to the launcher is never committed.
+.claude/skills/impeccable/scripts/bin/
