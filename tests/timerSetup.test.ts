@@ -18,10 +18,17 @@
 //      on another's card is worse than no memory at all.
 import { describe, expect, it } from 'vitest';
 import { scoped } from '../src/lib/ephemeral.ts';
-import { asExerciseId, asWeekdayKey, asWeekId, protocolKey, taskKey } from '../src/lib/ids.ts';
+import {
+	asExerciseId,
+	asWeekdayKey,
+	asWeekId,
+	presetKey,
+	protocolKey,
+	taskKey,
+} from '../src/lib/ids.ts';
 import type { Protocol, Run } from '../src/lib/protocol.ts';
 import { IDLE } from '../src/lib/protocol.ts';
-import { restored, type TimerSetup } from '../src/lib/timerSetup.ts';
+import { restored, type TimerSetup, timerDraftKey } from '../src/lib/timerSetup.ts';
 
 const CONFIG: Protocol = {
 	prepare: 10,
@@ -119,5 +126,53 @@ describe('what the clock comes back as', () => {
 		// The configuration still survives: it is the athlete's setup, and it
 		// outlives any one run of it.
 		expect(back.config).toEqual(CONFIG);
+	});
+});
+
+// The Timer screen (#101) runs presets: library protocols the athlete cannot
+// edit. Its clock comes back under the same two rules, plus one — the protocol is
+// the library's, so a stored copy of it is never the source of truth.
+describe('a preset’s clock', () => {
+	const REPEATERS = presetKey(asExerciseId('repeaters'), 0);
+	const fixed = { fixed: true } as const;
+
+	it('restores the place it was left, paused', () => {
+		const back = restored(
+			stored({ config: SEEDED, run: MID }, REPEATERS),
+			REPEATERS,
+			SEEDED,
+			fixed,
+		);
+
+		expect(back.config).toEqual(SEEDED);
+		expect(back.run).toEqual(MID);
+		expect(back.running).toBe(false);
+	});
+
+	it('runs the library’s numbers when the stored copy disagrees with them', () => {
+		// The library changed the preset since the clock was left, or a hand edit
+		// did. `round 3 of 6` described the old protocol, so the place goes too.
+		const back = restored(
+			stored({ config: CONFIG, run: MID }, REPEATERS),
+			REPEATERS,
+			SEEDED,
+			fixed,
+		);
+
+		expect(back.config).toEqual(SEEDED);
+		expect(back.run).toEqual(IDLE);
+	});
+});
+
+// Train and the Timer screen each keep a clock. Sharing one stored slot made
+// each overwrite the other: leave Train mid-protocol for the Timer and back, and
+// Train came back idle. One slot per screen keeps both positions.
+describe('where each screen’s clock is kept', () => {
+	it('keeps Train’s clock where it has always been, so no draft is lost', () => {
+		expect(timerDraftKey('train')).toBe('sendlab:timer:v1');
+	});
+
+	it('keeps the Timer screen’s clock apart from Train’s', () => {
+		expect(timerDraftKey('timer')).not.toBe(timerDraftKey('train'));
 	});
 });

@@ -99,7 +99,16 @@ describe('the routes this app actually has', () => {
 
 		// Every screen the athlete can reach. If a page is added and this list is
 		// not, the gates were never measuring it.
-		expect(routes).toEqual(['/', '/log', '/login', '/settings', '/train', '/week', '/welcome']);
+		expect(routes).toEqual([
+			'/',
+			'/log',
+			'/login',
+			'/settings',
+			'/timer',
+			'/train',
+			'/week',
+			'/welcome',
+		]);
 		// One route per non-server file, which is what makes the count above a real
 		// assertion rather than a snapshot that drifts.
 		expect(routes).toHaveLength(files.length);

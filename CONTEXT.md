@@ -182,6 +182,16 @@ studies and the rest timer both use the word; never a program, a day type or a
 session.
 _Avoid_: interval scheme, routine
 
+**Preset**:
+A read-only protocol taken from a library variant that carries one — repeaters
+7/3, a max hang, an Abrahang — offered on the Timer screen to run as it is. Never
+stored: it is computed from the library each time it is read, so it cannot drift
+from what the library prescribes, and it cites the study the library cites for
+its exercise. Not a program template: `presets.ts` and the `preset_*` messages
+use the same word for ready-made programs, which build a whole block and are a
+different thing.
+_Avoid_: template, built-in timer, default protocol
+
 **Override**:
 A stored deviation from a built-in target, set by the athlete, and addressed by
 the weekday it applies to. Feeds into the prescription; anything not overridden

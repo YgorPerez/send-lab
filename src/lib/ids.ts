@@ -270,6 +270,20 @@ export function protocolKey(task: TaskKey, variantIndex: number): ProtocolKey {
 	return `${task}@${variantIndex}` as ProtocolKey;
 }
 
+/**
+ * The key of one preset's clock (#101): this library variant, run on the Timer
+ * screen. Shaped `preset:repeaters@0`.
+ *
+ * A preset is the variant itself, not a task in a slot, so nothing about the
+ * day goes into it — the same preset is the same clock on Monday and Friday. The
+ * `preset:` head keeps it apart from a task's protocol key (`w5-Thu:repeaters@0`)
+ * running the very same variant: a task key always starts with its week
+ * (`w5-`), so no task key begins `preset:`.
+ */
+export function presetKey(exercise: ExerciseId, variantIndex: number): ProtocolKey {
+	return `preset:${exercise}@${variantIndex}` as ProtocolKey;
+}
+
 /** What the timer is scoped to when no task is pinned. A real value rather than
  *  `null`, because "no protocol" is still a scope the stored setup can be filed
  *  under and compared against — and one the athlete can configure a clock in. */

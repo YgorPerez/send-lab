@@ -33,7 +33,7 @@
 //
 // WHAT IT HOLDS
 // -------------
-// The five pages that exist. `program` ([#65](https://github.com/YgorPerez/send-lab/issues/65))
+// The six pages that exist. `program` ([#65](https://github.com/YgorPerez/send-lab/issues/65))
 // and `studies` ([#67](https://github.com/YgorPerez/send-lab/issues/67)) are not
 // here: the prototype showed them greyed with their ticket numbers on, which is a
 // developer's view of the app, and a menu row that goes nowhere is furniture. Each
@@ -47,6 +47,7 @@ import {
 	Menu as MenuIcon,
 	ScrollText,
 	Settings,
+	Timer,
 } from 'lucide-react';
 import { useState } from 'react';
 import * as m from '$lib/paraglide/messages';
@@ -56,12 +57,14 @@ import type { AppLocale } from '$lib/store/locale';
  * The destinations, in the order they are reached in.
  *
  * The three that were the tab bar come first and keep their order, so the muscle
- * memory the bar built survives its removal. `week` sits with them because it is
- * training; `settings` is last because it is about the app.
+ * memory the bar built survives its removal. `timer` follows `train` because it
+ * is the same clock outside a session (#101), and `week` sits with them because
+ * it is training; `settings` is last because it is about the app.
  */
 const DESTINATIONS = [
 	{ to: '/', label: m.nav_today, Icon: House },
 	{ to: '/train', label: m.nav_train, Icon: Dumbbell },
+	{ to: '/timer', label: m.nav_timer, Icon: Timer },
 	{ to: '/log', label: m.nav_log, Icon: ScrollText },
 	{ to: '/week', label: m.nav_week, Icon: CalendarDays },
 	{ to: '/settings', label: m.nav_settings, Icon: Settings },

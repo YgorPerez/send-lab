@@ -33,6 +33,9 @@
 // this file; playing them is `lib/cues.ts`. The persistence it did by hand
 // belongs to the store (#18).
 
+import type { VariantParams } from '$lib/content/types';
+import { midOf } from '$lib/loggedSet';
+
 /** Every segment, in the order a run passes through them.
  *
  *  The array is the declaration and the union is derived from it, rather than the
@@ -53,6 +56,30 @@ export const PROTOCOL_FIELDS = ['prepare', 'work', 'rest', 'rounds', 'sets', 'se
 
 /** The protocol to run. Seconds throughout; counts are whole. */
 export type Protocol = Record<(typeof PROTOCOL_FIELDS)[number], number>;
+
+/**
+ * The protocol a library variant runs, or `null` if it carries none.
+ *
+ * A variant carries a protocol exactly when it sets a work length — the same
+ * predicate as `PrescribedTask.timed`. Each range runs at its middle, rounded,
+ * because a clock cannot run "three to four sets"; an absent count is one, an
+ * absent rest is none, and an absent prepare is ten seconds to get on the board.
+ *
+ * Train used to keep this mapping private to its route. The Timer screen's
+ * presets (#101) need the same one, and two copies of it are how a preset and
+ * the prescription of the same variant would come to run different numbers.
+ */
+export function protocolOf(v: VariantParams): Protocol | null {
+	if (!v.workSec) return null;
+	return {
+		prepare: v.prepareSec ?? 10,
+		work: midOf(v.workSec) ?? 10,
+		rest: midOf(v.restSec) ?? 0,
+		rounds: midOf(v.rounds) ?? 1,
+		sets: midOf(v.sets) ?? 1,
+		setRest: midOf(v.setRestSec) ?? 0,
+	};
+}
 
 /** Where the session currently is. */
 export interface Run {

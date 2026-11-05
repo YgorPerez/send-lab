@@ -24,6 +24,7 @@ import {
 	variantOf,
 } from '../src/lib/prescription.ts';
 import { resolveLog } from '../src/lib/screens/log.ts';
+import { resolveTimer } from '../src/lib/screens/timer.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
 import { resolveWeek } from '../src/lib/screens/week.ts';
@@ -428,3 +429,80 @@ function seededWith(now: number) {
 	seedRecordStore(store, content, 'en-US', now);
 	return store;
 }
+
+// Timer (#101). The presets are the library's own protocols, computed at read
+// time and never stored, so every number below is the library's: a preset that
+// ran something the exercise library does not prescribe would be a protocol with
+// no study behind it.
+describe('Timer', () => {
+	const TIMER = resolveTimer(getContent('en-US'), 'en-US');
+	const group = (exercise: string) => TIMER.presets.find((g) => g.exercise === exercise);
+	const preset = (exercise: string, variant: number) =>
+		group(exercise)?.presets.find((p) => p.variant === variant);
+
+	it('offers every library variant that carries a protocol, and nothing else', () => {
+		expect(TIMER.presets.map((g) => g.exercise)).toEqual([
+			'recruit',
+			'pinch',
+			'wrist',
+			'repeaters',
+			'slopdens',
+			'maxhang',
+			'density',
+			'abra',
+		]);
+		expect(TIMER.presets.flatMap((g) => g.presets)).toHaveLength(24);
+		// Recruitment's second variant is a set of reps with no work length: it
+		// stays out, and the variants either side keep their own positions.
+		expect(group('recruit')?.presets.map((p) => p.variant)).toEqual([0, 2]);
+	});
+
+	it('reads each preset as its shape and how long it takes', () => {
+		// 10s prepare, four sets of 6 × (7s on / 3s off), 3 minutes between sets.
+		expect(preset('repeaters', 0)).toMatchObject({
+			name: '7/3 · 20mm half-crimp + open hand',
+			shape: '6 × 7s/3s · 4 sets',
+			total: 778,
+		});
+		// One hang per set needs no round count.
+		expect(preset('maxhang', 0)).toMatchObject({ shape: '10s · 3 sets', total: 400 });
+		// One set needs no set count.
+		expect(preset('abra', 0)).toMatchObject({ shape: '20 × 10s/20s', total: 590 });
+	});
+
+	it('runs what the library prescribes, at the middle of each range', () => {
+		expect(preset('repeaters', 0)?.protocol).toEqual({
+			prepare: 10,
+			work: 7,
+			rest: 3,
+			rounds: 6,
+			sets: 4,
+			setRest: 180,
+		});
+	});
+
+	it('files each preset’s clock under its own variant', () => {
+		expect(preset('repeaters', 1)?.key).toBe('preset:repeaters@1');
+		const keys = TIMER.presets.flatMap((g) => g.presets.map((p) => p.key));
+		expect(new Set(keys).size).toBe(keys.length);
+	});
+
+	it('links each exercise to the study the library cites for it', () => {
+		expect(group('repeaters')?.study).toEqual({
+			title: 'Critical force & endurance',
+			url: 'https://pubmed.ncbi.nlm.nih.gov/33647876/',
+		});
+		expect(group('maxhang')?.study?.url).toBe('https://pubmed.ncbi.nlm.nih.gov/30988852/');
+		// The library cites nothing for wrist work, and the screen does not invent it.
+		expect(group('wrist')?.study).toBeNull();
+	});
+
+	it('reads in the locale it is resolved in', () => {
+		const pt = resolveTimer(getContent('pt-BR'), 'pt-BR');
+		const wrist = pt.presets.find((g) => g.exercise === 'wrist');
+		expect(wrist?.name).toBe('Força de Punho / Sloper');
+		const repeaters = pt.presets.find((g) => g.exercise === 'repeaters');
+		expect(repeaters?.presets[0].shape).toBe('6 × 7s/3s · 4 séries');
+		expect(repeaters?.study?.title).toBe('Força crítica e resistência');
+	});
+});

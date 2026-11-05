@@ -19,6 +19,8 @@ import {
 	parseTaskKey,
 	parseWeekdayKey,
 	parseWeekId,
+	presetKey,
+	protocolKey,
 	slotKey,
 	taskKey,
 	WEEKDAY_KEYS,
@@ -136,6 +138,23 @@ describe('task keys', () => {
 		expect(parseTaskKey('Tue:pinch')).toBeNull();
 		expect(parseTaskKey('w1-Tue:')).toBeNull();
 		expect(parseTaskKey(undefined)).toBeNull();
+	});
+});
+
+// A preset (#101) is a variant of the library rather than a task in a slot, so
+// its clock is filed under the variant. It shares the `@variant` tail with a
+// task's protocol key and must never be mistaken for one.
+describe('protocol keys', () => {
+	const repeaters = asExerciseId('repeaters');
+
+	test("files a preset's clock under its exercise and variant", () => {
+		expect(presetKey(repeaters, 1)).toBe('preset:repeaters@1');
+	});
+
+	test('never collides with the protocol of a task running the same variant', () => {
+		const task = taskKey(asWeekId(5), asWeekdayKey('Thu'), repeaters);
+		expect(presetKey(repeaters, 0)).not.toBe(protocolKey(task, 0));
+		expect(presetKey(repeaters, 0)).not.toBe(presetKey(repeaters, 1));
 	});
 });
 
