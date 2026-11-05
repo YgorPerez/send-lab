@@ -193,9 +193,10 @@ different thing.
 _Avoid_: template, built-in timer, default protocol
 
 **Saved protocol**:
-A protocol the athlete named and kept, as part of the training record — made by
-duplicating a preset or another saved protocol, and listed on the Timer screen
-in the order it was made. Identified by an id minted when it is made, never by
+A protocol the athlete named and kept, as part of the training record — made from
+scratch or by duplicating a preset or another saved protocol, editable in every
+field including its name, and listed on the Timer screen in the order it was
+made (an edit does not move it). Identified by an id minted when it is made, never by
 its name (ADR-0003): the name is the athlete's own text, a copy's default being
 its source's name after "Copy of" in the language it was copied in, and it
 stays as written from then on. It syncs like the rest of the record. Running one
@@ -282,9 +283,17 @@ _Avoid_: cycle, interval, rep
 
 **Segment**:
 The part of a protocol running right now — preparing, working, resting between
-rounds, or resting between sets. Seconds long, and never a phase: a phase spans
-weeks.
+rounds, resting between sets, or cooling down. Seconds long, and never a phase: a
+phase spans weeks.
 _Avoid_: phase, interval, stage, step
+
+**Cooldown**:
+The segment after the last set: the easy minutes that close a protocol, run
+once, before it is done. Seconds long and optional — zero means none, and then it
+is not in the segment order at all. A protocol written before it existed has
+none. Presets and Train's prescriptions run none, because the library prescribes
+none; the athlete sets one on a saved protocol.
+_Avoid_: warm-down, recovery, rest
 
 **Trained**:
 A slot is trained once at least one of its tasks is marked complete — including

@@ -83,7 +83,9 @@ const COPY = {
 		finish: 'Finish &amp; log session',
 		microcycle: 'Microcycle',
 		thursday: 'Thu',
-		noSaved: 'No saved protocols yet. Pick a preset and',
+		noSaved: 'No saved protocols yet.',
+		newProtocol: '>New protocol<',
+		create: '>Create</b>',
 		saved: 'Saved protocols',
 		delete: '>Delete<',
 	},
@@ -100,7 +102,9 @@ const COPY = {
 		finish: 'Concluir e registrar treino',
 		microcycle: 'Microciclo',
 		thursday: 'Qui',
-		noSaved: 'Nenhum protocolo salvo ainda. Escolha um predefinido e',
+		noSaved: 'Nenhum protocolo salvo ainda.',
+		newProtocol: '>Novo protocolo<',
+		create: '>Crie</b>',
 		saved: 'Protocolos salvos',
 		delete: '>Excluir<',
 	},
@@ -195,6 +199,11 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(timer).toContain(copy.noSaved);
 			// Nothing saved, so nothing to delete: only a preset is selected.
 			expect(timer).not.toContain(copy.delete);
+			// The copy names the two ways in, and the one that is not a preset's
+			// action is right under it (#104).
+			expect(timer).toContain(copy.create);
+			expect(timer).toContain(copy.newProtocol);
+			expect(timer.indexOf(copy.noSaved)).toBeLessThan(timer.indexOf(copy.newProtocol));
 		});
 	});
 }

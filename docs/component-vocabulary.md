@@ -75,6 +75,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
 | `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
 | `Timer` | The tick, the wake lock, and the two faces of the clock |
+| `ProtocolEditor` | How a saved protocol is typed in: a name and the seven numbers as text, and when to say a field cannot run (`readProtocolForm` decides that it cannot). A sheet, two fields to a row, for pt-BR's labels |
 | `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |

@@ -1,0 +1,145 @@
+// Making a saved protocol on the Timer screen (#104), the way the athlete does
+// it: open the editor, type, be told what cannot run, save, find it in the list.
+//
+// The screens suite's seam — the real route, mounted over the seeded store — in a
+// file of its own for one reason, found the hard way: in this jsdom setup a
+// worker can open **one** Base UI dialog. Close it, or unmount the tree it was
+// in, and the next dialog's open never returns: the click spins synchronously,
+// past any test timeout. A clean document does not reset it, so the state is in
+// Base UI's module scope. `screens.test.ts` spends its one on Train's clock, so
+// the editor gets a fresh worker here, and this file must not open a second.
+//
+// What the editor accepts is pinned in `screenReads.test.ts`; editing an
+// existing row is pinned in `savedProtocols.test.ts`. This is the wiring
+// between them and the screen.
+import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router';
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+import { PINNED_NOW } from '../scripts/seeded-record.ts';
+import { getContent } from '../src/lib/content/index.ts';
+import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
+import { readTrainingRecord, recordStore, resetRecordStore } from '../src/lib/store/record.ts';
+import { seedRecordStore } from '../src/lib/store/seed.ts';
+import { routeTree } from '../src/routeTree.gen.ts';
+
+beforeAll(() => {
+	(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	// jsdom lays nothing out, so it has no `scrollIntoView`; the screen scrolls a
+	// new protocol into view, and here there is nowhere to scroll.
+	Element.prototype.scrollIntoView ??= () => {};
+	// The account the screens suite renders, on the day it renders it. en-US
+	// only: a mounted app applies the seeded account's locale, which is en-US.
+	vi.useFakeTimers({ toFake: ['Date'] });
+	vi.setSystemTime(new Date(PINNED_NOW));
+	resetRecordStore();
+	seedRecordStore(recordStore(), getContent('en-US'), 'en-US', PINNED_NOW);
+	overwriteGetLocale(() => 'en-US');
+});
+
+afterAll(() => {
+	vi.useRealTimers();
+	resetRecordStore();
+});
+
+/** Let the writes a click started — the store's, the router's — land. */
+const settle = () =>
+	act(async () => {
+		for (let i = 0; i < 5; i++) await Promise.resolve();
+	});
+const press = async (el: HTMLButtonElement | null | undefined) => {
+	expect(el, 'button to press').toBeTruthy();
+	await act(async () => el?.click());
+	await settle();
+};
+const worded = (scope: ParentNode, text: string) =>
+	[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+/** Type into a field the way a person does: React listens for the native setter. */
+const type = (field: HTMLInputElement | null, value: string) => {
+	expect(field, 'field to type in').toBeTruthy();
+	const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+	act(() => {
+		set?.call(field, value);
+		field?.dispatchEvent(new Event('input', { bubbles: true }));
+	});
+};
+/** The input a visible label names. */
+const fieldOf = (scope: ParentNode, label: string) => {
+	const found = [...scope.querySelectorAll('label')].find((l) => l.textContent?.trim() === label);
+	const field = found ? document.getElementById(found.htmlFor) : null;
+	return field instanceof HTMLInputElement ? field : null;
+};
+const saved = () => readTrainingRecord(recordStore()).savedProtocols;
+
+describe('making a saved protocol on the Timer screen', () => {
+	test('from scratch, refusing what cannot run, and pointing the clock at it', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		// The root route renders the whole document, so React warns about an
+		// `<html>` inside this `<div>` — the price of mounting the real route.
+		const host = document.createElement('div');
+		document.body.append(host);
+		const root = createRoot(host);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		await settle();
+		try {
+			const before = saved().length;
+			await press(worded(host, 'New protocol'));
+			const editor = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!editor) throw new Error('the editor did not open');
+			expect(editor.textContent).toContain('New saved protocol');
+			// It opens on a protocol that runs, with no name yet — and says nothing
+			// about the name until the athlete has had the chance to type one.
+			expect(fieldOf(editor, 'Work (s)')?.value).toBe('10');
+			expect(fieldOf(editor, 'Name')?.getAttribute('aria-invalid')).toBe('false');
+
+			// No work: refused beside the field as soon as it is typed.
+			type(fieldOf(editor, 'Work (s)'), '0');
+			expect(fieldOf(editor, 'Work (s)')?.getAttribute('aria-invalid')).toBe('true');
+			expect(editor.textContent).toContain('Whole number, 1 or more');
+
+			// Save with nothing named and no work: nothing is written, and the name
+			// is now asked for too.
+			await press(worded(editor, 'Save'));
+			expect(saved()).toHaveLength(before);
+			expect(fieldOf(editor, 'Name')?.getAttribute('aria-invalid')).toBe('true');
+			expect(editor.textContent).toContain('Give it a name');
+			// And the athlete is put where the fix is.
+			expect(document.activeElement).toBe(fieldOf(editor, 'Name'));
+
+			type(fieldOf(editor, 'Name'), 'Tabata finisher');
+			type(fieldOf(editor, 'Work (s)'), '20');
+			type(fieldOf(editor, 'Rest (s)'), '10');
+			type(fieldOf(editor, 'Rounds'), '8');
+			type(fieldOf(editor, 'Cooldown (s)'), '120');
+			// The total of what is typed: 10 + 8 × 20 + 7 × 10 + 120.
+			expect(editor.textContent).toContain('6:00');
+			await press(worded(editor, 'Save'));
+
+			expect(saved()).toHaveLength(before + 1);
+			expect(saved().at(-1)).toMatchObject({
+				name: 'Tabata finisher',
+				protocol: {
+					prepare: 10,
+					work: 20,
+					rest: 10,
+					rounds: 8,
+					sets: 1,
+					setRest: 0,
+					cooldown: 120,
+				},
+			});
+			expect(host.textContent).toContain('8 × 20s/10s · 2:00 cooldown');
+			// Made, so it is the one selected, with its own actions under it.
+			const selected = host.querySelector('main [aria-pressed="true"]');
+			expect(selected?.textContent).toContain('Tabata finisher');
+			expect(worded(host, 'Edit')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+			host.remove();
+		}
+	});
+});

@@ -320,6 +320,9 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// Selected, so it carries its actions; no empty copy beside a real row.
 			expect(screen).toContain(locale === 'en-US' ? '>Duplicate<' : '>Duplicar<');
 			expect(screen).toContain(locale === 'en-US' ? '>Delete<' : '>Excluir<');
+			// And, being the athlete's, it can be edited; and a new one made (#104).
+			expect(screen).toContain(locale === 'en-US' ? '>Edit<' : '>Editar<');
+			expect(screen).toContain(locale === 'en-US' ? '>New protocol<' : '>Novo protocolo<');
 			expect(screen).not.toContain(
 				locale === 'en-US' ? 'No saved protocols yet' : 'Nenhum protocolo salvo ainda',
 			);
