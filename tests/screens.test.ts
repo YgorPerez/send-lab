@@ -40,8 +40,11 @@ import { createRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { PINNED_NOW } from '../scripts/seeded-record.ts';
+import { ProtocolEditor } from '../src/components/ProtocolEditor.tsx';
+import { ProtocolRows } from '../src/components/ProtocolRows.tsx';
 import { getContent } from '../src/lib/content/index.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
+import { formOf } from '../src/lib/screens/timer.ts';
 import { recordStore, resetRecordStore } from '../src/lib/store/record.ts';
 import { seedRecordStore } from '../src/lib/store/seed.ts';
 import { routeTree } from '../src/routeTree.gen.ts';
@@ -378,6 +381,87 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(header).toContain('min-h-11');
 		});
 
+		// The editor's rows (#112), which `/train`'s Adjust uses too: in the order a
+		// run goes — prepare, the block, the sets, the cooldown — each a label, a
+		// value to tap and type into, and 48px − / + either side of it. A time from
+		// a minute up reads m:ss; under it, seconds.
+		test('renders the protocol rows in run order, with − / + and a value to type', () => {
+			const html = renderToString(
+				createElement(ProtocolRows, {
+					id: 'p',
+					fields: formOf('', {
+						prepare: 10,
+						work: 4,
+						rest: 5,
+						rounds: 4,
+						sets: 3,
+						setRest: 180,
+						cooldown: 0,
+					}).fields,
+					refused: new Set<never>(),
+					onChange: () => {},
+				}),
+			);
+			const labels =
+				locale === 'en-US'
+					? [
+							'Prepare',
+							'Block',
+							'Work',
+							'Rest',
+							'Rounds',
+							'Sets',
+							'Sets',
+							'Rest between',
+							'Cooldown',
+						]
+					: [
+							'Preparar',
+							'Bloco',
+							'Esforço',
+							'Descanso',
+							'Rodadas',
+							'Séries',
+							'Séries',
+							'Descanso entre',
+							// A soft hyphen, so it breaks as "Desaque-cimento" at 360px.
+							'Desaque\u00adcimento',
+						];
+			const shown = [...html.matchAll(/<(?:label|h3)[^>]*>([^<]+)</g)].map((match) => match[1]);
+			expect(shown).toEqual(labels);
+			// Each value is a field the numeric keyboard opens on, labelled by its row.
+			const values = [...html.matchAll(/<input[^>]*>/g)].map((match) => match[0]);
+			expect(values).toHaveLength(7);
+			for (const input of values) expect(input).toContain('inputMode="numeric"');
+			expect(values.map((input) => /value="([^"]*)"/.exec(input)?.[1])).toEqual([
+				'10s',
+				'4s',
+				'5s',
+				'4',
+				'3',
+				'3:00',
+				'0s',
+			]);
+			// A number to a screen reader, not the text "10s" or "3:00": a spin
+			// button with its value, its least, and the value in words.
+			expect(values[5]).toContain('role="spinbutton"');
+			expect(values[5]).toContain('aria-valuenow="180"');
+			expect(values[5]).toContain(
+				locale === 'en-US'
+					? 'aria-valuetext="3 minutes 0 seconds"'
+					: 'aria-valuetext="3 minutos e 0 segundos"',
+			);
+			expect(values[1]).toContain('aria-valuemin="1"');
+			expect(values[3]).toContain('aria-valuetext="4"');
+			// − and + on every row, 48px, each named for what it changes.
+			const [less, more] = locale === 'en-US' ? ['Decrease', 'Increase'] : ['Diminuir', 'Aumentar'];
+			const work = locale === 'en-US' ? 'Work' : 'Esforço';
+			expect(html).toMatch(new RegExp(`aria-label="${less} ${work}"[^>]*class="[^"]*size-12`));
+			expect(html).toMatch(new RegExp(`aria-label="${more} ${work}"[^>]*class="[^"]*size-12`));
+			expect(html.match(new RegExp(`aria-label="${less} `, 'g'))).toHaveLength(7);
+			expect(html.match(new RegExp(`aria-label="${more} `, 'g'))).toHaveLength(7);
+		});
+
 		test('puts the chrome on every screen', async () => {
 			for (const path of ['/', '/train', '/timer', '/log', '/login', '/settings']) {
 				const html = await render(path);
@@ -493,6 +577,72 @@ describe('the full-screen clock on Train', () => {
 			expect(worded(clock, 'Resume')).toBeTruthy();
 			press(labelled(clock, 'Back a segment'));
 			expect(clock.getAttribute('aria-label')).toBe(first);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+});
+
+// #112: the clock's ready state on Train adjusts the prescribed protocol with the
+// editor's rows — run order, − / + and a value to type — not the interim grid of
+// seven boxes #110 left there. A press changes the protocol the clock is about
+// to run, so the total above it moves with it.
+describe('Adjust on Train', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	test('uses the editor’s rows, and a press changes what the clock runs', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/train'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			act(() =>
+				document
+					.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]')
+					?.click(),
+			);
+			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!clock) throw new Error('the full-screen clock did not open');
+			// Back to the ready state, where Adjust lives, if an earlier test left
+			// Train's clock paused mid-run.
+			const reset = clock.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
+			if (reset) act(() => reset.click());
+			const adjust = [...clock.querySelectorAll('button')].find(
+				(b) => b.textContent?.trim() === 'Adjust',
+			);
+			expect(adjust).toBeTruthy();
+			act(() => adjust?.click());
+			const values = clock.querySelectorAll<HTMLInputElement>('input[inputmode="numeric"]');
+			expect(values).toHaveLength(7);
+			expect(clock.querySelector('input[type="number"]')).toBeNull();
+			const total = () => clock.querySelector('.display')?.textContent;
+			const before = total();
+			const work = values[1].value;
+			act(() =>
+				clock.querySelector<HTMLButtonElement>('button[aria-label="Increase Work"]')?.click(),
+			);
+			expect(values[1].value).not.toBe(work);
+			expect(total()).not.toBe(before);
+			// Cleared and left, a value goes back to the number the clock will run,
+			// rather than showing one it will not.
+			const ran = values[1].value;
+			act(() => {
+				values[1].focus();
+				Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+					values[1],
+					'',
+				);
+				values[1].dispatchEvent(new Event('input', { bubbles: true }));
+			});
+			act(() => values[1].blur());
+			expect(values[1].value).toBe(ran);
+			expect(values[1].getAttribute('aria-invalid')).toBe('false');
 		} finally {
 			act(() => root.unmount());
 		}
@@ -959,6 +1109,187 @@ describe('opening a preset group on the Timer screen', () => {
 		}
 	});
 });
+
+// The protocol editor (#112): its own screen rather than a sheet over a blacked-
+// out list, with ✕ and Save at the top, the name optional, and the rows in run
+// order. Mounted on its own rather than through the route, so both locales run:
+// the app's root would put the seeded account's en-US back.
+for (const locale of ['en-US', 'pt-BR'] as const) {
+	describe(`the protocol editor, ${locale}`, () => {
+		beforeAll(() => {
+			(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+		});
+		beforeEach(() => overwriteGetLocale(() => locale));
+
+		const T = {
+			'en-US': {
+				title: 'Edit protocol',
+				name: 'Name (optional)',
+				shape: '4 × 4s/5s · 3 sets',
+				save: 'Save',
+				close: 'Close',
+				more: 'Increase Work',
+				refused: 'Whole seconds, 1 or more',
+				said: 'Work: 5 seconds',
+			},
+			'pt-BR': {
+				title: 'Editar protocolo',
+				name: 'Nome (opcional)',
+				shape: '4 × 4s/5s · 3 séries',
+				save: 'Salvar',
+				close: 'Fechar',
+				more: 'Aumentar Esforço',
+				refused: 'Segundos inteiros, 1 ou mais',
+				said: 'Esforço: 5 segundos',
+			},
+		}[locale];
+		const PROTOCOL = {
+			prepare: 10,
+			work: 4,
+			rest: 5,
+			rounds: 4,
+			sets: 3,
+			setRest: 180,
+			cooldown: 0,
+		};
+
+		function mount(onSave: (named: unknown) => Promise<void>) {
+			const host = document.createElement('div');
+			document.body.append(host);
+			const root = createRoot(host);
+			act(() =>
+				root.render(
+					createElement(ProtocolEditor, {
+						open: true,
+						onOpenChange: () => {},
+						target: { kind: 'edit', name: '', protocol: PROTOCOL },
+						onSave,
+					}),
+				),
+			);
+			const screen = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!screen) throw new Error('the editor did not open');
+			return {
+				screen,
+				done: () => {
+					act(() => root.unmount());
+					host.remove();
+				},
+			};
+		}
+		const type = (input: HTMLInputElement, value: string) =>
+			act(() => {
+				input.focus();
+				Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+					input,
+					value,
+				);
+				input.dispatchEvent(new Event('input', { bubbles: true }));
+			});
+		const inputFor = (screen: HTMLElement, label: string) => {
+			const id = [...screen.querySelectorAll('label')].find(
+				(l) => l.textContent === label,
+			)?.htmlFor;
+			return screen.querySelector<HTMLInputElement>(`[id="${id}"]`);
+		};
+
+		test('is a screen of its own, ✕ and Save at the top, the name optional', () => {
+			const { screen, done } = mount(async () => {});
+			try {
+				// The whole viewport, not a sheet over a blacked-out list.
+				expect(screen.className).toContain('inset-0');
+				expect(document.querySelector('.bg-black\\/70')).toBeNull();
+				const header = screen.querySelector('header');
+				expect(header?.textContent).toContain(T.title);
+				expect(header?.querySelector(`[aria-label="${T.close}"]`)).toBeTruthy();
+				expect(
+					[...(header?.querySelectorAll('button') ?? [])].some((b) => b.textContent === T.save),
+				).toBe(true);
+				// No name yet: the placeholder is the shape it will be listed under.
+				const name = inputFor(screen, T.name);
+				expect(name?.value).toBe('');
+				expect(name?.placeholder).toBe(T.shape);
+				// The rows, in run order, the set rest in m:ss.
+				expect(screen.querySelectorAll('input[inputmode="numeric"]')).toHaveLength(7);
+				expect(screen.textContent).not.toContain('(s)');
+				expect(screen.textContent).toContain('7:43');
+			} finally {
+				done();
+			}
+		});
+
+		test('saves an unnamed protocol, a + press included', async () => {
+			const saved: unknown[] = [];
+			const { screen, done } = mount(async (named) => {
+				saved.push(named);
+			});
+			try {
+				act(() => screen.querySelector<HTMLButtonElement>(`[aria-label="${T.more}"]`)?.click());
+				const save = [...screen.querySelectorAll('button')].find((b) => b.textContent === T.save);
+				await act(async () => save?.click());
+				expect(saved).toEqual([{ name: '', protocol: { ...PROTOCOL, work: 5 } }]);
+			} finally {
+				done();
+			}
+		});
+
+		// A keyboard steps the value with the arrows, and Enter goes to the next
+		// value rather than saving: on a phone's numeric keypad it is the key next
+		// to the digits. Each press is said, since the focus is not on the value.
+		test('steps with the arrows, moves on with Enter, and says each press', async () => {
+			const saved: unknown[] = [];
+			const { screen, done } = mount(async (named) => {
+				saved.push(named);
+			});
+			try {
+				const values = screen.querySelectorAll<HTMLInputElement>('input[inputmode="numeric"]');
+				const key = (el: HTMLElement, k: string) =>
+					act(() => {
+						el.dispatchEvent(
+							new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }),
+						);
+					});
+				act(() => values[5].focus());
+				key(values[5], 'ArrowUp');
+				expect(values[5].value).toBe('195');
+				key(values[5], 'ArrowDown');
+				key(values[5], 'ArrowDown');
+				expect(values[5].value).toBe('165');
+				key(values[5], 'Enter');
+				expect(document.activeElement).toBe(values[6]);
+				expect(saved).toEqual([]);
+				act(() => screen.querySelector<HTMLButtonElement>(`[aria-label="${T.more}"]`)?.click());
+				expect(screen.querySelector('[aria-live="polite"]')?.textContent).toBe(T.said);
+			} finally {
+				done();
+			}
+		});
+
+		test('refuses a field that cannot run, under its own row, and saves nothing', async () => {
+			const saved: unknown[] = [];
+			const { screen, done } = mount(async (named) => {
+				saved.push(named);
+			});
+			try {
+				// The dialog puts its first focus on ✕ a frame after it opens; let it, so
+				// what is asserted below is the refusal moving it, not that frame.
+				await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+				const work = screen.querySelectorAll<HTMLInputElement>('input[inputmode="numeric"]')[1];
+				type(work, '0');
+				const save = [...screen.querySelectorAll('button')].find((b) => b.textContent === T.save);
+				await act(async () => save?.click());
+				expect(saved).toEqual([]);
+				expect(work.getAttribute('aria-invalid')).toBe('true');
+				// The line that says so is the work row's own.
+				const note = document.getElementById(work.getAttribute('aria-describedby') ?? '');
+				expect(note?.textContent).toBe(T.refused);
+				expect(document.activeElement).toBe(work);
+			} finally {
+				done();
+			}
+		});
+	});
+}
 
 // The three ranks of the type scale, and the 44px touch floor, are properties of
 // the vocabulary rather than of any one screen — so they are asserted against

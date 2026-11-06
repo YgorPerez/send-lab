@@ -349,8 +349,11 @@ describe('a saved protocol is a protocol that can run', () => {
 		expect(result.ok && (result.row as typeof row).protocol.cooldown).toBe(120);
 	});
 
-	it('refuses a protocol with no name', () => {
-		expect(check({}, { name: '' }).ok).toBe(false);
+	// #112. The name is optional: an unnamed protocol is listed under its shape,
+	// which is read at display time and never stored, so it is kept as nothing.
+	it('keeps a protocol with no name', () => {
+		const result = check({}, { name: '' });
+		expect(result.ok && (result.row as typeof row).name).toBe('');
 	});
 
 	it('is filed under its id, never its name', () => {

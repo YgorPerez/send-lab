@@ -115,7 +115,7 @@ describe('a row’s ⋯ on the Timer screen', () => {
 		await press(more('Tabata finisher'));
 		await press(item('Edit'));
 		const editor = document.querySelector<HTMLElement>('[role="dialog"]');
-		expect(editor?.textContent).toContain('Edit saved protocol');
+		expect(editor?.textContent).toContain('Edit protocol');
 		expect(
 			[...(editor?.querySelectorAll('input') ?? [])].some((i) => i.value === 'Tabata finisher'),
 		).toBe(true);
@@ -135,9 +135,9 @@ describe('a row’s ⋯ on the Timer screen', () => {
 		expect(offered()).toEqual(['Duplicate', 'Edit', 'Delete']);
 		await press(item('Edit'));
 		const dialogs = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')];
-		expect(
-			dialogs.map((d) => d.textContent ?? '').some((t) => t.includes('Edit saved protocol')),
-		).toBe(true);
+		expect(dialogs.map((d) => d.textContent ?? '').some((t) => t.includes('Edit protocol'))).toBe(
+			true,
+		);
 		expect(dialogs.some((d) => d.getAttribute('aria-label') === 'Tabata finisher')).toBe(false);
 	});
 });
