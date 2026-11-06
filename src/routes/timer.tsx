@@ -85,6 +85,10 @@ function TimerScreen() {
 	// A deleted saved protocol takes the selection with it; the clock moves to the
 	// top of the list rather than vanishing.
 	const current = runnable.find((r) => r.key === selected) ?? runnable[0] ?? null;
+	// A preset cites the study its exercise rests on; its clock links it from the
+	// ready state (#110). A saved protocol is the athlete's own and cites none.
+	const group = screen.presets.find((g) => g.presets.some((p) => p.key === current?.key));
+	const study = group?.study ?? null;
 	const [tab, setTab] = useState<Tab>('protocols');
 	const protocolClock = useRef<ClockHandle>(null);
 	const stopwatch = useRef<ClockHandle>(null);
@@ -220,6 +224,9 @@ function TimerScreen() {
 							editable={false}
 							openOnStart
 							titled={false}
+							study={study}
+							title={current.name}
+							subtitle={group?.name ?? null}
 						/>
 					</StickyStrip>
 				) : null}

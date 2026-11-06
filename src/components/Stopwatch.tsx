@@ -41,7 +41,7 @@ import { useWakeLock } from '$lib/wakeLock';
 import { type ClockStatus, Face, FullScreenClock } from './FullScreenClock';
 import type { ClockHandle } from './Timer';
 import { Empty, Section, StickyStrip } from './ui/primitives';
-import { button } from './ui/variants';
+import { button, clockControl } from './ui/variants';
 
 /** How often the face redraws while it runs. Tenths are shown, so a tenth. */
 const FRAME_MS = 100;
@@ -373,49 +373,51 @@ function FullScreenStopwatch({
 					</>
 				) : null
 			}
+			// The protocol clock's row (#110): the large toggle in the middle, the
+			// two square ones beside it. Lap where skip is, the hand the thumb is
+			// already in; Reset where the paused protocol keeps its own.
 			controls={
 				<>
 					<button
 						type="button"
-						onClick={onToggle}
-						className={button({
-							kind: watch.running ? 'quiet' : 'primary',
-							size: 'touch',
-							class: 'h-14 flex-1 text-[17px]',
-						})}
+						onClick={onLap}
+						disabled={!watch.running}
+						aria-label={m.stopwatch_lap()}
+						className={clockControl('side', false)}
 					>
-						{watch.running ? <Pause size={20} /> : <Play size={20} />}
-						{watch.running ? m.btn_pause() : startLabel(watch)}
+						<Flag size={24} />
 					</button>
 					<button
 						type="button"
-						onClick={onLap}
-						disabled={!watch.running}
-						className={button({ size: 'touch', class: 'h-14 flex-1 text-[17px]' })}
+						onClick={onToggle}
+						className={clockControl('main', false, watch.running ? 'quiet' : 'primary')}
 					>
-						<Flag size={20} />
-						{m.stopwatch_lap()}
+						{watch.running ? (
+							<Pause size={28} fill="currentColor" strokeWidth={0} />
+						) : (
+							<Play size={22} fill="currentColor" strokeWidth={0} />
+						)}
+						{watch.running ? m.btn_pause() : startLabel(watch)}
 					</button>
 					<button
 						type="button"
 						aria-label={m.btn_reset()}
 						onClick={onReset}
 						disabled={!resettable(watch)}
-						className={button({ size: 'touch', class: 'h-14 w-14 px-0' })}
+						className={clockControl('side', false)}
 					>
-						<RotateCcw size={20} />
+						<RotateCcw size={24} />
 					</button>
 				</>
 			}
 		>
-			{/* No ring to fit inside, so `--face` comes from the screen: the width
-			    upright, and on its side the left column's width and the full height,
-			    the laps being in the right-hand column. */}
+			{/* No field: the stopwatch is never a segment, so it keeps the ground,
+			    and `--face` comes from the screen as the protocol's does. */}
 			<span
-				className="[--face:min(43vw,34dvh)] sideways:[--face:min(23vw,70dvh)]"
+				className="[--face:min(88vw,46dvh)] lg:[--face:min(60vw,calc(100dvh-16rem))] sideways:[--face:min(40vw,78dvh)]"
 				style={{ color: status.face }}
 			>
-				<Face {...face} fill className="num leading-none font-bold" />
+				<Face {...face} fill className="display leading-[0.8] font-bold" />
 			</span>
 		</FullScreenClock>
 	);

@@ -1,0 +1,180 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:28px 24px;justify-items:center;padding:8px 0}
+  figure{margin:0;display:flex;flex-direction:column;gap:10px;align-items:center}
+  figcaption{font:500 13px/1.35 var(--font-sans,'Inter');color:var(--muted-foreground);text-align:center;max-width:330px}
+  figcaption b{color:var(--foreground);font-weight:600}
+  .phone{
+    --bg:#07080a;--panel:#232629;--panel-2:#2b2f32;--panel-3:#33373b;--line:#474c51;--line-soft:#34383c;
+    --ink:#f1f2f2;--ink-dim:#b6bbc0;--ink-faint:#959ba1;
+    --flag:#ff5a2c;--teal:#3fd0c9;--gold:#e9b445;--violet:#9b8cff;
+    width:330px;height:716px;border-radius:34px;overflow:hidden;position:relative;
+    background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;
+    box-shadow:0 0 0 1px #2c3034,0 18px 40px -18px rgba(0,0,0,.7);
+    display:flex;flex-direction:column;
+  }
+  .num{font-family:'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum";letter-spacing:0}
+  svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  svg.i.fill{fill:currentColor;stroke:none}
+  .sb{height:30px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:600 12px/1 'Inter';color:inherit;opacity:.9}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 15px/1 'Inter';min-height:44px;min-width:44px;padding:0 14px;box-sizing:border-box}
+  .btn.sq{padding:0;width:44px}
+  .btn.bare{border-color:transparent;background:transparent}
+  .primary{background:var(--flag);border-color:var(--flag);color:var(--bg)}
+</style>
+<script>
+const I={
+x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+dots:'<circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/><circle cx="5" cy="12" r="1.4" fill="currentColor"/>',
+plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',minus:'<path d="M5 12h14"/>',
+play:'<path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/>',
+pause:'<rect x="6" y="4" width="4.5" height="16" rx="1.2" fill="currentColor" stroke="none"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2" fill="currentColor" stroke="none"/>',
+next:'<path d="M5 5.5v13a1 1 0 0 0 1.55.83l9.5-6.5a1 1 0 0 0 0-1.66l-9.5-6.5A1 1 0 0 0 5 5.5z" fill="currentColor" stroke="none"/><path d="M19 5v14" stroke-width="2.4"/>',
+prev:'<path d="M19 5.5v13a1 1 0 0 1-1.55.83l-9.5-6.5a1 1 0 0 1 0-1.66l9.5-6.5A1 1 0 0 1 19 5.5z" fill="currentColor" stroke="none"/><path d="M5 5v14" stroke-width="2.4"/>',
+reset:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+right:'<path d="m9 18 6-6-6-6"/>',down:'<path d="m6 9 6 6 6-6"/>',back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+ext:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+timer:'<path d="M10 2h4"/><path d="m12 14 3-3"/><circle cx="12" cy="14" r="8"/>',
+sliders:'<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
+menu:'<path d="M4 6h16M4 12h16M4 18h16"/>'};
+addEventListener('DOMContentLoaded',()=>document.querySelectorAll('i[data-i]').forEach(e=>{const s=e.dataset.s||20;e.outerHTML=`<svg class="i" viewBox="0 0 24 24" style="width:${s}px;height:${s}px" aria-hidden="true">${I[e.dataset.i]}</svg>`}));
+</script>
+</head><body>
+<style>
+  /* ready */
+  .rd-top{display:flex;justify-content:space-between;padding:8px 16px 0}
+  .rd-head{padding:18px 20px 0}
+  .rd-name{font:650 25px/1.15 'Inter';letter-spacing:-.015em;margin:0}
+  .rd-ex{font:500 14px/1.3 'Inter';color:var(--ink-dim);margin-top:6px}
+  .rd-total{display:flex;align-items:baseline;gap:8px;margin-top:18px}
+  .rd-total .num{font-size:64px;font-weight:600;line-height:.9}
+  .rd-total span:last-child{font:500 14px 'Inter';color:var(--ink-dim)}
+  .seq{margin:22px 20px 0;border-top:1px solid var(--line-soft)}
+  .seq-row{display:flex;align-items:center;gap:12px;min-height:46px;border-bottom:1px solid var(--line-soft);font:500 15px 'Inter'}
+  .seq-row .num{margin-left:auto;font-size:24px;font-weight:600}
+  .dot{width:10px;height:10px;border-radius:50%;flex:none}
+  .seq-group{padding:12px 0 2px;font:600 13px 'Inter';color:var(--ink-dim);display:flex;justify-content:space-between}
+  .seq-row.in{padding-left:14px}
+  .study{margin:18px 20px 0;display:block;font:500 14px 'Inter';color:var(--ink-dim);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+  .rd-foot{margin-top:auto;padding:12px 16px 24px}
+  .start{width:100%;min-height:60px;border-radius:16px;font-size:18px}
+
+  /* running */
+  .run{color:var(--bg)}
+  .run .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 16px 0 22px;min-height:62px}
+  .seg{font:700 30px/1 'Barlow Condensed';letter-spacing:.04em;text-transform:uppercase}
+  .close{width:48px;height:48px;border-radius:14px;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box}
+  .face{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+  .digits{font-weight:700;line-height:.8;text-align:center}
+  .count{font:600 28px/1 'Barlow Condensed';letter-spacing:.03em;text-transform:uppercase}
+  .ctrl{display:flex;align-items:center;justify-content:center;gap:16px;padding:0 16px 28px}
+  .ctrl .side{width:64px;height:64px;border-radius:18px;border:2px solid currentColor;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+  .ctrl .main{width:132px;height:84px;border-radius:22px;background:var(--bg);display:flex;align-items:center;justify-content:center}
+
+  /* paused */
+  .paused .seg{color:var(--flag)}
+  .paused .close{color:var(--ink-dim);border-color:var(--line)}
+  .paused .digits{color:transparent;-webkit-text-stroke:3px var(--flag)}
+  .paused .pz{font:700 34px/1 'Barlow Condensed';letter-spacing:.12em;color:var(--ink);text-transform:uppercase;margin-top:10px}
+  .paused .count{color:var(--ink-dim)}
+  .paused .ctrl .side{color:var(--ink);border-color:var(--line);background:var(--panel)}
+  .paused .ctrl .main{background:var(--flag);color:var(--bg);width:150px;font:700 20px 'Inter';gap:8px}
+</style>
+
+<div class="board">
+  <figure>
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="rd-top">
+        <span class="btn sq"><i data-i="back"></i></span>
+        <span class="btn sq" aria-label="Ações de Hangboard · 1 braço ~20mm"><i data-i="dots"></i></span>
+      </div>
+      <div class="rd-head">
+        <h1 class="rd-name">Hangboard · 1 braço ~20mm</h1>
+        <div class="rd-ex">Recruitment Pulls · predefinido</div>
+        <div class="rd-total"><span class="num">1:43</span><span>no total</span></div>
+      </div>
+      <div class="seq">
+        <div class="seq-row"><span class="dot" style="background:var(--gold)"></span>Preparar<span class="num">10s</span></div>
+        <div class="seq-group"><span>3 séries de 4 rodadas</span><span>sem descanso entre</span></div>
+        <div class="seq-row in"><span class="dot" style="background:var(--flag)"></span>Esforço<span class="num">4s</span></div>
+        <div class="seq-row in"><span class="dot" style="background:var(--teal)"></span>Descanso<span class="num">5s</span></div>
+      </div>
+      <a class="study">Estudo: Recrutamento, densidade e punho <i data-i="ext" data-s="14"></i></a>
+      <div class="rd-foot"><span class="btn primary start"><i data-i="play"></i>Iniciar</span></div>
+    </div>
+    <figcaption><b>Pronto.</b> Tocou na lista, caiu aqui. A sequência na ordem em que roda e um Iniciar só, no polegar. O ⋯ tem as mesmas ações da linha.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone run" style="background:var(--flag)">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><span class="seg">Esforço</span><span class="close"><i data-i="x" data-s="22"></i></span></div>
+      <div class="face">
+        <div class="digits num" style="font-size:290px">4</div>
+        <div class="count">Rodada 2/4 · Série 1/3</div>
+      </div>
+      <div class="ctrl">
+        <span class="side"><i data-i="prev" data-s="24"></i></span>
+        <span class="main" style="color:var(--flag)"><i data-i="pause" data-s="34"></i></span>
+        <span class="side"><i data-i="next" data-s="24"></i></span>
+      </div>
+    </div>
+    <figcaption><b>Rodando · esforço.</b> A tela inteira é o segmento. O número vai na cor do fundo do app (6,4:1 no vermelhão; branco daria 3,1:1). Segmento, número e Rodada · Série, mais nada.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone run" style="background:var(--gold)">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><span class="seg">Preparar</span><span class="close"><i data-i="x" data-s="22"></i></span></div>
+      <div class="face">
+        <div class="digits num" style="font-size:290px">10</div>
+        <div class="count">Rodada 1/4 · Série 1/3</div>
+      </div>
+      <div class="ctrl">
+        <span class="side"><i data-i="prev" data-s="24"></i></span>
+        <span class="main" style="color:var(--gold)"><i data-i="pause" data-s="34"></i></span>
+        <span class="side"><i data-i="next" data-s="24"></i></span>
+      </div>
+    </div>
+    <figcaption><b>Rodando · preparar.</b> Posição e tamanho iguais em todo segmento; só a cor troca, e isso se percebe pelo canto do olho.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone run" style="background:var(--teal)">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><span class="seg">Descanso entre séries</span><span class="close"><i data-i="x" data-s="22"></i></span></div>
+      <div class="face">
+        <div class="digits num" style="font-size:165px">2:30</div>
+        <div class="count">Rodada 4/4 · Série 1/3</div>
+      </div>
+      <div class="ctrl">
+        <span class="side"><i data-i="prev" data-s="24"></i></span>
+        <span class="main" style="color:var(--teal)"><i data-i="pause" data-s="34"></i></span>
+        <span class="side"><i data-i="next" data-s="24"></i></span>
+      </div>
+    </div>
+    <figcaption><b>Tempo longo.</b> "2:30" ocupa a largura toda; hoje fica com uns 52px de altura. Os dois descansos continuam teal, como hoje.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone run paused">
+      <div class="sb" style="color:var(--ink)"><span>9:41</span><span>●●●</span></div>
+      <div class="top"><span class="seg">Esforço</span><span class="close"><i data-i="x" data-s="22"></i></span></div>
+      <div class="face">
+        <div class="digits num" style="font-size:290px">4</div>
+        <div class="pz">Pausado</div>
+        <div class="count" style="margin-top:8px">Rodada 2/4 · Série 1/3</div>
+      </div>
+      <div class="ctrl">
+        <span class="side"><i data-i="prev" data-s="24"></i></span>
+        <span class="main"><i data-i="play" data-s="22"></i>Retomar</span>
+        <span class="side" aria-label="Zerar"><i data-i="reset" data-s="24"></i></span>
+      </div>
+    </div>
+    <figcaption><b>Pausado.</b> A cor some da tela; de longe, "sem cor" quer dizer parado. Número vazado e PAUSADO escrito. O Zerar só existe aqui, no lugar do pular.</figcaption>
+  </figure>
+</div>
+</body></html>

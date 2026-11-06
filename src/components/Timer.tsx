@@ -27,7 +27,8 @@
 // athlete's rule is that the clock stays up and picks up the new protocol.
 import {
 	ChevronDown,
-	Maximize2,
+	ChevronRight,
+	ExternalLink,
 	Pause,
 	Play,
 	RotateCcw,
@@ -35,6 +36,7 @@ import {
 	SkipForward,
 } from 'lucide-react';
 import {
+	type ReactNode,
 	type Ref,
 	useEffect,
 	useEffectEvent,
@@ -71,8 +73,7 @@ import { type ClockHome, restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
 import { Face, FullScreenClock } from './FullScreenClock';
-import { Eyebrow } from './ui/primitives';
-import { button, input } from './ui/variants';
+import { button, clockControl, input } from './ui/variants';
 
 const SEGMENT_LABEL: Record<Segment, () => string> = {
 	idle: m.timer_ready,
@@ -224,17 +225,107 @@ function SegmentAnnouncer({ reading }: { reading: Reading }) {
 	);
 }
 
-/** Session progress, under both clocks. */
-function ProgressBar({ reading }: { reading: Reading }) {
-	const { elapsed, total, accent } = reading;
+/** A length as the clock's summary writes it: `10s` under a minute, `3:00`
+ *  over it — the same rule as the face (`faceOf`). */
+function lengthOf(seconds: number): string {
+	return seconds >= 60 ? clock(seconds) : `${seconds}s`;
+}
+
+/**
+ * The ready state (#110): what the clock is about to run, in the order it runs,
+ * and one Start. Tapping a protocol lands here rather than on a number nobody
+ * is counting yet, so the shape is read once, on purpose, and then gets out of
+ * the way for the whole run.
+ */
+function Summary({
+	config,
+	study,
+	setup,
+}: {
+	config: Protocol;
+	study: Study | null;
+	setup: ReactNode;
+}) {
+	const grouped = config.rounds > 1 || config.sets > 1;
+	const between =
+		config.setRest > 0
+			? `${m.timer_setrest()} ${lengthOf(config.setRest)}`
+			: config.sets > 1
+				? m.timer_seq_no_setrest()
+				: '';
 	return (
-		<div className="h-[3px] overflow-hidden rounded-full bg-panel-3">
-			<div
-				className="h-full rounded-full transition-[width] duration-500"
-				style={{ width: `${total > 0 ? (elapsed / total) * 100 : 0}%`, background: accent }}
-			/>
+		<div className="flex flex-col pb-2">
+			<p className="mt-4 flex items-baseline gap-2">
+				<span className="display text-[64px] leading-[0.9] font-semibold">
+					{clock(totalOf(config))}
+				</span>
+				<span className="text-[14px] font-medium text-ink-dim">{m.timer_in_total()}</span>
+			</p>
+			<ol className="mt-5 border-t border-line-soft">
+				{config.prepare > 0 ? <SummaryRow segment="prepare" seconds={config.prepare} /> : null}
+				{grouped ? (
+					<li className="flex justify-between gap-3 pt-3.5 pb-1 text-[13px] font-semibold text-ink-dim">
+						<span>
+							{m.timer_rounds()} {config.rounds} · {m.timer_sets()} {config.sets}
+						</span>
+						<span>{between}</span>
+					</li>
+				) : null}
+				<SummaryRow segment="work" seconds={config.work} indent={grouped} />
+				{config.rest > 0 && config.rounds > 1 ? (
+					<SummaryRow segment="rest" seconds={config.rest} indent={grouped} />
+				) : null}
+				{config.cooldown > 0 ? <SummaryRow segment="cooldown" seconds={config.cooldown} /> : null}
+			</ol>
+			{study ? (
+				<a
+					href={study.url}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="mt-4 self-start py-2 text-[14px] font-medium text-ink-dim underline decoration-line underline-offset-[3px] hover:text-ink"
+				>
+					{m.timer_study({ title: study.title })}
+					<ExternalLink size={13} aria-hidden="true" className="ml-1.5 inline align-[-1px]" />
+				</a>
+			) : null}
+			{setup}
 		</div>
 	);
+}
+
+/** One segment of the summary: its colour as a mark (a dot carries a colour a
+ *  label cannot — `component-vocabulary.md`), its name, its length. */
+function SummaryRow({
+	segment,
+	seconds,
+	indent = false,
+}: {
+	segment: Segment;
+	seconds: number;
+	indent?: boolean;
+}) {
+	return (
+		<li
+			className={cn(
+				'flex min-h-[46px] items-center gap-3 border-b border-line-soft text-[15px] font-medium',
+				indent && 'pl-3.5',
+			)}
+		>
+			<span
+				aria-hidden="true"
+				className="size-2.5 shrink-0 rounded-full"
+				style={{ background: SEGMENT_COLOR[segment] }}
+			/>
+			{SEGMENT_LABEL[segment]()}
+			<span className="display ml-auto text-[24px] font-semibold">{lengthOf(seconds)}</span>
+		</li>
+	);
+}
+
+/** A study the protocol cites, as the ready state links it. */
+export interface Study {
+	title: string;
+	url: string;
 }
 
 /**
@@ -244,12 +335,22 @@ function ProgressBar({ reading }: { reading: Reading }) {
  * the phone is on the floor or clipped to the board, and the only thing that
  * matters is the number. Everything else on Train — the sets, the targets, the
  * note — goes away entirely rather than shrinking.
+ *
+ * #110 took the rest of what was left away too. Running, the screen is the
+ * segment's colour and says three things: the segment, the seconds, the round
+ * and set. Up next, elapsed, left and total all went — the athlete's own
+ * answer, in the grill, to "has any of them changed a decision mid-hang?" — and
+ * so did the ring, whose job the field now does from further away. Paused, the
+ * colour drains: "no colour" is "not running", from across the room.
  */
 function ProtocolFullScreen({
 	open,
 	onOpenChange,
 	label,
+	subtitle,
 	reading,
+	study,
+	setup,
 	onToggle,
 	onReset,
 	onSkip,
@@ -260,7 +361,10 @@ function ProtocolFullScreen({
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
 	label: string | null;
+	subtitle: string | null;
 	reading: Reading;
+	study: Study | null;
+	setup: ReactNode;
 	onToggle: () => void;
 	onReset: () => void;
 	onSkip: () => void;
@@ -268,32 +372,35 @@ function ProtocolFullScreen({
 	flash: Flash | null;
 	onFlashEnd: () => void;
 }) {
-	const { run, config, shown, segmentLength, accent, left, elapsed, running, next } = reading;
+	const { run, config, shown, accent, running } = reading;
 	const segmentLabel = SEGMENT_LABEL[run.segment]();
-	const face = faceOf(shown);
-	// The ring reports the segment you are in, not the whole session: mid-hang the
-	// useful question is "how much of *this* is left", and the session total is
-	// already on the lines underneath.
-	const R = 46;
-	const CIRC = 2 * Math.PI * R;
+	const ready = run.segment === 'idle';
+	const field = running ? accent : null;
+	const onField = field != null;
+	// Resume, not Start, once a run is underway: "Start" mid-protocol read as
+	// starting over (#110's critique).
+	const toggleLabel = running ? m.btn_pause() : underway(run) ? m.btn_resume() : m.btn_start();
 
 	return (
 		<FullScreenClock
 			open={open}
 			onOpenChange={onOpenChange}
-			label={segmentLabel}
+			label={ready ? (label ?? m.timer_title()) : segmentLabel}
+			name={ready ? subtitle : null}
 			status={{ label: segmentLabel, color: accent }}
-			name={label}
+			field={field}
 			spoken={spokenReading(reading)}
-			toggleLabel={running ? m.btn_pause() : m.btn_start()}
+			toggleLabel={toggleLabel}
 			onToggle={onToggle}
 			announcer={<SegmentAnnouncer reading={reading} />}
-			// The flash (#107): the whole screen washed in the colour of the segment
-			// just arrived in, fading out, so the change is caught from the corner of
-			// the eye. Behind everything else — the popup is its own stacking
-			// context, so a negative z-index paints over its background and under the
-			// clock — and never in the way of a tap. Decorative: the announcer
-			// already says the change.
+			summary={ready ? <Summary config={config} study={study} setup={setup} /> : undefined}
+			// The flash (#107): a wash over the screen, fading out, so the change is
+			// caught from the corner of the eye. On a field the colour change is
+			// itself the news, so the wash is the ink — a blink of light over the
+			// new colour rather than the new colour over itself. Behind everything
+			// else — the popup is its own stacking context, so a negative z-index
+			// paints over its background and under the clock — and never in the way
+			// of a tap. Decorative: the announcer already says the change.
 			layer={
 				flash ? (
 					<div
@@ -303,126 +410,108 @@ function ProtocolFullScreen({
 						onAnimationEnd={onFlashEnd}
 						className="a-flash pointer-events-none fixed inset-0 -z-10"
 						style={{
-							background: SEGMENT_COLOR[flash.segment],
+							background: onField ? 'var(--ink)' : SEGMENT_COLOR[flash.segment],
 							animationDuration: `${flash.ms}ms`,
 						}}
 					/>
 				) : null
 			}
 			detail={
-				counted(run) || next ? (
+				!running && underway(run) ? (
 					<>
-						{/* The indicators, in the order they are asked for mid-session: where am
-						    I in the protocol, what comes next, how far through the whole thing am
-						    I. The athlete asked for Timer Plus's full set — the prototype had the
-						    first line and nothing else. */}
+						<span className="display text-[34px] leading-none font-bold tracking-[0.12em] uppercase">
+							{m.timer_paused()}
+						</span>
 						{counted(run) ? (
-							<span className="num flex items-center gap-3 text-[15px] text-ink-dim">
-								<span>{m.timer_round({ n: run.round, total: config.rounds })}</span>
-								<span className="text-ink-faint">·</span>
-								<span>{m.timer_set({ n: run.set, total: config.sets })}</span>
-							</span>
-						) : null}
-						{next ? (
-							<span className="num text-[14px] text-ink-faint">
-								{m.timer_next()}{' '}
-								<span style={{ color: SEGMENT_COLOR[next.segment] }}>
-									{SEGMENT_LABEL[next.segment]()}
-								</span>
-								{next.seconds > 0 ? ` · ${clock(next.seconds)}` : ''}
+							<span className="display text-[28px] leading-none font-semibold tracking-[0.03em] text-ink-dim uppercase">
+								{positionOf(reading)}
 							</span>
 						) : null}
 					</>
+				) : counted(run) ? (
+					<span className="display text-[28px] leading-none font-semibold tracking-[0.03em] uppercase">
+						{positionOf(reading)}
+					</span>
 				) : null
 			}
-			readout={
-				<>
-					<div className="num flex justify-between text-[12px] text-ink-faint">
-						<span>
-							{m.timer_elapsed()} <span className="text-ink-dim">{clock(elapsed)}</span>
-						</span>
-						<span>
-							{m.timer_left()} <span className="text-chalk">{clock(left)}</span>
-						</span>
-						<span>
-							{m.timer_total()} {clock(reading.total)}
-						</span>
-					</div>
-					<ProgressBar reading={reading} />
-				</>
-			}
-			// Back and skip flank Start, the order every media control uses, so the
-			// one the athlete reaches for is found by direction rather than by
-			// reading an icon. Reset is kept at the far end, away from skip: a slip
-			// from skip onto reset loses the whole session. Before the start there is
-			// nothing to jump within, and after the end nothing to skip to, so those
-			// are disabled rather than hidden: the row keeps its shape.
+			// Before the start: one Start. Running: back and skip flank Pause, the
+			// order every media control uses, so the one the athlete reaches for is
+			// found by direction rather than by reading an icon. Paused: Reset takes
+			// skip's place — it only exists while nothing is counting, so a slip
+			// from skip mid-hang can no longer throw the run away.
 			controls={
-				<>
-					<button
-						type="button"
-						aria-label={m.timer_back()}
-						onClick={onBack}
-						disabled={run.segment === 'idle'}
-						className={button({ size: 'touch', class: 'h-14 w-14 shrink-0 px-0' })}
-					>
-						<SkipBack size={20} />
-					</button>
+				ready ? (
 					<button
 						type="button"
 						onClick={onToggle}
 						className={button({
-							kind: running ? 'quiet' : 'primary',
+							kind: 'primary',
 							size: 'touch',
-							class: 'h-14 flex-1 text-[17px]',
+							class: 'min-h-[60px] w-full rounded-2xl text-[18px] font-semibold',
 						})}
 					>
-						{running ? <Pause size={20} /> : <Play size={20} />}
-						{running ? m.btn_pause() : m.btn_start()}
+						<Play size={20} fill="currentColor" strokeWidth={0} />
+						{m.btn_start()}
 					</button>
-					<button
-						type="button"
-						aria-label={m.timer_skip()}
-						onClick={onSkip}
-						disabled={run.segment === 'idle' || run.segment === 'done'}
-						className={button({ size: 'touch', class: 'h-14 w-14 shrink-0 px-0' })}
-					>
-						<SkipForward size={20} />
-					</button>
-					<button
-						type="button"
-						aria-label={m.btn_reset()}
-						onClick={onReset}
-						className={button({ size: 'touch', class: 'ml-2 h-14 w-14 shrink-0 px-0' })}
-					>
-						<RotateCcw size={20} />
-					</button>
-				</>
+				) : (
+					<>
+						<button
+							type="button"
+							aria-label={m.timer_back()}
+							onClick={onBack}
+							className={clockControl('side', onField)}
+						>
+							<SkipBack size={24} fill="currentColor" />
+						</button>
+						<button
+							type="button"
+							onClick={onToggle}
+							className={clockControl('main', onField, 'primary')}
+							style={onField ? { color: field } : undefined}
+						>
+							{running ? (
+								<>
+									<Pause size={34} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+									<span className="sr-only">{m.btn_pause()}</span>
+								</>
+							) : (
+								<>
+									<Play size={22} fill="currentColor" strokeWidth={0} />
+									{toggleLabel}
+								</>
+							)}
+						</button>
+						{running ? (
+							<button
+								type="button"
+								aria-label={m.timer_skip()}
+								onClick={onSkip}
+								className={clockControl('side', onField)}
+							>
+								<SkipForward size={24} fill="currentColor" />
+							</button>
+						) : (
+							<button
+								type="button"
+								aria-label={m.btn_reset()}
+								onClick={onReset}
+								className={clockControl('side', onField)}
+							>
+								<RotateCcw size={24} />
+							</button>
+						)}
+					</>
+				)
 			}
 		>
-			{/* The ring sets the face's size: `--face` is the share of its inner width
-			    a two-glyph reading fills. On its side the screen's height is what
-			    runs out, and the ring takes all of it: the lines that sat under it
-			    upright are in the right-hand column. */}
-			<span className="relative flex items-center justify-center [--face:calc(var(--ring)*0.385)] [--ring:min(78vw,52dvh)] sideways:[--ring:min(44vw,calc(100dvh-2rem))]">
-				<svg viewBox="0 0 100 100" aria-hidden="true" className="size-(--ring) -rotate-90">
-					<circle cx="50" cy="50" r={R} fill="none" stroke="var(--panel-2)" strokeWidth="3" />
-					<circle
-						cx="50"
-						cy="50"
-						r={R}
-						fill="none"
-						stroke={accent}
-						strokeWidth="3"
-						strokeLinecap="round"
-						strokeDasharray={CIRC}
-						strokeDashoffset={
-							segmentLength > 0 ? CIRC * (1 - Math.max(0, shown) / segmentLength) : 0
-						}
-						style={{ transition: 'stroke-dashoffset 1s linear' }}
-					/>
-				</svg>
-				<Face {...face} fill className="num absolute leading-none font-bold tabular-nums" />
+			{/* `--face` is the size a one- or two-glyph reading is drawn at: most of
+			    the width upright, and on its side the left column's width or the
+			    screen's height, whichever runs out first. */}
+			<span
+				className="[--face:min(88vw,46dvh)] lg:[--face:min(60vw,calc(100dvh-16rem))] sideways:[--face:min(40vw,78dvh)]"
+				style={onField ? undefined : { color: run.segment === 'done' ? 'var(--ink-dim)' : accent }}
+			>
+				<Face whole={faceOf(shown).whole} fill className="display leading-[0.8] font-bold" />
 			</span>
 		</FullScreenClock>
 	);
@@ -450,6 +539,9 @@ export function Timer({
 	editable = true,
 	openOnStart = false,
 	titled = true,
+	study = null,
+	title,
+	subtitle = null,
 }: {
 	ref?: Ref<ClockHandle>;
 	/** Called on Start, so the screen can pause whatever else it was running. */
@@ -482,6 +574,13 @@ export function Timer({
 	 *  screen that is only the timer, the title repeats the page's and costs the
 	 *  label the width it truncates in. */
 	titled?: boolean;
+	/** The study the protocol cites, linked from the clock's ready state. */
+	study?: Study | null;
+	/** What the ready state is titled by, when it is not the label — a preset's
+	 *  own name, with its exercise as the subtitle under it rather than welded
+	 *  into one three-line heading (#110's finish review). */
+	title?: string;
+	subtitle?: string | null;
 }) {
 	// A DRAFT THAT PERSISTS, applied to a clock (#59). The setup and the athlete's
 	// place in it survive a reload — which on Android is not a rare event, since
@@ -616,149 +715,35 @@ export function Timer({
 	};
 
 	const reading = readingOf(run, config, running);
-	const { accent, shown, left, total } = reading;
+	const { accent, shown, total } = reading;
 	const readingId = useId();
+	const nameId = useId();
+	// Before the start or after the end: nothing is counting, so the strip says
+	// what it will run rather than a number.
+	const resting = run.segment === 'idle' || run.segment === 'done';
+	// Named by what it runs. On Train the strip also says what it is — "Interval
+	// timer" — but to a screen reader only: in sight, the title cost the
+	// exercise name the width it truncated in.
+	const name = label ?? m.timer_title();
 
-	return (
-		<div className="rounded-lg border border-line bg-panel">
-			<ProtocolFullScreen
-				open={clockOpen}
-				onOpenChange={showClock}
-				label={label}
-				reading={reading}
-				onToggle={toggle}
-				onReset={reset}
-				onSkip={() => jump(skip)}
-				onBack={() => jump(back)}
-				flash={flash}
-				onFlashEnd={() => setFlash(null)}
-			/>
-			{/* One announcer at a time: while the full-screen clock is up it carries
-			    its own, and the strip behind a modal dialog is not read out. */}
-			{clockOpen ? null : <SegmentAnnouncer reading={reading} />}
-			<p id={readingId} className="sr-only">
-				{spokenReading(reading)}
-			</p>
-
-			<div className="flex items-baseline justify-between gap-2 px-3 pt-2.5">
-				<Eyebrow className="min-w-0 truncate">
-					{titled || !label ? m.timer_title() : null}
-					{label ? (
-						<span className="text-ink-dim">
-							{titled ? ' · ' : ''}
-							{label}
-						</span>
-					) : null}
-				</Eyebrow>
-				<span
-					className="num shrink-0 text-[10px] tracking-wider uppercase"
-					style={{ color: accent }}
-				>
-					{SEGMENT_LABEL[run.segment]()}
-					{counted(run)
-						? ` · ${m.timer_round({ n: run.round, total: config.rounds })} · ${run.set}/${config.sets}`
-						: ''}
-				</span>
-			</div>
-
-			<div className="flex items-center gap-3 px-3 py-1.5">
-				{/* The number stays tappable — it is the biggest target on the strip and
-				    costs nothing to keep — but it is no longer the *only* way in. */}
-				<button
-					type="button"
-					onClick={() => showClock(true)}
-					aria-label={m.timer_fullscreen()}
-					aria-describedby={readingId}
-					style={{ color: accent }}
-				>
-					<Face {...faceOf(shown)} className="num text-[46px] leading-none font-bold" />
-				</button>
-				<div className="flex min-w-0 flex-1 flex-col gap-1">
-					<div className="num flex justify-between text-[10px] text-ink-faint">
-						<span>
-							{m.timer_left()} <span className="text-chalk">{clock(left)}</span>
-						</span>
-						<span>
-							{m.timer_total()} {clock(total)}
-						</span>
-					</div>
-					<ProgressBar reading={reading} />
-					<div className="flex gap-1.5">
-						<button
-							type="button"
-							onClick={toggle}
-							className={button({
-								kind: running ? 'quiet' : 'primary',
-								size: 'touch',
-								class: 'flex-1',
-							})}
-						>
-							{running ? <Pause size={16} /> : <Play size={16} />}
-							{running ? m.btn_pause() : m.btn_start()}
-						</button>
-						<button
-							type="button"
-							aria-label={m.btn_reset()}
-							onClick={reset}
-							className={button({ size: 'touch', class: 'w-12 px-0' })}
-						>
-							<RotateCcw size={16} />
-						</button>
-						{/* Full screen sits with the other controls, not beside the number.
-						    It was a 13px icon next to a 46px digit and the athlete could not
-						    find it — which is the answer to "where does it open?": a tap
-						    target that small, next to something that large, reads as
-						    decoration on the number rather than as a button of its own.
-						    Same size and shape as Reset, in the row the thumb is already in,
-						    and at 48px since the athlete asked for it. */}
-						<button
-							type="button"
-							aria-label={m.timer_fullscreen()}
-							onClick={() => showClock(true)}
-							className={button({ size: 'touch', class: 'w-12 px-0' })}
-						>
-							<Maximize2 size={16} />
-						</button>
-					</div>
-				</div>
-			</div>
-
-			{/* The seven configuration fields are collapsed by default.
-
-			    They were always visible, which put a grid of number inputs
-			    between the clock and the sets — the thing the athlete is actually
-			    touching all session. The protocol comes prescribed, so these are
-			    edited once, if at all: "você vai provavelmente tá a maior parte do
-			    tempo adicionando métricas". Collapsed, the sticky block loses ~72px
-			    and the first exercise card comes up the screen by that much.
-
-			    A summary line replaces them, so the configuration is still *read* at
-			    a glance while it is no longer *editable* at a glance. */}
-			<div className="flex items-center gap-2 border-t border-line-soft px-3 py-1.5">
-				{/* The shape, as the Timer screen's list writes it, rather than four bare
-				    numbers nobody could tell apart (#99's review: was `38s · 0s · 1×3`). */}
-				<span className="num min-w-0 flex-1 truncate text-[11px] text-ink-faint">
-					{protocolShape(config)} · {clock(total)}
-				</span>
-				{editable ? (
-					<button
-						type="button"
-						onClick={() => setSetupOpen((v) => !v)}
-						aria-expanded={setupOpen}
-						aria-controls="timer-setup"
-						className={button({ kind: 'bare', size: 'md', class: 'gap-1 px-1 text-[11px]' })}
-					>
-						{m.timer_setup()}
-						<ChevronDown
-							size={13}
-							className={cn('transition-transform', setupOpen && 'rotate-180')}
-						/>
-					</button>
-				) : null}
-			</div>
-
-			{editable && setupOpen ? (
-				<div id="timer-setup" className="grid grid-cols-3 gap-1.5 px-3 pb-2">
+	// The seven fields, for a protocol the athlete may change — Train's
+	// prescription, never a preset. They used to open under the strip, between
+	// the clock and the sets the athlete is touching all session; #110 moved them
+	// to the clock's ready state, where the shape is already being read.
+	const setup = editable ? (
+		<div className="mt-3 border-t border-line-soft pt-1">
+			<button
+				type="button"
+				onClick={() => setSetupOpen((v) => !v)}
+				aria-expanded={setupOpen}
+				aria-controls="timer-setup"
+				className={button({ kind: 'bare', size: 'lg', class: '-ml-1 gap-1 px-1 text-ink-dim' })}
+			>
+				{m.timer_setup()}
+				<ChevronDown size={16} className={cn('transition-transform', setupOpen && 'rotate-180')} />
+			</button>
+			{setupOpen ? (
+				<div id="timer-setup" className="grid grid-cols-3 gap-1.5 pb-2">
 					{PROTOCOL_FIELDS.map((f) => (
 						// The label wraps rather than truncating — pt-BR's
 						// "Desaquecimento (s)" is wider than a third of 360px — and sits
@@ -768,7 +753,7 @@ export function Timer({
 							<span className="microlabel break-words">{FIELD_LABEL[f]()}</span>
 							<input
 								id={`t-${f}`}
-								className={input({ class: 'h-9 py-0' })}
+								className={input({ class: 'h-11 py-0' })}
 								type="number"
 								inputMode="numeric"
 								min={PROTOCOL_MINIMUM[f]}
@@ -784,6 +769,146 @@ export function Timer({
 					))}
 				</div>
 			) : null}
+		</div>
+	) : null;
+
+	return (
+		<div>
+			<ProtocolFullScreen
+				open={clockOpen}
+				onOpenChange={showClock}
+				label={title ?? label}
+				subtitle={subtitle}
+				reading={reading}
+				study={study}
+				setup={setup}
+				onToggle={toggle}
+				onReset={reset}
+				onSkip={() => jump(skip)}
+				onBack={() => jump(back)}
+				flash={flash}
+				onFlashEnd={() => setFlash(null)}
+			/>
+			{/* One announcer at a time: while the full-screen clock is up it carries
+			    its own, and the strip behind a modal dialog is not read out. */}
+			{clockOpen ? null : <SegmentAnnouncer reading={reading} />}
+			<p id={readingId} className="sr-only">
+				{spokenReading(reading)}
+			</p>
+
+			{/* THE STRIP (#110): one line. Running, it is the segment's colour, as
+			    the full-screen clock is, so a glance at the top of Train reads the
+			    same way a glance at the wall does. Stopped, it is a panel. The
+			    number is the way into the full-screen clock — underlined, because a
+			    number that opens something has to say so — and before the start
+			    the whole name is, landing on the ready state. Left and total, the
+			    shape line and Reset are gone from here: Reset lives on the paused
+			    clock, the shape on its ready state. */}
+			<div
+				className={cn(
+					'flex min-h-[72px] items-center gap-2.5 rounded-2xl py-2 pr-2 pl-4',
+					!running && 'border border-line bg-panel',
+				)}
+				style={running ? { background: accent, color: 'var(--bg)' } : undefined}
+			>
+				{resting ? (
+					// Named for what it does, like the number it stands in for while
+					// nothing counts; what it shows — the name and the shape — is in its
+					// description, so the label takes nothing away (`component-
+					// vocabulary.md`: a label replaces content, it does not add to it).
+					<button
+						type="button"
+						onClick={() => showClock(true)}
+						aria-label={m.timer_fullscreen()}
+						aria-describedby={`${nameId} ${readingId}`}
+						className="flex min-w-0 flex-1 items-center gap-2 self-stretch text-left"
+					>
+						<span id={nameId} className="flex min-w-0 flex-1 flex-col gap-1">
+							<span className="truncate text-[15px] font-semibold text-ink">
+								{titled && label ? <span className="sr-only">{m.timer_title()} · </span> : null}
+								{name}
+							</span>
+							<span className="truncate text-[13px] text-ink-dim">
+								{run.segment === 'done' ? m.timer_done() : protocolShape(config)} · {clock(total)}
+							</span>
+						</span>
+						<ChevronRight size={18} aria-hidden="true" className="shrink-0 text-ink-faint" />
+					</button>
+				) : (
+					<>
+						<span className="flex min-w-0 flex-1 flex-col gap-1.5">
+							<span
+								className="display truncate text-[17px] leading-none font-bold tracking-[0.05em] uppercase"
+								style={running ? undefined : { color: accent }}
+							>
+								{SEGMENT_LABEL[run.segment]()}
+							</span>
+							<span
+								className={cn(
+									'display truncate text-[15px] leading-none font-semibold tracking-[0.03em] uppercase',
+									!running && 'text-ink-dim',
+								)}
+							>
+								{counted(run) ? positionOf(reading) : ''}
+							</span>
+						</span>
+						{/* A fixed slot, right-aligned: `3` and `2:30` end at the same
+						    edge, so neither the labels nor the button beside it move as
+						    the count crosses ten or a minute (#110's critique: Start
+						    jumped 28px). */}
+						<button
+							type="button"
+							onClick={() => showClock(true)}
+							aria-label={m.timer_fullscreen()}
+							aria-describedby={readingId}
+							className="display min-w-[5.75rem] shrink-0 text-right text-[56px] leading-[0.9] font-bold underline decoration-2 underline-offset-[6px]"
+							style={running ? undefined : { color: 'var(--ink)' }}
+						>
+							{faceOf(shown).whole}
+						</button>
+					</>
+				)}
+				<button
+					type="button"
+					onClick={toggle}
+					// Underway, the toggle is a 52px square either way — Pause on the
+					// field, Resume in vermilion — so pausing never moves the number
+					// beside it. Only before the start, when there is no number, does it
+					// carry its word.
+					className={
+						running
+							? 'flex size-[52px] shrink-0 items-center justify-center rounded-[14px] bg-bg'
+							: button({
+									kind: 'primary',
+									size: 'touch',
+									class: cn(
+										'min-h-[52px] shrink-0 rounded-[14px]',
+										resting ? 'px-4' : 'w-[52px] px-0',
+									),
+								})
+					}
+					style={running ? { color: accent } : undefined}
+				>
+					{running ? (
+						<>
+							<Pause size={22} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+							<span className="sr-only">{m.btn_pause()}</span>
+						</>
+					) : (
+						<>
+							<Play
+								size={resting ? 16 : 22}
+								fill="currentColor"
+								strokeWidth={0}
+								aria-hidden="true"
+							/>
+							<span className={resting ? undefined : 'sr-only'}>
+								{underway(run) ? m.btn_resume() : m.btn_start()}
+							</span>
+						</>
+					)}
+				</button>
+			</div>
 		</div>
 	);
 }

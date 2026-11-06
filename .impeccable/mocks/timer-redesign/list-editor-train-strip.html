@@ -1,0 +1,153 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:28px 24px;justify-items:center;padding:8px 0}
+  figure{margin:0;display:flex;flex-direction:column;gap:10px;align-items:center}
+  figcaption{font:500 13px/1.35 var(--font-sans,'Inter');color:var(--muted-foreground);text-align:center;max-width:330px}
+  figcaption b{color:var(--foreground);font-weight:600}
+  .phone{
+    --bg:#07080a;--panel:#232629;--panel-2:#2b2f32;--panel-3:#33373b;--line:#474c51;--line-soft:#34383c;
+    --ink:#f1f2f2;--ink-dim:#b6bbc0;--ink-faint:#959ba1;
+    --flag:#ff5a2c;--teal:#3fd0c9;--gold:#e9b445;--violet:#9b8cff;
+    width:330px;height:716px;border-radius:34px;overflow:hidden;position:relative;
+    background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;
+    box-shadow:0 0 0 1px #2c3034,0 18px 40px -18px rgba(0,0,0,.7);
+    display:flex;flex-direction:column;
+  }
+  .num{font-family:'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum";letter-spacing:0}
+  svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  svg.i.fill{fill:currentColor;stroke:none}
+  .sb{height:30px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font:600 12px/1 'Inter';color:inherit;opacity:.9}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font:600 15px/1 'Inter';min-height:44px;min-width:44px;padding:0 14px;box-sizing:border-box}
+  .btn.sq{padding:0;width:44px}
+  .btn.bare{border-color:transparent;background:transparent}
+  .primary{background:var(--flag);border-color:var(--flag);color:var(--bg)}
+</style>
+<script>
+const I={
+x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+dots:'<circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/><circle cx="5" cy="12" r="1.4" fill="currentColor"/>',
+plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',minus:'<path d="M5 12h14"/>',
+play:'<path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/>',
+pause:'<rect x="6" y="4" width="4.5" height="16" rx="1.2" fill="currentColor" stroke="none"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2" fill="currentColor" stroke="none"/>',
+next:'<path d="M5 5.5v13a1 1 0 0 0 1.55.83l9.5-6.5a1 1 0 0 0 0-1.66l-9.5-6.5A1 1 0 0 0 5 5.5z" fill="currentColor" stroke="none"/><path d="M19 5v14" stroke-width="2.4"/>',
+prev:'<path d="M19 5.5v13a1 1 0 0 1-1.55.83l-9.5-6.5a1 1 0 0 1 0-1.66l9.5-6.5A1 1 0 0 1 19 5.5z" fill="currentColor" stroke="none"/><path d="M5 5v14" stroke-width="2.4"/>',
+reset:'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+right:'<path d="m9 18 6-6-6-6"/>',down:'<path d="m6 9 6 6 6-6"/>',back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+ext:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+timer:'<path d="M10 2h4"/><path d="m12 14 3-3"/><circle cx="12" cy="14" r="8"/>',
+sliders:'<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',
+menu:'<path d="M4 6h16M4 12h16M4 18h16"/>'};
+addEventListener('DOMContentLoaded',()=>document.querySelectorAll('i[data-i]').forEach(e=>{const s=e.dataset.s||20;e.outerHTML=`<svg class="i" viewBox="0 0 24 24" style="width:${s}px;height:${s}px" aria-hidden="true">${I[e.dataset.i]}</svg>`}));
+</script>
+<style>.dot{width:10px;height:10px;border-radius:50%;flex:none}</style></head><body>
+<style>
+.appbar{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 12px 0 20px;flex:none}
+.brand{font:700 13px 'Inter';letter-spacing:.02em}
+.ttl{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 6px 20px}
+.ttl h1{margin:0;font:650 26px/1.1 'Inter';letter-spacing:-.015em}
+.list{padding:0 16px;display:flex;flex-direction:column;overflow:hidden;flex:1}
+.h2{font:600 14px 'Inter';color:var(--ink-dim);margin:18px 4px 8px}
+.roww{display:flex;gap:6px;align-items:stretch;margin-bottom:6px}
+.row{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border-radius:12px;background:var(--panel);padding:10px 14px;min-height:56px;box-sizing:border-box}
+.row .t{flex:1;min-width:0}
+.row .n{font:600 16px/1.25 'Inter';display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.row .s{font:500 13px/1.3 'Inter';color:var(--ink-dim);margin-top:2px}
+.row .d{font:600 22px/1 'Barlow Condensed';font-variant-numeric:tabular-nums}
+.more{width:44px;border-radius:12px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-dim);flex:none;box-sizing:border-box}
+.grp{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 4px;border-bottom:1px solid var(--line-soft);font:600 15px 'Inter'}
+.grp .c{margin-left:auto;font:500 13px 'Inter';color:var(--ink-dim)}
+.grp svg{color:var(--ink-dim)}
+.newp{align-self:flex-start;margin:4px 0 0}
+.mini{position:absolute;left:10px;right:10px;bottom:14px;height:64px;border-radius:16px;background:var(--flag);color:var(--bg);display:flex;align-items:center;gap:12px;padding:0 8px 0 16px;box-shadow:0 10px 30px -8px rgba(0,0,0,.8)}
+.mini .sg{font:700 17px/1 'Barlow Condensed';letter-spacing:.05em;text-transform:uppercase}
+.mini .dg{font:700 44px/1 'Barlow Condensed';font-variant-numeric:tabular-nums;margin-left:auto}
+.mini .rs{font:600 15px/1.1 'Barlow Condensed';letter-spacing:.03em;text-transform:uppercase;text-align:right}
+.mini .pb{width:48px;height:48px;border-radius:12px;background:var(--bg);color:var(--flag);display:flex;align-items:center;justify-content:center}
+/* train */
+.strip{margin:6px 12px 0;border-radius:16px;background:var(--teal);color:var(--bg);display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;min-height:72px;box-sizing:border-box}
+.strip .lab{display:flex;flex-direction:column;gap:4px}
+.strip .sg{font:700 17px/1 'Barlow Condensed';letter-spacing:.05em;text-transform:uppercase}
+.strip .rs{font:600 15px/1 'Barlow Condensed';letter-spacing:.03em;text-transform:uppercase}
+.strip .dg{font:700 56px/.9 'Barlow Condensed';font-variant-numeric:tabular-nums;margin-left:auto;min-width:64px;text-align:right;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px}
+.strip .pb{width:52px;height:52px;border-radius:14px;background:var(--bg);color:var(--teal);display:flex;align-items:center;justify-content:center;flex:none}
+.card{margin:14px 12px 0;border-radius:14px;background:var(--panel);padding:14px}
+.card h3{margin:0;font:600 16px 'Inter'}
+.card .sub{font:500 13px 'Inter';color:var(--ink-dim);margin-top:3px}
+.setrow{display:grid;grid-template-columns:28px 1fr 1fr 48px;gap:8px;align-items:center;margin-top:10px}
+.setrow .k{font:600 13px 'Inter';color:var(--ink-dim)}
+.cell{height:44px;border-radius:10px;background:var(--panel-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:600 20px 'Barlow Condensed'}
+.chk{height:44px;border-radius:10px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.chk.on{background:var(--teal);border-color:var(--teal);color:var(--bg)}
+/* editor */
+.ehead{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 0}
+.ehead h1{font:650 17px 'Inter';margin:0}
+.ebody{padding:0 20px;flex:1;overflow:hidden}
+.fld{margin-top:10px}
+.fld label{font:600 13px 'Inter';color:var(--ink-dim)}
+.inp{margin-top:6px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--panel);display:flex;align-items:center;padding:0 14px;font:500 16px 'Inter';color:var(--ink-faint, #959ba1)}
+.eg{margin-top:12px}
+.eg .gh{font:600 13px 'Inter';color:var(--ink-dim);display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.er{display:flex;align-items:center;gap:8px;min-height:54px;border-bottom:1px solid var(--line-soft)}
+.er .l{flex:1;min-width:0;font:500 15px/1.2 'Inter';overflow-wrap:anywhere}
+.st{width:48px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--panel);display:flex;align-items:center;justify-content:center;flex:none;box-sizing:border-box}
+.er .v{min-width:62px;text-align:center;font:600 32px/1 'Barlow Condensed';font-variant-numeric:tabular-nums}
+.er .v small{font-size:18px;color:var(--ink-dim);margin-left:1px}
+.efoot{display:flex;align-items:baseline;justify-content:space-between;padding:8px 20px 16px;border-top:1px solid var(--line-soft)}
+.efoot span:first-child{font:500 14px 'Inter';color:var(--ink-dim)}
+.efoot .num{font-size:36px;font-weight:600}
+</style>
+<div class="board">
+<figure><div class="phone">
+<div class="sb"><span>9:41</span><span>●●●</span></div>
+<div class="appbar"><span class="brand">SEND LAB</span><span class="btn sq bare" style="border-color:transparent;background:transparent"><i data-i="menu"></i></span></div>
+<div class="ttl"><h1>Timer</h1><span class="btn sq"><i data-i="sliders" data-s="18"></i></span></div>
+<div class="list">
+<div class="roww" style="margin-top:6px"><div class="row"><i data-i="timer"></i><div class="t"><div class="n">Cronômetro</div></div><i data-i="right" data-s="18"></i></div></div>
+<div class="h2">Salvos</div>
+<div class="roww"><div class="row"><div class="t"><div class="n">Hangboard · 1 braço ~20mm (2)</div><div class="s">4 × 4s/5s · 3 séries</div></div><span class="d">7:43</span></div><span class="more"><i data-i="dots"></i></span></div>
+<div class="roww"><div class="row"><div class="t"><div class="n">6 × 7s/3s · 6 séries</div><div class="s">sem nome</div></div><span class="d">19:40</span></div><span class="more"><i data-i="dots"></i></span></div>
+<span class="btn newp"><i data-i="plus" data-s="16"></i>Novo protocolo</span>
+<div class="h2">Recentes</div>
+<div class="roww"><div class="row"><div class="t"><div class="n">7/3 · 20mm half-crimp + mão aberta</div><div class="s">6 × 7s/3s · 4 séries</div></div><span class="d">12:58</span></div><span class="more"><i data-i="dots"></i></span></div>
+<div class="h2">Predefinidos</div>
+<div class="grp"><i data-i="right" data-s="16"></i>Recruitment Pulls<span class="c">2</span></div>
+<div class="grp"><i data-i="right" data-s="16"></i>Pinch Block<span class="c">3</span></div>
+<div class="grp"><i data-i="right" data-s="16"></i>Força de Punho / Sloper<span class="c">2</span></div>
+</div>
+<div class="mini"><div><div class="sg">Esforço</div><div class="rs" style="text-align:left;margin-top:4px">R 2/4 · S 1/3</div></div><span class="dg">4</span><span class="pb"><i data-i="pause" data-s="22"></i></span></div>
+</div><figcaption><b>Lista + mini barra.</b> O Cronômetro vira a primeira linha. Cada linha mostra nome, formato e duração; o ⋯ é um botão próprio, ao lado da linha. Os predefinidos ficam fechados por exercício. Com um relógio rodando, a barra fica no rodapé.</figcaption></figure>
+
+<figure><div class="phone">
+<div class="sb"><span>9:41</span><span>●●●</span></div>
+<div class="appbar"><span class="brand">SEND LAB</span><span class="btn sq" style="border-color:transparent;background:transparent"><i data-i="menu"></i></span></div>
+<div class="ttl" style="padding-bottom:4px"><h1 style="font-size:22px">Treino · Quinta</h1><span style="font:500 13px Inter;color:var(--ink-dim)">4/12 séries</span></div>
+<div class="strip"><div class="lab"><span class="sg">Descanso</span><span class="rs">Rodada 2/6 · Série 2/4</span></div><span class="dg">3</span><span class="pb"><i data-i="pause" data-s="22"></i></span></div>
+<div class="card"><h3>Repeaters 7/3</h3><div class="sub">20mm half-crimp · 4 séries</div>
+<div class="setrow"><span class="k">1</span><span class="cell">+5 kg</span><span class="cell">6/6</span><span class="chk on"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M20 6 9 17l-5-5"/></svg></span></div>
+<div class="setrow"><span class="k">2</span><span class="cell">+5 kg</span><span class="cell">—</span><span class="chk"></span></div>
+<div class="setrow"><span class="k">3</span><span class="cell">+5 kg</span><span class="cell">—</span><span class="chk"></span></div>
+</div>
+<div class="card"><h3>Pinch block</h3><div class="sub">3 séries · 9s</div></div>
+</div><figcaption><b>Faixa do /train.</b> Uma linha só, com o fundo na cor do segmento, o número grande e Rodada/Série. Tocar no número abre a tela cheia. O ajuste do protocolo vai para a tela do relógio, no estado Pronto. Os cards de séries aqui são só contexto: este redesign não mexe neles.</figcaption></figure>
+
+<figure><div class="phone">
+<div class="sb"><span>9:41</span><span>●●●</span></div>
+<div class="ehead"><span class="btn sq"><i data-i="x"></i></span><h1>Editar protocolo</h1><span class="btn primary">Salvar</span></div>
+<div class="ebody">
+<div class="fld"><label>Nome (opcional)</label><div class="inp" style="color:var(--ink)">Hangboard · 1 braço ~20mm (2)</div></div>
+<div class="eg"><div class="er"><span class="dot" style="background:var(--gold)"></span><span class="l">Preparar</span><span class="st"><i data-i="minus"></i></span><span class="v">10<small>s</small></span><span class="st"><i data-i="plus"></i></span></div></div>
+<div class="eg"><div class="gh">Bloco</div>
+<div class="er"><span class="dot" style="background:var(--flag)"></span><span class="l">Esforço</span><span class="st"><i data-i="minus"></i></span><span class="v">4<small>s</small></span><span class="st"><i data-i="plus"></i></span></div>
+<div class="er"><span class="dot" style="background:var(--teal)"></span><span class="l">Descanso</span><span class="st"><i data-i="minus"></i></span><span class="v">5<small>s</small></span><span class="st"><i data-i="plus"></i></span></div>
+<div class="er"><span class="dot" style="background:transparent"></span><span class="l">Rodadas</span><span class="st"><i data-i="minus"></i></span><span class="v">4</span><span class="st"><i data-i="plus"></i></span></div></div>
+<div class="eg"><div class="gh">Séries</div>
+<div class="er"><span class="dot" style="background:transparent"></span><span class="l">Séries</span><span class="st"><i data-i="minus"></i></span><span class="v">3</span><span class="st"><i data-i="plus"></i></span></div>
+<div class="er"><span class="dot" style="background:var(--teal)"></span><span class="l">Descanso entre</span><span class="st"><i data-i="minus"></i></span><span class="v">3:00</span><span class="st"><i data-i="plus"></i></span></div></div>
+<div class="eg"><div class="er" style="border-bottom:0"><span class="dot" style="background:var(--violet)"></span><span class="l">Desaque&shy;cimento</span><span class="st"><i data-i="minus"></i></span><span class="v" style="color:var(--ink-dim)">0<small>s</small></span><span class="st"><i data-i="plus"></i></span></div></div>
+</div>
+<div class="efoot"><span>Total</span><span class="num">7:43</span></div>
+</div><figcaption><b>Editor em tela própria.</b> As linhas seguem a ordem de execução, com o valor grande e − / + de 48px. Tocar no número abre o teclado. A partir de 60s o tempo aparece como 3:00. O nome é opcional e a cópia ganha um nome curto, com "(2)".</figcaption></figure>
+</div>
+</body></html>

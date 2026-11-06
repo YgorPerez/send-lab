@@ -481,34 +481,39 @@ describe('the full-screen clock on Train', () => {
 			press(labelled(host, 'Full-screen clock'));
 			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
 			if (!clock) throw new Error('the full-screen clock did not open');
-			const skip = labelled(clock, 'Skip to the next segment');
-			const back = labelled(clock, 'Back a segment');
-			// Named for a screen reader, and big enough for a chalky finger: 56px.
-			for (const control of [skip, back]) {
-				expect(control).toBeTruthy();
-				expect(control?.className).toContain('h-14');
-				expect(control?.className).toContain('w-14');
-			}
-			// Nothing to jump within before the clock has started.
-			expect(skip?.disabled).toBe(true);
-			expect(back?.disabled).toBe(true);
+			// Before the start it is the ready state (#110): one Start, and nothing
+			// to jump within, so no skip or back at all.
+			expect(labelled(clock, 'Skip to the next segment')).toBeNull();
+			expect(labelled(clock, 'Back a segment')).toBeNull();
 
 			press(worded(clock, 'Start'));
 			press(worded(clock, 'Pause'));
+			// Paused, Reset stands where skip was (#110): it only exists while
+			// nothing counts, so a slip mid-hang cannot throw the run away.
+			expect(labelled(clock, 'Skip to the next segment')).toBeNull();
+			const back = labelled(clock, 'Back a segment');
+			// Named for a screen reader, and big enough for a chalky finger: 64px.
+			for (const control of [back, labelled(clock, 'Reset')]) {
+				expect(control).toBeTruthy();
+				expect(control?.className).toContain('size-16');
+			}
 			const first = clock.getAttribute('aria-label');
-			// The "Next up" line names the segment a skip has to land on.
-			const line = [...clock.querySelectorAll('span')].find(
-				(el) => !el.closest('.sr-only') && el.textContent?.startsWith('Next up'),
-			);
-			const next = line?.querySelector('span')?.textContent;
+			// The reading says what a skip has to land on.
+			const spoken = [...clock.querySelectorAll('.sr-only')]
+				.map((el) => el.textContent ?? '')
+				.find((text) => text.includes('Next up: '));
+			const next = spoken?.split('Next up: ')[1];
 			expect(next).toBeTruthy();
 			expect(next).not.toBe(first);
 
-			press(skip);
+			// Skip lives in the running row; run, skip, and pause again.
+			press(worded(clock, 'Resume'));
+			press(labelled(clock, 'Skip to the next segment'));
+			press(worded(clock, 'Pause'));
 			expect(clock.getAttribute('aria-label')).toBe(next);
-			// Paused before the jump, paused after it.
-			expect(worded(clock, 'Start')).toBeTruthy();
-			press(back);
+			// Paused after the jump, and it offers to resume, never to start over.
+			expect(worded(clock, 'Resume')).toBeTruthy();
+			press(labelled(clock, 'Back a segment'));
 			expect(clock.getAttribute('aria-label')).toBe(first);
 		} finally {
 			act(() => root.unmount());
@@ -536,7 +541,8 @@ describe('the Timer screen runs one clock at a time', () => {
 	const strip = (host: ParentNode, fullScreen: string) => {
 		const el = host
 			.querySelector(`button[aria-label="${fullScreen}"]`)
-			?.closest<HTMLElement>('.rounded-lg');
+			// The protocol strip is #110's one-line strip; the stopwatch's a panel.
+			?.closest<HTMLElement>('.rounded-2xl, .rounded-lg');
 		if (!el) throw new Error(`no strip holds "${fullScreen}"`);
 		return el;
 	};
@@ -575,7 +581,8 @@ describe('the Timer screen runs one clock at a time', () => {
 			close();
 
 			press(worded(host, 'Protocols'));
-			press(worded(protocol, 'Start'));
+			// Paused by the stopwatch, so it resumes (#110: never "Start" mid-run).
+			press(worded(protocol, 'Resume'));
 			expect(runs(protocol)).toBe(true);
 			expect(runs(stopwatch)).toBe(false);
 			// Paused, not reset: it offers to resume what it counted, never Start.
@@ -730,7 +737,8 @@ describe('a clock restored paused', () => {
 			// Back where it was left, paused, rather than idle: the test is about a
 			// restored place, not a fresh clock.
 			expect(document.body.textContent).toContain('Prepare');
-			expect(worded(document, 'Start')).toBeTruthy();
+			// Paused mid-run, so it offers to resume, never to start over (#110).
+			expect(worded(document, 'Resume')).toBeTruthy();
 			expect(vibrate).not.toHaveBeenCalled();
 		} finally {
 			act(() => second.unmount());
@@ -759,11 +767,13 @@ describe('the Timer screen keeps each protocol’s place', () => {
 		[...document.querySelectorAll<HTMLButtonElement>('main button[aria-pressed]')].filter((b) =>
 			b.querySelector('.num'),
 		);
-	const stripLabel = () =>
+	const stripOf = () =>
 		document
-			.querySelector('button[aria-label="Full-screen clock"]')
-			?.closest('.rounded-lg')
-			?.querySelector('.uppercase')?.textContent ?? '';
+			.querySelector('main button[aria-label="Full-screen clock"]')
+			?.closest<HTMLElement>('.rounded-2xl') ?? null;
+	/** The segment the strip says it is in — nothing before the start, when the
+	 *  strip names the protocol instead (#110). */
+	const stripLabel = () => stripOf()?.querySelector('.uppercase')?.textContent ?? '';
 
 	test('a protocol left paused is still paused there after running another', async () => {
 		const router = createRouter({
@@ -790,11 +800,12 @@ describe('the Timer screen keeps each protocol’s place', () => {
 			press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
 
 			press(second);
-			expect(stripLabel()).toBe('Ready');
+			expect(stripLabel()).toBe('');
+			expect(worded(stripOf() ?? document, 'Start')).toBeTruthy();
 			press(rows()[0]);
 			expect(stripLabel()).toBe(left);
 			// Paused, as every restored clock is.
-			expect(worded(document, 'Start')).toBeTruthy();
+			expect(worded(stripOf() ?? document, 'Resume')).toBeTruthy();
 		} finally {
 			act(() => root.unmount());
 		}
