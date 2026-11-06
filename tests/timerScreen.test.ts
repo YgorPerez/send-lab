@@ -59,6 +59,7 @@ const type = (field: HTMLInputElement | null, value: string) => {
 	expect(field, 'field to type in').toBeTruthy();
 	const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
 	act(() => {
+		field?.focus();
 		set?.call(field, value);
 		field?.dispatchEvent(new Event('input', { bubbles: true }));
 	});
@@ -90,38 +91,35 @@ describe('making a saved protocol on the Timer screen', () => {
 			await press(worded(host, 'New protocol'));
 			const editor = document.querySelector<HTMLElement>('[role="dialog"]');
 			if (!editor) throw new Error('the editor did not open');
-			expect(editor.textContent).toContain('New saved protocol');
-			// It opens on a protocol that runs, with no name yet — and says nothing
-			// about the name until the athlete has had the chance to type one.
-			expect(fieldOf(editor, 'Work (s)')?.value).toBe('10');
-			expect(fieldOf(editor, 'Name')?.getAttribute('aria-invalid')).toBe('false');
-			// The numbers already make a protocol, so it is said back before any
-			// name is typed: one 10s effort after 10s of prepare.
-			expect(editor.textContent).toContain('10s · 0:20');
+			expect(editor.textContent).toContain('New protocol');
+			// It opens on a protocol that runs, with no name — which is allowed
+			// (#112): the empty name shows the shape the protocol will be listed
+			// under, and the total is said under the rows.
+			expect(fieldOf(editor, 'Work')?.value).toBe('10s');
+			expect(fieldOf(editor, 'Name (optional)')?.placeholder).toBe('10s');
+			expect(editor.querySelector('footer')?.textContent).toContain('0:20');
 
-			// No work: refused beside the field as soon as it is typed.
-			type(fieldOf(editor, 'Work (s)'), '0');
-			expect(fieldOf(editor, 'Work (s)')?.getAttribute('aria-invalid')).toBe('true');
+			// No work: refused under its row as soon as it is typed.
+			type(fieldOf(editor, 'Work'), '0');
+			expect(fieldOf(editor, 'Work')?.getAttribute('aria-invalid')).toBe('true');
 			expect(editor.textContent).toContain('Whole seconds, 1 or more');
 
-			// Save with nothing named and no work: nothing is written, and the name
-			// is now asked for too.
+			// Save with no work: nothing is written, and the athlete is put where
+			// the fix is.
+			fieldOf(editor, 'Name (optional)')?.focus();
 			await press(worded(editor, 'Save'));
 			expect(saved()).toHaveLength(before);
-			expect(fieldOf(editor, 'Name')?.getAttribute('aria-invalid')).toBe('true');
-			expect(editor.textContent).toContain('Give it a name');
-			// And the athlete is put where the fix is.
-			expect(document.activeElement).toBe(fieldOf(editor, 'Name'));
+			expect(document.activeElement).toBe(fieldOf(editor, 'Work'));
 
-			type(fieldOf(editor, 'Name'), 'Hangboard finisher');
-			type(fieldOf(editor, 'Work (s)'), '20');
-			type(fieldOf(editor, 'Rest (s)'), '10');
+			type(fieldOf(editor, 'Name (optional)'), 'Hangboard finisher');
+			type(fieldOf(editor, 'Work'), '20');
+			type(fieldOf(editor, 'Rest'), '10');
 			type(fieldOf(editor, 'Rounds'), '8');
-			type(fieldOf(editor, 'Cooldown (s)'), '120');
-			// What is typed, said back as the list will say it: 10 + 8 × 20 +
-			// 7 × 10 + 120 = 6:00. And the cooldown, read back in minutes.
-			expect(editor.textContent).toContain('8 × 20s/10s · 2:00 cooldown · 6:00');
+			// A cooldown typed in seconds is read back in minutes while it is typed.
+			type(fieldOf(editor, 'Cooldown'), '120');
 			expect(editor.textContent).toContain('= 2:00');
+			// 10 + 8 × 20 + 7 × 10 + 120 = 6:00.
+			expect(editor.querySelector('footer')?.textContent).toContain('6:00');
 			await press(worded(editor, 'Save'));
 
 			expect(saved()).toHaveLength(before + 1);

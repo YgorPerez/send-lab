@@ -22,7 +22,7 @@ import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { variantOf } from '$lib/prescription';
 import type { ExerciseStudy } from '$lib/progression';
-import type { Protocol, ProtocolField } from '$lib/protocol';
+import type { Protocol } from '$lib/protocol';
 import type { AppLocale } from '$lib/store/locale';
 import type { Confidence } from '$lib/strength';
 import type { WorkingLoadSource } from '$lib/types';
@@ -239,19 +239,6 @@ export function stopwatchClock(ms: number, locale: AppLocale): { whole: string; 
 }
 
 const DECIMAL_MARK: Record<AppLocale, string> = { 'en-US': '.', 'pt-BR': ',' };
-
-/** What each protocol field is called where it is typed in — Train's clock
- *  setup and the saved-protocol editor. A record over the fields rather than a
- *  list, so a field added to the protocol does not compile until it is named. */
-export const FIELD_LABEL: Record<ProtocolField, () => string> = {
-	prepare: m.timer_prepare_s,
-	work: m.timer_work_s,
-	rest: m.timer_rest_s,
-	rounds: m.timer_rounds,
-	sets: m.timer_sets,
-	setRest: m.timer_setrest_s,
-	cooldown: m.timer_cooldown_s,
-};
 
 /** The five wellness dimensions, in the order the readiness score reads them. */
 export const WELLNESS_LABEL: Record<string, () => string> = {

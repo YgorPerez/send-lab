@@ -1,18 +1,22 @@
-// The saved-protocol editor (#104): a name and the seven numbers, typed in,
-// refused beside the field when they cannot run.
+// The saved-protocol editor (#104, redrawn by #112): a name if the athlete wants
+// one, and the seven numbers as rows, refused under their row when they cannot
+// run.
 //
-// A sheet, like the injury self-check, rather than fields opened in the list: a
-// protocol is edited once in a while and read every session, so the list stays a
-// list, and the sheet can give each field a full label and room for the line that
-// says what is wrong with it. pt-BR's "Desaquecimento (s)" does not fit a
-// three-column grid at 360px, so the fields go two to a row — paired the way
-// the shape string reads them: work and rest, rounds and sets, the set rest and
-// the cooldown, then prepare.
+// ITS OWN SCREEN
+// --------------
+// It was a bottom sheet over a blacked-out list. #112 made it a screen: the
+// whole viewport, ✕ and Save at the top where a thumb finds them before the
+// keyboard covers the bottom half, and nothing behind it to tap by mistake. It
+// is still a dialog underneath — a modal that takes focus, closes on Escape and
+// gives it back — because that is what a screen opened over the list and
+// dismissed back to it is; only the host's shape changed, not how it is opened.
+// `EditorTarget` stays the way in: new or edit, from the list.
 //
-// The footer says the protocol back in the list's own words — `8 × 20s/10s ·
-// 2:00 cooldown · 6:00` — as it is typed, so the sheet is a preview of the row
-// it will make. A time field past a minute reads itself back in minutes under
-// the input (`= 2:00`): a cooldown is minutes, typed as seconds.
+// The rows are `ProtocolRows`, in the order a run goes, with − / + beside each
+// value; `/train`'s Adjust uses the same rows. The name is optional: left
+// empty, the protocol is listed under its shape, and the empty field says so by
+// showing that shape as its placeholder. The total sits under the rows, said
+// the way the clock's ready state says it.
 //
 // WHAT IT DECIDES, AND WHAT IT DOES NOT
 // -------------------------------------
@@ -20,35 +24,21 @@
 // read model, where a test can reach it. What is left here is holding what was
 // typed — as text, so a field being cleared is not turned into a `0` under the
 // cursor — and when to say what is wrong: a field the athlete has touched says so
-// at once, and the rest wait for Save, so a blank new protocol does not open
-// covered in complaints about a name nobody has had the chance to type yet.
+// at once, and the rest wait for Save.
 //
 // Writing is the caller's (`onSave`), because a new protocol and an edited one
 // are different writes and the screen also has to point the clock at the result.
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
-import { type FormEvent, type ReactNode, useId, useState } from 'react';
-import { clock, FIELD_LABEL, protocolShape } from '$lib/format';
+import { type FormEvent, useId, useState } from 'react';
+import { clock, protocolShape } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
-import { PROTOCOL_MINIMUM, type Protocol, type ProtocolField, totalOf } from '$lib/protocol';
+import { getLocale } from '$lib/paraglide/runtime';
+import { type Protocol, type ProtocolField, totalOf } from '$lib/protocol';
 import { formOf, type ProtocolForm, readProtocolForm } from '$lib/screens/timer';
 import type { NamedProtocol } from '$lib/types';
-import { cn } from '$lib/utils';
+import { ProtocolRows } from './ProtocolRows';
 import { button, input } from './ui/variants';
-
-/** The fields in the order the sheet pairs them, two to a row. */
-const EDITOR_ORDER: readonly ProtocolField[] = [
-	'work',
-	'rest',
-	'rounds',
-	'sets',
-	'setRest',
-	'cooldown',
-	'prepare',
-];
-
-/** The counts, as against the seconds: their refusal says "number", not "seconds". */
-const COUNTS: ReadonlySet<ProtocolField> = new Set(['rounds', 'sets']);
 
 /** What the editor is open on: a protocol to make, or one to change. */
 export type EditorTarget = { kind: 'new'; protocol: Protocol } | ({ kind: 'edit' } & NamedProtocol);
@@ -61,20 +51,19 @@ export function ProtocolEditor({
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	/** Kept by the caller while the sheet closes, so its title does not change
+	/** Kept by the caller while the screen closes, so its title does not change
 	 *  under the closing animation. */
 	target: EditorTarget | null;
-	/** Writes the protocol. The sheet stays up, its Save spent, until it resolves. */
+	/** Writes the protocol. The screen stays up, its Save spent, until it resolves. */
 	onSave: (named: NamedProtocol) => Promise<void>;
 }) {
 	return (
-		// Not closed by a tap outside it: on a phone the dimmed clock above the
-		// sheet is where a resting thumb lands, and that tap would throw away
-		// everything typed. Cancel, the close button and Escape still close it.
-		<Dialog.Root open={open} onOpenChange={onOpenChange} disablePointerDismissal>
+		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
-				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-				<Dialog.Popup className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-[520px] flex-col rounded-t-xl border border-line bg-panel transition-transform duration-250 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full">
+				{/* The whole viewport, opaque, so there is no backdrop to dim and nothing
+				    behind it to tap. It rises a little as it opens, rather than sliding
+				    the full height a sheet did. */}
+				<Dialog.Popup className="fixed inset-0 z-50 flex h-dvh w-dvw flex-col bg-bg text-ink transition-[opacity,translate] duration-200 data-[ending-style]:translate-y-4 data-[ending-style]:opacity-0 data-[starting-style]:translate-y-4 data-[starting-style]:opacity-0">
 					{target ? (
 						// Keyed on the opening, so each one starts from the protocol it was
 						// opened on rather than from whatever the last one left typed.
@@ -103,16 +92,19 @@ function EditorForm({
 	const [form, setForm] = useState<ProtocolForm>(() =>
 		formOf(target.kind === 'edit' ? target.name : '', target.protocol),
 	);
-	const [touched, setTouched] = useState<ReadonlySet<ProtocolField | 'name'>>(new Set());
+	const [touched, setTouched] = useState<ReadonlySet<ProtocolField>>(new Set());
 	const [attempted, setAttempted] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const reading = readProtocolForm(form);
-	const refused = new Set(reading.ok ? [] : reading.refused);
-	const shown = (f: ProtocolField | 'name') => refused.has(f) && (attempted || touched.has(f));
+	const refused = new Set(
+		reading.ok ? [] : reading.refused.filter((f) => attempted || touched.has(f)),
+	);
 	const id = useId();
 
-	const touch = (f: ProtocolField | 'name') =>
+	const change = (f: ProtocolField, text: string) => {
+		setForm((prev) => ({ ...prev, fields: { ...prev.fields, [f]: text } }));
 		setTouched((prev) => (prev.has(f) ? prev : new Set(prev).add(f)));
+	};
 
 	const submit = async (e: FormEvent) => {
 		e.preventDefault();
@@ -134,157 +126,80 @@ function EditorForm({
 	};
 
 	const title = target.kind === 'new' ? m.timer_editor_new() : m.timer_editor_edit();
-	// What is typed, said back, while the numbers make a protocol — with or
-	// without a name yet; a dash while they do not, rather than the total of
-	// whichever numbers happen to parse.
-	const protocol = reading.protocol;
-	const summary = protocol ? `${protocolShape(protocol)} · ${clock(totalOf(protocol))}` : '–';
+	// The total while the numbers make a protocol; a dash while they do not,
+	// rather than the total of whichever numbers happen to parse.
+	const protocol = reading.ok ? reading.protocol : null;
+	// What an unnamed protocol is listed under, as the empty name's placeholder.
+	// The numbers it was opened on while the typed ones do not read.
+	const shape = protocolShape(protocol ?? target.protocol, getLocale());
 
 	return (
-		<form noValidate onSubmit={submit} className="flex min-h-0 flex-col">
-			<div className="flex items-start gap-2 border-b border-line px-3 py-2.5">
-				<Dialog.Title className="min-w-0 flex-1 pt-2.5 text-[15px] font-semibold text-ink">
-					{title}
-				</Dialog.Title>
+		<form noValidate onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+			{/* Three columns, the outer two equal, so the title sits on the screen's
+			    centre whatever width "Save" or "Salvar" takes. */}
+			<header className="mx-auto grid w-full max-w-[560px] grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 pt-4 pb-2">
 				<Dialog.Close
 					aria-label={m.btn_close()}
-					className={button({ kind: 'quiet', class: 'size-11 shrink-0 px-0' })}
+					className={button({ size: 'touch', class: 'size-12 justify-self-start px-0' })}
 				>
-					<X size={17} />
+					<X size={22} />
 				</Dialog.Close>
-			</div>
-
-			<div className="flex flex-1 flex-col gap-3.5 overflow-y-auto px-3 py-3">
-				<Field
-					id={`${id}-name`}
-					label={m.timer_name()}
-					problem={shown('name') ? m.timer_name_missing() : null}
+				<Dialog.Title className="text-center text-[17px] leading-tight font-semibold text-ink">
+					{title}
+				</Dialog.Title>
+				<button
+					type="submit"
+					disabled={saving}
+					className={button({ kind: 'primary', size: 'touch', class: 'justify-self-end' })}
 				>
-					{(props) => (
+					{m.btn_save()}
+				</button>
+			</header>
+
+			<div className="flex-1 overflow-y-auto">
+				<div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 px-5 pt-2 pb-6">
+					<div className="flex flex-col gap-1.5">
+						<label htmlFor={`${id}-name`} className="text-[13px] font-semibold text-ink-dim">
+							{m.timer_name()}
+						</label>
 						<input
-							{...props}
+							id={`${id}-name`}
 							type="text"
 							autoComplete="off"
-							enterKeyHint="next"
+							enterKeyHint="done"
+							placeholder={shape}
 							value={form.name}
 							onChange={(e) => {
 								const name = e.currentTarget.value;
 								setForm((prev) => ({ ...prev, name }));
 							}}
-							onBlur={() => touch('name')}
-							className={input({ align: 'left', class: 'aria-invalid:border-stop' })}
+							className={input({
+								align: 'left',
+								// Proportional figures: the recipe's tabular ones are for numbers,
+								// and in a name they space "Warm-up" out as "Warm - up".
+								class: 'min-h-12 rounded-xl bg-panel px-3.5 normal-nums placeholder:text-ink-faint',
+							})}
 						/>
-					)}
-				</Field>
-
-				<div className="grid grid-cols-2 gap-x-2.5 gap-y-3">
-					{EDITOR_ORDER.map((f) => (
-						<Field
-							key={f}
-							id={`${id}-${f}`}
-							label={FIELD_LABEL[f]()}
-							problem={shown(f) ? refusalOf(f) : null}
-							hint={COUNTS.has(f) ? null : minutesOf(form.fields[f])}
-						>
-							{(props) => (
-								<input
-									{...props}
-									// Text rather than `number`: a number input reports "" for a
-									// stray minus and swallows "7.5" on some keyboards, and the
-									// athlete should see exactly what they typed beside the line
-									// that says what is wrong with it.
-									type="text"
-									inputMode="numeric"
-									autoComplete="off"
-									value={form.fields[f]}
-									onChange={(e) => {
-										const value = e.currentTarget.value;
-										setForm((prev) => ({ ...prev, fields: { ...prev.fields, [f]: value } }));
-										touch(f);
-									}}
-									className={input({ class: 'aria-invalid:border-stop' })}
-								/>
-							)}
-						</Field>
-					))}
+					</div>
+					<ProtocolRows id={id} fields={form.fields} refused={refused} onChange={change} />
 				</div>
 			</div>
 
-			<div className="flex flex-col gap-2 border-t border-line px-3 py-2.5">
-				<p className="num text-[12px] leading-snug text-ink-dim">
-					{m.timer_total()} <span className="text-chalk">{summary}</span>
-				</p>
-				<div className="flex flex-wrap justify-end gap-2">
-					<Dialog.Close className={button({ size: 'md', class: 'min-h-11' })}>
-						{m.btn_cancel()}
-					</Dialog.Close>
-					<button
-						type="submit"
-						disabled={saving}
-						className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
-					>
-						{m.btn_save()}
-					</button>
-				</div>
-			</div>
+			<footer className="mx-auto flex w-full max-w-[560px] items-baseline justify-between gap-3 border-t border-line-soft px-5 pt-2 pb-4">
+				<span className="text-[14px] font-medium text-ink-dim">{m.timer_total()}</span>
+				{protocol ? (
+					<span className="display text-[36px] leading-none font-semibold">
+						{clock(totalOf(protocol))}
+					</span>
+				) : (
+					// No total while a field cannot run, rather than the total of
+					// whichever numbers parse — a dash to the eye, words to a reader.
+					<span className="display text-[36px] leading-none font-semibold text-ink-faint">
+						<span aria-hidden="true">–</span>
+						<span className="sr-only">{m.timer_total_none()}</span>
+					</span>
+				)}
+			</footer>
 		</form>
-	);
-}
-
-/** What a refused field is told: a count is a number, everything else seconds. */
-function refusalOf(f: ProtocolField): string {
-	const min = PROTOCOL_MINIMUM[f];
-	return COUNTS.has(f) ? m.timer_field_count_min({ min }) : m.timer_field_seconds_min({ min });
-}
-
-/** `= 2:00` for a time field typed past a minute, or nothing. */
-function minutesOf(typed: string): string | null {
-	const t = typed.trim();
-	if (!/^\d+$/.test(t)) return null;
-	const seconds = Number(t);
-	return seconds >= 60 ? `= ${clock(seconds)}` : null;
-}
-
-/** One labelled input and, under it, what is wrong with it if anything is —
- *  otherwise the hint, if it has one. */
-function Field({
-	id,
-	label,
-	problem,
-	hint,
-	children,
-}: {
-	id: string;
-	label: string;
-	problem: string | null;
-	hint?: string | null;
-	children: (props: {
-		id: string;
-		'aria-invalid': boolean;
-		'aria-describedby': string | undefined;
-	}) => ReactNode;
-}) {
-	const problemId = `${id}-problem`;
-	const note = problem ?? hint ?? null;
-	return (
-		<div className="flex min-w-0 flex-col gap-1">
-			{/* Wraps rather than truncates: pt-BR runs longer. */}
-			<label htmlFor={id} className="text-[12px] leading-snug text-ink-dim">
-				{label}
-			</label>
-			{children({
-				id,
-				'aria-invalid': problem !== null,
-				'aria-describedby': note ? problemId : undefined,
-			})}
-			{note ? (
-				<p
-					id={problemId}
-					className={cn('text-[12px] leading-snug', problem ? 'text-stop' : 'num text-ink-dim')}
-				>
-					{note}
-				</p>
-			) : null}
-		</div>
 	);
 }

@@ -46,7 +46,7 @@ import {
 	useState,
 } from 'react';
 import { deliver, releaseCues } from '$lib/cues';
-import { clock, FIELD_LABEL, protocolShape } from '$lib/format';
+import { clock, protocolShape } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -59,6 +59,7 @@ import {
 	PROTOCOL_FIELDS,
 	PROTOCOL_MINIMUM,
 	type Protocol,
+	type ProtocolField,
 	planCues,
 	type Run,
 	remainingOf,
@@ -68,12 +69,14 @@ import {
 	step,
 	totalOf,
 } from '$lib/protocol';
+import { formOf, typedValue } from '$lib/screens/timer';
 import { usePrefs } from '$lib/store/record';
 import { type ClockHome, restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
 import { Face, FullScreenClock } from './FullScreenClock';
-import { button, clockControl, input } from './ui/variants';
+import { ProtocolRows } from './ProtocolRows';
+import { button, clockControl } from './ui/variants';
 
 const SEGMENT_LABEL: Record<Segment, () => string> = {
 	idle: m.timer_ready,
@@ -726,12 +729,33 @@ export function Timer({
 	// exercise name the width it truncated in.
 	const name = label ?? m.timer_title();
 
-	// The seven fields, for a protocol the athlete may change — Train's
+	// The seven numbers, for a protocol the athlete may change — Train's
 	// prescription, never a preset. They used to open under the strip, between
 	// the clock and the sets the athlete is touching all session; #110 moved them
-	// to the clock's ready state, where the shape is already being read.
+	// to the clock's ready state, where the shape is already being read, and #112
+	// gave them the editor's rows: run order, − / + of 48px, a value to type into.
+	//
+	// The rows hold text, as the editor's do, so a field being cleared is not a
+	// `0` under the cursor; each number reaches the clock the moment it reads as
+	// one it can run, and a field that does not says so under its row.
+	const [typed, setTyped] = useState(() => formOf('', initial.config).fields);
+	const adjust = (f: ProtocolField, text: string) => {
+		setTyped((prev) => ({ ...prev, [f]: text }));
+		const value = typedValue(f, text);
+		if (value >= PROTOCOL_MINIMUM[f]) setConfig((prev) => ({ ...prev, [f]: value }));
+	};
+	// Left unreadable, a value goes back to the number the clock is running, so
+	// the row never shows one that Start will not run.
+	const settle = (f: ProtocolField) =>
+		setTyped((prev) =>
+			typedValue(f, prev[f]) >= PROTOCOL_MINIMUM[f] ? prev : { ...prev, [f]: String(config[f]) },
+		);
+	const unreadable = new Set(
+		PROTOCOL_FIELDS.filter((f) => !(typedValue(f, typed[f]) >= PROTOCOL_MINIMUM[f])),
+	);
+	// No rule above it: the sequence over it already ends on one.
 	const setup = editable ? (
-		<div className="mt-3 border-t border-line-soft pt-1">
+		<div className="mt-2">
 			<button
 				type="button"
 				onClick={() => setSetupOpen((v) => !v)}
@@ -743,30 +767,14 @@ export function Timer({
 				<ChevronDown size={16} className={cn('transition-transform', setupOpen && 'rotate-180')} />
 			</button>
 			{setupOpen ? (
-				<div id="timer-setup" className="grid grid-cols-3 gap-1.5 pb-2">
-					{PROTOCOL_FIELDS.map((f) => (
-						// The label wraps rather than truncating — pt-BR's
-						// "Desaquecimento (s)" is wider than a third of 360px — and sits
-						// on the input, so a row's inputs line up under labels of one
-						// line and two.
-						<label key={f} className="flex min-w-0 flex-col justify-end gap-0.5" htmlFor={`t-${f}`}>
-							<span className="microlabel break-words">{FIELD_LABEL[f]()}</span>
-							<input
-								id={`t-${f}`}
-								className={input({ class: 'h-11 py-0' })}
-								type="number"
-								inputMode="numeric"
-								min={PROTOCOL_MINIMUM[f]}
-								value={config[f]}
-								onChange={(e) =>
-									setConfig((prev) => ({
-										...prev,
-										[f]: Math.max(0, Number.parseInt(e.currentTarget.value, 10) || 0),
-									}))
-								}
-							/>
-						</label>
-					))}
+				<div id="timer-setup" className="pb-2">
+					<ProtocolRows
+						id="t"
+						fields={typed}
+						refused={unreadable}
+						onChange={adjust}
+						onSettle={settle}
+					/>
 				</div>
 			) : null}
 		</div>

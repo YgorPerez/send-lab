@@ -193,14 +193,17 @@ different thing.
 _Avoid_: template, built-in timer, default protocol
 
 **Saved protocol**:
-A protocol the athlete named and kept, as part of the training record — made from
-scratch or by duplicating a preset or another saved protocol, editable in every
-field including its name, and listed on the Timer screen in the order it was
-made (an edit does not move it). Identified by an id minted when it is made, never by
-its name (ADR-0003): the name is the athlete's own text, a copy's default being
-its source's name after "Copy of" in the language it was copied in, and it
-stays as written from then on. It syncs like the rest of the record. Running one
-records nothing.
+A protocol the athlete kept, as part of the training record — made from scratch
+or by duplicating a preset or another saved protocol, editable in every field
+including its name, and listed on the Timer screen in the order it was made (an
+edit does not move it). Identified by an id minted when it is made, never by its
+name (ADR-0003). The name is optional and is the athlete's own text: one without
+a name is listed under its **shape** (`4 × 4s/5s · 3 sets`), read in the screen's
+language and never stored in the name's place (ADR-0012). A copy's default name is
+its source's — a preset's without the exercise in front, in the language it was
+copied in — numbered "(2)", "(3)"… when a saved protocol already has it, and a copy
+of an unnamed one is unnamed; either way it stays as written from then on. It
+syncs like the rest of the record. Running one records nothing.
 _Avoid_: timer, preset, workout, favourite
 
 **Override**:
