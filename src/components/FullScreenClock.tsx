@@ -123,6 +123,7 @@ export function FullScreenClock({
 	summary,
 	layer,
 	announcer,
+	actions,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -154,6 +155,9 @@ export function FullScreenClock({
 	layer?: ReactNode;
 	/** A live region, if the clock says its changes out loud. */
 	announcer?: ReactNode;
+	/** What the protocol can do besides run, beside Close in the ready state's
+	 *  header — the list row's own ⋯ (#110, #111). */
+	actions?: ReactNode;
 }) {
 	const readingId = useId();
 	const onField = field != null;
@@ -212,6 +216,7 @@ export function FullScreenClock({
 								<p className="mt-1.5 truncate text-[14px] font-medium text-ink-dim">{name}</p>
 							) : null}
 						</div>
+						{summary ? actions : null}
 						<Dialog.Close
 							aria-label={m.btn_close()}
 							className={
