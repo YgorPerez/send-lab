@@ -270,7 +270,10 @@ const protocol = z.object({
 
 const savedProtocol = z.object({
 	id: id.savedProtocol,
-	name: z.string().min(1),
+	// Optional since #112, as an empty string rather than an absent key: an
+	// unnamed protocol is listed under its shape, which is a display string and
+	// so is never stored in its place (ADR 0012).
+	name: z.string(),
 	protocol,
 	createdAt: epochMs,
 });

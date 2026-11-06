@@ -44,6 +44,31 @@ export function StickyStrip({ children }: { children: ReactNode }) {
 }
 
 /**
+ * A bar held at the bottom of the screen while the page scrolls above it — the
+ * Timer screen's mini bar (#111), a clock running behind the list.
+ *
+ * Fixed, so nothing it sits inside may carry a `backdrop-filter` or a
+ * transform (`StickyStrip` does, and would trap it). It leaves a space of its
+ * own height at the end of the page, so the last row can still be scrolled out
+ * from under it, and it clears the home indicator. Capped at the page's measure
+ * on a wide screen, centred, as `Pane` is.
+ */
+export function BottomBar({ children }: { children: ReactNode }) {
+	return (
+		<>
+			<div aria-hidden="true" className="h-[84px]" />
+			{/* The band under the bar is the ground and takes the tap: a thumb that
+			    lands just below the bar must not open whatever row shows through. */}
+			<div className="fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(to_top,var(--bg)_55%,transparent)] px-2.5 pt-3 pb-[calc(0.875rem+env(safe-area-inset-bottom))]">
+				<div className="mx-auto max-w-pane rounded-2xl shadow-[0_10px_30px_-8px_rgb(0_0_0/0.8)]">
+					{children}
+				</div>
+			</div>
+		</>
+	);
+}
+
+/**
  * A screen section: heading, optional right-hand meta, body.
  *
  * The gap under the heading is deliberately larger than the gaps within the
@@ -186,9 +211,7 @@ export function Empty({
  */
 export function Pane({ children, className }: { children: ReactNode; className?: string }) {
 	return (
-		<div className={cn('flex flex-col gap-7 lg:mx-auto lg:max-w-[560px]', className)}>
-			{children}
-		</div>
+		<div className={cn('flex flex-col gap-7 lg:mx-auto lg:max-w-pane', className)}>{children}</div>
 	);
 }
 

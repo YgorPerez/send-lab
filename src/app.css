@@ -6,6 +6,13 @@
    together. */
 @import '@fontsource-variable/inter';
 @import '@fontsource-variable/roboto-mono';
+/* The clock's numerals (#110). A condensed face fits a wider reading in the same
+   width — `2:30` and `10:00` fill the screen where Roboto Mono, at ~0.6em a
+   glyph, left them a third smaller — and Barlow's road-sign lineage is a face
+   drawn to be read from a distance. Numbers only: every word stays in Inter.
+   Two static weights, not a variable file: 600 for counts, 700 for the clock. */
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
 /* `tailwindcss-motion` was dropped by the redesign map (#42): unpublished since
    2025-06-10 with its Tailwind-4 support issue still open. Enter/exit animation
    is `tw-animate-css` (~0.3 kB); anything irreducibly JS goes through Motion,
@@ -148,6 +155,11 @@
 	--radius-lg: var(--radius);
 	--radius-xl: calc(var(--radius) + 4px);
 
+	/* The page's measure on a wide screen: `max-w-pane`. One number for every
+	   surface that sits in the page's column — `Pane`, the full-screen clock's
+	   rows, the editor, the mini bar — so they line up rather than nearly. */
+	--container-pane: 560px;
+
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -189,6 +201,7 @@
 	--color-stop: var(--stop);
 
 	--font-sans: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-display: 'Barlow Condensed', 'Roboto Mono Variable', ui-sans-serif, sans-serif;
 	--font-mono: 'Roboto Mono Variable', 'Roboto Mono', 'SFMono-Regular', ui-monospace, Menlo, monospace;
 }
 
@@ -258,6 +271,16 @@
 		font-feature-settings: 'tnum' 1;
 	}
 
+	/* The clock's numerals and the segment names read with them (#110):
+	   condensed, tabular, so a count that changes never moves what sits beside
+	   it. Read from the wall, never furniture — `.num` stays the data face. */
+	.display {
+		font-family: var(--font-display);
+		font-variant-numeric: tabular-nums;
+		font-feature-settings: 'tnum' 1;
+		letter-spacing: 0;
+	}
+
 	/* ---- the type scale ----
 	   Three ranks, not one. The first pass had a single 10px eyebrow doing both
 	   "this is a section of the screen" and "this labels the field below it", so
@@ -289,6 +312,17 @@
 		text-transform: uppercase;
 		color: var(--ink-dim);
 	}
+	/* The section rank, in Inter: the Timer screens' (#110 took Roboto Mono out
+	   of their headings and labels, so their section heads are words, not
+	   furniture). Same job and colour as `.h-section`, a step up in size because
+	   sentence case at 11.5px reads smaller than mono caps at it. The other
+	   screens keep `.h-section` until a ticket moves them. */
+	.h-section-sans {
+		font-size: 14px;
+		line-height: 1.2;
+		font-weight: 600;
+		color: var(--ink-dim);
+	}
 	.eyebrow {
 		font-family: var(--font-mono);
 		font-size: 10px;
@@ -315,6 +349,16 @@
 		color: var(--chalk);
 		font-weight: 600;
 	}
+}
+
+/* The full-screen clock (#110): the page behind is covered and locked, so the
+   scrollbar's gutter the dialog's scroll lock reserves is only a seam down a
+   field's edge. Not reserved while the clock is open — the whole time, so a
+   pause never gives it back and shifts the controls; the page behind reflows by
+   a scrollbar's width where nobody can see it. */
+html.clock-field {
+	scrollbar-gutter: auto !important;
+	overflow: hidden !important;
 }
 
 /* =========================================================================

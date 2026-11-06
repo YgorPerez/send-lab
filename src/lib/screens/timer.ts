@@ -16,12 +16,14 @@
 //
 // Then the athlete's **saved protocols** (#103), from the training record, in
 // the order they were made. A saved protocol's name is the athlete's own text
-// and is shown as written; its key is its id.
+// and is shown as written; its key is its id. The name is optional (#112): one
+// without is listed under its shape, read here in the locale and never stored,
+// so the list still has a name to show for every row.
 //
 // And what the saved-protocol editor accepts (#104), at the end: the one place
 // that decides whether what was typed is a protocol.
 import type { Content } from '$lib/content/types';
-import { protocolShape, STUDY_TITLE } from '$lib/format';
+import { protocolShape, STUDY_TITLE, shortTime } from '$lib/format';
 import {
 	asExerciseId,
 	type ExerciseId,
@@ -30,7 +32,6 @@ import {
 	type SavedProtocolId,
 	savedProtocolKey,
 } from '$lib/ids';
-import * as m from '$lib/paraglide/messages';
 import { studyOf } from '$lib/progression';
 import {
 	PROTOCOL_FIELDS,
@@ -62,8 +63,15 @@ export interface ProtocolListing extends NamedProtocol {
 	shape: string;
 	/** How long it runs, prepare included, in seconds. */
 	total: number;
-	/** What a duplicate of it is called until the athlete renames it. */
+	/** What a duplicate of it is called until the athlete renames it (#112):
+	 *  its own name, a preset's without the exercise in front, numbered `(2)`,
+	 *  `(3)`… past the saved protocols already called that. Empty for a copy of
+	 *  an unnamed one, which is unnamed too. */
 	copyName: string;
+	/** Whether `name` is the athlete's or a preset's, rather than the shape an
+	 *  unnamed saved protocol is listed under (#112). The editor opens an unnamed
+	 *  one with its name empty, not filled in with its shape. */
+	named: boolean;
 }
 
 /** A library variant's protocol, offered as it is. `name` is the variant's, in
@@ -105,14 +113,17 @@ export function resolveTimer(
 	record: Pick<TrainingRecord, 'savedProtocols'>,
 	locale: AppLocale,
 ): TimerScreen {
+	const taken = new Set(record.savedProtocols.map((p) => p.name));
 	const presets: PresetGroup[] = [];
 	for (const [id, ex] of Object.entries(content.exercises)) {
 		const exercise = asExerciseId(id);
 		const rows = ex.variants.flatMap((v, variant): PresetListing[] => {
 			const protocol = protocolOf(v);
 			if (!protocol) return [];
-			// The exercise as well as the variant: the strip and a copy both leave
-			// the group that said which exercise "7/3 · 20mm…" was.
+			// The exercise as well as the variant: the strip leaves the group that
+			// said which exercise "7/3 · 20mm…" was. A copy does not need it — it is
+			// listed among the athlete's own, and the exercise made it too long to
+			// sit on one line (#112).
 			const label = `${ex.name} · ${v.name}`;
 			return [
 				{
@@ -124,30 +135,44 @@ export function resolveTimer(
 					protocol,
 					shape: protocolShape(protocol, locale),
 					total: totalOf(protocol),
-					copyName: copyNameOf(label, locale),
+					copyName: copyNameOf(v.name, taken),
+					named: true,
 				},
 			];
 		});
 		if (rows.length)
 			presets.push({ exercise, name: ex.name, study: studyFor(id, locale), presets: rows });
 	}
-	const saved = record.savedProtocols.map(
-		(p): SavedProtocolListing => ({
+	const saved = record.savedProtocols.map((p): SavedProtocolListing => {
+		const shape = protocolShape(p.protocol, locale);
+		const name = p.name || shape;
+		return {
 			key: savedProtocolKey(p.id),
 			id: p.id,
-			name: p.name,
-			label: p.name,
+			name,
+			label: name,
 			protocol: p.protocol,
-			shape: protocolShape(p.protocol, locale),
+			shape,
 			total: totalOf(p.protocol),
-			copyName: copyNameOf(p.name, locale),
-		}),
-	);
+			copyName: copyNameOf(p.name, taken),
+			named: p.name !== '',
+		};
+	});
 	return { presets, saved, runnable: [...saved, ...presets.flatMap((g) => g.presets)] };
 }
 
-function copyNameOf(name: string, locale: AppLocale): string {
-	return m.timer_copy_name({ name }, { locale });
+/**
+ * What a copy of something called `name` is called: the name, or — when a saved
+ * protocol already has it — the name numbered with the first free `(2)`, `(3)`…
+ * A copy of a copy counts on from the name it was numbered after, so copying
+ * "Tabata (2)" makes "Tabata (3)", not "Tabata (2) (2)". Unnamed stays unnamed.
+ */
+function copyNameOf(name: string, taken: ReadonlySet<string>): string {
+	if (!name || !taken.has(name)) return name;
+	const base = name.replace(/ \(\d+\)$/, '');
+	let n = 2;
+	while (taken.has(`${base} (${n})`)) n++;
+	return `${base} (${n})`;
 }
 
 function studyFor(exercise: string, locale: AppLocale): PresetGroup['study'] {
@@ -165,12 +190,8 @@ export interface ProtocolForm {
 	fields: Record<ProtocolField, string>;
 }
 
-/** What the form says, read: a protocol to save, or the fields that stop it.
- *  A refused form still carries its protocol when only the name stops it, so
- *  the editor can show what the numbers add up to before a name is typed. */
-export type FormReading =
-	| ({ ok: true } & NamedProtocol)
-	| { ok: false; refused: (ProtocolField | 'name')[]; protocol: Protocol | null };
+/** What the form says, read: a protocol to save, or the fields that stop it. */
+export type FormReading = ({ ok: true } & NamedProtocol) | { ok: false; refused: ProtocolField[] };
 
 /** The editor opened on a protocol — the one being edited, or a blank one's
  *  starting numbers. */
@@ -186,22 +207,80 @@ export function formOf(name: string, protocol: Protocol): ProtocolForm {
  * Each field is whole and at least its minimum (`PROTOCOL_MINIMUM`): an effort,
  * a round and a set at least, and no negative seconds — the protocol the
  * server's row schema will accept, refused here first so the athlete is told
- * beside the field rather than by a write that bounces later. The name is
- * trimmed and must be left with something: it is the only way the athlete tells
- * one saved protocol from another in the list.
+ * beside the field rather than by a write that bounces later.
+ *
+ * The name is trimmed and may be left empty (#112): a protocol with no name is
+ * listed under its shape (`resolveTimer`), so it is never what stops a save.
  */
 export function readProtocolForm(form: ProtocolForm): FormReading {
-	const refused: (ProtocolField | 'name')[] = [];
-	const name = form.name.trim();
-	if (!name) refused.push('name');
+	const refused: ProtocolField[] = [];
 	const protocol = {} as Protocol;
 	for (const f of PROTOCOL_FIELDS) {
-		const typed = form.fields[f].trim();
-		const value = /^\d+$/.test(typed) ? Number(typed) : Number.NaN;
-		if (!(value >= PROTOCOL_MINIMUM[f])) refused.push(f);
-		protocol[f] = value;
+		if (!runs(f, form.fields[f])) refused.push(f);
+		protocol[f] = typedValue(f, form.fields[f]);
 	}
-	if (!refused.length) return { ok: true, name, protocol };
-	const numbersRead = refused.every((f) => f === 'name');
-	return { ok: false, refused, protocol: numbersRead ? protocol : null };
+	if (refused.length) return { ok: false, refused };
+	return { ok: true, name: form.name.trim(), protocol };
+}
+
+/** The counts, as against the seconds: never typed as a time, and refused as a
+ *  number rather than as seconds. */
+export const COUNTS: ReadonlySet<ProtocolField> = new Set(['rounds', 'sets']);
+
+/**
+ * What a field's text says as a number, or `NaN` when it is not a whole one.
+ * A time may also be typed as `m:ss` (#112), the way the editor shows one from a
+ * minute up; a count may not.
+ */
+export function typedValue(f: ProtocolField, text: string): number {
+	const typed = text.trim();
+	if (/^\d+$/.test(typed)) return Number(typed);
+	const clock = COUNTS.has(f) ? null : /^(\d+):([0-5]\d)$/.exec(typed);
+	return clock ? Number(clock[1]) * 60 + Number(clock[2]) : Number.NaN;
+}
+
+/** Whether a field's text is a number the clock can run: whole, and at least the
+ *  field's minimum (`PROTOCOL_MINIMUM`). What the editor refuses and what Train's
+ *  Adjust hands the clock are this one rule. */
+export function runs(f: ProtocolField, text: string): boolean {
+	return typedValue(f, text) >= PROTOCOL_MINIMUM[f];
+}
+
+/**
+ * A field after one press of its − or + (#112), as text for the form.
+ *
+ * A count steps by one. A time steps by more the longer it is — 1s up to 30s,
+ * 5s up to two minutes, 15s above — because a hang is counted in seconds and a
+ * set rest in minutes, and both are set with the same two buttons. A step lands
+ * on its own grid (`33` goes up to `35`, down to `30`), and a step down from a
+ * boundary takes the finer step below it, so one back undoes one forward.
+ *
+ * Never below the field's minimum; a field that is not a number goes back to it.
+ */
+export function nudged(f: ProtocolField, text: string, by: 1 | -1): string {
+	const min = PROTOCOL_MINIMUM[f];
+	const value = typedValue(f, text);
+	if (!(value >= min)) return String(min);
+	const step = COUNTS.has(f) ? 1 : stepAt(by > 0 ? value : value - 1);
+	const next =
+		by > 0 ? Math.floor(value / step) * step + step : Math.ceil(value / step) * step - step;
+	return String(Math.max(min, next));
+}
+
+/** The step a time takes from where it is: 1s under 30s, 5s under two minutes,
+ *  15s from there. */
+function stepAt(seconds: number): number {
+	return seconds < 30 ? 1 : seconds < 120 ? 5 : 15;
+}
+
+/**
+ * A field's value as its row shows it while it is not being typed (#112): a
+ * time from a minute up as `m:ss`, under it in seconds (`10s`), a count as the
+ * number. Text that is not a number is shown as typed, so the athlete sees what
+ * the refusal beside it is about.
+ */
+export function shownOf(f: ProtocolField, text: string): string {
+	const value = typedValue(f, text);
+	if (Number.isNaN(value)) return text;
+	return COUNTS.has(f) ? String(value) : shortTime(value);
 }

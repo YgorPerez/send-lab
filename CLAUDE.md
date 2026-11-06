@@ -20,6 +20,8 @@ after an `/impeccable` pass on what it changed**, with each finding fixed or ans
 ticket. The measuring gates still apply. See `docs/agents/impeccable.md` for the rule, the pinned
 version, and why the engine binary and the edit hooks are not committed.
 
+`DESIGN.md` records the visual system as built; `docs/component-vocabulary.md` outranks it.
+
 ### Domain docs
 
 Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

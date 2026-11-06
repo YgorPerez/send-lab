@@ -22,7 +22,7 @@ import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { variantOf } from '$lib/prescription';
 import type { ExerciseStudy } from '$lib/progression';
-import type { Protocol, ProtocolField } from '$lib/protocol';
+import type { Protocol } from '$lib/protocol';
 import type { AppLocale } from '$lib/store/locale';
 import type { Confidence } from '$lib/strength';
 import type { WorkingLoadSource } from '$lib/types';
@@ -197,8 +197,7 @@ export function protocolShape(p: Protocol, locale?: AppLocale): string {
 	// A cooldown (#104) is usually minutes, so it reads as a clock past one; and
 	// it is named, because a bare `2:00` at the end reads as the total.
 	if (p.cooldown > 0) {
-		const time = p.cooldown >= 60 ? clock(p.cooldown) : `${p.cooldown}s`;
-		parts.push(m.timer_shape_cooldown({ time }, { locale }));
+		parts.push(m.timer_shape_cooldown({ time: shortTime(p.cooldown) }, { locale }));
 	}
 	return parts.join(' · ');
 }
@@ -212,6 +211,16 @@ export const STUDY_TITLE: Record<ExerciseStudy, typeof m.study_baar_title> = {
 	horst: m.study_horst_title,
 	lattice: m.study_lattice_title,
 };
+
+/**
+ * A segment's length as the Timer screens write it: `10s` under a minute, `3:00`
+ * from one. A hang is 7–10s and a set rest 180s, and three raw digits of "180"
+ * read worse than "3:00" from across the room, where "0:07" reads worse than
+ * "7s". The full-screen face draws the same rule with its unit set apart.
+ */
+export function shortTime(seconds: number): string {
+	return seconds >= 60 ? clock(seconds) : `${seconds}s`;
+}
 
 /** mm:ss for a countdown. */
 export function clock(totalSec: number): string {
@@ -239,19 +248,6 @@ export function stopwatchClock(ms: number, locale: AppLocale): { whole: string; 
 }
 
 const DECIMAL_MARK: Record<AppLocale, string> = { 'en-US': '.', 'pt-BR': ',' };
-
-/** What each protocol field is called where it is typed in — Train's clock
- *  setup and the saved-protocol editor. A record over the fields rather than a
- *  list, so a field added to the protocol does not compile until it is named. */
-export const FIELD_LABEL: Record<ProtocolField, () => string> = {
-	prepare: m.timer_prepare_s,
-	work: m.timer_work_s,
-	rest: m.timer_rest_s,
-	rounds: m.timer_rounds,
-	sets: m.timer_sets,
-	setRest: m.timer_setrest_s,
-	cooldown: m.timer_cooldown_s,
-};
 
 /** The five wellness dimensions, in the order the readiness score reads them. */
 export const WELLNESS_LABEL: Record<string, () => string> = {
