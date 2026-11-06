@@ -18,9 +18,11 @@ fixes. When the skill's advice and a measured rule in `docs/component-vocabulary
 11px text floor against the 9px `.microlabel`, say), the measurement stands. Answer the finding by
 pointing at it rather than silently skipping it.
 
-There is no `PRODUCT.md` or `DESIGN.md` yet. The skill notices and treats the code plus
-`docs/component-vocabulary.md` as the design authority, so a refinement does not need
-`/impeccable init` first. Starting a new surface or redesign does: the skill routes that through `init`.
+`PRODUCT.md`, at the repo root, holds the product context the skill reads first (written for the
+Timer redesign, #110). There is no `DESIGN.md` yet; it is to be written once the Timer redesign's
+review is done. Until then the skill treats the code plus `docs/component-vocabulary.md` as the
+design system, so a refinement does not need `/impeccable init` first. Starting a new surface or
+redesign does: the skill routes that through `init`.
 
 ## What is installed
 

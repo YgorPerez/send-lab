@@ -38,10 +38,10 @@ import {
 } from '$lib/stopwatch';
 import { restoredStopwatch, useStopwatchDraft } from '$lib/stopwatchDraft';
 import { useWakeLock } from '$lib/wakeLock';
-import { type ClockStatus, Face, FullScreenClock } from './FullScreenClock';
+import { type ClockStatus, clockControl, Face, FullScreenClock } from './FullScreenClock';
 import type { ClockHandle } from './Timer';
 import { BottomBar } from './ui/primitives';
-import { button, clockControl } from './ui/variants';
+import { button } from './ui/variants';
 
 /** How often the face redraws while it runs. Tenths are shown, so a tenth. */
 const FRAME_MS = 100;
@@ -62,28 +62,31 @@ function written(ms: number): string {
 
 /** Ready, running or paused: the label's colour, and the digits'.
  *
- *  The digits carry it too, as the clock's take the segment's accent: from the
- *  floor the label is unreadable, and a face tapped by accident has to *look*
- *  paused, not only say so (#108's review). Running stays chalk, the most
- *  legible colour there is for the number being read. */
+ *  Neutral, always (#110: "a neutral field and no segment colour"). Teal and
+ *  gold here read from the wall as rest and prepare, which a stopwatch never
+ *  is. So the state is in the word and in the weight of ink, as on its mini
+ *  bar: running, the digits are chalk, the most legible colour there is for the
+ *  number being read; paused, they dim, so a face tapped by accident *looks*
+ *  paused and does not only say so (#108's review). */
 interface Status extends ClockStatus {
 	face: string;
 }
 
 function statusOf(watch: Watch): Status {
 	if (watch.running)
-		return { label: m.stopwatch_running(), color: 'var(--ok)', face: 'var(--chalk)' };
+		return { label: m.stopwatch_running(), color: 'var(--ink)', face: 'var(--chalk)' };
 	if (watch.elapsed > 0) {
-		return { label: m.stopwatch_paused(), color: 'var(--warn)', face: 'var(--warn)' };
+		return { label: m.stopwatch_paused(), color: 'var(--ink)', face: 'var(--ink-dim)' };
 	}
 	return { label: m.timer_ready(), color: 'var(--ink-dim)', face: 'var(--ink-dim)' };
 }
 
 /**
- * Whether Reset is offered. Not while it runs, and not at zero: a reset takes
- * every lap with it and cannot be undone, and in both rows it sits beside Lap —
- * the button a thumb is reaching for mid-run (#108's review). Pause first, then
- * reset, which is the order every stopwatch the athlete has used asks for.
+ * Whether Reset is there at all. Not while it runs, and not at zero: a reset
+ * takes every lap with it and cannot be undone, and mid-run a thumb is reaching
+ * for Lap in the same row (#108's review). Pause first, then reset, which is the
+ * order every stopwatch the athlete has used asks for — and the protocol clock's
+ * rule (#110), so the two clocks' rows behave alike.
  */
 function resettable(watch: Watch): boolean {
 	return !watch.running && watch.elapsed > 0;
@@ -328,9 +331,12 @@ function FullScreenStopwatch({
 					</>
 				) : null
 			}
-			// The protocol clock's row (#110): the large toggle in the middle, the
-			// two square ones beside it. Lap where skip is, the hand the thumb is
-			// already in; Reset where the paused protocol keeps its own.
+			// The protocol clock's row (#110): the large toggle in the middle, a
+			// square either side. Lap on the left, in back's place, there whenever
+			// the toggle is. Reset only while paused, in skip's place, as the paused
+			// protocol keeps its own (#110: "Reset only exists while paused"); while
+			// it counts, and at zero, that place is held empty, so the toggle never
+			// moves under the thumb.
 			controls={
 				<>
 					<button
@@ -354,24 +360,23 @@ function FullScreenStopwatch({
 						)}
 						{watch.running ? m.btn_pause() : startLabel(watch)}
 					</button>
-					<button
-						type="button"
-						aria-label={m.btn_reset()}
-						onClick={onReset}
-						disabled={!resettable(watch)}
-						className={clockControl('side', false)}
-					>
-						<RotateCcw size={24} />
-					</button>
+					{resettable(watch) ? (
+						<button
+							type="button"
+							aria-label={m.btn_reset()}
+							onClick={onReset}
+							className={clockControl('side', false)}
+						>
+							<RotateCcw size={24} />
+						</button>
+					) : (
+						<span aria-hidden="true" className="size-16 shrink-0" />
+					)}
 				</>
 			}
 		>
-			{/* No field: the stopwatch is never a segment, so it keeps the ground,
-			    and `--face` comes from the screen as the protocol's does. */}
-			<span
-				className="[--face:min(88vw,46dvh)] lg:[--face:min(60vw,calc(100dvh-16rem))] sideways:[--face:min(40vw,78dvh)]"
-				style={{ color: status.face }}
-			>
+			{/* No field: the stopwatch is never a segment, so it keeps the ground. */}
+			<span style={{ color: status.face }}>
 				<Face {...face} fill className="display leading-[0.8] font-bold" />
 			</span>
 		</FullScreenClock>

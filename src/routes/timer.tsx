@@ -52,6 +52,7 @@ import {
 	useRef,
 	useState,
 } from 'react';
+import { useClockFront } from '$lib/clockFront';
 import { getContent } from '$lib/content';
 import { clock } from '$lib/format';
 import { type ProtocolKey, savedProtocolKey } from '$lib/ids';
@@ -84,9 +85,6 @@ import { button } from '../components/ui/variants';
 
 export const Route = createFileRoute('/timer')({ component: TimerScreen });
 
-/** Which clock the mini bar belongs to: the one started last. */
-type Front = 'protocol' | 'stopwatch';
-
 function TimerScreen() {
 	const locale = getLocale();
 	const record = useTrainingRecord();
@@ -114,7 +112,10 @@ function TimerScreen() {
 	// picks the protocol and opens its clock in one go.
 	const [openKey, setOpenKey] = useState<ProtocolKey | null>(null);
 	const [watchOpen, setWatchOpen] = useState(false);
-	const [front, setFront] = useState<Front>('protocol');
+	// Which clock has the bar: kept on the device (`clockFront.ts`), because both
+	// come back paused from another screen and only this says which of the two
+	// was started last — a stopwatch left mid-count comes back in the bar.
+	const [front, setFront] = useClockFront();
 	// A deleted saved protocol takes the selection with it; the clock moves to the
 	// top of the list rather than vanishing.
 	const current = runnable.find((r) => r.key === selected) ?? runnable[0] ?? null;
@@ -183,16 +184,13 @@ function TimerScreen() {
 	const reveal = useCallback((el: HTMLElement | null) => {
 		el?.scrollIntoView({ block: 'nearest' });
 	}, []);
-	// One copy per tap, not two: a menu item tapped twice in quick succession.
-	const lastCopy = useRef(0);
+	// One copy per tap. The 700ms guard that stood here (#103) was for a
+	// Duplicate scrolled under a thumb still coming down for a second tap; since
+	// #111 Duplicate is behind each row's ⋯, two taps from any thumb, so that tap
+	// cannot land on it. What is left is the menu fading out under the finger,
+	// which takes no taps while it does (`RowActions`): no window to choose.
 	const duplicate = async (source: ProtocolListing) => {
-		const now = Date.now();
-		if (now - lastCopy.current < 700) return;
-		lastCopy.current = now;
-		const row = await createSavedProtocol(
-			{ name: source.copyName, protocol: source.protocol },
-			now,
-		);
+		const row = await createSavedProtocol({ name: source.copyName, protocol: source.protocol });
 		setMade(savedProtocolKey(row.id));
 	};
 
@@ -378,7 +376,7 @@ function TimerScreen() {
 						onClockOpenChange={(open) => setOpenKey(open ? p.key : null)}
 						editable={false}
 						strip={front === 'protocol' && p.key === running ? 'bar' : 'none'}
-						titled={false}
+						titleSpoken={false}
 						study={group?.study ?? null}
 						title={p.name}
 						subtitle={group?.name ?? null}
@@ -428,14 +426,15 @@ function TimerScreen() {
 }
 
 /**
- * One of the list's four groups, under a heading in Inter at 14px, as the
- * approved mockup draws it: #110 took the mono caps out of the Timer screens'
- * headings, and the list's heads are words, not furniture.
+ * One of the list's four groups, under the section rank in Inter
+ * (`.h-section-sans`), as the approved mockup draws it: #110 took the mono caps
+ * out of the Timer screens' headings, and the list's heads are words, not
+ * furniture.
  */
 function ListSection({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<section className="flex flex-col gap-2.5">
-			<h2 className="px-1 text-[14px] leading-tight font-semibold text-ink-dim">{label}</h2>
+			<h2 className="h-section-sans px-1">{label}</h2>
 			{children}
 		</section>
 	);
@@ -459,7 +458,7 @@ function ProtocolRow({
 	actions,
 	reveal,
 }: {
-	row: { name: string; shape: string; total: number };
+	row: { name: string; shape: string; total: number; named: boolean };
 	onOpen: () => void;
 	actions: ReactNode;
 	/** Scrolls a row just made into view. */
@@ -476,8 +475,10 @@ function ProtocolRow({
 						{row.name}
 						<span className="sr-only">. </span>
 					</span>
+					{/* An unnamed saved protocol is listed under its shape (#112), so the
+					    line under it says it has no name rather than the shape twice. */}
 					<span className="text-[13px] leading-snug font-medium text-ink-dim">
-						{row.shape}
+						{row.named ? row.shape : m.timer_unnamed()}
 						<span className="sr-only">. {m.timer_total()}: </span>
 					</span>
 				</span>
@@ -529,7 +530,9 @@ function RowActions({
 			</Menu.Trigger>
 			<Menu.Portal>
 				<Menu.Positioner sideOffset={6} align="end" className="z-50">
-					<Menu.Popup className="min-w-[180px] rounded-lg border border-line bg-panel p-1 shadow-lg transition-[opacity,transform] duration-150 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0">
+					{/* Closing, it takes no taps: an item tapped again as the menu fades
+					    would run twice. */}
+					<Menu.Popup className="min-w-[180px] rounded-lg border border-line bg-panel p-1 shadow-lg transition-[opacity,transform] duration-150 data-[ending-style]:pointer-events-none data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0">
 						<Menu.Item className={item} onClick={onDuplicate}>
 							{m.timer_duplicate()}
 						</Menu.Item>

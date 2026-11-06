@@ -155,6 +155,11 @@
 	--radius-lg: var(--radius);
 	--radius-xl: calc(var(--radius) + 4px);
 
+	/* The page's measure on a wide screen: `max-w-pane`. One number for every
+	   surface that sits in the page's column — `Pane`, the full-screen clock's
+	   rows, the editor, the mini bar — so they line up rather than nearly. */
+	--container-pane: 560px;
+
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -305,6 +310,17 @@
 		font-weight: 600;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
+		color: var(--ink-dim);
+	}
+	/* The section rank, in Inter: the Timer screens' (#110 took Roboto Mono out
+	   of their headings and labels, so their section heads are words, not
+	   furniture). Same job and colour as `.h-section`, a step up in size because
+	   sentence case at 11.5px reads smaller than mono caps at it. The other
+	   screens keep `.h-section` until a ticket moves them. */
+	.h-section-sans {
+		font-size: 14px;
+		line-height: 1.2;
+		font-weight: 600;
 		color: var(--ink-dim);
 	}
 	.eyebrow {

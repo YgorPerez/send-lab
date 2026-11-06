@@ -2,9 +2,10 @@
 //
 // WHAT BELONGS HERE, AND WHAT DOES NOT
 // ------------------------------------
-// Five stores: the rest timer, the readiness draft, the session draft, the
-// stopwatch (#108, `stopwatchDraft.ts`) and the Timer screen's Recent list (#111,
-// `recentProtocols.ts`). The rest timer keeps one clock per
+// Six stores: the rest timer, the readiness draft, the session draft, the
+// stopwatch (#108, `stopwatchDraft.ts`), the Timer screen's Recent list (#111,
+// `recentProtocols.ts`) and which of that screen's two clocks has its mini bar
+// (`clockFront.ts`). The rest timer keeps one clock per
 // screen that runs one — Train's and the Timer screen's (#101) — under two keys:
 // Train's holds one draft, the Timer screen's one per protocol. ADR
 // 0008's rule is that ephemeral UI stays local-only and **never syncs** — it is
@@ -37,7 +38,7 @@
 // to a **slot**, the timer's setup to a **protocol**. (The stopwatch belongs to
 // nothing but itself, and is current until the athlete resets it, so it carries
 // no scope; nor does Recent, which holds only keys and resolves them through
-// what the screen can run each time it is read.) Restoring one out of its scope
+// what the screen can run each time it is read, nor the mini bar's owner.) Restoring one out of its scope
 // looks like the app remembering and is the app lying — yesterday's answers
 // offered as today's, one exercise's clock on another's card.
 //

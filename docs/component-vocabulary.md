@@ -56,10 +56,10 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
 | `Meter` | `primitives.tsx` | A 0–10 reading against a track |
 | `Stat` | `primitives.tsx` | One reading in a divider-separated strip |
-| `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure |
+| `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure: `max-w-pane` (560px, `app.css`), the one width every surface in the page's column shares — the full-screen clock's rows, the editor, the mini bar |
 | `Panes` | `primitives.tsx` | A page's two panes from `lg`, stacked below it |
 | `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
-| `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it |
+| `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. Capped at `max-w-pane`, as `Pane` is |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
@@ -77,10 +77,10 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
 | `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
 | `Timer` | The protocol clock: its tick, the cues it asks the planner for, its setup, and its two faces — the strip and its run in the full-screen clock. Which screen's draft it keeps is its `home` (`ClockHome`, `'train' \| 'timer'`), never a "slot"; where its strip goes is its `strip` — in the page on Train, the mini bar on the Timer screen's list |
-| `FullScreenClock` | The one full-screen dialog both clocks run in (spec #98: it "takes either a protocol run or a stopwatch run"): the header, the face as a tap target, the detail, the readout and the 56px control row, and the layout on a phone held sideways. Each clock hands in its status, reading and controls; `Face` draws the number for both, and sizes it by its glyph count against the `--face` each clock sets |
+| `FullScreenClock` | The one full-screen dialog both clocks run in (spec #98: it "takes either a protocol run or a stopwatch run"): the header, the face as a tap target, the detail, the readout and the 56px control row, and the layout on a phone held sideways. Each clock hands in its status, reading and controls; `Face` draws the number for both, and sizes it by its glyph count against the one `--face` it sets from the screen. It also owns the two things both clocks draw with: `SEGMENT_COLOR`, the colour each segment runs in (the field, and the dot beside a segment in the ready state and in `ProtocolRows`), and `clockControl`, the control row's three shapes on a field and off one. Not `ui/variants.ts` recipes: both know the clock's field, which makes them this piece's decisions (ADR 0010) |
 | `ProtocolEditor` | How a saved protocol is typed in: an optional name (its placeholder the shape an unnamed one is listed under) over `ProtocolRows`, and when to say a field cannot run (`readProtocolForm` decides that it cannot). Its own screen since #112 — a full-viewport dialog with ✕ and Save at the top — not a sheet over a blacked-out list |
-| `ProtocolRows` | The seven numbers as rows in the order a run goes (prepare; block: work, rest, rounds; sets: how many, rest between; cooldown), each a label, a value the numeric keyboard opens on, and 48px − / + (#112). The editor's body and `/train`'s Adjust. A time reads m:ss from a minute up and is typed in seconds; the step (`nudged`) and the reading (`shownOf`) are `screens/timer.ts`'s |
-| `Stopwatch` | The count-up's tick, its laps, and the same two faces — the mini bar and full-screen — in the clock's type and controls, through the same `FullScreenClock`. Every lap is listed under its number |
+| `ProtocolRows` | The seven numbers as rows in the order a run goes (prepare; rounds: work, rest, how many; sets: how many, rest between; cooldown — the first group headed **Rounds**, never "Block", which is the glossary's run of weeks), each a label, a value the numeric keyboard opens on, and 48px − / + (#112). The editor's body and `/train`'s Adjust. A time reads m:ss from a minute up and is typed in seconds; the step (`nudged`) and the reading (`shownOf`) are `screens/timer.ts`'s |
+| `Stopwatch` | The count-up's tick, its laps, and the same two faces — the mini bar and full-screen — in the clock's type and controls, through the same `FullScreenClock`, on a neutral field: running or paused is said in the word and the weight of ink, never a segment's colour (#110). Every lap is listed under its number |
 | `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
@@ -495,7 +495,13 @@ remembered.
 - **Three ranks of type, differing on size, weight *and* colour at once.**
   `.h-screen-title` / `.h-section` / `.eyebrow`, with `.microlabel` below them for
   a four-column grid. One rank doing two jobs is what made Today read as one long
-  list.
+  list. **The Timer screens set the section rank in Inter** (`.h-section-sans`,
+  14px semibold `--ink-dim`): #110 decided that Roboto Mono leaves their headings
+  and labels, so the list's group heads, the editor's group heads and its name
+  label, and the clock's Adjust share that one class rather than a size each. Same
+  rank and job as `.h-section`; the other screens keep the mono one until a ticket
+  moves them. A preset group's head is not a rank but a row: a disclosure as
+  tall as the rows it opens, set in the row's 15px.
 - **44px for anything touched mid-set, 48px for the timer.** The timer is
   operated without looking at it; the set grid cannot afford 48px without pushing
   the last card off a second screenful.

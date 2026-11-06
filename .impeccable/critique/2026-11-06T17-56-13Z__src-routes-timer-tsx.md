@@ -22,7 +22,7 @@ Method: dual-agent (A: design review agent · B: detector agent, isolated)
 Behaviour is athlete-specific (row anchoring, wake lock, face as 343x389 target, paused restore); visuals are generic dense-dark-dashboard + ring-timer template. Detector: CLI 0 findings; browser 4x undersized-ui-text (AppShell.tsx:89,140 EN/PT + brand eyebrow; FullScreenClock.tsx:158 protocol name) — conflicts with the measured 10px .eyebrow house rule, to be answered in writing. Detector missed other 10px text (Timer.tsx:654,677).
 
 ## Priority issues
-- [P1] Full-screen clock does not spend the screen on number + phase: ~80px cap height for 2 glyphs, ~52px for 2:30; ~150px dead above/below the ring; phase only in a 9px ring stroke + 13px title; Roboto Mono wide with slashed zero. Fix: full-bleed phase colour, width-filling condensed tabular digits, large up-next band.
+- [P1] Full-screen clock does not spend the screen on number + segment: ~80px cap height for 2 glyphs, ~52px for 2:30; ~150px dead above/below the ring; segment only in a 9px ring stroke + 13px title; Roboto Mono wide with slashed zero. Fix: full-bleed segment colour, width-filling condensed tabular digits, large up-next band.
 - [P1] Paused invisible from 2m; resume labelled "Iniciar". Fix: PAUSADO on the face; "Retomar".
 - [P1] Redundant info: total duration up to 4x; Decorrido+Falta+Total; strip name truncates; study links on an Operate screen.
 - [P2] Crooked buttons: row actions right-aligned vs Novo protocolo left; Start jumps 28px/changes width when countdown crosses 10s; 38 vs 44px icon boxes; 8/8/16 control gaps; PT study link wraps left.
@@ -35,4 +35,4 @@ Hanging athlete 2m: paused vs running, 14px up-next, rest vs cooldown only by ri
 h1 under top bar after Duplicar; editor field order != run order; editor backdrop blanks context; desktop 376px Start bar; stopwatch strip layout differs; repeated citation; ~130px chrome before clock.
 
 ## Questions
-Does the ring earn its place on a phase-coloured field? Has Decorrido/Falta/Total changed a decision mid-hang? Default view: 23 presets or recents?
+Does the ring earn its place on a segment-coloured field? Has Decorrido/Falta/Total changed a decision mid-hang? Default view: 23 presets or recents?

@@ -43,13 +43,62 @@ import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
 import { type ReactNode, useEffect, useId } from 'react';
 import * as m from '$lib/paraglide/messages';
+import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
 import { button } from './ui/variants';
 
 /**
+ * The colour each segment runs in: the field the clock fills the screen with,
+ * and the mark beside a segment wherever one is listed — the ready state's
+ * sequence, the editor's rows — so a row is recognised by the field it will
+ * fill. Gold prepare, vermilion work, teal for both rests, violet cooldown
+ * (#110); before the start and after the end, no colour.
+ */
+export const SEGMENT_COLOR: Record<Segment, string> = {
+	idle: 'var(--ink-dim)',
+	prepare: 'var(--warn)',
+	work: 'var(--stop)',
+	rest: 'var(--ok)',
+	setRest: 'var(--ok)',
+	cooldown: 'var(--cooldown)',
+	done: 'var(--ink-dim)',
+};
+
+/**
+ * The three control shapes of the clock's row (#110), as class strings: the
+ * large middle one, the two square ones beside it. On a field they are drawn
+ * in the field's own terms — a ground-filled middle, outlined squares in the
+ * ink — so they need no colour of their own; off a field they are the app's
+ * buttons. 84px tall in the middle and 64px square at the sides, past the
+ * 48px floor because they are found by direction, mid-hang, without looking.
+ *
+ * Here and not among the `ui/variants.ts` recipes (ADR 0010): it knows the
+ * clock's field, which is this file's decision, and only the two clocks that
+ * run in this dialog use it.
+ */
+export function clockControl(
+	shape: 'main' | 'side',
+	onField: boolean,
+	kind: 'primary' | 'quiet' = 'quiet',
+): string {
+	if (shape === 'side') {
+		return onField
+			? 'flex size-16 shrink-0 items-center justify-center rounded-[18px] border-2 border-current disabled:opacity-100'
+			: button({ size: 'touch', class: 'size-16 shrink-0 rounded-[18px] px-0' });
+	}
+	return onField
+		? 'flex h-[84px] min-w-[132px] flex-1 max-w-[220px] items-center justify-center gap-2 rounded-[22px] bg-bg text-[20px] font-bold'
+		: button({
+				kind,
+				size: 'touch',
+				class: 'h-[84px] min-w-[132px] max-w-[220px] flex-1 rounded-[22px] text-[20px] font-bold',
+			});
+}
+
+/**
  * The full-screen face's size, stepped by how many glyphs it has to fit, as a
- * share of `--face`: the size a two-glyph reading is drawn at, which each clock
- * sets for itself from the screen, upright and on its side.
+ * share of `--face`: the size a two-glyph reading is drawn at, set from the
+ * screen, upright and on its side (`FACE`).
  *
  * One size for every reading would leave the common case — seconds — a third
  * smaller than it can be. The steps are measured in Barlow Condensed (#110): a
@@ -57,6 +106,13 @@ import { button } from './ui/variants';
  * `10:00` at 0.47. A stopwatch's tenth (`,3` at half size) counts as a glyph
  * and a half, or `0:00,0` runs off both sides of the screen.
  */
+/** `--face`: most of the width upright; on its side the left column's width or
+ *  the screen's height, whichever runs out first; on a desktop the height left
+ *  over once the header and the controls have theirs. One value for both clocks,
+ *  so it is set where the face is drawn rather than by each. */
+const FACE =
+	'[--face:min(88vw,46dvh)] lg:[--face:min(60vw,calc(100dvh-16rem))] sideways:[--face:min(40vw,78dvh)]';
+
 function faceSize(glyphs: number): string {
 	if (glyphs <= 2) return 'text-[length:var(--face)]';
 	if (glyphs <= 4) return 'text-[length:calc(var(--face)*0.58)]';
@@ -70,8 +126,8 @@ function faceSize(glyphs: number): string {
  * smaller beside it. A protocol's seconds carry their unit (`7s`), quiet because
  * it is not data; a stopwatch's tenth (`1:04.3`) is a digit, so it stays legible.
  *
- * `fill` sizes it for the full-screen clock, against the `--face` its clock
- * sets; without it the caller's class sets the size, as the strips' 46px does.
+ * `fill` sizes it for the full-screen clock, against `--face`; without it the
+ * caller's class sets the size, as the bars' 44px does.
  */
 export function Face({
 	whole,
@@ -91,7 +147,7 @@ export function Face({
 		// carries its own line-height, which left ~120px between a two-glyph face
 		// and the count meant to sit under it (#110's finish review).
 		<span
-			className={cn(className, fill && faceSize(whole.length + (fraction ? 1.5 : 0)))}
+			className={cn(className, fill && [FACE, faceSize(whole.length + (fraction ? 1.5 : 0))])}
 			style={fill ? { lineHeight: 0.8 } : undefined}
 		>
 			{whole}
@@ -198,7 +254,7 @@ export function FullScreenClock({
 					<p id={readingId} className="sr-only">
 						{spoken}
 					</p>
-					<div className="flex items-center gap-3 px-4 pt-4 pl-5 lg:mx-auto lg:w-full lg:max-w-[560px] sideways:col-start-2 sideways:row-start-1">
+					<div className="flex items-center gap-3 px-4 pt-4 pl-5 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-1">
 						<div className="min-w-0 flex-1">
 							{summary ? (
 								<Dialog.Title className="text-[25px] leading-[1.15] font-semibold tracking-[-0.015em] text-ink">
@@ -234,7 +290,7 @@ export function FullScreenClock({
 					</div>
 
 					{summary ? (
-						<div className="flex flex-1 flex-col px-5 lg:mx-auto lg:w-full lg:max-w-[560px]">
+						<div className="flex flex-1 flex-col px-5 lg:mx-auto lg:w-full lg:max-w-pane">
 							{summary}
 						</div>
 					) : (
@@ -268,7 +324,7 @@ export function FullScreenClock({
 						</div>
 					)}
 
-					<div className="flex items-center justify-center gap-4 px-4 pt-3 pb-7 lg:mx-auto lg:w-full lg:max-w-[560px] sideways:col-start-2 sideways:row-start-3 sideways:pb-4">
+					<div className="flex items-center justify-center gap-4 px-4 pt-3 pb-7 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-3 sideways:pb-4">
 						{controls}
 					</div>
 				</Dialog.Popup>
