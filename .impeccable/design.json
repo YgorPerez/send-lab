@@ -1,0 +1,527 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-06T23:30:00Z",
+  "title": "Design System: Send Lab",
+  "extensions": {
+    "colorMeta": {
+      "vermilion": {
+        "role": "primary",
+        "displayName": "Signature Vermilion",
+        "canonical": "oklch(68.3% 0.209 35.8)",
+        "tonalRamp": [
+          "oklch(15% 0.078 35.8)",
+          "oklch(25% 0.131 35.8)",
+          "oklch(38% 0.199 35.8)",
+          "oklch(50% 0.209 35.8)",
+          "oklch(62% 0.199 35.8)",
+          "oklch(74% 0.136 35.8)",
+          "oklch(85% 0.078 35.8)",
+          "oklch(95% 0.026 35.8)"
+        ],
+        "cssVar": "--flag",
+        "aliases": [
+          "--stop",
+          "--primary",
+          "--ring"
+        ]
+      },
+      "vermilion-pressed": {
+        "role": "primary",
+        "displayName": "Pressed Vermilion",
+        "canonical": "oklch(55.9% 0.185 35.0)",
+        "tonalRamp": [
+          "oklch(15% 0.069 35.0)",
+          "oklch(25% 0.116 35.0)",
+          "oklch(38% 0.176 35.0)",
+          "oklch(50% 0.185 35.0)",
+          "oklch(62% 0.176 35.0)",
+          "oklch(74% 0.120 35.0)",
+          "oklch(85% 0.069 35.0)",
+          "oklch(95% 0.023 35.0)"
+        ],
+        "cssVar": "--flag-deep"
+      },
+      "teal": {
+        "role": "secondary",
+        "displayName": "Recovery Teal",
+        "canonical": "oklch(78.1% 0.120 190.2)",
+        "tonalRamp": [
+          "oklch(15% 0.045 190.2)",
+          "oklch(25% 0.075 190.2)",
+          "oklch(38% 0.114 190.2)",
+          "oklch(50% 0.120 190.2)",
+          "oklch(62% 0.114 190.2)",
+          "oklch(74% 0.078 190.2)",
+          "oklch(85% 0.045 190.2)",
+          "oklch(95% 0.015 190.2)"
+        ],
+        "cssVar": "--teal",
+        "aliases": [
+          "--ok"
+        ]
+      },
+      "gold": {
+        "role": "secondary",
+        "displayName": "Signal Gold",
+        "canonical": "oklch(79.9% 0.139 82.5)",
+        "tonalRamp": [
+          "oklch(15% 0.052 82.5)",
+          "oklch(25% 0.087 82.5)",
+          "oklch(38% 0.132 82.5)",
+          "oklch(50% 0.139 82.5)",
+          "oklch(62% 0.132 82.5)",
+          "oklch(74% 0.090 82.5)",
+          "oklch(85% 0.052 82.5)",
+          "oklch(95% 0.017 82.5)"
+        ],
+        "cssVar": "--gold",
+        "aliases": [
+          "--warn"
+        ]
+      },
+      "violet": {
+        "role": "tertiary",
+        "displayName": "Cooldown Violet",
+        "canonical": "oklch(70.3% 0.164 287.4)",
+        "tonalRamp": [
+          "oklch(15% 0.061 287.4)",
+          "oklch(25% 0.103 287.4)",
+          "oklch(38% 0.156 287.4)",
+          "oklch(50% 0.164 287.4)",
+          "oklch(62% 0.156 287.4)",
+          "oklch(74% 0.107 287.4)",
+          "oklch(85% 0.061 287.4)",
+          "oklch(95% 0.021 287.4)"
+        ],
+        "cssVar": "--violet",
+        "aliases": [
+          "--cooldown"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Unlit Ground",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--bg"
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Graphite Panel",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--panel"
+      },
+      "panel-inset": {
+        "role": "neutral",
+        "displayName": "Inset Graphite",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--panel-2"
+      },
+      "panel-raised": {
+        "role": "neutral",
+        "displayName": "Raised Graphite",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--panel-3"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Slate Rule",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--line"
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Hairline Slate",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--line-soft"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Bright Ink",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--ink"
+      },
+      "ink-dim": {
+        "role": "neutral",
+        "displayName": "Dim Ink",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--ink-dim"
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Faint Ink",
+        "tonalRamp": [
+          "#07080a",
+          "#232629",
+          "#2b2f32",
+          "#33373b",
+          "#474c51",
+          "#959ba1",
+          "#b6bbc0",
+          "#f1f2f2"
+        ],
+        "cssVar": "--ink-faint"
+      },
+      "chalk": {
+        "role": "neutral",
+        "displayName": "Climbing Chalk",
+        "canonical": "oklch(92.5% 0.014 93.0)",
+        "tonalRamp": [
+          "oklch(15% 0.005 93.0)",
+          "oklch(25% 0.009 93.0)",
+          "oklch(38% 0.013 93.0)",
+          "oklch(50% 0.014 93.0)",
+          "oklch(62% 0.013 93.0)",
+          "oklch(74% 0.009 93.0)",
+          "oklch(85% 0.005 93.0)",
+          "oklch(95% 0.002 93.0)"
+        ],
+        "cssVar": "--chalk"
+      }
+    },
+    "typographyMeta": {
+      "clock-face": {
+        "displayName": "Clock face",
+        "purpose": "The full-screen clock's number, stepped by glyph count against --face (0.58 for 2:30, 0.47 for 10:00)."
+      },
+      "clock-segment": {
+        "displayName": "Clock segment",
+        "purpose": "The segment name on the clock, uppercase; PAUSED and Round · Set use the same face."
+      },
+      "count": {
+        "displayName": "Count",
+        "purpose": "Totals and counts beside words: row length, editor total, the strip's fixed slot."
+      },
+      "headline": {
+        "displayName": "Screen title",
+        "purpose": "One per screen (.h-screen-title)."
+      },
+      "title": {
+        "displayName": "Row title",
+        "purpose": "A list row's name."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Section heads on the Timer screens (.h-section-sans)."
+      },
+      "section-mono": {
+        "displayName": "Section, mono",
+        "purpose": "Section heads on the other screens (.h-section), uppercase."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prose, buttons, options, control rows."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Readings on the dense screens (.num)."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Furniture: field label, unit, meta reading (.eyebrow), uppercase."
+      },
+      "microlabel": {
+        "displayName": "Microlabel",
+        "purpose": "Column labels in a four-column grid at 360px; the measured 9px floor."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-menu",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "The app menu, a row's ⋯ menu, the cue-settings popover."
+      },
+      {
+        "name": "select-popup",
+        "value": "0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.4)",
+        "purpose": "Picker's list, on the raised panel."
+      },
+      {
+        "name": "mini-bar",
+        "value": "0 10px 30px -8px rgb(0 0 0 / 0.8)",
+        "purpose": "The Timer list's bottom bar, floating over the rows."
+      }
+    ],
+    "motion": [
+      {
+        "name": "screen-out",
+        "value": "110ms cubic-bezier(0.4, 0, 1, 1)",
+        "purpose": "The old screen fading out on a navigation (view transition)."
+      },
+      {
+        "name": "screen-in",
+        "value": "190ms cubic-bezier(0, 0, 0.2, 1)",
+        "purpose": "The new screen fading in and rising 6px; the top strip holds still."
+      },
+      {
+        "name": "accordion",
+        "value": "190ms cubic-bezier(0.32, 0.72, 0, 1)",
+        "purpose": "Row panel height, from Base UI's --accordion-panel-height."
+      },
+      {
+        "name": "segment-flash",
+        "value": "opacity 0.4 → 0, cubic-bezier(0, 0, 0.2, 1), duration from the cue planner",
+        "purpose": "A wash over the clock on a segment change; the ink on a field, the segment colour off one. Never planned under reduced motion."
+      },
+      {
+        "name": "overlay",
+        "value": "150ms opacity",
+        "purpose": "The full-screen clock and the menus entering and leaving; menus also scale from 0.98."
+      },
+      {
+        "name": "editor-sheet",
+        "value": "200ms opacity + translateY(16px)",
+        "purpose": "The protocol editor's full-viewport dialog."
+      },
+      {
+        "name": "reduced",
+        "value": "0.01ms, one iteration",
+        "purpose": "Under prefers-reduced-motion every animation and transition, view transitions included, finishes in one frame (ADR 0011)."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "sideways",
+        "value": "(orientation: landscape) and (max-height: 32rem)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action a screen exists for; rationed to one per screen.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Start</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:8px 16px;border:1px solid;border-radius:8px;font:500 15px/1.25 'Inter Variable',Inter,sans-serif;transition:background-color .15s,border-color .15s,color .15s;cursor:pointer}.ds-btn-primary{background:var(--flag,#ff5a2c);border-color:var(--flag,#ff5a2c);color:var(--bg,#07080a)}.ds-btn-primary:hover{border-color:var(--chalk,#e9e6dc)}.ds-btn-primary:active{background:var(--flag-deep,#c93b14)}.ds-btn:focus-visible{outline:2px solid var(--flag,#ff5a2c);outline-offset:2px}.ds-btn:disabled{background:transparent;border-color:var(--line-soft,#34383c);color:var(--ink-faint,#959ba1)}"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "The default button; hover raises the panel a step and lightens the text.",
+      "html": "<button class=\"ds-btn-quiet\">Duplicate</button>",
+      "css": ".ds-btn-quiet{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border:1px solid var(--line,#474c51);border-radius:8px;background:var(--panel-2,#2b2f32);color:var(--ink-dim,#b6bbc0);font:500 13px/1.25 'Inter Variable',Inter,sans-serif;transition:background-color .15s,color .15s;cursor:pointer}.ds-btn-quiet:hover,.ds-btn-quiet:active{background:var(--panel-3,#33373b);color:var(--ink,#f1f2f2)}.ds-btn-quiet:focus-visible{outline:2px solid var(--flag,#ff5a2c);outline-offset:2px}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Every text and number input: 16px so iOS does not zoom, tabular figures.",
+      "html": "<input class=\"ds-input\" value=\"24\" aria-label=\"Load\" />",
+      "css": ".ds-input{width:100%;min-width:0;padding:6px 8px;border:1px solid var(--line,#474c51);border-radius:8px;background:var(--panel-2,#2b2f32);color:var(--ink,#f1f2f2);font:400 16px/1.5 'Inter Variable',Inter,sans-serif;font-variant-numeric:tabular-nums;text-align:center;outline:none;transition:border-color .15s}.ds-input:hover{border-color:var(--line-soft,#34383c)}.ds-input:focus{border-color:var(--ink-faint,#959ba1)}.ds-input:focus-visible{outline:2px solid var(--flag,#ff5a2c);outline-offset:2px}"
+    },
+    {
+      "name": "State Chip",
+      "kind": "chip",
+      "refersTo": "chip-neutral",
+      "description": "A small state token; the tone reports state, never decoration.",
+      "html": "<span class=\"ds-chip\">Sending…</span> <span class=\"ds-chip ds-chip-warn\">Offline</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border:1px solid var(--line,#474c51);border-radius:8px;color:var(--ink-dim,#b6bbc0);font:400 10px/1.4 'Roboto Mono Variable','Roboto Mono',monospace;letter-spacing:.025em;white-space:nowrap}.ds-chip-warn{border-color:color-mix(in srgb,var(--gold,#e9b445) 40%,transparent);color:var(--gold,#e9b445)}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The one surface, and it has to earn itself: state colour, or a list with a shared edge.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-label\">Readiness</div><div class=\"ds-card-body\">Train as planned.</div></div>",
+      "css": ".ds-card{padding:14px;border:1px solid color-mix(in srgb,var(--teal,#3fd0c9) 35%,transparent);border-radius:10px;background:color-mix(in srgb,var(--teal,#3fd0c9) 6%,var(--panel,#232629))}.ds-card-label{font:400 10px/1.2 'Roboto Mono Variable','Roboto Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint,#959ba1)}.ds-card-body{margin-top:6px;font:400 13px/1.375 'Inter Variable',Inter,sans-serif;color:var(--ink,#f1f2f2)}"
+    },
+    {
+      "name": "Option",
+      "kind": "chip",
+      "refersTo": "option-on",
+      "description": "A choice in a picker; selected is weight, a chalk border and a raised panel, not a fill.",
+      "html": "<div class=\"ds-options\"><button class=\"ds-option\" aria-pressed=\"true\">kg</button><button class=\"ds-option\" aria-pressed=\"false\">lb</button></div>",
+      "css": ".ds-options{display:flex;gap:6px}.ds-option{flex:1;min-height:44px;padding:6px 8px;border:1px solid var(--line,#474c51);border-radius:8px;background:var(--panel-2,#2b2f32);color:var(--ink-dim,#b6bbc0);font:400 13px/1.25 'Inter Variable',Inter,sans-serif;text-align:left;transition:border-color .15s,color .15s;cursor:pointer}.ds-option:hover{border-color:color-mix(in srgb,var(--chalk,#e9e6dc) 40%,transparent);color:var(--ink,#f1f2f2)}.ds-option[aria-pressed=true]{border-color:color-mix(in srgb,var(--chalk,#e9e6dc) 60%,transparent);background:var(--panel-3,#33373b);color:var(--chalk,#e9e6dc);font-weight:600}.ds-option:focus-visible{outline:2px solid var(--flag,#ff5a2c);outline-offset:2px}"
+    },
+    {
+      "name": "Menu",
+      "kind": "nav",
+      "description": "Every destination behind one control in the top strip; the current page is a raised panel in chalk.",
+      "html": "<nav class=\"ds-menu\"><a class=\"ds-menu-item\" aria-current=\"page\">Today</a><a class=\"ds-menu-item\">Week</a><a class=\"ds-menu-item\">Timer</a><a class=\"ds-menu-item\">Log</a></nav>",
+      "css": ".ds-menu{display:flex;flex-direction:column;gap:2px;width:232px;padding:4px;border:1px solid var(--line,#474c51);border-radius:10px;background:var(--panel,#232629);box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1)}.ds-menu-item{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:8px;color:var(--ink,#f1f2f2);font:400 13.5px/1.25 'Inter Variable',Inter,sans-serif;text-decoration:none;transition:background-color .15s;cursor:pointer}.ds-menu-item:hover{background:var(--panel-2,#2b2f32)}.ds-menu-item[aria-current=page]{background:var(--panel-3,#33373b);color:var(--chalk,#e9e6dc);font-weight:600}.ds-menu-item:focus-visible{outline:2px solid var(--flag,#ff5a2c);outline-offset:2px}"
+    },
+    {
+      "name": "Protocol Row",
+      "kind": "custom",
+      "refersTo": "list-row",
+      "description": "A Timer list row: name, shape, length; the ⋯ is its own 44px control beside it.",
+      "html": "<div class=\"ds-row-wrap\"><button class=\"ds-row\"><span class=\"ds-row-text\"><span class=\"ds-row-name\">Max hangs</span><span class=\"ds-row-shape\">10s on · 3 min off · 5 rounds</span></span><span class=\"ds-row-total\">15:50</span></button><button class=\"ds-row-more\" aria-label=\"More for Max hangs\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><circle cx=\"5\" cy=\"12\" r=\"1.6\"/><circle cx=\"12\" cy=\"12\" r=\"1.6\"/><circle cx=\"19\" cy=\"12\" r=\"1.6\"/></svg></button></div>",
+      "css": ".ds-row-wrap{display:flex;align-items:stretch;gap:6px}.ds-row{flex:1;display:flex;align-items:center;gap:12px;min-height:56px;min-width:0;padding:10px 14px;border:0;border-radius:14px;background:var(--panel,#232629);text-align:left;transition:background-color .15s;cursor:pointer}.ds-row:hover{background:var(--panel-2,#2b2f32)}.ds-row-text{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}.ds-row-name{font:600 16px/1.25 'Inter Variable',Inter,sans-serif;color:var(--ink,#f1f2f2)}.ds-row-shape{font:500 13px/1.375 'Inter Variable',Inter,sans-serif;color:var(--ink-dim,#b6bbc0)}.ds-row-total{font:600 22px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;color:var(--ink,#f1f2f2)}.ds-row-more{display:flex;align-items:center;justify-content:center;width:44px;min-height:44px;border:1px solid var(--line,#474c51);border-radius:14px;background:transparent;color:var(--ink-dim,#b6bbc0);cursor:pointer}.ds-row-more:hover{background:var(--panel-2,#2b2f32);color:var(--ink,#f1f2f2)}.ds-row:focus-visible,.ds-row-more:focus-visible{outline:2px solid var(--flag,#ff5a2c);outline-offset:2px}"
+    },
+    {
+      "name": "Clock Field",
+      "kind": "custom",
+      "refersTo": "clock-field-work",
+      "description": "The running clock: the segment's colour is the screen, ground ink, the number filling the width.",
+      "html": "<div class=\"ds-field\"><div class=\"ds-field-head\"><span class=\"ds-field-seg\">Work</span><button class=\"ds-field-close\" aria-label=\"Close\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M18 6 6 18M6 6l12 12\"/></svg></button></div><div class=\"ds-field-face\">7</div><div class=\"ds-field-pos\">Round 2/6 · Set 1/3</div><div class=\"ds-field-controls\"><button class=\"ds-field-side\" aria-label=\"Back\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M19 5.5v13a1 1 0 0 1-1.55.83l-9.5-6.5a1 1 0 0 1 0-1.66l9.5-6.5A1 1 0 0 1 19 5.5z\"/><rect x=\"4\" y=\"5\" width=\"2.4\" height=\"14\"/></svg></button><button class=\"ds-field-main\" aria-label=\"Pause\"><svg width=\"34\" height=\"34\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"6\" y=\"4\" width=\"4.5\" height=\"16\" rx=\"1.2\"/><rect x=\"13.5\" y=\"4\" width=\"4.5\" height=\"16\" rx=\"1.2\"/></svg></button><button class=\"ds-field-side\" aria-label=\"Skip\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M5 5.5v13a1 1 0 0 0 1.55.83l9.5-6.5a1 1 0 0 0 0-1.66l-9.5-6.5A1 1 0 0 0 5 5.5z\"/><rect x=\"17.6\" y=\"5\" width=\"2.4\" height=\"14\"/></svg></button></div></div>",
+      "css": ".ds-field{display:flex;flex-direction:column;min-height:560px;padding:16px;background:var(--flag,#ff5a2c);color:var(--bg,#07080a);font-family:'Inter Variable',Inter,sans-serif}.ds-field-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-left:4px}.ds-field-seg{font:700 30px/1 'Barlow Condensed',sans-serif;letter-spacing:.04em;text-transform:uppercase}.ds-field-close{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border:2px solid currentColor;border-radius:14px;background:transparent;color:inherit;cursor:pointer}.ds-field-face{flex:1;display:flex;align-items:center;justify-content:center;font:700 300px/.8 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}.ds-field-pos{text-align:center;font:600 28px/1 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase}.ds-field-controls{display:flex;align-items:center;justify-content:center;gap:16px;padding:12px 0 12px}.ds-field-side{display:flex;align-items:center;justify-content:center;width:64px;height:64px;border:2px solid currentColor;border-radius:18px;background:transparent;color:inherit;cursor:pointer}.ds-field-main{display:flex;align-items:center;justify-content:center;flex:1;min-width:132px;max-width:220px;height:84px;border:0;border-radius:22px;background:var(--bg,#07080a);color:var(--flag,#ff5a2c);cursor:pointer}.ds-field button:focus-visible{outline:2px solid currentColor;outline-offset:2px}"
+    },
+    {
+      "name": "Mini Bar",
+      "kind": "custom",
+      "refersTo": "strip-stopped",
+      "description": "The clock's one-line strip: segment colour while running, a bordered panel with a vermilion Resume when stopped.",
+      "html": "<div class=\"ds-strip ds-strip-run\"><span class=\"ds-strip-pos\"><span class=\"ds-strip-seg\">Rest</span><span class=\"ds-strip-round\">Round 3/6</span></span><span class=\"ds-strip-num\">2:30</span><button class=\"ds-strip-btn\" aria-label=\"Pause\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"6\" y=\"4\" width=\"4.5\" height=\"16\" rx=\"1.2\"/><rect x=\"13.5\" y=\"4\" width=\"4.5\" height=\"16\" rx=\"1.2\"/></svg></button></div><div class=\"ds-strip ds-strip-stop\"><span class=\"ds-strip-pos\"><span class=\"ds-strip-seg\" style=\"color:var(--teal,#3fd0c9)\">Rest</span><span class=\"ds-strip-round\">Round 3/6</span></span><span class=\"ds-strip-num\">2:30</span><button class=\"ds-strip-btn ds-strip-resume\" aria-label=\"Resume\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z\"/></svg></button></div>",
+      "css": ".ds-strip{display:flex;align-items:center;gap:10px;min-height:72px;margin-bottom:8px;padding:8px 8px 8px 16px;border-radius:16px}.ds-strip-run{background:var(--teal,#3fd0c9);color:var(--bg,#07080a)}.ds-strip-stop{border:1px solid var(--line,#474c51);background:var(--panel,#232629);color:var(--ink,#f1f2f2)}.ds-strip-pos{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}.ds-strip-seg{font:700 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.05em;text-transform:uppercase}.ds-strip-round{font:600 15px/1 'Barlow Condensed',sans-serif;letter-spacing:.03em;text-transform:uppercase}.ds-strip-stop .ds-strip-round{color:var(--ink-dim,#b6bbc0)}.ds-strip-num{min-width:5.75rem;text-align:right;font:700 56px/.9 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums}.ds-strip-btn{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border:0;border-radius:14px;background:var(--bg,#07080a);color:var(--teal,#3fd0c9);cursor:pointer}.ds-strip-resume{border:1px solid var(--flag,#ff5a2c);background:var(--flag,#ff5a2c);color:var(--bg,#07080a)}.ds-strip-resume:hover{border-color:var(--chalk,#e9e6dc)}.ds-strip-btn:focus-visible{outline:2px solid var(--flag,#ff5a2c);outline-offset:2px}.ds-strip-run .ds-strip-btn:focus-visible{outline-color:currentColor}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Chalk-Dusted Console",
+    "overview": "Send Lab is a console for one athlete, and it has two registers that share one material. At home or at a desk it is dense and calm: a neutral near-black ground, a tight ramp of graphite panels, many numbers on one screen, and almost no colour. On the board it becomes something else. The clock stops being a widget and turns into a coloured field: the running segment's colour fills the whole screen, the number fills its width, and the ink is the ground colour. The athlete, 1–3 m away with chalk on one hand, reads the segment by colour, the seconds by the number, and where they are by Round · Set. A screen with no colour is a clock that is stopped.\n\nBoth registers rest on one doctrine: **colour reports state, never decoration.** The four accents are the only chroma in the system. Each one means something everywhere it appears, so a screen with nothing to report is grey, and that is how it should look. Density comes from grouping by space and hairlines rather than by boxes; a bordered surface has to carry state colour or hold a list whose rows share an edge.\n\nThis system is measured as much as designed. Every text pair clears 4.5:1 in both locales (`check:contrast`), reduced motion finishes every animation in one frame (`check:motion`), nothing overflows 360px (`check:overflow`), and `docs/component-vocabulary.md` is the authority on components and on the rules that came out of measurement. Where this file and that one seem to disagree, that one wins and this one is stale.",
+    "keyCharacteristics": [
+      "Dark only, on a hue-free ground, so the four accents are the only colour on any screen.",
+      "Colour is state: gold prepare, vermilion work, teal for both rests, violet cooldown, and ok / warn / stop on every other screen.",
+      "The clock is a whole-screen field with ground-coloured ink, not a ring with readouts under it.",
+      "Barlow Condensed for the numbers read from the wall, Inter for every word, Roboto Mono for data and furniture on the dense screens.",
+      "Hierarchy is carried by size, weight and colour at once, and by space: sections sit further apart than their contents.",
+      "Touch targets are 44px for anything touched mid-set and 48px or more on the clock, where controls are found by direction."
+    ],
+    "rules": [
+      {
+        "name": "The State-Only Rule",
+        "body": "Colour reports state, never decoration. Nothing is coloured to look nice; a screen with nothing to report is grey.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ground-Ink Rule",
+        "body": "Text on any accent fill is the ground colour. White on vermilion measures 3.11:1; the ground gives 6.44:1 and reads as more emphatic. Every accent clears ≥6.4:1 against the ground, which is why a coloured field can carry ground ink at any size.",
+        "section": "colors"
+      },
+      {
+        "name": "The Rationed Fill Rule",
+        "body": "Filled vermilion appears once per screen: the `primary` button. The refused-work announcement is the one recorded exception, and it reuses the measured pair, not the button.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pair, Not the Palette Rule",
+        "body": "A colour's contrast belongs to the pair. Vermilion at 10px clears 4.5:1 on `panel` and fails on `panel-inset`, so a token moved onto another surface is re-measured there. When a state cannot clear 4.5:1 as text, it goes on a mark (a dot clears at 3:1) beside the text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Numbers-Only Rule",
+        "body": "Barlow Condensed sets numbers, and the segment names read with them, on the clock and its strip. Never a heading, never a word anywhere else. Every word is Inter.",
+        "section": "typography"
+      },
+      {
+        "name": "The Three-Axis Rank Rule",
+        "body": "Ranks differ in size, weight and colour at once. At this density any one axis alone is too quiet, and one rank doing two jobs made a screen read as one long list.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every number that changes is tabular, so a count crossing ten or a minute never moves what sits beside it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Earned Box Rule",
+        "body": "A card has to earn its border: it carries state colour, or it holds a list whose rows share an edge. Everything else is a `Bare` group, a hairline and whitespace. An empty state is copy in a `Bare`, never a box with a sentence in it.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Float-Only Shadow Rule",
+        "body": "A shadow means \"this is over the page\". Nothing that sits in the page's flow has one.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use the four accents only to report state, and the semantic names (`--ok`, `--warn`, `--stop`, `--cooldown`) to reach them.",
+      "**Do** set text on any accent fill in the ground colour.",
+      "**Do** mark state with colour or with a mark beside the text; re-measure any colour moved onto a new surface.",
+      "**Do** group with space and a `line-soft` hairline (`Bare`) first, and reach for a card only when it carries state or a shared list edge.",
+      "**Do** keep one `primary` per screen, and give a disabled control the line that says what it is waiting for.",
+      "**Do** set numbers that change in a tabular face: Barlow Condensed on the clock and its strip, Roboto Mono for data elsewhere.",
+      "**Do** size touch targets at 44px for anything touched mid-set and 48px or more on the clock (64px side and 84px main controls on its row).",
+      "**Do** let labels wrap and buttons grow; pt-BR runs 1.4–2× longer.",
+      "**Do** run `check:contrast`, `check:motion`, `check:overflow` and `check:hydration` at 360px and with `--desktop` before calling a surface done."
+    ],
+    "donts": [
+      "**Don't** mark state by dimming text with `opacity`; at 9–11px there is no gap between de-emphasised and unreadable.",
+      "**Don't** put white text on vermilion (3.11:1).",
+      "**Don't** use pressed vermilion as a hover or a resting surface for text (3.91:1 with the ground).",
+      "**Don't** colour anything to look nice, including a destructive menu item; its confirmation question is what guards it.",
+      "**Don't** give the stopwatch a segment colour; teal running and gold paused read as rest and prepare from 2 m.",
+      "**Don't** set a word in Barlow Condensed, or stack readouts under a ring timer; the clock is a field.",
+      "**Don't** draw paused digits as transparent outlined text; it measures 1:1 in `check:contrast`.",
+      "**Don't** add a shadow to anything that sits in the page's flow.",
+      "**Don't** call a clock segment a \"phase\"; a phase spans weeks (`CONTEXT.md`).",
+      "**Don't** animate anything that outlives one frame under `prefers-reduced-motion`, and don't enter Motion without a `reducedMotion=\"user\"` provider."
+    ]
+  }
+}
