@@ -58,13 +58,14 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Stat` | `primitives.tsx` | One reading in a divider-separated strip |
 | `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure |
 | `Panes` | `primitives.tsx` | A page's two panes from `lg`, stacked below it |
-| `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train and the Timer screen, and the stopwatch. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
+| `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
+| `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
 | `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
-| `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`, the Timer screen's `Protocols` / `Stopwatch`). Promoted out of Settings by #64 when a second screen needed it. A `fieldset`; `labelledBy` names the group after the row that asks it |
+| `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`). Promoted out of Settings by #64 when a second screen needed it. A `fieldset`; `labelledBy` names the group after the row that asks it |
 | `ControlRow` | `primitives.tsx` | One control on its own 44px line: what it is on the left, the control on the right. Promoted out of Settings by #105 when the cue settings needed it on a second screen |
 | `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes |
 
@@ -75,10 +76,10 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
 | `Menu` | The app's whole navigation — every destination, behind one control in the strip |
 | `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
-| `Timer` | The protocol clock: its tick, the cues it asks the planner for, its setup, and its two faces — the strip and its run in the full-screen clock. Which screen's draft it keeps is its `home` (`ClockHome`, `'train' \| 'timer'`), never a "slot" |
+| `Timer` | The protocol clock: its tick, the cues it asks the planner for, its setup, and its two faces — the strip and its run in the full-screen clock. Which screen's draft it keeps is its `home` (`ClockHome`, `'train' \| 'timer'`), never a "slot"; where its strip goes is its `strip` — in the page on Train, the mini bar on the Timer screen's list |
 | `FullScreenClock` | The one full-screen dialog both clocks run in (spec #98: it "takes either a protocol run or a stopwatch run"): the header, the face as a tap target, the detail, the readout and the 56px control row, and the layout on a phone held sideways. Each clock hands in its status, reading and controls; `Face` draws the number for both, and sizes it by its glyph count against the `--face` each clock sets |
 | `ProtocolEditor` | How a saved protocol is typed in: a name and the seven numbers as text, and when to say a field cannot run (`readProtocolForm` decides that it cannot). A sheet, two fields to a row, for pt-BR's labels |
-| `Stopwatch` | The count-up's tick, its laps, and the same two faces — strip and full-screen — in the clock's type and controls, through the same `FullScreenClock` |
+| `Stopwatch` | The count-up's tick, its laps, and the same two faces — the mini bar and full-screen — in the clock's type and controls, through the same `FullScreenClock`. Every lap is listed under its number |
 | `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
@@ -88,7 +89,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
 `ids.ts` (identity), `protocol.ts` (the timer's arithmetic, and which cue
-each transition fires), `stopwatch.ts` (the stopwatch's, and its laps), `cues.ts` (playing those cues: its beeps, haptics and voice), `timerSetup.ts` (the clock's draft: restored paused, one per screen, and on the Timer screen one per protocol), `stopwatchDraft.ts` (the stopwatch's draft, paused and unscoped), `wakeLock.ts` (keeping the screen on while either clock counts), `loggedSet.ts` (which of the seven per-set fields an
+each transition fires), `stopwatch.ts` (the stopwatch's, and its laps), `cues.ts` (playing those cues: its beeps, haptics and voice), `timerSetup.ts` (the clock's draft: restored paused, one per screen, and on the Timer screen one per protocol), `stopwatchDraft.ts` (the stopwatch's draft, paused and unscoped), `recentProtocols.ts` (the Timer screen's Recent: the last protocols run, as keys, on this device), `wakeLock.ts` (keeping the screen on while either clock counts), `loggedSet.ts` (which of the seven per-set fields an
 exercise shows, and what a fresh row is prefilled with), `prescription.ts`
 (what a slot runs, and at what numbers), `workingLoad.ts` (which exercises carry
 a working load and what to start one at), `strength.ts` (the size→20mm
@@ -763,7 +764,7 @@ does not get two columns.**
 | `week` | **two columns** | Built ([#63](https://github.com/YgorPerez/send-lab/issues/63)) through `Panes` as expected: the slot grid and the day it selects are two halves, and the cut is already the phone order. The grid also goes `grid-cols-4` → `lg:grid-cols-7` — four columns is what 360px forces, seven is the shape |
 | `program` | **two columns, expected** | Unbuilt ([#65](https://github.com/YgorPerez/send-lab/issues/65)). A phase editor is the other shape that obviously wants a second column beside it |
 | `train` | **capped** | Defined by the posture it is used in. Seven loggable fields laid out against 360px, stretched to twice that, put the number being typed an inch from its label. Measured: the wide layout saves it 128px, which is the bottom bar |
-| `timer` | **capped** | Built ([#101](https://github.com/YgorPerez/send-lab/issues/101)) through `Pane`, for Train's reason: one clock and one list, picked and run one-handed. A second column would put the clock a screen-width away from the row that chose it |
+| `timer` | **capped** | Built ([#101](https://github.com/YgorPerez/send-lab/issues/101)) through `Pane`, for Train's reason: one list, picked one-handed, each row opening its clock full-screen (#111). Wider, a row says nothing more about a protocol |
 | `login`, `welcome` | **capped** | A form and a stepper. A stepper is one thing at a time by design. Both are built ([#66](https://github.com/YgorPerez/send-lab/issues/66), [#64](https://github.com/YgorPerez/send-lab/issues/64)) and both went through `Pane` as expected |
 | `settings` | **capped** | A list of controls; width adds nothing. Built ([#62](https://github.com/YgorPerez/send-lab/issues/62)) through `Pane` as expected |
 | `studies` | **open** | [#37](https://github.com/YgorPerez/send-lab/issues/37) owns its affordances first |

@@ -263,89 +263,102 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(settings).not.toContain(locale === 'en-US' ? 'no voice' : 'não tem voz');
 		});
 
-		// Timer (#101). The presets come from the library, read in the locale, each
-		// with its shape and its length, each exercise linked to the study the
-		// library cites; and the clock is there to run the one selected.
-		test('renders the Timer screen: the presets and the clock', async () => {
+		// Timer (#111). The screen is only the list: no clock strip above it and no
+		// Protocols | Stopwatch tabs. Top to bottom, the stopwatch's own row, the
+		// athlete's saved protocols, what they ran recently, then the presets,
+		// grouped by exercise and closed. A clock opens from a row and is a dialog,
+		// which a string render leaves out.
+		test('renders the Timer screen as the list: Stopwatch, Saved, Recent, Presets', async () => {
 			const timer = await render('/timer');
-			expect(timer.length).toBeGreaterThan(2000);
+			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+			expect(screen.length).toBeGreaterThan(2000);
 
-			expect(timer).toContain(locale === 'en-US' ? 'Presets' : 'Predefinidos');
-			// An exercise and one of its variants, in the locale.
-			expect(timer).toContain(locale === 'en-US' ? 'Max Hangs' : 'Max Hangs');
-			expect(timer).toContain(
+			// No tabs and no sticky strip.
+			expect(screen).not.toContain(locale === 'en-US' ? '>Protocols<' : '>Protocolos<');
+			expect(screen).not.toContain('aria-pressed');
+			expect(screen).not.toContain('sticky');
+			// Nothing on the list starts a clock: Start is the clock's.
+			expect(screen).not.toContain(locale === 'en-US' ? '>Start<' : '>Iniciar<');
+
+			const at = (text: string) => {
+				const i = screen.indexOf(text);
+				expect(i, text).toBeGreaterThan(-1);
+				return i;
+			};
+			const stopwatch = at(locale === 'en-US' ? '>Stopwatch<' : '>Cronômetro<');
+			const saved = at(locale === 'en-US' ? '>Saved<' : '>Salvos<');
+			const recent = at(locale === 'en-US' ? '>Recent<' : '>Recentes<');
+			const presets = at(locale === 'en-US' ? '>Presets<' : '>Predefinidos<');
+			// Stopwatch is the first row, above everything the screen lists.
+			expect(stopwatch).toBeLessThan(saved);
+			expect(saved).toBeLessThan(recent);
+			expect(recent).toBeLessThan(presets);
+			// Nothing has been run in a fresh render, and Recent says so.
+			expect(screen.slice(recent, presets)).toContain(
+				locale === 'en-US' ? 'The last three protocols you run' : 'Os três últimos protocolos',
+			);
+		});
+
+		// Each row: the name, the shape, the length — and beside it, not inside it,
+		// its own ⋯, named for the protocol it acts on (#111).
+		test('lists each saved protocol with its shape, its length and its own ⋯', async () => {
+			const timer = await render('/timer');
+			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+			// The athlete's own words, as they wrote them: the suite seeds once, in
+			// en-US, and a saved protocol's name is not translated after the fact.
+			const name = 'Warm-up hangs';
+			expect(screen).toContain(name);
+			expect(screen).toContain(
+				locale === 'en-US' ? '5 × 10s/20s · 2 sets' : '5 × 10s/20s · 2 séries',
+			);
+			expect(screen).toContain('5:30');
+			// The second one has a cooldown, and its shape says so (#104).
+			expect(screen).toContain(
+				locale === 'en-US' ? '8 × 20s/10s · 2:00 cooldown' : '8 × 20s/10s · 2:00 de desaquecimento',
+			);
+			// A tap on the row opens its clock; the row says so to a screen reader.
+			const row = screen.slice(screen.lastIndexOf('<button', screen.indexOf(name)));
+			expect(row.slice(0, row.indexOf('>'))).toContain('aria-haspopup="dialog"');
+			// Its ⋯: a 44px square with a border, labelled with the protocol's name.
+			const more = locale === 'en-US' ? `Actions for ${name}` : `Ações de ${name}`;
+			const trigger = screen.slice(screen.lastIndexOf('<button', screen.indexOf(more)));
+			const tag = trigger.slice(0, trigger.indexOf('>'));
+			expect(tag).toContain('w-11');
+			expect(tag).toContain('min-h-11');
+			expect(tag).toContain('border');
+			expect(tag).toContain('aria-haspopup="menu"');
+			// The actions are in its menu, not right-floating under a row.
+			expect(screen).not.toContain(locale === 'en-US' ? '>Duplicate<' : '>Duplicar<');
+			expect(screen).not.toContain(locale === 'en-US' ? '>Delete<' : '>Excluir<');
+			expect(screen).not.toContain('justify-end');
+			// And a new one is made from under the list.
+			expect(screen).toContain(locale === 'en-US' ? '>New protocol<' : '>Novo protocolo<');
+			expect(screen).not.toContain(
+				locale === 'en-US' ? 'No saved protocols yet' : 'Nenhum protocolo salvo ainda',
+			);
+		});
+
+		// The presets: grouped by exercise, every group closed until it is opened,
+		// and no study links — those moved to the clock's ready state (#110).
+		test('closes every preset group, and links no study from the list', async () => {
+			const timer = await render('/timer');
+			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+			const presets = screen.slice(
+				screen.indexOf(locale === 'en-US' ? '>Presets<' : '>Predefinidos<'),
+			);
+			// The exercise heads are there, as closed disclosures with a count.
+			expect(presets).toContain('>Max Hangs<');
+			const groups = presets.match(/aria-expanded="(true|false)"/g) ?? [];
+			expect(groups.length).toBeGreaterThan(5);
+			expect(groups.every((g) => g === 'aria-expanded="false"')).toBe(true);
+			expect(presets).toContain(locale === 'en-US' ? '2 presets' : '2 predefinidos');
+			// Their rows wait behind the tap.
+			expect(presets).not.toContain(
 				locale === 'en-US'
 					? '7/3 · 20mm half-crimp + open hand'
 					: '7/3 · 20mm half-crimp + mão aberta',
 			);
-			// Its shape and its total, 12:58 for four sets of 7/3 repeaters.
-			expect(timer).toContain(locale === 'en-US' ? '6 × 7s/3s · 4 sets' : '6 × 7s/3s · 4 séries');
-			expect(timer).toContain('12:58');
-			// The study, linked out.
-			expect(timer).toContain('href="https://pubmed.ncbi.nlm.nih.gov/33647876/"');
-			expect(timer).toContain(
-				locale === 'en-US' ? 'Critical force &amp; endurance' : 'Força crítica e resistência',
-			);
-			// The clock: its strip, its Start, and the way into the full-screen face.
-			// The strip is named by the preset it runs, not by "Interval timer",
-			// which would repeat the page's own title.
-			expect(timer).not.toContain(locale === 'en-US' ? 'Interval timer' : 'Timer de intervalos');
-			// What the clock reads, said for a screen reader rather than hidden
-			// behind the button's label (#99's review): the idle number is the
-			// prepare length, and it says so.
-			expect(timer).toContain(
-				locale === 'en-US'
-					? 'Ready, 10 seconds. Next up: Prepare'
-					: 'Pronto, 10 segundos. A seguir: Preparar',
-			);
-			expect(timer).toContain(locale === 'en-US' ? '>Start<' : '>Iniciar<');
-			expect(timer).toContain(
-				locale === 'en-US'
-					? 'aria-label="Full-screen clock"'
-					: 'aria-label="Relógio em tela cheia"',
-			);
-			// A preset is the library's: there is no setup to edit it from here.
-			expect(timer).not.toContain('aria-controls="timer-setup"');
-		});
-
-		// The Stopwatch tab (#108). The screen opens on Protocols, with the switch
-		// above the clock; the stopwatch is rendered behind it, hidden, so a
-		// protocol and the stopwatch can both hold their place at once.
-		test('renders the Protocols | Stopwatch switch and the Stopwatch tab', async () => {
-			const timer = await render('/timer');
-			const [protocols, stopwatch] =
-				locale === 'en-US' ? ['Protocols', 'Stopwatch'] : ['Protocolos', 'Cronômetro'];
-			expect(timer).toMatch(new RegExp(`aria-pressed="true"[^>]*>${protocols}<`));
-			expect(timer).toMatch(new RegExp(`aria-pressed="false"[^>]*>${stopwatch}<`));
-			// The switch comes before the clock, and the protocols before the stopwatch.
-			expect(timer.indexOf(`>${stopwatch}<`)).toBeLessThan(timer.indexOf('>Max Hangs<'));
-
-			// The stopwatch tab, hidden until chosen: zero, in the locale's decimal
-			// mark, its controls, and the laps it has not recorded yet.
-			const tab = timer.slice(timer.lastIndexOf('<div hidden'));
-			expect(tab).toContain(locale === 'en-US' ? '>Ready<' : '>Pronto<');
-			expect(tab).toContain(
-				`0:00<span class="text-[0.5em] text-ink-dim">${locale === 'en-US' ? '.0' : ',0'}</span>`,
-			);
-			expect(tab).toContain(locale === 'en-US' ? '>Start<' : '>Iniciar<');
-			expect(tab).toContain(locale === 'en-US' ? '>Lap<' : '>Volta<');
-			expect(tab).toContain(
-				locale === 'en-US'
-					? 'aria-label="Full-screen stopwatch"'
-					: 'aria-label="Cronômetro em tela cheia"',
-			);
-			expect(tab).toContain(locale === 'en-US' ? 'Laps' : 'Voltas');
-			expect(tab).toContain(locale === 'en-US' ? 'No laps yet.' : 'Nenhuma volta ainda.');
-			// What the number reads out: the count and the lap being timed.
-			expect(tab).toContain(
-				locale === 'en-US' ? '0:00.0 elapsed. Lap 1: 0:00.0' : '0:00,0 decorridos. Volta 1: 0:00,0',
-			);
-			// Lap is offered only once the watch runs.
-			expect(tab).toMatch(
-				new RegExp(
-					`disabled=""[^>]*><svg[^]*?</svg>${locale === 'en-US' ? 'Lap' : 'Volta'}</button>`,
-				),
-			);
+			expect(screen).not.toContain('pubmed.ncbi.nlm.nih.gov');
 		});
 
 		// The cue settings' shortcut (#105): one discreet control in the header,
@@ -363,41 +376,6 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			);
 			expect(header).toContain('aria-haspopup="dialog"');
 			expect(header).toContain('min-h-11');
-		});
-
-		// Saved protocols (#103). The seeded one is listed above the presets, with
-		// its shape and length, and the clock opens on it: the athlete's own come
-		// first. Selected, it offers its two actions — duplicate and delete.
-		test('lists the saved protocol and opens the clock on it', async () => {
-			const timer = await render('/timer');
-			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
-
-			expect(screen).toContain(locale === 'en-US' ? 'Saved protocols' : 'Protocolos salvos');
-			// The athlete's own words, as they wrote them: the suite seeds once, in
-			// en-US, and a saved protocol's name is not translated after the fact.
-			const name = 'Warm-up hangs';
-			expect(screen).toContain(name);
-			expect(screen).toContain(
-				locale === 'en-US' ? '5 × 10s/20s · 2 sets' : '5 × 10s/20s · 2 séries',
-			);
-			expect(screen).toContain('5:30');
-			// The second one has a cooldown, and its shape says so (#104).
-			expect(screen).toContain(
-				locale === 'en-US' ? '8 × 20s/10s · 2:00 cooldown' : '8 × 20s/10s · 2:00 de desaquecimento',
-			);
-			// Above the presets, not after twenty-four of them.
-			expect(screen.indexOf(name)).toBeLessThan(
-				screen.indexOf(locale === 'en-US' ? 'Presets' : 'Predefinidos'),
-			);
-			// Selected, so it carries its actions; no empty copy beside a real row.
-			expect(screen).toContain(locale === 'en-US' ? '>Duplicate<' : '>Duplicar<');
-			expect(screen).toContain(locale === 'en-US' ? '>Delete<' : '>Excluir<');
-			// And, being the athlete's, it can be edited; and a new one made (#104).
-			expect(screen).toContain(locale === 'en-US' ? '>Edit<' : '>Editar<');
-			expect(screen).toContain(locale === 'en-US' ? '>New protocol<' : '>Novo protocolo<');
-			expect(screen).not.toContain(
-				locale === 'en-US' ? 'No saved protocols yet' : 'Nenhum protocolo salvo ainda',
-			);
 		});
 
 		test('puts the chrome on every screen', async () => {
@@ -521,11 +499,40 @@ describe('the full-screen clock on Train', () => {
 	});
 });
 
+/**
+ * How a test opens a screen's protocol clock the way the athlete does: on
+ * Train, the strip's number; on the Timer screen, a tap on a row (#111), which
+ * lands on the clock's ready state. The seeded saved protocol is the row.
+ */
+function openProtocolClock(path: string) {
+	const opener =
+		path === '/timer'
+			? listRow('Warm-up hangs')
+			: document.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]');
+	expect(opener, `the way into the clock on ${path}`).toBeTruthy();
+	act(() => opener?.click());
+}
+
+/** A row on the Timer screen's list: the button that opens a clock, by the text
+ *  on it. */
+function listRow(text: string): HTMLButtonElement | null {
+	return (
+		[...document.querySelectorAll<HTMLButtonElement>('main button[aria-haspopup="dialog"]')].find(
+			(b) => b.textContent?.includes(text),
+		) ?? null
+	);
+}
+
+/** The Timer screen's mini bar: the way back into a clock, held at the bottom of
+ *  the list while it runs (#111). */
+function miniBar(): HTMLElement | null {
+	return document.querySelector<HTMLElement>('main .fixed.bottom-0');
+}
+
 // Only one of the Timer screen's two clocks runs at a time (#108): the press
-// that starts one pauses the other. Mounted on the document, as Train's is and
-// for the same reason, and pressed on the strips, where both tabs stay mounted
-// and the hidden one keeps its place.
-describe('the Timer screen runs one clock at a time', () => {
+// that starts one pauses the other. And whichever was started last has the mini
+// bar at the bottom of the list (#111), which a tap takes back to its clock.
+describe('the Timer screen runs one clock at a time, in the mini bar', () => {
 	beforeAll(() => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 	});
@@ -537,56 +544,64 @@ describe('the Timer screen runs one clock at a time', () => {
 	};
 	const worded = (scope: ParentNode, text: string) =>
 		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
-	/** The strip a full-screen control sits in: the protocol clock's or the stopwatch's. */
-	const strip = (host: ParentNode, fullScreen: string) => {
-		const el = host
-			.querySelector(`button[aria-label="${fullScreen}"]`)
-			// The protocol strip is #110's one-line strip; the stopwatch's a panel.
-			?.closest<HTMLElement>('.rounded-2xl, .rounded-lg');
-		if (!el) throw new Error(`no strip holds "${fullScreen}"`);
-		return el;
-	};
-	const runs = (scope: ParentNode) => worded(scope, 'Pause') !== undefined;
+	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const close = () =>
+		press(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]'));
 
-	test('starting the stopwatch pauses the protocol, and starting the protocol pauses the stopwatch', async () => {
+	test('a run left for the list goes on in the bar, and the bar goes back to its clock', async () => {
 		const router = createRouter({
 			routeTree,
 			history: createMemoryHistory({ initialEntries: ['/timer'] }),
 		});
 		await router.load();
-		const host = document;
 		const root = createRoot(document);
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
-			const protocol = strip(host, 'Full-screen clock');
-			const stopwatch = strip(host, 'Full-screen stopwatch');
+			// Nothing runs, so there is no bar.
+			expect(miniBar()).toBeNull();
 
-			const close = () =>
-				press(
-					document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]'),
-				);
-
-			// Start opens the full-screen clock; the athlete closes it to reach the tab.
-			press(worded(protocol, 'Start'));
-			expect(runs(protocol)).toBe(true);
+			openProtocolClock('/timer');
+			press(worded(dialog() ?? document, 'Start'));
+			close();
+			// Back on the list, still counting: the bar has the segment, the number
+			// and Pause, and the clock's own way back.
+			const bar = miniBar();
+			expect(bar?.textContent).toContain('Prepare');
+			expect(worded(bar ?? document, 'Pause')).toBeTruthy();
+			press(bar?.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
+			expect(dialog()?.getAttribute('aria-label')).toBe('Prepare');
 			close();
 
-			press(worded(host, 'Stopwatch'));
-			// Looking at the other tab pauses nothing: the protocol keeps counting.
-			expect(runs(protocol)).toBe(true);
-
-			press(worded(stopwatch, 'Start'));
-			expect(runs(stopwatch)).toBe(true);
-			expect(runs(protocol)).toBe(false);
+			// The stopwatch's row opens the stopwatch; starting it pauses the
+			// protocol, and the bar is now the stopwatch's.
+			press(listRow('Stopwatch'));
+			press(worded(dialog() ?? document, 'Start'));
 			close();
+			expect(miniBar()?.querySelector('button[aria-label="Full-screen stopwatch"]')).toBeTruthy();
+			expect(miniBar()?.querySelector('button[aria-label="Full-screen clock"]')).toBeNull();
+			expect(worded(miniBar() ?? document, 'Pause')).toBeTruthy();
 
-			press(worded(host, 'Protocols'));
-			// Paused by the stopwatch, so it resumes (#110: never "Start" mid-run).
-			press(worded(protocol, 'Resume'));
-			expect(runs(protocol)).toBe(true);
-			expect(runs(stopwatch)).toBe(false);
-			// Paused, not reset: it offers to resume what it counted, never Start.
-			expect(worded(stopwatch, 'Lap')?.disabled).toBe(true);
+			// Back to the protocol: paused by the stopwatch, so it resumes (#110:
+			// never "Start" mid-run), and that pauses the stopwatch.
+			openProtocolClock('/timer');
+			press(worded(dialog() ?? document, 'Resume'));
+			close();
+			expect(miniBar()?.querySelector('button[aria-label="Full-screen clock"]')).toBeTruthy();
+			expect(worded(miniBar() ?? document, 'Pause')).toBeTruthy();
+			// A look at another protocol while this one runs leaves it running: the
+			// other row opens its own ready state, and the bar is still this run's.
+			press(listRow('Tabata finisher'));
+			expect(dialog()?.getAttribute('aria-label')).toBe('Tabata finisher');
+			close();
+			expect(worded(miniBar() ?? document, 'Pause')).toBeTruthy();
+			press(miniBar()?.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
+			expect(dialog()?.getAttribute('aria-label')).not.toBe('Tabata finisher');
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			close();
+			// Paused from the bar, it stays on the list, as a paused bar.
+			press(worded(miniBar() ?? document, 'Pause'));
+			expect(dialog()).toBeNull();
+			expect(worded(miniBar() ?? document, 'Resume')).toBeTruthy();
 		} finally {
 			act(() => root.unmount());
 		}
@@ -618,7 +633,7 @@ describe('the flash on the full-screen clock', () => {
 		const root = createRoot(document);
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
-			press(document.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
+			openProtocolClock(path);
 			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
 			if (!clock) throw new Error(`the full-screen clock on ${path} did not open`);
 			// From the top: an earlier test may have left this screen's draft paused
@@ -718,7 +733,7 @@ describe('a clock restored paused', () => {
 	test.each(['/timer', '/train'])('%s plays no cue when it comes back', async (path) => {
 		const first = await mount(path);
 		try {
-			press(document.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
+			openProtocolClock(path);
 			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
 			if (!clock) throw new Error(`the full-screen clock on ${path} did not open`);
 			const reset = clock.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
@@ -748,7 +763,8 @@ describe('a clock restored paused', () => {
 
 // A tap on another row is the commonest thing done on the Timer screen, and it
 // used to throw away the place the clock was left in. Each protocol keeps its
-// own (spec: the draft is "scoped to the protocol").
+// own (spec: the draft is "scoped to the protocol"); and a tap on a row opens
+// its clock's ready state (#111), or its place if it has one.
 describe('the Timer screen keeps each protocol’s place', () => {
 	beforeAll(() => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -761,21 +777,11 @@ describe('the Timer screen keeps each protocol’s place', () => {
 	};
 	const worded = (scope: ParentNode, text: string) =>
 		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
-	/** The protocol rows: pressed-or-not buttons that carry a shape, which the
-	 *  header's language switch does not. */
-	const rows = () =>
-		[...document.querySelectorAll<HTMLButtonElement>('main button[aria-pressed]')].filter((b) =>
-			b.querySelector('.num'),
-		);
-	const stripOf = () =>
-		document
-			.querySelector('main button[aria-label="Full-screen clock"]')
-			?.closest<HTMLElement>('.rounded-2xl') ?? null;
-	/** The segment the strip says it is in — nothing before the start, when the
-	 *  strip names the protocol instead (#110). */
-	const stripLabel = () => stripOf()?.querySelector('.uppercase')?.textContent ?? '';
+	const clock = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const close = () =>
+		press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
 
-	test('a protocol left paused is still paused there after running another', async () => {
+	test('a protocol left paused is still paused there after opening another', async () => {
 		const router = createRouter({
 			routeTree,
 			history: createMemoryHistory({ initialEntries: ['/timer'] }),
@@ -784,10 +790,7 @@ describe('the Timer screen keeps each protocol’s place', () => {
 		const root = createRoot(document);
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
-			const [first, second] = rows();
-			press(first);
-			press(document.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
-			const clock = () => document.querySelector<HTMLElement>('[role="dialog"]');
+			press(listRow('Warm-up hangs'));
 			const reset = clock()?.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
 			if (reset && !reset.disabled) press(reset);
 			press(worded(clock() ?? document, 'Start'));
@@ -795,17 +798,162 @@ describe('the Timer screen keeps each protocol’s place', () => {
 				clock()?.querySelector<HTMLButtonElement>('button[aria-label="Skip to the next segment"]'),
 			);
 			press(worded(clock() ?? document, 'Pause'));
-			const left = stripLabel();
-			expect(left).toMatch(/^Work/);
-			press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+			expect(clock()?.getAttribute('aria-label')).toBe('Work');
+			close();
 
-			press(second);
-			expect(stripLabel()).toBe('');
-			expect(worded(stripOf() ?? document, 'Start')).toBeTruthy();
-			press(rows()[0]);
-			expect(stripLabel()).toBe(left);
-			// Paused, as every restored clock is.
-			expect(worded(stripOf() ?? document, 'Resume')).toBeTruthy();
+			// The other saved protocol has no place: its row lands on the ready
+			// state, named for it, with one Start.
+			press(listRow('Tabata finisher'));
+			expect(clock()?.getAttribute('aria-label')).toBe('Tabata finisher');
+			expect(worded(clock() ?? document, 'Start')).toBeTruthy();
+			close();
+
+			// And the first is where it was left, paused, as every restored clock is.
+			press(listRow('Warm-up hangs'));
+			expect(clock()?.getAttribute('aria-label')).toBe('Work');
+			expect(worded(clock() ?? document, 'Resume')).toBeTruthy();
+			close();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// A preset's row, once its group is open: the clock's ready state, with the
+	// study the library cites for its exercise, which left the list (#111).
+	test('a tap on a preset row opens its ready state, with its study', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			const name = '7/3 · 20mm half-crimp + open hand';
+			expect(listRow(name)).toBeNull();
+			const head = [
+				...document.querySelectorAll<HTMLButtonElement>('main button[aria-expanded]'),
+			].find((b) => b.textContent?.includes('Repeaters'));
+			press(head);
+			expect(head?.getAttribute('aria-expanded')).toBe('true');
+			press(listRow(name));
+			const ready = clock();
+			expect(ready?.getAttribute('aria-label')).toBe(name);
+			expect(ready?.textContent).toContain('Repeaters');
+			expect(ready?.textContent).toContain('in total');
+			expect(
+				ready?.querySelector('a[href="https://pubmed.ncbi.nlm.nih.gov/33647876/"]'),
+			).toBeTruthy();
+			// Opened, not started: the row starts nothing, and nothing is in the bar.
+			expect(worded(ready ?? document, 'Start')).toBeTruthy();
+			close();
+			expect(miniBar()).toBeNull();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+});
+
+// Recent (#111): the last protocols run, kept on the device, so they survive the
+// screen going away and coming back — and never a row Saved already shows.
+describe('Recent on the Timer screen', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	const clock = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const run = (row: HTMLButtonElement | null) => {
+		press(row);
+		const reset = clock()?.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
+		if (reset && !reset.disabled) press(reset);
+		press(worded(clock() ?? document, 'Start'));
+		press(worded(clock() ?? document, 'Pause'));
+		press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+	};
+	const recent = () =>
+		[...document.querySelectorAll('main section')].find(
+			(s) => s.querySelector('h2')?.textContent === 'Recent',
+		);
+	async function mount() {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		return root;
+	}
+
+	test('lists what was run after the screen comes back, leaving saved ones to Saved', async () => {
+		const preset = '7/3 · 20mm half-crimp + open hand';
+		const first = await mount();
+		try {
+			press(
+				[...document.querySelectorAll<HTMLButtonElement>('main button[aria-expanded]')].find((b) =>
+					b.textContent?.includes('Repeaters'),
+				),
+			);
+			run(listRow(preset));
+			run(listRow('Warm-up hangs'));
+		} finally {
+			act(() => first.unmount());
+		}
+
+		const second = await mount();
+		try {
+			const listed = recent();
+			expect(listed?.textContent).toContain(preset);
+			// Run, and saved: Saved shows it, so Recent does not.
+			expect(listed?.textContent).not.toContain('Warm-up hangs');
+			// Its rows are rows like any other: a tap opens the clock.
+			expect(listed?.querySelector('button[aria-haspopup="dialog"]')).toBeTruthy();
+		} finally {
+			act(() => second.unmount());
+		}
+	});
+});
+
+// The tapped group head stays under the finger as its group opens or closes
+// (#111). jsdom lays nothing out, so where the head is is told to it: the page
+// is expected to scroll by exactly what the head moved.
+describe('opening a preset group on the Timer screen', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+	afterEach(() => vi.restoreAllMocks());
+
+	test('scrolls the page by what the tapped head moved', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			const heads = [
+				...document.querySelectorAll<HTMLButtonElement>('main h3 > button[aria-expanded]'),
+			];
+			const head = heads[1];
+			if (!head) throw new Error('no second preset group');
+			// Read once at the tap, and once after the group above it changed.
+			const tops = [400, 340];
+			vi.spyOn(head, 'getBoundingClientRect').mockImplementation(
+				() => ({ top: tops.shift() ?? 340 }) as DOMRect,
+			);
+			const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+			act(() => head.click());
+			expect(head.getAttribute('aria-expanded')).toBe('true');
+			expect(scrollBy).toHaveBeenCalledWith(0, -60);
 		} finally {
 			act(() => root.unmount());
 		}

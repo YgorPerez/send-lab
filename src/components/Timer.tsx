@@ -73,6 +73,7 @@ import { type ClockHome, restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
 import { Face, FullScreenClock } from './FullScreenClock';
+import { BottomBar } from './ui/primitives';
 import { button, clockControl, input } from './ui/variants';
 
 const SEGMENT_LABEL: Record<Segment, () => string> = {
@@ -357,6 +358,7 @@ function ProtocolFullScreen({
 	onBack,
 	flash,
 	onFlashEnd,
+	actions,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
@@ -371,6 +373,7 @@ function ProtocolFullScreen({
 	onBack: () => void;
 	flash: Flash | null;
 	onFlashEnd: () => void;
+	actions?: ReactNode;
 }) {
 	const { run, config, shown, accent, running } = reading;
 	const segmentLabel = SEGMENT_LABEL[run.segment]();
@@ -394,6 +397,7 @@ function ProtocolFullScreen({
 			onToggle={onToggle}
 			announcer={<SegmentAnnouncer reading={reading} />}
 			summary={ready ? <Summary config={config} study={study} setup={setup} /> : undefined}
+			actions={actions}
 			// The flash (#107): a wash over the screen, fading out, so the change is
 			// caught from the corner of the eye. On a field the colour change is
 			// itself the news, so the wash is the ink — a blink of light over the
@@ -537,11 +541,12 @@ export function Timer({
 	clockOpen,
 	onClockOpenChange,
 	editable = true,
-	openOnStart = false,
+	strip = 'inline',
 	titled = true,
 	study = null,
 	title,
 	subtitle = null,
+	actions,
 }: {
 	ref?: Ref<ClockHandle>;
 	/** Called on Start, so the screen can pause whatever else it was running. */
@@ -567,9 +572,11 @@ export function Timer({
 	 *  is the library's (#101) — so its setup is not offered, and a stored copy
 	 *  that disagrees with the library is not restored. */
 	editable?: boolean;
-	/** Start opens the full-screen clock too. On the Timer screen there is
-	 *  nothing else to look at once it runs; on Train the sets are. */
-	openOnStart?: boolean;
+	/** Where the strip goes. Train keeps it in the page, under the app bar
+	 *  (`inline`). The Timer screen is only its list (#111), so there it is the
+	 *  mini bar at the bottom of the screen, shown only while a run is underway
+	 *  (`bar`), or nothing while the stopwatch holds that bar (`none`). */
+	strip?: 'inline' | 'bar' | 'none';
 	/** Whether the strip names itself "Interval timer" before the label. On a
 	 *  screen that is only the timer, the title repeats the page's and costs the
 	 *  label the width it truncates in. */
@@ -581,6 +588,8 @@ export function Timer({
 	 *  into one three-line heading (#110's finish review). */
 	title?: string;
 	subtitle?: string | null;
+	/** The ready state's header actions: on the Timer screen, the row's ⋯. */
+	actions?: ReactNode;
 }) {
 	// A DRAFT THAT PERSISTS, applied to a clock (#59). The setup and the athlete's
 	// place in it survive a reload — which on Android is not a rare event, since
@@ -699,7 +708,6 @@ export function Timer({
 		if (run.segment === 'idle' || run.segment === 'done') setRun(beginning(config));
 		setRunning(true);
 		onStart?.();
-		if (openOnStart) showClock(true);
 	};
 	const reset = () => {
 		setRunning(false);
@@ -772,6 +780,138 @@ export function Timer({
 		</div>
 	) : null;
 
+	// Where the run is, in two condensed lines: the segment, and the round and set.
+	const position = (
+		<span className="flex min-w-0 flex-1 flex-col gap-1.5">
+			<span
+				className="display truncate text-[17px] leading-none font-bold tracking-[0.05em] uppercase"
+				style={running ? undefined : { color: accent }}
+			>
+				{SEGMENT_LABEL[run.segment]()}
+			</span>
+			<span
+				className={cn(
+					'display truncate text-[15px] leading-none font-semibold tracking-[0.03em] uppercase',
+					!running && 'text-ink-dim',
+				)}
+			>
+				{counted(run) ? positionOf(reading) : ''}
+			</span>
+		</span>
+	);
+	// A fixed slot, right-aligned: `3` and `2:30` end at the same edge, so
+	// neither the labels nor the button beside it move as the count crosses ten
+	// or a minute (#110's critique: Start jumped 28px).
+	const slot = 'display min-w-[5.75rem] shrink-0 text-right text-[56px] leading-[0.9] font-bold';
+
+	// THE STRIP (#110): one line. Running, it is the segment's colour, as the
+	// full-screen clock is, so a glance at the top of Train reads the same way a
+	// glance at the wall does. Stopped, it is a panel. The number is the way into
+	// the full-screen clock — underlined, because a number that opens something
+	// has to say so — and before the start the whole name is, landing on the
+	// ready state. Left and total, the shape line and Reset are gone from here:
+	// Reset lives on the paused clock, the shape on its ready state.
+	//
+	// As the Timer screen's mini bar (#111) it is the same line, and the segment,
+	// the round and the number are one target back to the clock: there is no
+	// list above it to read, and the bar is what a thumb coming back finds.
+	const stripBody = (
+		<div
+			className={cn(
+				'flex min-h-[72px] items-center gap-2.5 rounded-2xl py-2 pr-2 pl-4',
+				!running && 'border border-line bg-panel',
+			)}
+			style={running ? { background: accent, color: 'var(--bg)' } : undefined}
+		>
+			{resting ? (
+				// Named for what it does, like the number it stands in for while
+				// nothing counts; what it shows — the name and the shape — is in its
+				// description, so the label takes nothing away (`component-
+				// vocabulary.md`: a label replaces content, it does not add to it).
+				<button
+					type="button"
+					onClick={() => showClock(true)}
+					aria-label={m.timer_fullscreen()}
+					aria-describedby={`${nameId} ${readingId}`}
+					className="flex min-w-0 flex-1 items-center gap-2 self-stretch text-left"
+				>
+					<span id={nameId} className="flex min-w-0 flex-1 flex-col gap-1">
+						<span className="truncate text-[15px] font-semibold text-ink">
+							{titled && label ? <span className="sr-only">{m.timer_title()} · </span> : null}
+							{name}
+						</span>
+						<span className="truncate text-[13px] text-ink-dim">
+							{run.segment === 'done' ? m.timer_done() : protocolShape(config)} · {clock(total)}
+						</span>
+					</span>
+					<ChevronRight size={18} aria-hidden="true" className="shrink-0 text-ink-faint" />
+				</button>
+			) : strip === 'bar' ? (
+				<button
+					type="button"
+					onClick={() => showClock(true)}
+					aria-label={m.timer_fullscreen()}
+					aria-describedby={readingId}
+					className="flex min-w-0 flex-1 items-center gap-2.5 self-stretch text-left"
+				>
+					{position}
+					<span className={slot} style={running ? undefined : { color: 'var(--ink)' }}>
+						{faceOf(shown).whole}
+					</span>
+				</button>
+			) : (
+				<>
+					{position}
+					<button
+						type="button"
+						onClick={() => showClock(true)}
+						aria-label={m.timer_fullscreen()}
+						aria-describedby={readingId}
+						className={cn(slot, 'underline decoration-2 underline-offset-[6px]')}
+						style={running ? undefined : { color: 'var(--ink)' }}
+					>
+						{faceOf(shown).whole}
+					</button>
+				</>
+			)}
+			<button
+				type="button"
+				onClick={toggle}
+				// Underway, the toggle is a 52px square either way — Pause on the
+				// field, Resume in vermilion — so pausing never moves the number
+				// beside it. Only before the start, when there is no number, does it
+				// carry its word.
+				className={
+					running
+						? 'flex size-[52px] shrink-0 items-center justify-center rounded-[14px] bg-bg'
+						: button({
+								kind: 'primary',
+								size: 'touch',
+								class: cn(
+									'min-h-[52px] shrink-0 rounded-[14px]',
+									resting ? 'px-4' : 'w-[52px] px-0',
+								),
+							})
+				}
+				style={running ? { color: accent } : undefined}
+			>
+				{running ? (
+					<>
+						<Pause size={22} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+						<span className="sr-only">{m.btn_pause()}</span>
+					</>
+				) : (
+					<>
+						<Play size={resting ? 16 : 22} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+						<span className={resting ? undefined : 'sr-only'}>
+							{underway(run) ? m.btn_resume() : m.btn_start()}
+						</span>
+					</>
+				)}
+			</button>
+		</div>
+	);
+
 	return (
 		<div>
 			<ProtocolFullScreen
@@ -788,6 +928,7 @@ export function Timer({
 				onBack={() => jump(back)}
 				flash={flash}
 				onFlashEnd={() => setFlash(null)}
+				actions={actions}
 			/>
 			{/* One announcer at a time: while the full-screen clock is up it carries
 			    its own, and the strip behind a modal dialog is not read out. */}
@@ -796,119 +937,8 @@ export function Timer({
 				{spokenReading(reading)}
 			</p>
 
-			{/* THE STRIP (#110): one line. Running, it is the segment's colour, as
-			    the full-screen clock is, so a glance at the top of Train reads the
-			    same way a glance at the wall does. Stopped, it is a panel. The
-			    number is the way into the full-screen clock — underlined, because a
-			    number that opens something has to say so — and before the start
-			    the whole name is, landing on the ready state. Left and total, the
-			    shape line and Reset are gone from here: Reset lives on the paused
-			    clock, the shape on its ready state. */}
-			<div
-				className={cn(
-					'flex min-h-[72px] items-center gap-2.5 rounded-2xl py-2 pr-2 pl-4',
-					!running && 'border border-line bg-panel',
-				)}
-				style={running ? { background: accent, color: 'var(--bg)' } : undefined}
-			>
-				{resting ? (
-					// Named for what it does, like the number it stands in for while
-					// nothing counts; what it shows — the name and the shape — is in its
-					// description, so the label takes nothing away (`component-
-					// vocabulary.md`: a label replaces content, it does not add to it).
-					<button
-						type="button"
-						onClick={() => showClock(true)}
-						aria-label={m.timer_fullscreen()}
-						aria-describedby={`${nameId} ${readingId}`}
-						className="flex min-w-0 flex-1 items-center gap-2 self-stretch text-left"
-					>
-						<span id={nameId} className="flex min-w-0 flex-1 flex-col gap-1">
-							<span className="truncate text-[15px] font-semibold text-ink">
-								{titled && label ? <span className="sr-only">{m.timer_title()} · </span> : null}
-								{name}
-							</span>
-							<span className="truncate text-[13px] text-ink-dim">
-								{run.segment === 'done' ? m.timer_done() : protocolShape(config)} · {clock(total)}
-							</span>
-						</span>
-						<ChevronRight size={18} aria-hidden="true" className="shrink-0 text-ink-faint" />
-					</button>
-				) : (
-					<>
-						<span className="flex min-w-0 flex-1 flex-col gap-1.5">
-							<span
-								className="display truncate text-[17px] leading-none font-bold tracking-[0.05em] uppercase"
-								style={running ? undefined : { color: accent }}
-							>
-								{SEGMENT_LABEL[run.segment]()}
-							</span>
-							<span
-								className={cn(
-									'display truncate text-[15px] leading-none font-semibold tracking-[0.03em] uppercase',
-									!running && 'text-ink-dim',
-								)}
-							>
-								{counted(run) ? positionOf(reading) : ''}
-							</span>
-						</span>
-						{/* A fixed slot, right-aligned: `3` and `2:30` end at the same
-						    edge, so neither the labels nor the button beside it move as
-						    the count crosses ten or a minute (#110's critique: Start
-						    jumped 28px). */}
-						<button
-							type="button"
-							onClick={() => showClock(true)}
-							aria-label={m.timer_fullscreen()}
-							aria-describedby={readingId}
-							className="display min-w-[5.75rem] shrink-0 text-right text-[56px] leading-[0.9] font-bold underline decoration-2 underline-offset-[6px]"
-							style={running ? undefined : { color: 'var(--ink)' }}
-						>
-							{faceOf(shown).whole}
-						</button>
-					</>
-				)}
-				<button
-					type="button"
-					onClick={toggle}
-					// Underway, the toggle is a 52px square either way — Pause on the
-					// field, Resume in vermilion — so pausing never moves the number
-					// beside it. Only before the start, when there is no number, does it
-					// carry its word.
-					className={
-						running
-							? 'flex size-[52px] shrink-0 items-center justify-center rounded-[14px] bg-bg'
-							: button({
-									kind: 'primary',
-									size: 'touch',
-									class: cn(
-										'min-h-[52px] shrink-0 rounded-[14px]',
-										resting ? 'px-4' : 'w-[52px] px-0',
-									),
-								})
-					}
-					style={running ? { color: accent } : undefined}
-				>
-					{running ? (
-						<>
-							<Pause size={22} fill="currentColor" strokeWidth={0} aria-hidden="true" />
-							<span className="sr-only">{m.btn_pause()}</span>
-						</>
-					) : (
-						<>
-							<Play
-								size={resting ? 16 : 22}
-								fill="currentColor"
-								strokeWidth={0}
-								aria-hidden="true"
-							/>
-							<span className={resting ? undefined : 'sr-only'}>
-								{underway(run) ? m.btn_resume() : m.btn_start()}
-							</span>
-						</>
-					)}
-				</button>
-			</div>
+			{strip === 'inline' ? stripBody : null}
+			{strip === 'bar' && underway(run) ? <BottomBar>{stripBody}</BottomBar> : null}
 		</div>
 	);
 }

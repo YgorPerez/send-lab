@@ -118,7 +118,9 @@ export const SEEDED_FLOORS: Record<string, RouteFloor> = {
 	'/log': { floor: 125, readsRecord: true },
 	'/login': { floor: 6, readsRecord: false },
 	'/settings': { floor: 12, readsRecord: false },
-	'/timer': { floor: 75, readsRecord: true },
+	// The list only, since #111: preset groups closed, no clock strip. Measured
+	// at 35 in both locales (seeded), 34 empty.
+	'/timer': { floor: 25, readsRecord: true },
 	'/train': { floor: 140, readsRecord: true },
 	'/week': { floor: 20, readsRecord: false },
 	'/welcome': { floor: 15, readsRecord: false },

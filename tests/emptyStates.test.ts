@@ -86,7 +86,7 @@ const COPY = {
 		noSaved: 'No saved protocols yet.',
 		newProtocol: '>New protocol<',
 		create: '>Create</b>',
-		saved: 'Saved protocols',
+		saved: '>Saved<',
 		delete: '>Delete<',
 	},
 	'pt-BR': {
@@ -105,7 +105,7 @@ const COPY = {
 		noSaved: 'Nenhum protocolo salvo ainda.',
 		newProtocol: '>Novo protocolo<',
 		create: '>Crie</b>',
-		saved: 'Protocolos salvos',
+		saved: '>Salvos<',
 		delete: '>Excluir<',
 	},
 } as const;
@@ -197,7 +197,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			const timer = screenOf(await render('/timer', THURSDAY, locale));
 			expect(timer).toContain(copy.saved);
 			expect(timer).toContain(copy.noSaved);
-			// Nothing saved, so nothing to delete: only a preset is selected.
+			// Nothing saved, so nothing to delete, and no menu is open to say it.
 			expect(timer).not.toContain(copy.delete);
 			// The copy names the two ways in, and the one that is not a preset's
 			// action is right under it (#104).
