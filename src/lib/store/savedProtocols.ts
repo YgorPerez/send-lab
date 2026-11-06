@@ -26,9 +26,10 @@ import { recordStore, recordSync } from './record';
  * screen can point the clock at it.
  *
  * Made from scratch, the protocol has been read by the editor
- * (`readProtocolForm`) — named, whole, runnable. Copied, its source is left
- * untouched and `name` is the copy's default, which the caller builds in the
- * locale (`resolveTimer`'s `copyName`); from here on it is the athlete's.
+ * (`readProtocolForm`) — whole and runnable, its name trimmed and possibly empty
+ * (#112: an unnamed one is listed under its shape). Copied, its source is left
+ * untouched and `name` is the copy's default (`resolveTimer`'s `copyName`); from
+ * here on it is the athlete's.
  */
 export async function createSavedProtocol(
 	named: NamedProtocol,

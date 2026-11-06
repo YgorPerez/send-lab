@@ -142,7 +142,7 @@ function TimerScreen() {
 		setMade(key);
 	};
 
-	// THE EDITOR (#104): one sheet for a new protocol and an edited one. What it
+	// THE EDITOR (#104; its own screen since #112): one for a new protocol and an edited one. What it
 	// is open on is kept apart from whether it is open, as the delete question's
 	// is, so its title does not change while it slides away.
 	const [editorOpen, setEditorOpen] = useState(false);
@@ -153,7 +153,9 @@ function TimerScreen() {
 	const openEditor = (row: SavedProtocolListing | null) => {
 		setEditing({
 			target: row
-				? { kind: 'edit', name: row.name, protocol: row.protocol }
+				? // An unnamed one opens with its name empty, not filled in with the
+					// shape it is listed under (#112).
+					{ kind: 'edit', name: row.named ? row.name : '', protocol: row.protocol }
 				: { kind: 'new', protocol: BLANK_PROTOCOL },
 			row,
 		});
