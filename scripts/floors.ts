@@ -98,14 +98,17 @@ export interface RouteFloor {
  *                seeded, 13 empty — the screen #73 was written about.
  *   `/login`     the sign-in form. 10 either way.
  *   `/settings`  the preferences that work offline. 19 either way.
- *   `/timer`     the Protocols | Stopwatch switch, the saved protocols, the
- *                library's presets, and the clock for the one selected. 116
- *                seeded, 113 empty — two seeded saved protocols (rows, and
- *                Delete and Edit on the selected one) against the empty list's
- *                copy, which names both ways in, and its New protocol button
- *                (#103, #104). With one seeded protocol the two tied: the empty
- *                state grew as much as the one row did. The Stopwatch tab is
- *                `hidden` until chosen, so only its switch counts (#108).
+ *   `/timer`     the list only, since #111: the Stopwatch row, Saved, Recent and
+ *                the preset groups, every group closed, and no clock strip — a
+ *                clock is a dialog, opened from a row, which the gate does not
+ *                open. 39 seeded, 34 empty, in both locales. The difference is
+ *                Saved: the two seeded saved protocols are five text elements
+ *                each (the name, the shape, the length, and the two separators
+ *                only a screen reader hears), ten against the empty group's five
+ *                (its copy, which names both ways in, in three runs and two
+ *                `<b>`). Recent and the presets are the same either way: Recent
+ *                is a draft on the device, not the record, and the presets are
+ *                the library's.
  *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
  *                seeded, 176 empty — the grid is prescribed from the program
  *                before any of it has been trained.
@@ -118,9 +121,14 @@ export const SEEDED_FLOORS: Record<string, RouteFloor> = {
 	'/log': { floor: 125, readsRecord: true },
 	'/login': { floor: 6, readsRecord: false },
 	'/settings': { floor: 12, readsRecord: false },
-	// The list only, since #111: preset groups closed, no clock strip. Measured
-	// at 35 in both locales (seeded), 34 empty.
-	'/timer': { floor: 25, readsRecord: true },
+	// Measured at 39 seeded and 34 empty in both locales (see above); the "35"
+	// written here by #111 was taken before each row gained its two spoken
+	// separators. `readsRecord` stays true, and is not `/welcome`'s case: the
+	// record is read here, as saved protocols, and the margin of five is those
+	// rows against the empty group's copy, not one element either side of a
+	// copy edit. What closes it is the seeded rows not being listed, which is
+	// what the control is for.
+	'/timer': { floor: 30, readsRecord: true },
 	'/train': { floor: 140, readsRecord: true },
 	'/week': { floor: 20, readsRecord: false },
 	'/welcome': { floor: 15, readsRecord: false },

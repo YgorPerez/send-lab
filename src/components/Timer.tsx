@@ -26,7 +26,6 @@
 // the protocol), and an open dialog owned here would close on that remount — the
 // athlete's rule is that the clock stays up and picks up the new protocol.
 import {
-	ChevronDown,
 	ChevronRight,
 	ExternalLink,
 	Pause,
@@ -46,7 +45,7 @@ import {
 	useState,
 } from 'react';
 import { deliver, releaseCues } from '$lib/cues';
-import { clock, protocolShape } from '$lib/format';
+import { clock, shortTime } from '$lib/format';
 import type { ProtocolKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import {
@@ -57,7 +56,6 @@ import {
 	IDLE,
 	nextOf,
 	PROTOCOL_FIELDS,
-	PROTOCOL_MINIMUM,
 	type Protocol,
 	type ProtocolField,
 	planCues,
@@ -69,15 +67,15 @@ import {
 	step,
 	totalOf,
 } from '$lib/protocol';
-import { formOf, typedValue } from '$lib/screens/timer';
+import { formOf, runs, typedValue } from '$lib/screens/timer';
 import { usePrefs } from '$lib/store/record';
 import { type ClockHome, restored, useTimerSetup } from '$lib/timerSetup';
 import { cn } from '$lib/utils';
 import { useWakeLock } from '$lib/wakeLock';
-import { Face, FullScreenClock } from './FullScreenClock';
+import { clockControl, Face, FullScreenClock, SEGMENT_COLOR } from './FullScreenClock';
 import { ProtocolRows } from './ProtocolRows';
 import { BottomBar } from './ui/primitives';
-import { button, clockControl } from './ui/variants';
+import { button } from './ui/variants';
 
 const SEGMENT_LABEL: Record<Segment, () => string> = {
 	idle: m.timer_ready,
@@ -87,16 +85,6 @@ const SEGMENT_LABEL: Record<Segment, () => string> = {
 	setRest: m.timer_setrest,
 	cooldown: m.timer_cooldown,
 	done: m.timer_done,
-};
-
-const SEGMENT_COLOR: Record<Segment, string> = {
-	idle: 'var(--ink-dim)',
-	prepare: 'var(--warn)',
-	work: 'var(--stop)',
-	rest: 'var(--ok)',
-	setRest: 'var(--ok)',
-	cooldown: 'var(--cooldown)',
-	done: 'var(--ink-dim)',
 };
 
 /** A flash the planner asked for (#107), as the clock draws it. `n` counts
@@ -229,12 +217,6 @@ function SegmentAnnouncer({ reading }: { reading: Reading }) {
 	);
 }
 
-/** A length as the clock's summary writes it: `10s` under a minute, `3:00`
- *  over it — the same rule as the face (`faceOf`). */
-function lengthOf(seconds: number): string {
-	return seconds >= 60 ? clock(seconds) : `${seconds}s`;
-}
-
 /**
  * The ready state (#110): what the clock is about to run, in the order it runs,
  * and one Start. Tapping a protocol lands here rather than on a number nobody
@@ -253,7 +235,7 @@ function Summary({
 	const grouped = config.rounds > 1 || config.sets > 1;
 	const between =
 		config.setRest > 0
-			? `${m.timer_setrest()} ${lengthOf(config.setRest)}`
+			? `${m.timer_setrest()} ${shortTime(config.setRest)}`
 			: config.sets > 1
 				? m.timer_seq_no_setrest()
 				: '';
@@ -321,7 +303,7 @@ function SummaryRow({
 				style={{ background: SEGMENT_COLOR[segment] }}
 			/>
 			{SEGMENT_LABEL[segment]()}
-			<span className="display ml-auto text-[24px] font-semibold">{lengthOf(seconds)}</span>
+			<span className="display ml-auto text-[24px] font-semibold">{shortTime(seconds)}</span>
 		</li>
 	);
 }
@@ -511,11 +493,7 @@ function ProtocolFullScreen({
 				)
 			}
 		>
-			{/* `--face` is the size a one- or two-glyph reading is drawn at: most of
-			    the width upright, and on its side the left column's width or the
-			    screen's height, whichever runs out first. */}
 			<span
-				className="[--face:min(88vw,46dvh)] lg:[--face:min(60vw,calc(100dvh-16rem))] sideways:[--face:min(40vw,78dvh)]"
 				style={onField ? undefined : { color: run.segment === 'done' ? 'var(--ink-dim)' : accent }}
 			>
 				<Face whole={faceOf(shown).whole} fill className="display leading-[0.8] font-bold" />
@@ -545,7 +523,7 @@ export function Timer({
 	onClockOpenChange,
 	editable = true,
 	strip = 'inline',
-	titled = true,
+	titleSpoken = true,
 	study = null,
 	title,
 	subtitle = null,
@@ -580,10 +558,11 @@ export function Timer({
 	 *  mini bar at the bottom of the screen, shown only while a run is underway
 	 *  (`bar`), or nothing while the stopwatch holds that bar (`none`). */
 	strip?: 'inline' | 'bar' | 'none';
-	/** Whether the strip names itself "Interval timer" before the label. On a
-	 *  screen that is only the timer, the title repeats the page's and costs the
-	 *  label the width it truncates in. */
-	titled?: boolean;
+	/** Whether the strip, before the start, says "Interval timer" before the
+	 *  label — to a screen reader only, since in sight the title cost the label
+	 *  the width it truncates in. On a screen that is only the timer it would
+	 *  repeat the page's title. */
+	titleSpoken?: boolean;
 	/** The study the protocol cites, linked from the clock's ready state. */
 	study?: Study | null;
 	/** What the ready state is titled by, when it is not the label — a preset's
@@ -612,7 +591,17 @@ export function Timer({
 	// Always starts paused, whatever was stored — `restored()` guarantees it, and
 	// `timerSetup.ts` documents why: nothing here knows how long the reload took.
 	const [running, setRunning] = useState<boolean>(initial.running);
-	const [setupOpen, setSetupOpen] = useState(false);
+
+	// A finished run is no place to come back to (#111): opening the clock on one
+	// lands on its ready state, as opening a protocol never run does. The Done
+	// face is only for a clock that is open as the run ends. Set during render, on
+	// the change of `clockOpen` itself — React's idiom for state that follows a
+	// prop — so the dialog never draws the Done face first.
+	const [openSeen, setOpenSeen] = useState(clockOpen);
+	if (clockOpen !== openSeen) {
+		setOpenSeen(clockOpen);
+		if (clockOpen && run.segment === 'done') setRun(IDLE);
+	}
 
 	// One effect writes, keyed on the value — the same half of the idiom the
 	// readiness draft uses, and for the same reason: a save at each setter is how
@@ -726,7 +715,7 @@ export function Timer({
 	};
 
 	const reading = readingOf(run, config, running);
-	const { accent, shown, total } = reading;
+	const { accent, shown } = reading;
 	const readingId = useId();
 	const nameId = useId();
 	// Before the start or after the end: nothing is counting, so the strip says
@@ -749,43 +738,31 @@ export function Timer({
 	const [typed, setTyped] = useState(() => formOf('', initial.config).fields);
 	const adjust = (f: ProtocolField, text: string) => {
 		setTyped((prev) => ({ ...prev, [f]: text }));
-		const value = typedValue(f, text);
-		if (value >= PROTOCOL_MINIMUM[f]) setConfig((prev) => ({ ...prev, [f]: value }));
+		if (runs(f, text)) setConfig((prev) => ({ ...prev, [f]: typedValue(f, text) }));
 	};
 	// Left unreadable, a value goes back to the number the clock is running, so
 	// the row never shows one that Start will not run.
 	const settle = (f: ProtocolField) =>
-		setTyped((prev) =>
-			typedValue(f, prev[f]) >= PROTOCOL_MINIMUM[f] ? prev : { ...prev, [f]: String(config[f]) },
-		);
-	const unreadable = new Set(
-		PROTOCOL_FIELDS.filter((f) => !(typedValue(f, typed[f]) >= PROTOCOL_MINIMUM[f])),
-	);
+		setTyped((prev) => (runs(f, prev[f]) ? prev : { ...prev, [f]: String(config[f]) }));
+	const unreadable = new Set(PROTOCOL_FIELDS.filter((f) => !runs(f, typed[f])));
+	// A section of the ready state headed Adjust (#110), open, as the rest of the
+	// ready state is: the rows are read with the sequence above them, and a
+	// disclosure in front of them was one more thing to find between two hangs.
 	// No rule above it: the sequence over it already ends on one.
+	const adjustId = useId();
 	const setup = editable ? (
-		<div className="mt-2">
-			<button
-				type="button"
-				onClick={() => setSetupOpen((v) => !v)}
-				aria-expanded={setupOpen}
-				aria-controls="timer-setup"
-				className={button({ kind: 'bare', size: 'lg', class: '-ml-1 gap-1 px-1 text-ink-dim' })}
-			>
+		<section aria-labelledby={`${adjustId}-heading`} className="mt-6 flex flex-col gap-1 pb-2">
+			<h2 id={`${adjustId}-heading`} className="h-section-sans">
 				{m.timer_setup()}
-				<ChevronDown size={16} className={cn('transition-transform', setupOpen && 'rotate-180')} />
-			</button>
-			{setupOpen ? (
-				<div id="timer-setup" className="pb-2">
-					<ProtocolRows
-						id="t"
-						fields={typed}
-						refused={unreadable}
-						onChange={adjust}
-						onSettle={settle}
-					/>
-				</div>
-			) : null}
-		</div>
+			</h2>
+			<ProtocolRows
+				id={adjustId}
+				fields={typed}
+				refused={unreadable}
+				onChange={adjust}
+				onSettle={settle}
+			/>
+		</section>
 	) : null;
 
 	// Where the run is, in two condensed lines: the segment, and the round and set.
@@ -817,8 +794,10 @@ export function Timer({
 	// glance at the wall does. Stopped, it is a panel. The number is the way into
 	// the full-screen clock — underlined, because a number that opens something
 	// has to say so — and before the start the whole name is, landing on the
-	// ready state. Left and total, the shape line and Reset are gone from here:
-	// Reset lives on the paused clock, the shape on its ready state.
+	// ready state; after the end too, with "Done" under the name and nothing
+	// else. Left and total, the shape line and Reset are gone from here in every
+	// state (#110): Reset lives on the paused clock, the shape and the total on
+	// its ready state.
 	//
 	// As the Timer screen's mini bar (#111) it is the same line, and the segment,
 	// the round and the number are one target back to the clock: there is no
@@ -845,12 +824,12 @@ export function Timer({
 				>
 					<span id={nameId} className="flex min-w-0 flex-1 flex-col gap-1">
 						<span className="truncate text-[15px] font-semibold text-ink">
-							{titled && label ? <span className="sr-only">{m.timer_title()} · </span> : null}
+							{titleSpoken && label ? <span className="sr-only">{m.timer_title()} · </span> : null}
 							{name}
 						</span>
-						<span className="truncate text-[13px] text-ink-dim">
-							{run.segment === 'done' ? m.timer_done() : protocolShape(config)} · {clock(total)}
-						</span>
+						{run.segment === 'done' ? (
+							<span className="truncate text-[13px] text-ink-dim">{m.timer_done()}</span>
+						) : null}
 					</span>
 					<ChevronRight size={18} aria-hidden="true" className="shrink-0 text-ink-faint" />
 				</button>

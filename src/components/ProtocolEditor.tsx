@@ -137,7 +137,7 @@ function EditorForm({
 		<form noValidate onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
 			{/* Three columns, the outer two equal, so the title sits on the screen's
 			    centre whatever width "Save" or "Salvar" takes. */}
-			<header className="mx-auto grid w-full max-w-[560px] grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 pt-4 pb-2">
+			<header className="mx-auto grid w-full max-w-pane grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 pt-4 pb-2">
 				<Dialog.Close
 					aria-label={m.btn_close()}
 					className={button({ size: 'touch', class: 'size-12 justify-self-start px-0' })}
@@ -157,9 +157,9 @@ function EditorForm({
 			</header>
 
 			<div className="flex-1 overflow-y-auto">
-				<div className="mx-auto flex w-full max-w-[560px] flex-col gap-4 px-5 pt-2 pb-6">
+				<div className="mx-auto flex w-full max-w-pane flex-col gap-4 px-5 pt-2 pb-6">
 					<div className="flex flex-col gap-1.5">
-						<label htmlFor={`${id}-name`} className="text-[13px] font-semibold text-ink-dim">
+						<label htmlFor={`${id}-name`} className="h-section-sans">
 							{m.timer_name()}
 						</label>
 						<input
@@ -185,7 +185,7 @@ function EditorForm({
 				</div>
 			</div>
 
-			<footer className="mx-auto flex w-full max-w-[560px] items-baseline justify-between gap-3 border-t border-line-soft px-5 pt-2 pb-4">
+			<footer className="mx-auto flex w-full max-w-pane items-baseline justify-between gap-3 border-t border-line-soft px-5 pt-2 pb-4">
 				<span className="text-[14px] font-medium text-ink-dim">{m.timer_total()}</span>
 				{protocol ? (
 					<span className="display text-[36px] leading-none font-semibold">

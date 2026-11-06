@@ -46,6 +46,7 @@ import { getContent } from '../src/lib/content/index.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { formOf } from '../src/lib/screens/timer.ts';
 import { recordStore, resetRecordStore } from '../src/lib/store/record.ts';
+import { createSavedProtocol, deleteSavedProtocol } from '../src/lib/store/savedProtocols.ts';
 import { seedRecordStore } from '../src/lib/store/seed.ts';
 import { routeTree } from '../src/routeTree.gen.ts';
 
@@ -341,6 +342,30 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			);
 		});
 
+		// An unnamed saved protocol is listed under its shape (#112), and the line
+		// under it says it has no name, as the approved mockup draws it — not the
+		// same shape twice.
+		test('lists an unnamed saved protocol under its shape once, marked unnamed', async () => {
+			const row = await createSavedProtocol(
+				{
+					name: '',
+					protocol: { prepare: 5, work: 6, rest: 4, rounds: 3, sets: 1, setRest: 0, cooldown: 0 },
+				},
+				THURSDAY.getTime(),
+			);
+			try {
+				const timer = await render('/timer');
+				const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+				// Once as text; the ⋯'s label names it too, which is not a second row line.
+				expect(screen.split('>3 × 6s/4s')).toHaveLength(2);
+				const name = screen.indexOf('3 × 6s/4s');
+				const after = screen.slice(name, screen.indexOf('</button>', name));
+				expect(after).toContain(locale === 'en-US' ? 'unnamed' : 'sem nome');
+			} finally {
+				await deleteSavedProtocol(row.id);
+			}
+		});
+
 		// The presets: grouped by exercise, every group closed until it is opened,
 		// and no study links — those moved to the clock's ready state (#110).
 		test('closes every preset group, and links no study from the list', async () => {
@@ -406,7 +431,9 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				locale === 'en-US'
 					? [
 							'Prepare',
-							'Block',
+							// Not "Block": that is the glossary's run of weeks. The work,
+							// the rest and how many times is a round, counted in rounds.
+							'Rounds',
 							'Work',
 							'Rest',
 							'Rounds',
@@ -417,7 +444,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 						]
 					: [
 							'Preparar',
-							'Bloco',
+							'Rodadas',
 							'Esforço',
 							'Descanso',
 							'Rodadas',
@@ -581,6 +608,51 @@ describe('the full-screen clock on Train', () => {
 			act(() => root.unmount());
 		}
 	});
+
+	// #110: the strip is one line. Before the start and after the end it is the
+	// protocol's name and Start — no shape line and no total, which live on the
+	// ready state. And a finished run's way back in lands on that ready state,
+	// not on the Done face (#111).
+	test('the strip carries no shape or total, and a finished run reopens ready', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/train'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		const shapeOrTotal = /\d+s\/|\d+ sets|\d+:\d\d/;
+		try {
+			press(labelled(document, 'Full-screen clock'));
+			const clock = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!clock) throw new Error('the full-screen clock did not open');
+			const reset = labelled(clock, 'Reset');
+			if (reset) press(reset);
+			const name = clock.getAttribute('aria-label');
+			press(labelled(clock, 'Close'));
+			expect(labelled(document, 'Full-screen clock')?.textContent).not.toMatch(shapeOrTotal);
+
+			// Run it to the end. A closed clock's dialog is gone from the document,
+			// so the reopened one is looked up again.
+			press(labelled(document, 'Full-screen clock'));
+			const run = document.querySelector<HTMLElement>('[role="dialog"]');
+			if (!run) throw new Error('the full-screen clock did not reopen');
+			press(worded(run, 'Start'));
+			for (let i = 0; i < 200 && run.getAttribute('aria-label') !== 'Done'; i++)
+				press(labelled(run, 'Skip to the next segment'));
+			expect(run.getAttribute('aria-label')).toBe('Done');
+			press(labelled(run, 'Close'));
+			expect(labelled(document, 'Full-screen clock')?.textContent).not.toMatch(shapeOrTotal);
+
+			press(labelled(document, 'Full-screen clock'));
+			const again = document.querySelector<HTMLElement>('[role="dialog"]');
+			expect(again?.getAttribute('aria-label')).toBe(name);
+			expect(again?.textContent).toContain('in total');
+			expect(worded(again ?? document, 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
 });
 
 // #112: the clock's ready state on Train adjusts the prescribed protocol with the
@@ -613,11 +685,16 @@ describe('Adjust on Train', () => {
 			// Train's clock paused mid-run.
 			const reset = clock.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
 			if (reset) act(() => reset.click());
-			const adjust = [...clock.querySelectorAll('button')].find(
-				(b) => b.textContent?.trim() === 'Adjust',
+			// A section headed Adjust (#110), open as the approved ready state is:
+			// no disclosure to find first.
+			expect(
+				[...clock.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Adjust'),
+			).toBeUndefined();
+			const heading = [...clock.querySelectorAll('h2')].find(
+				(h) => h.textContent?.trim() === 'Adjust',
 			);
-			expect(adjust).toBeTruthy();
-			act(() => adjust?.click());
+			expect(heading).toBeTruthy();
+			expect(heading?.closest('section')?.getAttribute('aria-labelledby')).toBe(heading?.id);
 			const values = clock.querySelectorAll<HTMLInputElement>('input[inputmode="numeric"]');
 			expect(values).toHaveLength(7);
 			expect(clock.querySelector('input[type="number"]')).toBeNull();
@@ -754,6 +831,85 @@ describe('the Timer screen runs one clock at a time, in the mini bar', () => {
 			expect(worded(miniBar() ?? document, 'Resume')).toBeTruthy();
 		} finally {
 			act(() => root.unmount());
+		}
+	});
+});
+
+// The stopwatch in the clock's screen language (#110): a neutral field, never a
+// segment's colour, and Reset only while it is paused. And a count left for
+// another screen is back in the bar on return, as a protocol's is (#111).
+describe('the stopwatch on the Timer screen', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const resetButton = () =>
+		dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Reset"]') ?? null;
+	/** Let the stopwatch's 100ms tick run a couple of times, on the real clock. */
+	const count = () => act(() => new Promise((resolve) => setTimeout(resolve, 250)));
+	const SEGMENT_COLOURS = /var\(--(ok|warn|stop|cooldown)\)/;
+	async function mount() {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		return root;
+	}
+	/** Open the stopwatch from its row, at zero. */
+	function openAtZero() {
+		press(listRow('Stopwatch'));
+		const pause = worded(dialog() ?? document, 'Pause');
+		if (pause) press(pause);
+		const reset = resetButton();
+		if (reset) press(reset);
+	}
+
+	test('has no segment colour, and Reset only while paused', async () => {
+		const root = await mount();
+		try {
+			openAtZero();
+			expect(resetButton()).toBeNull();
+			press(worded(dialog() ?? document, 'Start'));
+			await count();
+			expect(resetButton()).toBeNull();
+			expect(dialog()?.innerHTML).not.toMatch(SEGMENT_COLOURS);
+			press(worded(dialog() ?? document, 'Pause'));
+			expect(resetButton()).toBeTruthy();
+			expect(dialog()?.innerHTML).not.toMatch(SEGMENT_COLOURS);
+			press(dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('a count left for another screen is back in the bar on return', async () => {
+		const first = await mount();
+		try {
+			openAtZero();
+			press(worded(dialog() ?? document, 'Start'));
+			await count();
+			press(dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+			expect(miniBar()?.querySelector('button[aria-label="Full-screen stopwatch"]')).toBeTruthy();
+		} finally {
+			act(() => first.unmount());
+		}
+		const second = await mount();
+		try {
+			expect(miniBar()?.querySelector('button[aria-label="Full-screen stopwatch"]')).toBeTruthy();
+			expect(worded(miniBar() ?? document, 'Resume')).toBeTruthy();
+		} finally {
+			act(() => second.unmount());
 		}
 	});
 });
@@ -962,6 +1118,40 @@ describe('the Timer screen keeps each protocol’s place', () => {
 			press(listRow('Warm-up hangs'));
 			expect(clock()?.getAttribute('aria-label')).toBe('Work');
 			expect(worded(clock() ?? document, 'Resume')).toBeTruthy();
+			close();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// A run that finished is no place to come back to: the row opens the ready
+	// state (#111), not the Done face.
+	test('a finished protocol’s row opens its ready state', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		try {
+			press(listRow('Tabata finisher'));
+			const reset = clock()?.querySelector<HTMLButtonElement>('button[aria-label="Reset"]');
+			if (reset && !reset.disabled) press(reset);
+			press(worded(clock() ?? document, 'Start'));
+			for (let i = 0; i < 200 && clock()?.getAttribute('aria-label') !== 'Done'; i++)
+				press(
+					clock()?.querySelector<HTMLButtonElement>(
+						'button[aria-label="Skip to the next segment"]',
+					),
+				);
+			expect(clock()?.getAttribute('aria-label')).toBe('Done');
+			close();
+
+			press(listRow('Tabata finisher'));
+			expect(clock()?.getAttribute('aria-label')).toBe('Tabata finisher');
+			expect(clock()?.textContent).toContain('in total');
+			expect(worded(clock() ?? document, 'Start')).toBeTruthy();
 			close();
 		} finally {
 			act(() => root.unmount());

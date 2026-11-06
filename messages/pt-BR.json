@@ -348,7 +348,7 @@
 	"timer_edit": "Editar",
 	"timer_editor_new": "Novo protocolo",
 	"timer_editor_edit": "Editar protocolo",
-	"timer_block": "Bloco",
+	"timer_unnamed": "sem nome",
 	"timer_rest_between": "Descanso entre",
 	"timer_decrease": "Diminuir {field}",
 	"timer_increase": "Aumentar {field}",

@@ -197,8 +197,7 @@ export function protocolShape(p: Protocol, locale?: AppLocale): string {
 	// A cooldown (#104) is usually minutes, so it reads as a clock past one; and
 	// it is named, because a bare `2:00` at the end reads as the total.
 	if (p.cooldown > 0) {
-		const time = p.cooldown >= 60 ? clock(p.cooldown) : `${p.cooldown}s`;
-		parts.push(m.timer_shape_cooldown({ time }, { locale }));
+		parts.push(m.timer_shape_cooldown({ time: shortTime(p.cooldown) }, { locale }));
 	}
 	return parts.join(' · ');
 }
@@ -212,6 +211,16 @@ export const STUDY_TITLE: Record<ExerciseStudy, typeof m.study_baar_title> = {
 	horst: m.study_horst_title,
 	lattice: m.study_lattice_title,
 };
+
+/**
+ * A segment's length as the Timer screens write it: `10s` under a minute, `3:00`
+ * from one. A hang is 7–10s and a set rest 180s, and three raw digits of "180"
+ * read worse than "3:00" from across the room, where "0:07" reads worse than
+ * "7s". The full-screen face draws the same rule with its unit set apart.
+ */
+export function shortTime(seconds: number): string {
+	return seconds >= 60 ? clock(seconds) : `${seconds}s`;
+}
 
 /** mm:ss for a countdown. */
 export function clock(totalSec: number): string {

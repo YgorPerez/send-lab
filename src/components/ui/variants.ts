@@ -172,30 +172,3 @@ export const option = tv({
 	},
 	defaultVariants: { on: false, width: 'auto' },
 });
-
-/**
- * The three control shapes of the clock's row (#110), as class strings: the
- * large middle one, the two square ones beside it. On a field they are drawn
- * in the field's own terms — a ground-filled middle, outlined squares in the
- * ink — so they need no colour of their own; off a field they are the app's
- * buttons. 84px tall in the middle and 64px square at the sides, past the
- * 48px floor because they are found by direction, mid-hang, without looking.
- */
-export function clockControl(
-	shape: 'main' | 'side',
-	onField: boolean,
-	kind: 'primary' | 'quiet' = 'quiet',
-): string {
-	if (shape === 'side') {
-		return onField
-			? 'flex size-16 shrink-0 items-center justify-center rounded-[18px] border-2 border-current disabled:opacity-100'
-			: button({ size: 'touch', class: 'size-16 shrink-0 rounded-[18px] px-0' });
-	}
-	return onField
-		? 'flex h-[84px] min-w-[132px] flex-1 max-w-[220px] items-center justify-center gap-2 rounded-[22px] bg-bg text-[20px] font-bold'
-		: button({
-				kind,
-				size: 'touch',
-				class: 'h-[84px] min-w-[132px] max-w-[220px] flex-1 rounded-[22px] text-[20px] font-bold',
-			});
-}

@@ -23,7 +23,7 @@
 // And what the saved-protocol editor accepts (#104), at the end: the one place
 // that decides whether what was typed is a protocol.
 import type { Content } from '$lib/content/types';
-import { clock, protocolShape, STUDY_TITLE } from '$lib/format';
+import { protocolShape, STUDY_TITLE, shortTime } from '$lib/format';
 import {
 	asExerciseId,
 	type ExerciseId,
@@ -216,9 +216,8 @@ export function readProtocolForm(form: ProtocolForm): FormReading {
 	const refused: ProtocolField[] = [];
 	const protocol = {} as Protocol;
 	for (const f of PROTOCOL_FIELDS) {
-		const value = typedValue(f, form.fields[f]);
-		if (!(value >= PROTOCOL_MINIMUM[f])) refused.push(f);
-		protocol[f] = value;
+		if (!runs(f, form.fields[f])) refused.push(f);
+		protocol[f] = typedValue(f, form.fields[f]);
 	}
 	if (refused.length) return { ok: false, refused };
 	return { ok: true, name: form.name.trim(), protocol };
@@ -238,6 +237,13 @@ export function typedValue(f: ProtocolField, text: string): number {
 	if (/^\d+$/.test(typed)) return Number(typed);
 	const clock = COUNTS.has(f) ? null : /^(\d+):([0-5]\d)$/.exec(typed);
 	return clock ? Number(clock[1]) * 60 + Number(clock[2]) : Number.NaN;
+}
+
+/** Whether a field's text is a number the clock can run: whole, and at least the
+ *  field's minimum (`PROTOCOL_MINIMUM`). What the editor refuses and what Train's
+ *  Adjust hands the clock are this one rule. */
+export function runs(f: ProtocolField, text: string): boolean {
+	return typedValue(f, text) >= PROTOCOL_MINIMUM[f];
 }
 
 /**
@@ -276,6 +282,5 @@ function stepAt(seconds: number): number {
 export function shownOf(f: ProtocolField, text: string): string {
 	const value = typedValue(f, text);
 	if (Number.isNaN(value)) return text;
-	if (COUNTS.has(f)) return String(value);
-	return value >= 60 ? clock(value) : `${value}s`;
+	return COUNTS.has(f) ? String(value) : shortTime(value);
 }

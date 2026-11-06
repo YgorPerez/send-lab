@@ -2,8 +2,10 @@
 // and `/train`'s Adjust in the clock's ready state.
 //
 // In the order a run goes, not the order the model lists them: prepare, then the
-// block (work, rest, rounds), then the sets (how many, and the rest between),
-// then the cooldown. The grid of seven equal boxes it replaced was in model
+// rounds (work, rest, how many), then the sets (how many, and the rest between),
+// then the cooldown. The first group is headed "Rounds", as the glossary names
+// one pass through work and rest (`CONTEXT.md`, **Round**) — not "Block", which
+// is the run of weeks a program spans. The grid of seven equal boxes it replaced was in model
 // order, so the first thing a run does sat orphaned at the bottom.
 //
 // Each row is its label, a large value, and a − and a + of 48px either side of
@@ -27,12 +29,13 @@ import * as m from '$lib/paraglide/messages';
 import { PROTOCOL_MINIMUM, type ProtocolField } from '$lib/protocol';
 import { COUNTS, nudged, shownOf, typedValue } from '$lib/screens/timer';
 import { cn } from '$lib/utils';
+import { SEGMENT_COLOR } from './FullScreenClock';
 import { button } from './ui/variants';
 
 /** The rows in the order a run goes, grouped as the run is. */
 const GROUPS: readonly { heading: (() => string) | null; fields: readonly ProtocolField[] }[] = [
 	{ heading: null, fields: ['prepare'] },
-	{ heading: m.timer_block, fields: ['work', 'rest', 'rounds'] },
+	{ heading: m.timer_rounds, fields: ['work', 'rest', 'rounds'] },
 	{ heading: m.timer_sets, fields: ['sets', 'setRest'] },
 	{ heading: null, fields: ['cooldown'] },
 ];
@@ -48,16 +51,17 @@ const ROW_LABEL: Record<ProtocolField, () => string> = {
 };
 
 /** The segment colour each time runs in, as a dot beside its label — the clock's
- *  colours, so a row is recognised by the field it will fill. A count runs in
- *  none. A mark carries a colour a label cannot (`component-vocabulary.md`). */
+ *  own (`SEGMENT_COLOR`), so a row is recognised by the field it will fill. A
+ *  count runs in none. A mark carries a colour a label cannot
+ *  (`component-vocabulary.md`). */
 const ROW_COLOR: Record<ProtocolField, string | null> = {
-	prepare: 'var(--warn)',
-	work: 'var(--stop)',
-	rest: 'var(--ok)',
+	prepare: SEGMENT_COLOR.prepare,
+	work: SEGMENT_COLOR.work,
+	rest: SEGMENT_COLOR.rest,
 	rounds: null,
 	sets: null,
-	setRest: 'var(--ok)',
-	cooldown: 'var(--cooldown)',
+	setRest: SEGMENT_COLOR.setRest,
+	cooldown: SEGMENT_COLOR.cooldown,
 };
 
 /** Every field in the order the rows show them — where Enter goes next. */
@@ -116,7 +120,7 @@ export function ProtocolRows({
 				});
 				return group.heading ? (
 					<fieldset key={headingId} aria-labelledby={headingId} className="min-w-0">
-						<h3 id={headingId} className="text-[13px] font-semibold text-ink-dim">
+						<h3 id={headingId} className="h-section-sans">
 							{group.heading()}
 						</h3>
 						{rows}

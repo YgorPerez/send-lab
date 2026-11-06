@@ -60,7 +60,7 @@ export function BottomBar({ children }: { children: ReactNode }) {
 			{/* The band under the bar is the ground and takes the tap: a thumb that
 			    lands just below the bar must not open whatever row shows through. */}
 			<div className="fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(to_top,var(--bg)_55%,transparent)] px-2.5 pt-3 pb-[calc(0.875rem+env(safe-area-inset-bottom))]">
-				<div className="mx-auto max-w-[540px] rounded-2xl shadow-[0_10px_30px_-8px_rgb(0_0_0/0.8)]">
+				<div className="mx-auto max-w-pane rounded-2xl shadow-[0_10px_30px_-8px_rgb(0_0_0/0.8)]">
 					{children}
 				</div>
 			</div>
@@ -211,9 +211,7 @@ export function Empty({
  */
 export function Pane({ children, className }: { children: ReactNode; className?: string }) {
 	return (
-		<div className={cn('flex flex-col gap-7 lg:mx-auto lg:max-w-[560px]', className)}>
-			{children}
-		</div>
+		<div className={cn('flex flex-col gap-7 lg:mx-auto lg:max-w-pane', className)}>{children}</div>
 	);
 }
 
