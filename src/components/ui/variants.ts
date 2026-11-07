@@ -89,8 +89,8 @@ export const input = tv({
 	// And a text field matches `:focus-visible` on *any* focus, a tap included,
 	// so the ring is held to the desktop layout (`lg`, ADR 0018's one
 	// breakpoint), where a keyboard is what types into it; the phone keeps the
-	// border step alone. Not `(hover: hover)` or `(pointer: fine)`: the gates'
-	// headless Chrome cannot emulate either, so nothing could see the ring.
+	// border step alone. Keyed on `lg` rather than `(pointer: fine)`: the layout
+	// has one breakpoint, and a laptop with a touch screen still types with keys.
 	base: 'w-full min-w-0 rounded-md border border-line bg-panel-2 px-2 py-1.5 text-base text-ink tabular-nums outline-none transition-colors hover:border-line-soft focus:border-ink-faint lg:focus-visible:outline-2 lg:focus-visible:outline-offset-2 lg:focus-visible:outline-ring lg:focus-visible:outline-solid',
 	variants: {
 		align: { left: 'text-left', center: 'text-center' },

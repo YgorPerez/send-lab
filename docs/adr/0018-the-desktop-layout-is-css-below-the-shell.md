@@ -121,7 +121,10 @@ start stays a file read.
   that would actually catch a breach. A layout branched in JS shows up as a
   hydration mismatch at the viewport the shell was not baked for, and nothing else
   reports it. `--desktop` also emulates `hover` and `pointer`, without which every
-  `hover:` rule is inert and the run measures a layout nobody uses.
+  `hover:` rule is inert and the run measures a layout nobody uses. (Until #125 it
+  only asked to: headless Chrome ignores CDP's `hover`/`pointer` emulation. It is
+  a launch flag now, and every session checks the device it got before measuring;
+  see `scripts/browser.ts`'s `inputDevice`.)
 - **A page's own desktop shape is a page decision, expressed through `Panes` or
   `Pane`.** The shell hands a page up to 1000px; whether that becomes two panes or
   one capped near the phone measure is the page's call, and those two adjacent

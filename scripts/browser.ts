@@ -286,6 +286,41 @@ async function connect(port: number): Promise<Cdp> {
 	};
 }
 
+// -------------------------------------------------------- the input device
+
+/**
+ * What the page is told it is driven by: a mouse that hovers (`--desktop`) or a
+ * finger that does not (the phone).
+ *
+ * A launch flag, not `Emulation.setEmulatedMedia`. Headless Chrome accepts
+ * `hover` and `pointer` there and ignores them: with no real device it reports
+ * `hover: none` and `pointer: none` whatever it is asked, so until #125 no
+ * `hover:` utility (Tailwind puts every one inside `@media (hover: hover)`) was in
+ * force in any desktop run, contrary to what this file said. Blink's own
+ * settings set the device the media queries read: pointer 4 is fine and 2
+ * coarse, hover 2 is hover and 1 none.
+ *
+ * `expect` is what `INPUT_DEVICE_CHECK` must read back in the page.
+ */
+export function inputDevice(desktop: boolean): { flag: string; expect: string } {
+	return desktop
+		? {
+				flag: '--blink-settings=primaryPointerType=4,availablePointerTypes=4,primaryHoverType=2,availableHoverTypes=2',
+				expect: 'hover: hover, pointer: fine',
+			}
+		: {
+				flag: '--blink-settings=primaryPointerType=2,availablePointerTypes=2,primaryHoverType=1,availableHoverTypes=1',
+				expect: 'hover: none, pointer: coarse',
+			};
+}
+
+/** Read back in the page: the device its media queries see. */
+export const INPUT_DEVICE_CHECK = `(() => {
+	const hover = matchMedia('(hover: hover)').matches ? 'hover' : matchMedia('(hover: none)').matches ? 'none' : '?';
+	const pointer = ['fine', 'coarse', 'none'].find((p) => matchMedia('(pointer: ' + p + ')').matches) ?? '?';
+	return 'hover: ' + hover + ', pointer: ' + pointer;
+})()`;
+
 // -------------------------------------------------------------- the session
 
 export interface Session {
@@ -343,9 +378,11 @@ export interface OpenOptions {
 	 * emulation. So a desktop run at `--width=1280` without this measures the wide
 	 * layout with every hover state switched off, which is not what a laptop gets.
 	 *
-	 * Emulated at the browser, like `prefers-reduced-motion` above and for the same
+	 * Set at the browser, like `prefers-reduced-motion` above and for the same
 	 * reason: a stylesheet cannot be tricked into matching a media query from
-	 * inside the page.
+	 * inside the page. Through a launch flag (`inputDevice`), because the CDP
+	 * emulation of `hover` is ignored headless, and checked in every session
+	 * before anything is measured (#125).
 	 */
 	desktop?: boolean;
 	/** Serve this origin instead of the built output (`--url=…`). */
@@ -396,6 +433,7 @@ export async function open(options: OpenOptions): Promise<Session> {
 		'--no-default-browser-check',
 		`--user-data-dir=${profile}`,
 		`--window-size=${width},${height}`,
+		inputDevice(options.desktop ?? false).flag,
 		'about:blank',
 	]);
 	chrome.on('error', () => fail(`could not start Chrome at ${chromePath}`));
@@ -452,14 +490,10 @@ export async function open(options: OpenOptions): Promise<Session> {
 					name: 'prefers-reduced-motion',
 					value: options.reducedMotion ? 'reduce' : 'no-preference',
 				},
-				// Set on both runs rather than only the desktop one, so a phone
-				// measurement asserts `hover: none` instead of inheriting whatever the
-				// headless default happens to be — the same trap the note above records
-				// for `prefers-reduced-motion`, which defaults to `reduce` here.
-				{ name: 'hover', value: options.desktop ? 'hover' : 'none' },
-				{ name: 'any-hover', value: options.desktop ? 'hover' : 'none' },
-				{ name: 'pointer', value: options.desktop ? 'fine' : 'coarse' },
-				{ name: 'any-pointer', value: options.desktop ? 'fine' : 'coarse' },
+				// Not `hover` or `pointer`: headless Chrome accepts them here and
+				// ignores them (#124 measured `(hover: hover)` false under `--desktop`,
+				// so no hover rule was ever in force in a desktop run). The input
+				// device is a launch flag instead; see `inputDevice` below.
 			],
 		});
 
@@ -471,6 +505,21 @@ export async function open(options: OpenOptions): Promise<Session> {
 			})) as { result?: { value?: T } };
 			return r.result?.value as T;
 		};
+		// THE INPUT-DEVICE CONTROL. Every session asks the page which device it
+		// is on before anything is measured, and stops if the answer is not the
+		// one it asked for. Without it a Chrome that stops honouring the flag
+		// turns every desktop run back into a run with no hover rule in force,
+		// and every measurement still passes.
+		const device = inputDevice(options.desktop ?? false);
+		const reported = await evaluate<string>(INPUT_DEVICE_CHECK);
+		if (reported !== device.expect) {
+			fail(
+				`the browser reports ${reported ?? 'nothing'} where this session asked for ${device.expect}.\n` +
+					'  Hover and pointer rules would be measured on the wrong device: nothing\n' +
+					'  this run reports would describe the machine it claims to.',
+			);
+		}
+
 		/**
 		 * Navigate, and come back once the document on screen has lived `settleMs`.
 		 *
