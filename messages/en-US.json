@@ -366,6 +366,7 @@
 	"btn_start": "Start",
 	"btn_pause": "Pause",
 	"btn_reset": "Reset",
+	"timer_delete_offline": "Deleting waits for a connection. It finishes once this device is back online.",
 	"btn_delete": "Delete",
 	"btn_close": "Close",
 	"btn_cancel": "Cancel",

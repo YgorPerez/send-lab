@@ -366,6 +366,7 @@
 	"btn_start": "Iniciar",
 	"btn_pause": "Pausar",
 	"btn_reset": "Zerar",
+	"timer_delete_offline": "A exclusão espera uma conexão. Ela termina quando este aparelho voltar a ficar online.",
 	"btn_delete": "Excluir",
 	"btn_close": "Fechar",
 	"btn_cancel": "Cancelar",

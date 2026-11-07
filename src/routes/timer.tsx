@@ -55,6 +55,7 @@ import { useClockFront } from '$lib/clockFront';
 import { getContent } from '$lib/content';
 import { clock } from '$lib/format';
 import { type ProtocolKey, savedProtocolKey } from '$lib/ids';
+import { useOnline } from '$lib/online';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { BLANK_PROTOCOL, PROTOCOL_FIELDS } from '$lib/protocol';
@@ -234,6 +235,7 @@ function TimerScreen() {
 	// which offline can take a while; the question stays up, its confirm spent,
 	// until the row is gone, rather than closing on a row that is still listed.
 	const [deleting, setDeleting] = useState(false);
+	const online = useOnline();
 
 	/**
 	 * A protocol's ⋯: Edit, Duplicate and Delete for a saved protocol, Edit first
@@ -439,6 +441,10 @@ function TimerScreen() {
 				cancel={m.btn_cancel()}
 				confirm={m.btn_delete()}
 				busy={deleting}
+				// Offline the delete waits for the account to answer, which is
+				// when the device is back; the question says so rather than sitting
+				// on a spent confirm (#125, left by #111).
+				held={deleting && !online ? m.timer_delete_offline() : null}
 				onConfirm={async () => {
 					if (!doomed) return;
 					setDeleting(true);
