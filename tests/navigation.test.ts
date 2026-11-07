@@ -77,13 +77,13 @@ const COPY = {
 		bar: ['Today', 'Train', 'Timer', 'Log'],
 		more: 'More',
 		rest: ['Week', 'Settings'],
-		languages: ['English', 'Português (BR)'],
+		languages: ['English', 'Português'],
 	},
 	'pt-BR': {
 		bar: ['Hoje', 'Treinar', 'Timer', 'Registro'],
 		more: 'Mais',
 		rest: ['Semana', 'Ajustes'],
-		languages: ['English', 'Português (BR)'],
+		languages: ['English', 'Português'],
 	},
 } as const;
 

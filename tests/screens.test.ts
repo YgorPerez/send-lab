@@ -212,7 +212,14 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		test('renders the preferences out of the store', async () => {
 			const settings = await render('/settings');
 			expect(settings).toContain(locale === 'en-US' ? 'Units &amp; display' : 'Unidades e exibi');
-			expect(settings).toContain(locale === 'en-US' ? 'Language' : 'Idioma');
+			// The language is a row of the units' group since #122, not a group of
+			// its own: display choices live together (spec #113 story 70).
+			const units = settings.slice(
+				settings.indexOf(locale === 'en-US' ? 'Units &amp; display' : 'Unidades e exibi'),
+				settings.indexOf(locale === 'en-US' ? 'Timer cues' : 'Sinais do timer'),
+			);
+			expect(units).toContain(locale === 'en-US' ? '>Language<' : '>Idioma<');
+			expect(units).toContain('>Português<');
 			expect(settings).toContain(locale === 'en-US' ? 'Notifications' : 'Notifica');
 			// The units are identifiers shown as-is in both locales, and the switch
 			// is a real switch rather than a styled button.

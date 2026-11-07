@@ -68,7 +68,9 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
 | `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
 | `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`). Promoted out of Settings by #64 when a second screen needed it. A `fieldset`; `labelledBy` names the group after the row that asks it |
-| `ControlRow` | `primitives.tsx` | One control on its own 44px line: what it is on the left, the control on the right. Promoted out of Settings by #105 when the cue settings needed it on a second screen |
+| `ControlRow` | `primitives.tsx` | One control on its own line: what it is on the left, the control on the right. 56px whatever the control since #122 (it was 44px for a switch and 56px for a choice). Promoted out of Settings by #105 when the cue settings needed it on a second screen |
+| `ControlList` | `primitives.tsx` | A group's controls as one list: a card of `ControlRow`s divided by hairlines, one row or many (#122). `surface={false}` keeps the rows and drops the card, for a container that already is a surface (the cue popover) |
+| `ControlNote` | `primitives.tsx` | The 13px gold line under a `ControlRow` saying why its control did not do what was asked, or cannot on this device; inside the row's item, never under the card (#122) |
 | `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes. A step's rail label is optional (the readiness check's six to nine segments have no room for words at 360px), and in a container taller than it the controls settle at the bottom (#116) |
 
 ## The domain pieces — `src/components/`
@@ -83,7 +85,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `ProtocolEditor` | How a saved protocol is typed in: an optional name (its placeholder the shape an unnamed one is listed under) over `ProtocolRows`, and when to say a field cannot run (`readProtocolForm` decides that it cannot). Its own screen since #112 — a full-viewport dialog with ✕ and Save at the top — not a sheet over a blacked-out list |
 | `ProtocolRows` | The seven numbers as rows in the order a run goes (prepare; rounds: work, rest, how many; sets: how many, rest between; cooldown — the first group headed **Rounds**, never "Block", which is the glossary's run of weeks), each a label, a value the numeric keyboard opens on, and 48px − / + (#112). The editor's body and `/train`'s Adjust. A time reads m:ss from a minute up and is typed in seconds; the step (`nudged`) and the reading (`shownOf`) are `screens/timer.ts`'s |
 | `Stopwatch` | The count-up's tick, its laps, and the same two faces — the mini bar and full-screen — in the clock's type and controls, through the same `FullScreenClock`, on a neutral field: running or paused is said in the word and the weight of ink, never a segment's colour (#110). Every lap is listed under its number |
-| `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind `CueSettingsShortcut`, the Timer's screen action in the top strip (#119) |
+| `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings (a `ControlList` card) and behind `CueSettingsShortcut`, the Timer's screen action in the top strip (#119), with `surface={false}`; the popover's title is the Inter section head Settings gives the same words (#122) |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets. Open or folded to its header (#118), which the page decides; held and done marks on the header; the sets counted against `setTarget` |
 | `ReadinessCheck` | The readiness check as a sheet, one question per step (#116): the step `lib/readinessFlow.ts` names, its rationale and study collapsed under it, its options with nothing preselected. Full height from a phone's bottom edge, a 400px dialog centred from `lg`. Today holds the answers; the sheet holds only which step is showing |
@@ -240,6 +242,35 @@ the dishonesty the split was made to end, so the second one waits for the
 machinery it needs. And the unit preferences are
 recorded but nothing yet converts for display: `format.ts` is the seam that
 grows the conversion back, and it says so.
+
+**One list (#122).** Every group is an Inter section head (`Section face="sans"`) over
+one `ControlList`, and every control sits on a `ControlRow`: Units & display holds
+weight, length and the language; Timer cues the shared `CueSettings`; Notifications its
+one switch, in a card like the rest (as a `Bare` it was the one group that read as
+prose); Account the email beside Sign out. A row's caveat (a refused permission, the
+held sign-out, refused work) is a `ControlNote` under that row, in the same item. Two
+exceptions, both the group pattern's own: signed out, Account is an `Empty`, and AI
+access is a `Bare`, because it is prose, a config and three actions rather than controls
+on rows. The language reads "English" / "Português": "(BR)" wrapped the pt-BR option
+to two lines at 360px, and the app has one Portuguese. Offline, the line saying which
+controls need a connection is the first group under the header, gold as sign-in's
+offline notice is, where it used to be a dim line pulled into the header with `-mt-3`.
+`tests/settings.test.ts` asserts the order, the one heading face, every control on a
+row of one list per group, and the offline line's place with Sign out and the token's
+controls disabled (the session and the token are mocked there; neither resolves in
+jsdom).
+
+**A first install no longer reloads the page (#122).** `sw.ts` calls `clientsClaim()`,
+so the first worker takes over the page that registered it and fires
+`controllerchange`, which `reloadWhenTakenOver` answered with a reload, half a second
+into every first visit. The gates saw it: `check:contrast --desktop` read `/settings` at
+7 elements against a floor of 12 about one run in six, because when the claim landed
+just before the reading it measured the baked shell. Holding `/sw.js` back so the claim
+lands ~40ms before the reading reproduced it three times in three; with the fix, the
+claim still lands and nothing reloads. The reload now happens only when a worker was
+already in charge (an update), and `scripts/browser.ts`'s `goto` measures a document
+only once that document has lived the settle time, so any other reload costs time
+rather than a wrong reading.
 
 ---
 

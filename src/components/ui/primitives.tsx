@@ -188,12 +188,16 @@ export function Bare({ children, className }: { children: ReactNode; className?:
 }
 
 /** One control on its own line: what it is on the left, the control on the right.
- *  No horizontal padding of its own — inside a `card` the card supplies it, and
- *  inside a `Bare` the row sits flush with the rule above it.
+ *  No horizontal padding of its own — inside a `ControlList` the list supplies it.
  *
  *  Promoted out of Settings by #105, when the cue settings needed the same row
  *  in Settings and in the Timer screen's popover. The label wraps rather than
- *  truncating: pt-BR runs longer, and the control keeps its width. */
+ *  truncating: pt-BR runs longer, and the control keeps its width.
+ *
+ *  **One height whatever it holds** (#122): 56px, a 44px control with 6px above
+ *  and below it. At `min-h-11` a switch's row was 44px and a choice's 56px, so
+ *  Settings' rows stepped as the control changed; now only a label that wraps
+ *  makes a row taller. */
 export function ControlRow({
 	id,
 	label,
@@ -206,12 +210,56 @@ export function ControlRow({
 	children: ReactNode;
 }) {
 	return (
-		<div className="flex min-h-11 items-center justify-between gap-3 py-1.5">
+		<div data-control-row="" className="flex min-h-14 items-center justify-between gap-3 py-1.5">
 			<span id={id} className="min-w-0 text-[13px] text-ink">
 				{label}
 			</span>
 			{children}
 		</div>
+	);
+}
+
+/**
+ * A group's controls, as one list (#122).
+ *
+ * DESIGN.md › The group pattern: a list of controls is a card of rows, one row
+ * or many. Each child is one item, divided from the next by a `line-soft`
+ * hairline and padded 12px each side; an item is a `ControlRow`, or a row with
+ * the line that qualifies it under it (`ControlNote`). `surface={false}` keeps the
+ * rows and drops the card, for a list whose container already is a surface (the
+ * cue settings' popover).
+ */
+export function ControlList({
+	children,
+	surface = true,
+	className,
+}: {
+	children: ReactNode;
+	surface?: boolean;
+	className?: string;
+}) {
+	return (
+		<div
+			data-control-list=""
+			className={cn(
+				'flex flex-col divide-y divide-line-soft',
+				surface && 'rounded-lg border border-line bg-panel [&>*]:px-3',
+				className,
+			)}
+		>
+			{children}
+		</div>
+	);
+}
+
+/** The line under a `ControlRow` that says why its control did not do what was
+ *  asked, or cannot here: a refused permission, a held sign-out, a device with no
+ *  voice. Gold, because it is a warning about this device rather than a stop. */
+export function ControlNote({ id, children }: { id?: string; children: ReactNode }) {
+	return (
+		<p id={id} className="-mt-1 pb-3 text-[13px] leading-snug text-gold">
+			{children}
+		</p>
 	);
 }
 

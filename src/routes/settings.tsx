@@ -49,6 +49,8 @@ import { CueSettings } from '../components/CueSettings';
 import { AlertDialog } from '../components/ui/AlertDialog';
 import {
 	Bare,
+	ControlList,
+	ControlNote,
 	ControlRow,
 	Empty,
 	Eyebrow,
@@ -80,16 +82,20 @@ function Settings() {
 			    these controls that stops working. */}
 			<ScreenHeader title={m.sec_settings()} />
 
-			{online ? null : (
-				<p className="-mt-3 text-[12.5px] leading-snug text-ink-dim">{m.set_offline_note()}</p>
-			)}
+			{/* A notice about the whole page is the first group under the header,
+			    a sections gap below it (#122), not a second meta line pulled up
+			    into the header. Gold, as sign-in says offline: a warning about
+			    this device. */}
+			{online ? null : <Caveat>{m.set_offline_note()}</Caveat>}
 
-			<Units prefs={prefs} />
-			<Language />
-			{/* The same rows the Timer screen opens from its header (#105). Two
-			    rows sharing an edge, so a card, as the units are. */}
-			<Section label={m.cues_title()}>
-				<CueSettings className={card({ pad: 'none', class: '[&>*]:px-3' })} />
+			{/* Every group below is the same thing (#122, spec story 69): an Inter
+			    section head over one `ControlList`, a card of 56px `ControlRow`s,
+			    whether it holds one row or four. The API token is the exception the
+			    group pattern names: prose, a config and actions, so a `Bare`. */}
+			<Display prefs={prefs} />
+			{/* The same rows the Timer screen opens from the strip (#105, #119). */}
+			<Section face="sans" label={m.cues_title()}>
+				<CueSettings />
 			</Section>
 			<Notifications cueNotices={prefs.cueNotices} />
 			<Account online={online} />
@@ -97,11 +103,12 @@ function Settings() {
 	);
 }
 
-/** One line saying why a control did not do what was asked — a refused
- *  permission, a held sign-out, a token the server could not be reached for.
- *  Gold, because it is a warning about this device rather than a stop. */
+/** One line about the device that is not under a control's row: the page
+ *  offline, a token the server could not be reached for. Gold, because it is a
+ *  warning about this device rather than a stop; `ControlNote` is the same line
+ *  under a row. */
 function Caveat({ children }: { children: ReactNode }) {
-	return <p className="text-[12.5px] leading-snug text-gold">{children}</p>;
+	return <p className="text-[13px] leading-snug text-gold">{children}</p>;
 }
 
 const WEIGHT = [
@@ -113,31 +120,40 @@ const LENGTH = [
 	{ id: 'in', label: 'in' },
 ] as const;
 
-/** Display units. Storage is canonical — kilograms and millimetres, always —
- *  and these choose what the athlete reads. The unit codes are shown as-is in
- *  both locales: `kg` is `kg` in Portuguese, and it is an identifier rather than
- *  copy. Two rows sharing an edge, which is what earns the `card`. */
-function Units({ prefs }: { prefs: Prefs }) {
+/** What the athlete reads things in: the units and the language, one group
+ *  (#122, spec story 70: display choices live together).
+ *
+ *  Storage is canonical — kilograms and millimetres, always — and the units
+ *  choose what the athlete reads. The unit codes are shown as-is in both
+ *  locales: `kg` is `kg` in Portuguese, and it is an identifier rather than copy.
+ *  Set in Inter since #122, like every other choice on the page: mono is for
+ *  readings that are all digits, and `kg` is a word. */
+function Display({ prefs }: { prefs: Prefs }) {
+	const weightId = useId();
+	const lengthId = useId();
 	return (
-		<Section label={m.set_units()}>
-			<div className={card({ pad: 'none', class: 'divide-y divide-line-soft [&>*]:px-3' })}>
-				<ControlRow label={m.field_weight()}>
+		<Section face="sans" label={m.set_units()}>
+			<ControlList>
+				<ControlRow id={weightId} label={m.field_weight()}>
 					<Segmented
 						value={prefs.weight}
 						options={WEIGHT}
 						onChange={(weight) => void writePrefs({ weight })}
-						className="num flex w-[132px] gap-1.5"
+						labelledBy={weightId}
+						className="flex w-[132px] shrink-0 gap-1.5"
 					/>
 				</ControlRow>
-				<ControlRow label={m.set_length()}>
+				<ControlRow id={lengthId} label={m.set_length()}>
 					<Segmented
 						value={prefs.length}
 						options={LENGTH}
 						onChange={(length) => void writePrefs({ length })}
-						className="num flex w-[132px] gap-1.5"
+						labelledBy={lengthId}
+						className="flex w-[132px] shrink-0 gap-1.5"
 					/>
 				</ControlRow>
-			</div>
+				<Language />
+			</ControlList>
 		</Section>
 	);
 }
@@ -157,15 +173,17 @@ const LANGUAGE_LABEL: Record<AppLocale, () => string> = { 'en-US': m.lang_en, 'p
  */
 function Language() {
 	const locale = currentLocale();
+	const id = useId();
 	return (
-		<Section label={m.lang_label()}>
+		<ControlRow id={id} label={m.lang_label()}>
 			<Segmented
 				value={locale}
 				options={APP_LOCALES.map((id) => ({ id, label: LANGUAGE_LABEL[id]() }))}
 				onChange={chooseLocale}
-				className="flex gap-1.5"
+				labelledBy={id}
+				className="flex w-[184px] shrink-0 gap-1.5"
 			/>
-		</Section>
+		</ControlRow>
 	);
 }
 
@@ -178,6 +196,7 @@ function notificationPermission(): NotificationPermission | 'unsupported' {
 function Notifications({ cueNotices }: { cueNotices: boolean }) {
 	const [refused, setRefused] = useState<'denied' | 'unsupported' | null>(null);
 	const labelId = useId();
+	const noteId = useId();
 	// The stored boolean is the switch — `cueNotices` as it exists (#62, point 4).
 	// Reconciling it against the browser's permission, so a revoked permission
 	// shows as off, is #81's "a switch that lies" and lands with the daily-notice
@@ -205,23 +224,27 @@ function Notifications({ cueNotices }: { cueNotices: boolean }) {
 	}
 
 	return (
-		<Section label={m.notifications_title()}>
-			{/* One row, so no `card`: a box around a single line is the furniture
-			    `Bare` exists to replace. */}
-			<Bare>
-				<ControlRow id={labelId} label={m.set_cue_notices_desc()}>
-					<Switch
-						checked={cueNotices}
-						onCheckedChange={(on) => void toggle(on)}
-						labelledBy={labelId}
-					/>
-				</ControlRow>
-			</Bare>
-			{refused ? (
-				<Caveat>
-					{refused === 'denied' ? m.notifications_denied() : m.notifications_unsupported()}
-				</Caveat>
-			) : null}
+		<Section face="sans" label={m.notifications_title()}>
+			{/* One row, and still a card: a list of controls is a card of rows, one
+			    row or many (#122). As a `Bare` it was the one group on the page that
+			    looked like prose. */}
+			<ControlList>
+				<div>
+					<ControlRow id={labelId} label={m.set_cue_notices_desc()}>
+						<Switch
+							checked={cueNotices}
+							onCheckedChange={(on) => void toggle(on)}
+							labelledBy={labelId}
+							describedBy={refused ? noteId : undefined}
+						/>
+					</ControlRow>
+					{refused ? (
+						<ControlNote id={noteId}>
+							{refused === 'denied' ? m.notifications_denied() : m.notifications_unsupported()}
+						</ControlNote>
+					) : null}
+				</div>
+			</ControlList>
 		</Section>
 	);
 }
@@ -255,7 +278,7 @@ function Account({ online }: { online: boolean }) {
 	if (isPending) return null;
 
 	return (
-		<Section label={m.set_account()}>
+		<Section face="sans" label={m.set_account()}>
 			<Empty
 				value={m.set_signed_out()}
 				action={
@@ -311,25 +334,26 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 	}
 
 	return (
-		<Section label={m.set_account()}>
-			<Bare className="flex flex-wrap items-center justify-between gap-3">
-				{/* The email is the session's answer, so offline on a cold load there
-				    is none: the eyebrow stands alone rather than showing a guess. */}
-				<div className="min-w-0">
-					<Eyebrow>{m.field_email()}</Eyebrow>
-					{email ? <p className="truncate text-[13px] text-ink">{email}</p> : null}
+		<Section face="sans" label={m.set_account()}>
+			<ControlList>
+				<div>
+					{/* The email is the session's answer, so offline on a cold load
+					    there is none: the row says who is signed in only once it is
+					    known, and that someone is, which the store already knows. */}
+					<ControlRow label={<span className="block truncate">{email ?? m.set_signed_in()}</span>}>
+						<button
+							type="button"
+							disabled={!online || busy}
+							onClick={() => void leave()}
+							className={button({ size: 'md', class: 'min-h-11 shrink-0' })}
+						>
+							{m.btn_sign_out()}
+						</button>
+					</ControlRow>
+					{held ? <ControlNote>{m.set_unsynced_holds_signout()}</ControlNote> : null}
+					{refusedWork ? <ControlNote>{m.set_refused_note()}</ControlNote> : null}
 				</div>
-				<button
-					type="button"
-					disabled={!online || busy}
-					onClick={() => void leave()}
-					className={button({ size: 'md', class: 'min-h-11' })}
-				>
-					{m.btn_sign_out()}
-				</button>
-			</Bare>
-			{held ? <Caveat>{m.set_unsynced_holds_signout()}</Caveat> : null}
-			{refusedWork ? <Caveat>{m.set_refused_note()}</Caveat> : null}
+			</ControlList>
 		</Section>
 	);
 }
@@ -435,59 +459,64 @@ function ApiToken({ online }: { online: boolean }) {
 	}
 
 	return (
-		<Section label={m.mcp_title()}>
-			<p className="text-[12.5px] leading-snug text-ink-dim">{m.mcp_desc()}</p>
-			<p className="text-[12px] leading-snug text-ink-faint">{m.mcp_agnostic_note()}</p>
+		<Section face="sans" label={m.mcp_title()}>
+			{/* Not a list of controls but prose, a config and the actions on it, so
+			    the group pattern's other body: a `Bare` (DESIGN.md › The group
+			    pattern). */}
+			<Bare className="flex flex-col gap-group">
+				<p className="text-[13px] leading-snug text-ink-dim">{m.mcp_desc()}</p>
+				<p className="text-[11px] leading-snug text-ink-faint">{m.mcp_agnostic_note()}</p>
 
-			<div>
-				<Eyebrow className="mb-1">{m.mcp_config_note()}</Eyebrow>
-				<pre
-					className={card({
-						pad: 'sm',
-						tone: 'inset',
-						class: 'num overflow-x-auto text-[11px] leading-relaxed text-ink-dim',
-					})}
-				>
-					{configFor(endpoint, revealed && token ? token : MASKED)}
-				</pre>
-			</div>
+				<div>
+					<Eyebrow className="mb-1">{m.mcp_config_note()}</Eyebrow>
+					<pre
+						className={card({
+							pad: 'sm',
+							tone: 'inset',
+							class: 'num overflow-x-auto text-[11px] leading-relaxed text-ink-dim',
+						})}
+					>
+						{configFor(endpoint, revealed && token ? token : MASKED)}
+					</pre>
+				</div>
 
-			{!online || unreachable ? <Caveat>{m.set_token_unavailable()}</Caveat> : null}
+				{!online || unreachable ? <Caveat>{m.set_token_unavailable()}</Caveat> : null}
 
-			<div className="flex flex-wrap gap-2">
-				<button
-					type="button"
-					disabled={!available}
-					onClick={() => void copy()}
-					className={button({ size: 'md', class: 'min-h-11' })}
-				>
-					{copied ? <Check size={14} /> : <Copy size={14} />}
-					{copied ? m.mcp_copied() : m.mcp_copy()}
-				</button>
-				<button
-					type="button"
-					disabled={!available}
-					aria-pressed={revealed}
-					onClick={() => setRevealed((r) => !r)}
-					className={button({ size: 'md', class: 'min-h-11' })}
-				>
-					{revealed ? <EyeOff size={14} /> : <Eye size={14} />}
-					{revealed ? m.mcp_hide() : m.mcp_reveal()}
-				</button>
-				<button
-					type="button"
-					disabled={!online}
-					onClick={() => setConfirming(true)}
-					className={button({ size: 'md', class: 'min-h-11' })}
-				>
-					<RefreshCw size={14} />
-					{m.mcp_regenerate()}
-				</button>
-			</div>
+				<div className="flex flex-wrap gap-2">
+					<button
+						type="button"
+						disabled={!available}
+						onClick={() => void copy()}
+						className={button({ size: 'md', class: 'min-h-11' })}
+					>
+						{copied ? <Check size={14} /> : <Copy size={14} />}
+						{copied ? m.mcp_copied() : m.mcp_copy()}
+					</button>
+					<button
+						type="button"
+						disabled={!available}
+						aria-pressed={revealed}
+						onClick={() => setRevealed((r) => !r)}
+						className={button({ size: 'md', class: 'min-h-11' })}
+					>
+						{revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+						{revealed ? m.mcp_hide() : m.mcp_reveal()}
+					</button>
+					<button
+						type="button"
+						disabled={!online}
+						onClick={() => setConfirming(true)}
+						className={button({ size: 'md', class: 'min-h-11' })}
+					>
+						<RefreshCw size={14} />
+						{m.mcp_regenerate()}
+					</button>
+				</div>
 
-			<p className="text-[12px] leading-snug text-ink-faint">
-				{m.mcp_connector_note({ url: endpoint })}
-			</p>
+				<p className="text-[11px] leading-snug text-ink-faint">
+					{m.mcp_connector_note({ url: endpoint })}
+				</p>
+			</Bare>
 
 			{/* Regeneration is the alert-dialog case: it invalidates a token the
 			    athlete has configured in another client, and nothing here can undo it. */}

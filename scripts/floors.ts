@@ -99,7 +99,9 @@ export interface RouteFloor {
  *   `/log`       five weeks of sessions and fourteen readiness checks. 170
  *                seeded, 13 empty — the screen #73 was written about.
  *   `/login`     the sign-in form. 10 either way.
- *   `/settings`  the preferences that work offline. 19 either way.
+ *   `/settings`  the preferences that work offline: one list of groups (#122).
+ *                30 at 360px and 31 at 1280px, either way; the floor is far
+ *                under that because the account half gates on a session.
  *   `/timer`     the list only, since #111: the Stopwatch row, Saved, Recent and
  *                the preset groups, every group closed, and no clock strip — a
  *                clock is a dialog, opened from a row, which the gate does not
