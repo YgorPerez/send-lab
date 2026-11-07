@@ -51,7 +51,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 |---|---|---|
 | `Eyebrow` | `primitives.tsx` | The furniture rank of the type scale |
 | `ScreenHeader` | `primitives.tsx` | How every screen opens (#114): the title in the top rank and the screen's only `<h1>`, an optional meta line, an optional lede, and one `reading` *or* one `action` on the right. Nothing the page draws comes before it |
-| `Section` | `primitives.tsx` | Heading, optional right-hand meta, body |
+| `Section` | `primitives.tsx` | Heading, optional right-hand meta, body. `face` picks the heading's face: `sans` (`.h-section-sans`, the overhaul's) or the retiring `mono` default; each screen ticket moves its own (Today since #117) |
 | `Bare` | `primitives.tsx` | A group with a rule above it and no box |
 | `Empty` | `primitives.tsx` | What a group says when it has nothing to list: a `Bare`, one line of `Prose`, and the one affordance that fills it |
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
@@ -86,7 +86,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
 | `ReadinessCheck` | The readiness check as a sheet, one question per step (#116): the step `lib/readinessFlow.ts` names, its rationale and study collapsed under it, its options with nothing preselected. Full height from a phone's bottom edge, a 400px dialog centred from `lg`. Today holds the answers; the sheet holds only which step is showing |
-| `SelfCheckSheet` / `RehabStarter` | The injury self-check and the rehab switch |
+| `SelfCheckSheet` / `RehabStarter` | The injury self-check and the rehab switch. The sheet has the readiness check sheet's shape since #117 (title row, 44px close, 200ms, a 400px dialog from `lg`), as tall as its content |
 | `WorkingLoadAsk` | The ladder put at first contact with a weighted exercise, and what the athlete is told about the two numbers under its third rung |
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
@@ -608,8 +608,7 @@ computed without that answer, so the row carries a gold mark and a bordered
 (`quiet`) Continue; once none is, a `bare` Edit. Continue opens on the first
 unanswered step and Edit on the first. The
 summary is inside the read's card rather than a row of its own, because a row one
-section gap (28px) below the read looked like a separate thing. #117 owns where it
-finally sits.
+section gap (28px) below the read looked like a separate thing. #117 kept it there.
 
 **The sheet is More's sheet, taller.** Same backdrop, panel, title row and 44px
 close, same 520px cap and 200ms rise. It runs from the bottom edge to 12px under
@@ -623,6 +622,54 @@ measured 4361px at 360px and 2476px at 1280px with the questions listed; with th
 sheet it is 2521px and 1776px. `check:contrast` counted 103 text elements seeded
 and 52 empty where it counted 154 and 99, so `scripts/floors.ts` holds `/` at 75,
 the same quarter under the measurement as before.
+
+## Today as a summary
+
+Built by [#117](https://github.com/YgorPerez/send-lab/issues/117) from spec #113's
+Today decisions.
+
+**The order is the decision, then what comes after it.** On a phone: the read (or
+the invitation), today's plan, the flags; then the outcome ask, the counters, the
+trend, bodyweight and the injury entry. The plan carries the held work on its tasks
+and the carry-forward inside its card, and the baseline line (#64) stays directly
+under it. Before #117 the counters and the trend sat between the plan and the flags,
+so the flags were the seventh thing down. The desktop cut is the same line: `Panes`
+takes everything up to the flags as the primary pane and everything from the
+outcome ask as the secondary, so the phone order is the reading order at both widths.
+`tests/today.test.ts` asserts the order as the order the text appears in `<main>`,
+seeded and empty, on a training day and the rest day, in both locales.
+
+**One primary in every state, and it moves with the check.** Unanswered, it is the
+invitation in the read's place (#116). Answered, it is "Go to Train", a full-width
+`lg` link at the foot of the plan, because the plan is what the athlete is about to
+train. It replaced two weaker ways in: the plan heading's "View today's session →"
+and a 44px "Train ›" link on every task row, which pointed at the same screen five
+times. A rest day with a read keeps the link: Train is where an unplanned session
+is logged, and the ration is one per screen, not one per training day.
+
+**The outcome ask waits for something to rate.** An **outcome** is how a session
+went, said afterwards (`CONTEXT.md`), and the ask used to sit under the verdict
+every morning, four buttons about a session that had not happened. It shows once
+today's session is trained (a set ticked in the record, which `resolveToday`
+returns as `sessionToRate`, or a task ticked on Today) and names it by the day type
+it recorded: "How did today's Pull session go?". Where the outcome is kept is not
+this ticket's: it is still the page's own state, as it was.
+
+**A flag says its severity twice, in colour and in the locale.** The card's tone
+and a dot beside the title carry the colour (a mark can carry a colour a label
+cannot); the chip carries the word. It printed the raw id, `stop` or `warn`, in both
+locales until #117.
+
+**The header's right side is a reading again.** "Week 5 / 8" was a link to Week
+while nothing else led there. The navigation carries Week since #115, and a faint
+11px link that looked exactly like the other screens' readings was a control
+nobody could see, so it is text. The date under the title is Inter: it has a month
+name in it, and DESIGN.md keeps mono for meta that is all digits.
+
+**Heights.** Seeded at 360px, Today measures 2444px in en-US and 2599px in pt-BR
+(4361px before #116, 2521px after it); at 1280px, 1452px and 1500px. The page grew
+by the primary it gained and lost the per-row links; the floor of 75 elements still
+sits a quarter under the 102 `check:contrast` counts.
 
 ## The idiom
 
@@ -994,7 +1041,7 @@ does not get two columns.**
 
 | Page | Desktop | Why |
 |---|---|---|
-| `/` Today | **two columns** | Cut at the screen's own ordering rule: *decision + evidence* left, *input* right. Measured 3222 → 2019px (en-US), 3367 → 2035px (pt-BR) |
+| `/` Today | **two columns** | Cut at the screen's own ordering rule: *decision + evidence* left (the read, the plan, the flags), *input + secondary* right (the outcome ask, counters, trend, bodyweight, injury; #117). Measured 3222 → 2019px (en-US), 3367 → 2035px (pt-BR) before the check sheet; 1452 / 1500px since #117 |
 | `log` | **two columns** | Two independent lists. Side by side the page is as tall as the longer one instead of their sum, and the summary line — which truncates first in pt-BR — gets a column wider than the whole phone |
 | `week` | **two columns** | Built ([#63](https://github.com/YgorPerez/send-lab/issues/63)) through `Panes` as expected: the slot grid and the day it selects are two halves, and the cut is already the phone order. The grid also goes `grid-cols-4` → `lg:grid-cols-7` — four columns is what 360px forces, seven is the shape |
 | `program` | **two columns, expected** | Unbuilt ([#65](https://github.com/YgorPerez/send-lab/issues/65)). A phase editor is the other shape that obviously wants a second column beside it |
