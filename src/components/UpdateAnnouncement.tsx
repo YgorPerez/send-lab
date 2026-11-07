@@ -14,11 +14,12 @@
 //
 // WHERE IT SITS
 // -------------
-// Pinned to the bottom, in the space the tab bar left. Two reasons, and the
-// second is the one that decided it: the bottom of a phone is the half a hand
-// reaches, and this is the only notice in the app that asks to be *acted on*
-// rather than read. It is also the one place a fixed element cannot cover
-// anything now, which was not true a commit ago.
+// At the bottom, because the bottom of a phone is the half a hand reaches and
+// this is the only notice in the app that asks to be *acted on* rather than
+// read. On top of the navigation bar, never under it (#115, spec story 14): it
+// sits on `--nav-clear`, the bar's top edge, which is the window's bottom from
+// `lg` (the bar is a rail there) and on the intake (there is none). From `lg` it
+// starts right of the rail.
 //
 // It renders nothing on the server and nothing on the first client render:
 // `useState(false)` and a subscription in an effect. ADR 0006 makes the
@@ -61,10 +62,10 @@ export function UpdateAnnouncement({ locale }: { locale: AppLocale }) {
 
 	return (
 		<div
-			// Above the menu's popup, because an athlete who opens the menu should not
-			// lose the notice behind it — and below nothing else, since there is
-			// nothing else fixed to the bottom any more.
-			className="fixed inset-x-0 bottom-0 z-[60] flex items-center justify-between gap-3 border-t border-line bg-panel px-3 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]"
+			// Above More's sheet and its backdrop, so an athlete who opens it does
+			// not lose the notice behind it. The home indicator is the bar's to
+			// clear; only where there is no bar does the notice pad for it.
+			className="fixed inset-x-0 bottom-[var(--nav-clear)] z-[60] flex items-center justify-between gap-3 border-t border-line bg-panel px-3 py-2.5 pb-[max(10px,calc(env(safe-area-inset-bottom)-var(--nav-clear)))] lg:left-[var(--nav-rail)]"
 			role="status"
 		>
 			<span className="min-w-0 flex-1 text-[13px] text-ink">{m.app_update_ready()}</span>

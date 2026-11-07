@@ -108,8 +108,10 @@ export function StickyStrip({ children }: { children: ReactNode }) {
  * Fixed, so nothing it sits inside may carry a `backdrop-filter` or a
  * transform (`StickyStrip` does, and would trap it). It leaves a space of its
  * own height at the end of the page, so the last row can still be scrolled out
- * from under it, and it clears the home indicator. Capped at the page's measure
- * on a wide screen, centred, as `Pane` is.
+ * from under it. It sits on top of the navigation bar (`--nav-clear`, #115), and
+ * clears the home indicator itself only where there is no bar under it. From
+ * `lg` it starts right of the rail, on the measure's left edge, capped as
+ * `Pane` is, so it lines up with the list it runs behind.
  */
 export function BottomBar({ children }: { children: ReactNode }) {
 	return (
@@ -117,9 +119,14 @@ export function BottomBar({ children }: { children: ReactNode }) {
 			<div aria-hidden="true" className="h-[84px]" />
 			{/* The band under the bar is the ground and takes the tap: a thumb that
 			    lands just below the bar must not open whatever row shows through. */}
-			<div className="fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(to_top,var(--bg)_55%,transparent)] px-2.5 pt-3 pb-[calc(0.875rem+env(safe-area-inset-bottom))]">
-				<div className="mx-auto max-w-pane rounded-2xl shadow-[0_10px_30px_-8px_rgb(0_0_0/0.8)]">
-					{children}
+			<div
+				data-bottom-bar=""
+				className="fixed inset-x-0 bottom-[var(--nav-clear)] z-30 bg-[linear-gradient(to_top,var(--bg)_55%,transparent)] px-2.5 pt-3 pb-[calc(0.875rem+max(0px,env(safe-area-inset-bottom)-var(--nav-clear)))] lg:left-[var(--nav-rail)] lg:px-0"
+			>
+				<div className="mx-auto max-w-pane lg:max-w-[1000px] lg:px-gutter">
+					<div className="rounded-2xl shadow-[0_10px_30px_-8px_rgb(0_0_0/0.8)] lg:max-w-pane">
+						{children}
+					</div>
 				</div>
 			</div>
 		</>
@@ -266,12 +273,15 @@ export function Empty({
  * load-bearing, which is the overload ADR-0002 and ADR-0016 exist to close. The
  * pair is `Pane` and `Panes`, and they cannot be confused by accident: one takes
  * children, the other takes two halves, so a mix-up is a type error.
+ *
+ * From `lg` it starts on the measure's left edge rather than centring in it
+ * (#115, DESIGN.md › The grid), so its title sits where a two-pane page's does
+ * and on the strip's wordmark's edge, and does not jump sideways between
+ * screens.
  */
 export function Pane({ children, className }: { children: ReactNode; className?: string }) {
 	return (
-		<div className={cn('flex flex-col gap-sections lg:mx-auto lg:max-w-pane', className)}>
-			{children}
-		</div>
+		<div className={cn('flex flex-col gap-sections lg:max-w-pane', className)}>{children}</div>
 	);
 }
 

@@ -188,11 +188,8 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		test('resolves the sign-in route inside the shell', async () => {
 			const login = await render('/login');
 			expect(login).toContain('view-transition-name:screen');
-			// The shell is around it. Proved by the menu rather than by a tab label:
-			// the tab bar is gone, and the menu's rows live in a closed popover that
-			// renders nothing until it is opened, so the trigger is the part of the
-			// navigation a string render can see.
-			expect(login).toContain('aria-label="Menu"');
+			// The shell is around it: the navigation renders on sign-in too.
+			expect(login).toContain('view-transition-name:navigation');
 		});
 
 		// Settings (#62). Only the half that works offline is asserted here: the
@@ -494,15 +491,11 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				const html = await render(path);
 				// The navigation, and the view-transition names the `app.css` rules
 				// pair with. A renamed name silently re-animates the chrome, which is
-				// invisible in review and obvious on the device.
-				//
-				// The three tab labels used to stand in for the navigation here. They
-				// are gone with the bar: the menu's rows are inside a closed popover
-				// that renders nothing until opened, so what a string render can see
-				// is the trigger. `nav_menu` is "Menu" in both locales, which is why
-				// this assertion does not branch.
-				expect(html).toContain('aria-label="Menu"');
+				// invisible in review and obvious on the device. What the bar holds
+				// is `tests/navigation.test.ts`'s.
+				expect(html.match(/<nav[\s>]/g) ?? [], path).toHaveLength(1);
 				expect(html).toContain('view-transition-name:topbar');
+				expect(html).toContain('view-transition-name:navigation');
 				expect(html).not.toContain('view-transition-name:tabbar');
 				expect(html).toContain('view-transition-name:screen');
 			}
@@ -753,7 +746,7 @@ function listRow(text: string): HTMLButtonElement | null {
 /** The Timer screen's mini bar: the way back into a clock, held at the bottom of
  *  the list while it runs (#111). */
 function miniBar(): HTMLElement | null {
-	return document.querySelector<HTMLElement>('main .fixed.bottom-0');
+	return document.querySelector<HTMLElement>('main [data-bottom-bar]');
 }
 
 // Only one of the Timer screen's two clocks runs at a time (#108): the press

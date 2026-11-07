@@ -154,12 +154,36 @@
 	   is also the space between two panes. A variable rather than two utilities,
 	   so `px-gutter` is right at both widths and nothing reads the viewport. */
 	--gutter: 0.75rem;
+
+	/* ---- the navigation (#115) ----
+	   What the rest of the page has to clear, as two variables rather than a
+	   height read in the shell (ADR 0006, ADR 0018).
+	     --nav-clear — how far the bar's top edge sits above the window's bottom:
+	                   its 56px and the home indicator on a phone, nothing from
+	                   `lg` (it is a rail there) or on the intake (there is none).
+	                   `main` pads by it; the update notice and the Timer's mini
+	                   bar sit on it.
+	     --nav-rail  — the rail's width: 200px from `lg`, nothing below it or on
+	                   the intake. The frame and the strip pad by it, so `main`'s
+	                   measure centres in what the rail leaves. */
+	--nav-clear: calc(3.5rem + env(safe-area-inset-bottom));
+	--nav-rail: 0px;
 }
 
 @media (width >= 64rem) {
 	:root {
 		--gutter: 1.25rem;
+		--nav-clear: 0px;
+		--nav-rail: 12.5rem;
 	}
+}
+
+/* The intake has no navigation (spec story 72), so nothing reserves room for it.
+   Decided from the matched route (`data-navigation` on the frame), never from the
+   viewport. */
+:root:has([data-navigation='none']) {
+	--nav-clear: 0px;
+	--nav-rail: 0px;
 }
 
 @theme inline {
@@ -254,6 +278,19 @@
 	   the unsynced work that queue exists to protect. */
 	html {
 		overscroll-behavior-y: contain;
+		/* A field or control reached by Tab, or scrolled to on focus, stops short
+		   of the bar instead of landing under it (#115). */
+		scroll-padding-bottom: var(--nav-clear);
+	}
+	/* From `lg`, a page that scrolls and one that does not are the same width
+	   (#115, DESIGN.md › The grid). Without it the scrollbar took 15px from a long
+	   page only, and its centred measure sat 7.5px left of a short one's, so the
+	   title moved sideways between screens. The full-screen clock turns this off
+	   while it is open (`html.clock-field` below). */
+	@media (width >= 64rem) {
+		html {
+			scrollbar-gutter: stable;
+		}
 	}
 	body {
 		@apply bg-background text-foreground font-sans;
@@ -391,6 +428,25 @@ html.clock-field {
 	overflow: hidden !important;
 }
 
+/* The bar stands down while a field that opens the soft keyboard has focus
+   (#115, spec story 9). The viewport meta keeps the bar under the keyboard where
+   the browser honours `interactive-widget`; this covers the rest, where the
+   keyboard resizes the page and a bar fixed to its bottom would ride up over the
+   field being typed in. Below `lg` only: the rail covers nothing. CSS, so the
+   shell still reads nothing about the window. */
+@media (width < 64rem) {
+	html:has(
+			:is(
+				input:not([type='checkbox'], [type='radio'], [type='range'], [type='button'], [type='submit'], [type='reset']),
+				textarea,
+				[contenteditable='true']
+			):focus
+		)
+		[data-navigation-bar] {
+		display: none;
+	}
+}
+
 /* =========================================================================
    MOTION
    =========================================================================
@@ -450,18 +506,20 @@ html.clock-field {
 
    `defaultViewTransition: true` animates every navigation (#46). The chrome
    must not move: measured on the device (#54), a fixed bar survives a view
-   transition intact, so the top strip and the tab bar are lifted out of the
+   transition intact, so the top strip and the navigation are lifted out of the
    root snapshot by name and told to hold still. Only the screen crossfades and
    rises 6px — small on purpose. A dense screen sliding a long way reads as a
-   page turn; this wants the tab bar to feel like it stayed put and the content
+   page turn; this wants the bar to feel like it stayed put and the content
    under it to have been replaced.
 
    The corner flicker on the transitioning panel is a known device artefact,
    not something to design around.
    ------------------------------------------------------------------------- */
-/* `tabbar` left with the tab bar. The strip is the only chrome that has to hold
-   still now, so this is one name where it was two. */
-::view-transition-group(topbar) {
+/* The strip and the navigation (the bar on a phone, the rail from `lg`). The
+   menu's 2026-09-08 removal of the bar took this to one name; the bar's return
+   (#115) brings the second back under its own name. */
+::view-transition-group(topbar),
+::view-transition-group(navigation) {
 	animation: none;
 }
 

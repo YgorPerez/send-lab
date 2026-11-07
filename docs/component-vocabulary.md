@@ -57,10 +57,10 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
 | `Meter` | `primitives.tsx` | A 0–10 reading against a track |
 | `Stat` | `primitives.tsx` | One reading in a divider-separated strip |
-| `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure: `max-w-pane` (560px, `app.css`), the one width every surface in the page's column shares — the full-screen clock's rows, the editor, the mini bar |
+| `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure: `max-w-pane` (560px, `app.css`), the one width every surface in the page's column shares — the full-screen clock's rows, the editor, the mini bar. From `lg` it starts on the measure's left edge rather than centring (#115) |
 | `Panes` | `primitives.tsx` | A page's two panes from `lg`, stacked below it |
 | `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
-| `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. Capped at `max-w-pane`, as `Pane` is |
+| `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. It sits on the navigation bar (`--nav-clear`, #115), and from `lg` right of the rail on the measure's left edge, capped at `max-w-pane` as `Pane` is |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
@@ -74,8 +74,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 
 | Name | Owns |
 |---|---|
-| `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
-| `Menu` | The app's whole navigation — every destination, behind one control in the strip |
+| `AppShell` | The chrome: the top strip (wordmark, sync state, one screen action), the frame `main` sits in, the view-transition names (#115) |
+| `Navigation` | Every destination: a bar on a phone's bottom edge (Today, Train, Timer, Log, More), the same `<nav>` as a 200px rail from `lg`, and More's sheet. Marks the current destination from the matched route, never from the router's own link state (#115) |
 | `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
 | `Timer` | The protocol clock: its tick, the cues it asks the planner for, its setup, and its two faces — the strip and its run in the full-screen clock. Which screen's draft it keeps is its `home` (`ClockHome`, `'train' \| 'timer'`), never a "slot"; where its strip goes is its `strip` — in the page on Train, the mini bar on the Timer screen's list |
 | `FullScreenClock` | The one full-screen dialog both clocks run in (spec #98: it "takes either a protocol run or a stopwatch run"): the header, the face as a tap target, the detail, the readout and the 56px control row, and the layout on a phone held sideways. Each clock hands in its status, reading and controls; `Face` draws the number for both, and sizes it by its glyph count against the one `--face` it sets from the screen. It also owns the two things both clocks draw with: `SEGMENT_COLOR`, the colour each segment runs in (the field, and the dot beside a segment in the ready state and in `ProtocolRows`), and `clockControl`, the control row's three shapes on a field and off one. Not `ui/variants.ts` recipes: both know the clock's field, which makes them this piece's decisions (ADR 0010) |
@@ -112,7 +112,8 @@ So: they are synonyms, the `*Screen` suffix is a convention for resolver output,
 and no rule is being broken by either word. The one genuinely different sense is
 `view-transition-name: 'screen'` on `<main>` — a CSS name for the region that
 gets replaced on a navigation, kept because #54 measured that transition on the
-device and `tests/motion.test.ts` asserts exactly three such names.
+device and `tests/motion.test.ts` asserts exactly three such names (`topbar`,
+`navigation`, `screen`).
 
 ## Where a screen's data comes from
 
@@ -220,12 +221,11 @@ at the root and Settings switches the locale from three routes down with no prop
 path between them, so `store/locale.ts` holds the current locale with
 subscribers (`currentLocale` / `subscribeLocale`) and the hook is
 `useSyncExternalStore` over them — the shape `record.ts` already uses for the
-active account. The strip's `EN` / `PT` switch and the page's full-name one are
-the same call.
+active account. The page's full-name switch is the only one since #115 took the
+strip's `EN` / `PT` switch out (spec story 12).
 
-**Settings is reached from the top strip, not from a tab.** A gear beside the
-locale switch: the two are the same kind of thing — about the app, not about a
-screen — and the rail still carries the same three destinations and no more.
+**Settings is reached from More** on a phone and from the rail at `lg` (#115). It
+was a gear in the strip, then a row in the menu.
 
 Two things the page deliberately does not do. **One switch, for two fields.**
 [#75](https://github.com/YgorPerez/send-lab/issues/75) split `notify` into
@@ -443,9 +443,9 @@ both, and the types refuse both. Neither sets the title's height: the slot
 overhangs the title's 24px line by up to 10px each way, so a 44px control beside
 it leaves the title where every other screen has it (before that, the title sat at
 61.5, 69 and 71.5px across the screens and jumped on navigation). Today's week
-reading is a link and goes in `reading`. A screen action is
-the top strip's business once #115 gives the strip a slot; until then the
-Timer's cue settings are the header's `action`. `tests/screens.test.ts` asserts
+reading is a link and goes in `reading`. A screen action can go in the top
+strip's slot since #115 (below); the Timer's cue settings stay the header's
+`action` until #119 decides where they live. `tests/screens.test.ts` asserts
 every screen opens with it.
 
 **Two decisions for later tickets, written in DESIGN.md.** From `lg`, every
@@ -454,6 +454,69 @@ stops centring, so the wordmark and every title share one left edge (#115 does
 it with the rail). And off the coloured field, every control in the clock's row
 takes `kind: 'clock'`, the side ones included, so a paused row is one language
 (#118).
+
+## The navigation
+
+Built by [#115](https://github.com/YgorPerez/send-lab/issues/115) from spec #113's
+navigation decisions; [ADR 0018](adr/0018-the-desktop-layout-is-css-below-the-shell.md)'s
+2026-11-07 amendment carries why the bar came back.
+
+**One `<nav>`, two stylesheets.** `Navigation.tsx` is a bar fixed to a phone's
+bottom edge (Today, Train, Timer, Log, More) and, from `lg`, the same element as a
+200px rail under the strip listing every destination. Week and Settings are in the
+`<nav>` as `hidden lg:flex`; More is `lg:hidden`. A new page is a row in
+`DESTINATIONS` with `place: 'more'`: it lands in More's sheet and in the rail, and
+the bar stays four plus More.
+
+| | Bar (phone) | Rail (`lg`) | More's sheet |
+|---|---|---|---|
+| Height | 56px plus the home indicator; items ≥ 48px | rows 44px | rows 48px |
+| Item | 22px icon (stroke 1.75) over an 11px label that wraps | 22px icon beside a 13.5px label | 20px icon, 15px label, 18px chevron |
+| Current | chalk, semibold, a `panel-3` pill behind the icon | chalk, semibold, a `panel-3` row | chalk, semibold, a `panel-3` row |
+
+More is marked current (`aria-current="true"`, same look) on any destination it
+holds, so the bar never shows the athlete as nowhere.
+
+**The current mark comes from `here`, never from the router's link state.** The
+shell is baked once, at `/`. With `Link`'s own active state the baked bar marked
+Today, a cold start on `/timer` hydrated over it, and React does not patch an
+attribute that differs on hydration: Today stayed marked on every screen. Every
+test passed and `check:hydration` stayed green (production React does not report
+an attribute mismatch); a screenshot found it. So each item is an `<a>` from
+`useLinkProps` with the router's `aria-current` and `data-status` dropped, marked
+from `here`, which `__root.tsx` hands down only once the app has hydrated.
+`tests/navigation.test.ts` renders the navigation with `here: null` on three URLs
+and asserts nothing is marked.
+
+**What the page clears is two CSS variables, not a height read in the shell.**
+`--nav-clear` (56px plus `env(safe-area-inset-bottom)` on a phone, 0 from `lg`)
+and `--nav-rail` (200px from `lg`, 0 below), both 0 on the intake through
+`:root:has([data-navigation='none'])`. `main` pads its bottom by `--nav-clear`;
+the update notice and the Timer's mini bar (`BottomBar`) sit on it; the frame and
+the strip pad left by `--nav-rail`. Anything else fixed to the bottom of a screen
+sits on `--nav-clear` too, and pads for the home indicator only by what the bar
+does not already cover (`max(0px, env(safe-area-inset-bottom) - var(--nav-clear))`).
+
+**The keyboard never sits the bar on a field.** The viewport meta says
+`interactive-widget=resizes-visual`, so where it is honoured the bar stays under
+the keyboard. Where a browser resizes the page instead, `app.css` hides the bar
+below `lg` while a field that opens the keyboard has focus (`html:has(…:focus)`).
+Measured on the built app: Train's RPE input focused, the bar is `display: none` at
+360px and the rail is unchanged at 1280px. `scroll-padding-bottom: var(--nav-clear)`
+keeps a control reached by Tab clear of the bar.
+
+**The route decides the rest, through `staticData`.** `lib/chrome.ts`'s `chromeFor`
+reads two keys: `navigation: false` (the intake: no bar, no rail, nothing reserved)
+and `screenAction`, a component the strip renders on its right as the screen's one
+action. Read in `__root.tsx` and held at the baked answer (navigation, no action)
+until the app has hydrated, the same deferral the locale gets. No route names a
+`screenAction` yet; the Timer's cue settings are the obvious first, #119's call.
+
+**From `lg` a page starts on the measure's left edge.** `Pane` no longer centres
+in the 1000px measure, so a one-pane page's title, a two-pane page's title and the
+strip's wordmark share x=253 at 1280px. The window reserves the scrollbar's gutter
+from `lg` (`scrollbar-gutter: stable` on `html`), so a long page and a short one
+are the same width and nothing moves sideways between them.
 
 **A new spacing token is two edits, and the second is easy to miss.** Add it to
 `app.css` and to `twMergeConfig` in `lib/utils.ts`; `tests/spacingTokens.test.ts`
@@ -722,8 +785,8 @@ announcement it is asking for.
 **Beside the wordmark, not beside the controls.** The strip is
 `justify-between`, so the left group is anchored left and the right group right. A
 token that appears and disappears on the left moves nothing; the same token on the
-right would slide the locale switch and the menu sideways every time a task is
-ticked. `tests/desktop.test.ts` holds the order.
+right would slide the screen action sideways every time a task is ticked.
+`tests/desktop.test.ts` holds the order.
 
 **Nothing on screen is the normal state, and it is the part that is easy to
 lose.** The ADR is explicit that the old app's always-on saved/saving status is
@@ -782,12 +845,15 @@ gets the phone layout at a comfortable width. The number is derived rather than
 picked — a rail (200px) beside two columns of the 360px measure these screens were
 designed against, plus gutters, first fits at ≈992px, and `lg` is the next stop up.
 
-**The chrome.** `main` goes from `max-w-[520px]` to `max-w-[1000px]`, centred at
-both widths, and that is now the whole of it — see the ADR for why keeping the
-difference in CSS is a constraint rather than a style, and `tests/desktop.test.ts`
-for what enforces it.
+**The chrome.** `main` goes from `max-w-[520px]` to `max-w-[1000px]`, and the bar
+on the bottom edge becomes a 200px rail down the left (#115). From `lg` the measure
+is centred in what the rail leaves, and the strip's content sits in the same
+measure, so the wordmark and every title share a left edge. See the ADR for why
+keeping the difference in CSS is a constraint rather than a style, and
+`tests/desktop.test.ts` for what enforces it.
 
-> **Amended 2026-09-08.** This paragraph used to read "the three tabs move from the
+> **Superseded 2026-11-07 by #115, which brought the bar back with More; kept as
+> the record of why it went.** Amended 2026-09-08. This paragraph used to read "the three tabs move from the
 > bottom edge to a 200px left rail". **There is no tab bar and no rail.** #52's
 > claim that the app has exactly three destinations held while it had three pages
 > and produced one-offs as the rest arrived — a lone Settings gear in the strip, a
@@ -861,7 +927,7 @@ Both are answered once, and both are free on touch.
   four columns has the caret. `app.css` puts a 2px `--ring` outline back, offset so
   it survives on `bg-panel-2`. `:focus-visible` and not `:focus`, so a control the
   athlete just tapped does not keep a ring around it.
-- **Hit areas do not shrink.** 48px in the tab bar, 44px in the rail, 44px
+- **Hit areas do not shrink.** 48px in the bar, 44px in the rail, 44px
   everywhere touched mid-set. A pointer is precise enough for less; a second set of
   sizes is a second thing to keep in step, and the athlete gains nothing from it.
 - **The hover rule is a gate, not a convention.** `tests/desktop.test.ts` scans

@@ -1,8 +1,9 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
+import { createRootRoute, HeadContent, Outlet, Scripts, useMatches } from '@tanstack/react-router';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import appCss from '../app.css?url';
 import { AppShell } from '../components/AppShell';
 import { authClient } from '../lib/auth-client';
+import { BAKED_CHROME, chromeFor } from '../lib/chrome';
 import { useResolvedLocale } from '../lib/store/locale';
 import { setActiveAccount } from '../lib/store/record';
 import { useDeviceTimeZone } from '../lib/store/timeZone';
@@ -15,9 +16,18 @@ export const Route = createRootRoute({
 			// `viewport-fit=cover` is harmless here — every safe-area inset measured
 			// 0px on the athlete's device (#54) — but it costs nothing and keeps an
 			// iPhone from letterboxing. iOS is best-effort, not ignored.
+			//
+			// `interactive-widget=resizes-visual` (#115): the soft keyboard shrinks
+			// the visual viewport and leaves the layout viewport alone, so the bar,
+			// fixed to the layout viewport's bottom, stays under the keyboard rather
+			// than riding up on top of it and covering the field being typed in.
+			// Chrome's default since 108, said here so it is a decision rather than
+			// a default; `app.css` also stands the bar down while a field has focus,
+			// for the browsers that resize the content anyway.
 			{
 				name: 'viewport',
-				content: 'width=device-width, initial-scale=1, viewport-fit=cover',
+				content:
+					'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual',
 			},
 			// Matches `--bg` in `app.css`. The two have to move together: this is
 			// what Android paints behind the status bar of the installed app, and a
@@ -105,7 +115,7 @@ function RootComponent() {
 	//
 	// Where the value comes from — the device on boot, the account once it
 	// hydrates, both on a switch — is `store/locale.ts`'s.
-	const [locale, chooseLocale] = useResolvedLocale();
+	const [locale] = useResolvedLocale();
 
 	// The other thing the account learns from the device on boot (#75): which
 	// IANA zone the athlete is in, so a daily job can work out when their morning
@@ -139,8 +149,17 @@ function RootComponent() {
 	useIsomorphicLayoutEffect(() => setHydrated(true), []);
 	const bootLocale = hydrated ? locale : 'en-US';
 
+	// What the matched route says about the chrome (#115): no navigation on the
+	// intake, and the strip's one screen action. Decided from the route, never
+	// from the viewport, and held at the baked answer — the navigation, no action,
+	// no current route — for the same render the locale is held for: the baked
+	// shell does not know which URL it will be served for.
+	const matches = useMatches();
+	const chrome = hydrated ? chromeFor(matches) : BAKED_CHROME;
+	const here = hydrated ? (matches.at(-1)?.routeId ?? null) : null;
+
 	return (
-		<AppShell locale={bootLocale} onLocaleChange={chooseLocale}>
+		<AppShell locale={bootLocale} chrome={chrome} here={here}>
 			<div key={bootLocale}>{hydrated && <Outlet />}</div>
 		</AppShell>
 	);

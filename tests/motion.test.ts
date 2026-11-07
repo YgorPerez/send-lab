@@ -89,13 +89,14 @@ describe('mechanism 2 — the view-transition pseudo-elements', () => {
 		const named = [...rest.matchAll(/::view-transition-(?:group|old|new)\(([^)]+)\)/g)].map(
 			(mt) => mt[1],
 		);
-		// `topbar` is `animation: none`, `screen` is the crossfade. `tabbar` was
-		// here until the tab bar was removed and the menu took its place; the strip
-		// is now the only chrome that has to hold still.
+		// `topbar` and `navigation` are `animation: none`, `screen` is the
+		// crossfade. Two names until #115: the menu that replaced the tab bar left
+		// the strip as the only chrome that had to hold still, and the bar's return
+		// brought a second chrome name back (`navigation`, the bar and the rail).
 		//
 		// A *new* name appearing here means an animation nobody has decided a
 		// reduced-motion answer for, which is what this counts.
-		expect(new Set(named)).toEqual(new Set(['topbar', 'screen']));
+		expect(new Set(named)).toEqual(new Set(['topbar', 'navigation', 'screen']));
 		for (const [, body] of rest.matchAll(
 			/::view-transition-(?:group|old|new)\([^)]+\)[^{]*\{([^}]*)\}/g,
 		)) {

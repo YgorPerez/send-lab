@@ -83,7 +83,12 @@ import { Segmented } from '../components/ui/Segmented';
 import { type Step, Stepper } from '../components/ui/Stepper';
 import { button, card, chip, input, option } from '../components/ui/variants';
 
-export const Route = createFileRoute('/welcome')({ component: Welcome });
+// No navigation here (#115, spec story 72): the stepper has the whole screen, and
+// its way out is on every step instead. Read by the shell through `lib/chrome.ts`.
+export const Route = createFileRoute('/welcome')({
+	component: Welcome,
+	staticData: { navigation: false },
+});
 
 /** Labels for the closed sets, as message *functions* — each reads the locale
  *  when called, which is after the root has re-keyed the tree on a switch. A map

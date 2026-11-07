@@ -9,12 +9,49 @@ The breakpoint is one, at Tailwind's `lg` (1024px), and the two layouts are:
 
 | | Phone | Wide |
 |---|---|---|
-| Navigation | ~~three tabs on the bottom edge~~ a menu in the top strip | ~~the same three as a 200px left rail~~ the same menu |
-| Measure | `max-w-[520px]`, centred | `max-w-[1000px]`, centred |
-| Panes | one | two, on the pages that earn it |
+| Navigation | ~~three tabs on the bottom edge~~ ~~a menu in the top strip~~ a bar on the bottom edge: Today, Train, Timer, Log, and More | ~~the same three as a 200px left rail~~ ~~the same menu~~ the same element as a 200px left rail listing every destination |
+| Measure | `max-w-[520px]`, centred | `max-w-[1000px]`, centred in what the rail leaves |
+| Panes | one | two, on the pages that earn it; a one-pane page starts on the measure's left edge |
+
+> **Amended 2026-11-07 — the bar returns, with an overflow (#115, spec #113).**
+> This contradicts the 2026-09-08 amendment below on purpose, and leaves this
+> ADR's decision where it was: one DOM, every difference a `lg:` utility, no
+> viewport read anywhere, and none in the shell.
+>
+> The 2026-09-08 amendment removed the bar because a three-item bar could not
+> grow: every page after the third became a one-off. That failure belonged to a
+> bar with no overflow, not to having a bar. The new bar holds the four places a
+> training day moves between (Today, Train, Timer, Log) and a fifth item, More,
+> which opens a sheet from the bottom edge holding Week and Settings, and later
+> Program (#65) and Studies (#67). A new page gets a row in that sheet and in the
+> rail, and the bar does not change, so it cannot produce the one-offs the menu
+> was brought in to end. What the menu cost, and the athlete paid mid-set, was
+> reach: `train` and `timer` sat behind a control in the top-right corner, the
+> part of a phone a thumb reaches last. The bar puts them under the thumb.
+>
+> From `lg` the same `<nav>` is a 200px rail under the strip, listing every
+> destination, with More hidden. The strip's content and `main` sit in one
+> 1000px measure centred in what the rail leaves, and a one-pane page starts on
+> that measure's left edge, so the wordmark and every screen's title share one
+> left edge. The window reserves the scrollbar's gutter from `lg`, so a page that
+> scrolls is not 15px narrower than one that does not.
+>
+> What the page has to clear is two CSS variables, `--nav-clear` (the bar and
+> the home indicator on a phone, nothing from `lg`) and `--nav-rail` (200px from
+> `lg`), both zero on the intake. The intake hides the bar because its route says
+> so (`staticData.navigation`), read in `__root.tsx` once the app has hydrated;
+> the baked shell renders the bar. Nothing in this reads the viewport.
+>
+> The rail listing every destination reverses "a wider navigation on the wide
+> screen", rejected below. That rejection was against a second information
+> architecture: a rail with pages the phone did not reach from the same place.
+> There is no second one now. The phone and the rail list the same destinations
+> in the same order from the same element; the phone folds the last ones into
+> More because 360px holds five items, and the rail does not need to.
 
 > **Amended 2026-09-08 — the tab bar and the rail are gone, and this decision is
-> not.** The navigation row above is struck through rather than rewritten,
+> not.** *(Superseded on the navigation by the 2026-11-07 amendment above; kept as
+> the record of why the bar went.)* The navigation row above is struck through rather than rewritten,
 > because what changed is *what the chrome contains*, not *how the two layouts are
 > chosen*, which is what this ADR decides. Everything below still holds: one DOM,
 > every difference a `lg:` utility, no viewport read anywhere, and above all none
@@ -69,12 +106,12 @@ start stays a file read.
   query would also work as CSS and is still wrong: assistive technology sees both,
   the second one's links are duplicate landmarks, and a duplicated
   `view-transition-name` is one of the three ways a view transition silently skips
-  (#43). *Amended: since the tab bar was removed, `AppShell` owns the one `<main>`
-  and no `<nav>`, and `Menu.tsx` owns the one `<nav>`. The count is unchanged and
-  so is the reason for it; only the file moved.* The rail used to inherit
-  `tabbar`'s hold-still rule by being the same element as the tab bar — with both
-  gone, `topbar` is the only chrome name left, and `app.css` and
-  `tests/motion.test.ts` were changed together to say so.
+  (#43). *Amended 2026-11-07: `AppShell` owns the one `<main>` and
+  `Navigation.tsx` owns the one `<nav>`, which is the bar on a phone and the rail
+  from `lg`. More's sheet is a dialog, not a second navigation. The chrome's
+  view-transition names are `topbar` and `navigation`, and `app.css` and
+  `tests/motion.test.ts` changed together to say so.* (Between 2026-09-08 and
+  2026-11-07, `Menu.tsx` owned the `<nav>` and `topbar` was the only chrome name.)
 - **`tests/desktop.test.ts` enforces both halves** — no viewport read in
   `__root.tsx` or `AppShell.tsx`, and one nav and one main *across the two chrome
   files*. It is a source scan
@@ -125,3 +162,6 @@ the single athlete does not own. Reversible: it is one more breakpoint in
 pages. Rejected because it makes desktop a different app: a second information
 architecture, and every page ticket then owing two answers to "where is this
 reached from". The rail carries the same three destinations the tab bar does.
+*Reversed 2026-11-07, see the amendment at the top: with More, the phone and the
+rail list the same destinations from one element, so a page ticket owes one
+answer (a row in `DESTINATIONS`) and the rail shows the rows More folds away.*
