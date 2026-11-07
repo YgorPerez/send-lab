@@ -219,4 +219,32 @@ describe('the sheet', () => {
 		expect(worded(sheet() ?? document, 'OK')?.getAttribute('aria-pressed')).toBe('true');
 		press(sheet()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
 	});
+
+	// Re-checking mid-day is Edit, not a reset (#113's review, P3): the sheet
+	// opens on step 1 with the morning's answers pressed, and tapping the answer
+	// already pressed advances like any pick. One tap per question, no hunting
+	// for Next.
+	test('re-checking: a tap on the answer already pressed moves on', () => {
+		press(worded(document.querySelector('main') ?? document, 'Edit'));
+		const walked: string[] = [];
+		for (let i = 0; i < 7; i++) {
+			const asked = question() ?? '';
+			walked.push(asked);
+			const pressed = sheet()?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+			expect(pressed, asked).toBeTruthy();
+			press(pressed);
+		}
+		expect(walked).toEqual([
+			'How did you sleep?',
+			'How recovered do you feel?',
+			'Muscle soreness?',
+			'Anything hurting today?',
+			'How does it feel?',
+			'Feeling sick at all?',
+			'Time for today?',
+		]);
+		// The last step stays open on a pick, as it does for a first answer.
+		expect(question()).toBe('Time for today?');
+		press(sheet()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+	});
 });
