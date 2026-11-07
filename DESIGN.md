@@ -392,7 +392,8 @@ Quiet by default; a dense screen with loud buttons is not calm.
 
 ### Inputs / Fields
 - **Style:** inset graphite, slate border, 8px corners, 16px text (under 16px iOS zooms on focus), tabular figures; proportional figures for a name.
-- **Focus:** the border steps to faint ink for a finger; the vermilion ring for a keyboard.
+- **Focus:** the border steps to faint ink; from `lg` the vermilion ring as well, 2px off the field. A text field matches `:focus-visible` on a tap too, so below `lg` the ring stays off and the border step is the cue (#124).
+- **Label:** a `Field`: the label in words over the input, 13px ink and 4px above it, with a hint (a unit, "(optional)", a password's minimum) after it in faint ink. A field that is its step's question heads itself in the section rank instead (the intake). Never the mono label rank, and never a placeholder.
 - **Typed numbers on the Timer screens:** a 30px Barlow value over a 2px bottom rule, flanked by 48px − and + buttons; the numeric keyboard opens on tap.
 
 ### Options and choices
@@ -438,6 +439,9 @@ Week's training week (#121): an Inter section head, "Training week 5 of 8", with
 
 ### Settings
 Settings (#122): one list. Every group is an Inter section head over one `ControlList`: Units & display (weight, length, and the language by its full names, "English" and "Português"), Timer cues (the same `CueSettings` the Timer's popover shows, there without the card), Notifications (one row, still a card) and Account (the email, or "Signed in" until the session answers, beside Sign out). The choices are Inter, `kg` included: mono is for readings that are all digits. Signed out, Account is an `Empty`. AI access is the one `Bare` group, because it is prose, a config and three actions rather than controls on rows. Offline, the 13px gold line saying which controls need a connection is the first group under the header, and each control it disables says so again under its own row.
+
+### Sign-in
+Sign-in (#124): the header (Sign in, Create account, or Account when signed in), then what the page has to say as the first group under it, then the two fields, then the actions, each a sections gap apart. Every line it says is a `Notice`, one 13px family whose tone is what the line asks: gold for this device or the network (offline, a server unreached or failing), vermilion for what was typed (wrong credentials, an email that has an account), dim ink for information (what the device holds, where sign-out lives). The line about Sign in sits under it: offline, why it is held; otherwise the failure. In flight the button reads "Signing in…". Signed in, "Signed in" and the address in a `Bare`, Go to Today as the one primary, and where sign-out lives under it.
 
 ### Protocol rows
 A list row is a 56px panel at 14px corners: the name in 16px semibold, the shape under it in 13px dim ink, the length in a 22px Barlow count on the right. Its ⋯ is a separate, filled, bordered 44px square centred beside it, never inside it and never stretched to the row's height (`RowMenu`), and only a saved protocol has one; a preset's one action, a copy, is in its ready state. A tap opens the ready state, so a stray tap never starts anything. The list runs Saved, the stopwatch's row, Recent, Presets (#119). The presets are one accordion card: each exercise a 48px head in the rows' 15px with its count, today's exercises first, open and labelled "Today", the rest closed; inside a group the presets are lines in the card with no surface of their own, their names in the head's 15px, and the group ends on its study, "Study: <title>" with the 12px external mark, worded and drawn as the ready state's. The protocol the clock is on is marked with the selection language: a raised panel, a chalk edge, chalk on every line, the shape line in semibold.

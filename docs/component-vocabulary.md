@@ -478,6 +478,55 @@ of life. And sign-up asks for no name: better-auth requires one, no screen shows
 display name, and a field with no reader is a question with no answer to give it,
 so the address stands in.
 
+**On the shared rhythm (#124).** The page now opens the way every screen does: the
+header, then what it has to say as the first group under it, a sections gap down,
+where it used to be a lede and the notices pulled up into the header with `-mt-4`.
+The lede went with it ("Sign in to your training console" under "Sign in" said the
+title twice). The fields are the intake's: a `Field`, its label in 13px ink words over
+the input, promoted out of `welcome.tsx`'s `TextField` (which now uses it) so the two
+forms cannot drift. The password minimum on sign-up sits beside its label in faint
+ink, the way the intake says "(optional)". Fields, then the actions, a sections gap
+apart, as an intake step's questions and its advance are.
+
+**Every line the page says is a `Notice`** (`ui/primitives.tsx`): one 13px family,
+`text-pretty`, whose tone is what the line asks of the athlete. `warn` (gold) is
+about this device or the network: offline, a server that could not be reached, a
+server that failed. `stop` (vermilion, as a refused value's rule) is about what was
+typed: wrong credentials, an email that has an account, the generic refusal. `info`
+(dim ink) changes nothing the athlete has to do: what the device holds, where
+sign-out lives. So "it isn't your details, try again" is never painted as a stop,
+which would contradict the sentence. A stop also marks both fields `aria-invalid`,
+described by the line. Settings' offline and token lines were the same thing under
+another name (`Caveat`) and are `Notice tone="warn"` now; `ControlNote` stays the
+line under a row.
+
+**The line about the primary has one place: under it** (#124's critique), where
+Stepper puts a held advance's reason and Settings a row's. Offline it says
+"Signing in needs a connection." and is the button's description: the keyboard
+scrolls the page's line away at 360px, and a keyboard cannot reach a disabled
+button. Otherwise it is the failure, `role="alert"`. The page's offline line says
+what the button's does not: every other screen keeps working. While the request is
+out the button reads "Signing in…" and the form is `aria-busy`: held and silent, it
+looked exactly like the offline button. Signed in, "Signed in" and the address in
+words in a `Bare` (a lone reading), not a mono EMAIL eyebrow.
+
+**Copy, in the glossary's words.** pt-BR's lapsed line said "Você está desconectado",
+which read as *offline* beside the offline line; it is "Você não entrou", as
+Settings has said since #122. `auth_error` dropped "login" and "authentication"
+(both on **Sign-in**'s _Avoid_ list). `tests/signin.test.ts` checks every line the
+page can show, in both locales, against that list, and asserts the order, the field
+labels, each line's tone and place, the busy label and the signed-in view;
+`tests/login.test.ts` is unchanged.
+
+**Text fields get the keyboard ring from `lg`** (#124's critique). `app.css`'s
+`:focus-visible` rule is in the base layer and the `input` recipe's `outline-none`
+is a utility, so the recipe won and a tabbed-to field showed only its 1px border
+step. A text field matches `:focus-visible` on any focus, a tap included, so the
+recipe puts the ring back at `lg` only: the phone keeps the border step. Not
+`(hover: hover)` or `(pointer: fine)`: the gates' headless Chrome reports `hover:
+none` and `pointer: coarse` even under `--desktop`, so a ring keyed on them could
+not be seen by any check.
+
 ---
 
 ## The overhaul's foundation

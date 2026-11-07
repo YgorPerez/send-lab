@@ -233,6 +233,14 @@ function SignInForm({
 	const navigate = useNavigate();
 	const emailId = useId();
 	const passwordId = useId();
+	const lineId = useId();
+	// A stop is about what was typed, so the fields carry it: marked invalid and
+	// described by the line, for a screen reader tabbing back to them. A warning
+	// (the network, the server) is not about the fields and leaves them alone.
+	const typedWrong = failure !== null && FAILURE_TONE[failure] === 'stop';
+	const fieldState = typedWrong
+		? { 'aria-invalid': true as const, 'aria-describedby': lineId }
+		: {};
 
 	async function submit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -280,7 +288,7 @@ function SignInForm({
 		// Two groups a sections gap apart, the intake's step rhythm: the fields,
 		// then what the athlete does with them. The advance sits where a step's
 		// advance sits, under its questions.
-		<form className="flex flex-col gap-sections" onSubmit={submit}>
+		<form className="flex flex-col gap-sections" onSubmit={submit} aria-busy={busy || undefined}>
 			<div className="flex flex-col gap-group">
 				<Field id={emailId} label={m.field_email()}>
 					<input
@@ -289,6 +297,7 @@ function SignInForm({
 						type="email"
 						autoComplete="email"
 						required
+						{...fieldState}
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 					/>
@@ -311,6 +320,7 @@ function SignInForm({
 						// Said up front rather than as a round trip through the server for
 						// something the field already knows.
 						minLength={signup ? 8 : undefined}
+						{...fieldState}
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
 					/>
@@ -318,25 +328,42 @@ function SignInForm({
 			</div>
 
 			<div className="flex flex-col gap-group">
-				{failure ? (
-					// `role="alert"` because the sentence appears after a tap and is the
-					// only thing that changed on the screen.
-					<Notice role="alert" tone={FAILURE_TONE[failure]}>
-						{FAILURE[failure]()}
-					</Notice>
-				) : null}
-
 				{/* The screen's one `primary`: signing in is the thing this page exists
 				    for. Disabled offline rather than hidden — a control that vanishes
-				    leaves the athlete looking for it, and the first line under the
-				    header already says why it cannot be used. */}
+				    leaves the athlete looking for it. While the request is out it says
+				    so: held and silent, it looked exactly like the offline button. */}
 				<button
 					type="submit"
 					disabled={!reachable || busy}
+					aria-describedby={reachable ? undefined : lineId}
 					className={button({ kind: 'primary', size: 'touch' })}
 				>
-					{signup ? m.btn_sign_up() : m.btn_sign_in()}
+					{busy
+						? signup
+							? m.btn_signing_up()
+							: m.btn_signing_in()
+						: signup
+							? m.btn_sign_up()
+							: m.btn_sign_in()}
 				</button>
+
+				{/* The line about the primary, in one place under it, where Stepper
+				    puts a held advance's reason and Settings a row's (#124's
+				    critique). Offline it says why the button is held, beside it,
+				    because at 360px the keyboard scrolls the page's line away and a
+				    keyboard cannot reach a disabled button; it replaces a failure,
+				    which offline is no longer the reason. Otherwise it is the
+				    failure, `role="alert"` because the sentence appears after a tap
+				    and is the only thing that changed on the screen. */}
+				{!reachable ? (
+					<Notice id={lineId} tone="warn">
+						{m.login_needs_connection()}
+					</Notice>
+				) : failure ? (
+					<Notice id={lineId} role="alert" tone={FAILURE_TONE[failure]}>
+						{FAILURE[failure]()}
+					</Notice>
+				) : null}
 
 				<button
 					type="button"

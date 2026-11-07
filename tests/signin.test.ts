@@ -45,7 +45,9 @@ const COPY = {
 	'en-US': {
 		title: 'Sign in',
 		noRecord: 'Send Lab works without an account',
-		offline: 'Signing in is the one thing here that needs a connection',
+		offline: 'Every other screen keeps working',
+		submitOffline: 'Signing in needs a connection.',
+		signingIn: 'Signing in…',
 		fields: ['Email', 'Password'],
 		toSignUp: 'No account? Create one',
 		passwordMin: 'at least 8 characters',
@@ -59,12 +61,14 @@ const COPY = {
 	'pt-BR': {
 		title: 'Entrar',
 		noRecord: 'O Send Lab funciona sem conta',
-		offline: 'Entrar é a única coisa aqui que precisa de conexão',
+		offline: 'Todas as outras telas continuam funcionando',
+		submitOffline: 'Entrar precisa de conexão.',
+		signingIn: 'Entrando…',
 		fields: ['E-mail', 'Senha'],
 		toSignUp: 'Sem conta? Crie uma',
 		passwordMin: 'no mínimo 8 caracteres',
 		credentials: 'Esse e-mail e essa senha não correspondem a nenhuma conta.',
-		unreachable: 'Não consegui alcançar o servidor.',
+		unreachable: 'Não foi possível conectar ao servidor.',
 		signedIn: 'Você entrou',
 		account: 'Conta',
 		goToday: 'Ir para Hoje',
@@ -216,12 +220,22 @@ describe('sign-in after a tap', () => {
 			const refused = main.querySelector('[role="alert"]');
 			expect(text(refused)).toBe(copy.credentials);
 			expect(refused?.getAttribute('data-notice')).toBe('stop');
+			// What the stop is about: both fields are marked and described by it,
+			// so a screen reader tabbing back to the password hears why.
+			for (const field of main.querySelectorAll('input')) {
+				expect(field.getAttribute('aria-invalid')).toBe('true');
+				expect(field.getAttribute('aria-describedby')).toBe(refused?.id);
+			}
 
 			auth.signIn.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 			await submit(main);
 			const unreachable = main.querySelector('[role="alert"]');
 			expect(text(unreachable)).toContain(copy.unreachable);
 			expect(unreachable?.getAttribute('data-notice')).toBe('warn');
+			// Not the athlete's typing, so the fields are not marked wrong.
+			for (const field of main.querySelectorAll('input')) {
+				expect(field.getAttribute('aria-invalid')).toBeNull();
+			}
 		});
 
 		// Offline is said as well as what the device holds (`resolveLogin`), and
@@ -237,6 +251,30 @@ describe('sign-in after a tap', () => {
 			expect(text(lines[1])).toContain(copy.noRecord);
 			const submit = main.querySelector('button[type="submit"]') as HTMLButtonElement;
 			expect(submit.disabled).toBe(true);
+			// #124's critique: at 360px the keyboard scrolls the page's line away,
+			// and a keyboard cannot reach a disabled button. So the held button says
+			// why beside it, as Stepper's held advance and Settings' Sign out do,
+			// and names the line as its description.
+			const described = submit.getAttribute('aria-describedby');
+			const reason = described ? document.getElementById(described) : null;
+			expect(text(reason)).toBe(copy.submitOffline);
+			expect(reason?.getAttribute('data-notice')).toBe('warn');
+			expect(reason?.closest('form')).not.toBeNull();
+		});
+
+		// #124's critique: while the request is out, the held button said nothing,
+		// and looked exactly like the offline one. On gym signal that can last.
+		test(`${locale}: while signing in, the button says so`, async () => {
+			let answer: (value: unknown) => void = () => {};
+			auth.signIn.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+			const main = await mount(locale);
+			await submit(main);
+			const button = main.querySelector('button[type="submit"]') as HTMLButtonElement;
+			expect(button.disabled).toBe(true);
+			expect(text(button)).toBe(copy.signingIn);
+			expect(main.querySelector('form')?.getAttribute('aria-busy')).toBe('true');
+			await act(async () => answer({ data: null, error: { status: 401 } }));
+			expect(text(button)).toBe(copy.title);
 		});
 
 		// Signed in, the page has nothing to ask: who is signed in, said in words

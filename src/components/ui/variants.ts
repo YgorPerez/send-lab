@@ -83,9 +83,15 @@ export const input = tv({
 	// `outline-none` removes the UA outline and `focus:border-ink-faint` replaces
 	// it, which is enough for a finger and not enough for a keyboard: the border
 	// step is small and it says nothing about *which* of four columns in a set row
-	// has the caret. `app.css` puts a real ring back on `:focus-visible`, which a
-	// touch focus never matches — so this costs the phone nothing (#52, question 6).
-	base: 'w-full min-w-0 rounded-md border border-line bg-panel-2 px-2 py-1.5 text-base text-ink tabular-nums outline-none transition-colors hover:border-line-soft focus:border-ink-faint',
+	// has the caret. The ring comes back here, not from `app.css`: its
+	// `:focus-visible` rule is in the base layer, and `outline-none` is a utility,
+	// so it won (#124's critique measured `outline: none` on a tabbed-to field).
+	// And a text field matches `:focus-visible` on *any* focus, a tap included,
+	// so the ring is held to the desktop layout (`lg`, ADR 0018's one
+	// breakpoint), where a keyboard is what types into it; the phone keeps the
+	// border step alone. Not `(hover: hover)` or `(pointer: fine)`: the gates'
+	// headless Chrome cannot emulate either, so nothing could see the ring.
+	base: 'w-full min-w-0 rounded-md border border-line bg-panel-2 px-2 py-1.5 text-base text-ink tabular-nums outline-none transition-colors hover:border-line-soft focus:border-ink-faint lg:focus-visible:outline-2 lg:focus-visible:outline-offset-2 lg:focus-visible:outline-ring lg:focus-visible:outline-solid',
 	variants: {
 		align: { left: 'text-left', center: 'text-center' },
 	},
