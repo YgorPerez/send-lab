@@ -236,4 +236,63 @@ describe('en-US, Settings signed in', () => {
 		expect(text(token)).toContain('The token needs a connection.');
 		expect(text(token)).not.toContain("Couldn't reach the server");
 	});
+
+	// The sweep (#125): AI access was the tallest group on the page, ending it
+	// with a config block always open. The config is a disclosure now, closed,
+	// with the toggle that reveals the token inside it; Copy and Regenerate stay
+	// out, since neither needs the config read first.
+	test('keeps the AI config behind a closed disclosure, its actions outside it', async () => {
+		const main = await mount();
+		const token = sectionNamed(main, 'AI access (MCP)') as Element;
+		const details = token.querySelector('details');
+		expect(details).not.toBeNull();
+		expect(details?.open).toBe(false);
+		expect(text(details?.querySelector('summary'))).toBe('Config (for file-based clients)');
+		expect(details?.querySelector('pre')).not.toBeNull();
+		expect(button(details as Element, 'Reveal token')).toBeTruthy();
+		for (const name of ['Copy', 'Regenerate']) {
+			const b = button(token, name);
+			expect(b, name).toBeTruthy();
+			expect(details?.contains(b as Node), name).toBe(false);
+		}
+	});
+
+	// The sweep (#125). A switch re-keys the whole tree (`__root.tsx`), so the
+	// control that was pressed is gone by the time the new language draws:
+	// focus fell to `body`, and a keyboard started again from the top. And the
+	// document kept saying it was English, so a screen reader read Portuguese
+	// with an English voice.
+	test('a language switch keeps focus on the language, and tells the document', async () => {
+		// Paraglide writes the choice to `localStorage`, and jsdom's is not
+		// callable here (`tests/intake.test.ts` has the same shim).
+		const cells = new Map<string, string>();
+		Object.defineProperty(window, 'localStorage', {
+			configurable: true,
+			value: {
+				getItem: (k: string) => cells.get(k) ?? null,
+				setItem: (k: string, v: string) => void cells.set(k, String(v)),
+				removeItem: (k: string) => void cells.delete(k),
+				clear: () => cells.clear(),
+				key: (i: number) => [...cells.keys()][i] ?? null,
+				get length() {
+					return cells.size;
+				},
+			} satisfies Storage,
+		});
+		await mount();
+		expect(document.documentElement.lang).toBe('en-US');
+		const pt = button(document, 'Português');
+		pt?.focus();
+		await act(async () => pt?.click());
+		const now = document.activeElement as HTMLElement | null;
+		expect(now).not.toBe(document.body);
+		expect(text(now)).toBe('Português');
+		expect(now?.getAttribute('aria-pressed')).toBe('true');
+		expect(document.documentElement.lang).toBe('pt-BR');
+
+		// Back, so the next test reads English.
+		await act(async () => button(document, 'English')?.click());
+		expect(text(document.activeElement)).toBe('English');
+		expect(document.documentElement.lang).toBe('en-US');
+	});
 });

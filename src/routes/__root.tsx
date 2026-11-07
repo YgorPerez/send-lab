@@ -148,6 +148,13 @@ function RootComponent() {
 	const [hydrated, setHydrated] = useState(import.meta.env.MODE === 'test');
 	useIsomorphicLayoutEffect(() => setHydrated(true), []);
 	const bootLocale = hydrated ? locale : 'en-US';
+	// The document says which language it is in (#125). The baked shell keeps
+	// `lang="en"` (it is user-independent, ADR 0006); the live locale is set once
+	// the app has hydrated, and again on every switch. Without it a screen reader
+	// read the pt-BR screens with an English voice.
+	useEffect(() => {
+		document.documentElement.lang = bootLocale;
+	}, [bootLocale]);
 
 	// What the matched route says about the chrome (#115): no navigation on the
 	// intake, and the strip's one screen action. Decided from the route, never

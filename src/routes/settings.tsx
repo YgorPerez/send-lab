@@ -31,7 +31,7 @@
 // for the machinery it needs. The permission prompt is asked for at the moment
 // the switch is turned on, not before.
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Check, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { readToken, regenerateToken } from '$lib/apiTokenClient';
 import { useOnline } from '$lib/online';
@@ -53,7 +53,6 @@ import {
 	ControlNote,
 	ControlRow,
 	Empty,
-	Eyebrow,
 	Notice,
 	Pane,
 	ScreenHeader,
@@ -169,15 +168,38 @@ function Language() {
 	const id = useId();
 	return (
 		<ControlRow id={id} label={m.lang_label()}>
-			<Segmented
-				value={locale}
-				options={APP_LOCALES.map((id) => ({ id, label: LANGUAGE_LABEL[id]() }))}
-				onChange={chooseLocale}
-				labelledBy={id}
-				className="flex w-[184px] shrink-0 gap-1.5"
-			/>
+			{/* `contents`: a box for the ref only, so the row lays out as before. */}
+			<div ref={refocusLanguage} className="contents">
+				<Segmented
+					value={locale}
+					options={APP_LOCALES.map((id) => ({ id, label: LANGUAGE_LABEL[id]() }))}
+					onChange={(next) => {
+						languageSwitched = true;
+						chooseLocale(next);
+					}}
+					labelledBy={id}
+					className="flex w-[184px] shrink-0 gap-1.5"
+				/>
+			</div>
 		</ControlRow>
 	);
+}
+
+/**
+ * Focus across a language switch (#125). The switch re-keys the whole tree
+ * (`__root.tsx`), so the button the athlete pressed is unmounted with the old
+ * language and focus fell to `body`: a keyboard started again from the top of
+ * the page. The press leaves a note here, outside the tree that is about to go,
+ * and the new language's row takes focus back on its pressed choice as it
+ * mounts. Module state, not React state: nothing in the old tree survives to
+ * hold it.
+ */
+let languageSwitched = false;
+
+function refocusLanguage(el: HTMLDivElement | null) {
+	if (!el || !languageSwitched) return;
+	languageSwitched = false;
+	el.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus();
 }
 
 /** Whether the browser can be asked at all, and what it has already said. Read
@@ -409,6 +431,7 @@ function ApiToken({ online }: { online: boolean }) {
 	const [token, setToken] = useState<string | null>(null);
 	const [unreachable, setUnreachable] = useState(false);
 	const [revealed, setRevealed] = useState(false);
+	const [configOpen, setConfigOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [confirming, setConfirming] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -461,6 +484,7 @@ function ApiToken({ online }: { online: boolean }) {
 			setToken(fresh);
 			// Shown, so it can be copied into the client that just lost the old one.
 			setRevealed(true);
+			setConfigOpen(true);
 		} catch {
 			setUnreachable(true);
 		} finally {
@@ -484,18 +508,51 @@ function ApiToken({ online }: { online: boolean }) {
 					{m.mcp_agnostic_note()}
 				</p>
 
-				<div>
-					<Eyebrow className="mb-1">{m.mcp_config_note()}</Eyebrow>
-					<pre
-						className={card({
-							pad: 'sm',
-							tone: 'inset',
-							class: 'num overflow-x-auto text-[11px] leading-relaxed text-ink-dim',
-						})}
-					>
-						{configFor(endpoint, revealed && token ? token : MASKED)}
-					</pre>
-				</div>
+				{/* The config is for clients that take a file, and it was the tallest
+				    thing on the page, always open (#122's critique). A disclosure,
+				    closed, as the readiness sheet's "Why we ask" is (#125); the toggle
+				    that reveals the token in it is inside with it. Regenerating opens
+				    it, so the fresh token is on screen to be copied. */}
+				<details
+					open={configOpen}
+					onToggle={(e) => setConfigOpen(e.currentTarget.open)}
+					className="group"
+				>
+					<summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-1 text-[13px] text-ink-dim transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+						{m.mcp_config_note()}
+						<ChevronDown
+							size={16}
+							strokeWidth={2}
+							aria-hidden="true"
+							className="transition-transform duration-200 group-open:rotate-180"
+						/>
+					</summary>
+					<div className="flex flex-col items-start gap-2 pb-1">
+						<pre
+							className={card({
+								pad: 'sm',
+								tone: 'inset',
+								class: 'num w-full overflow-x-auto text-[11px] leading-relaxed text-ink-dim',
+							})}
+						>
+							{configFor(endpoint, revealed && token ? token : MASKED)}
+						</pre>
+						<button
+							type="button"
+							disabled={!available}
+							aria-pressed={revealed}
+							onClick={() => setRevealed((r) => !r)}
+							className={button({ size: 'md', class: 'min-h-11' })}
+						>
+							{revealed ? (
+								<EyeOff size={16} aria-hidden="true" />
+							) : (
+								<Eye size={16} aria-hidden="true" />
+							)}
+							{revealed ? m.mcp_hide() : m.mcp_reveal()}
+						</button>
+					</div>
+				</details>
 
 				{/* Offline nothing was asked, so the line says what the token waits for;
 				    online, a request that failed says the server could not be reached. */}
@@ -518,20 +575,6 @@ function ApiToken({ online }: { online: boolean }) {
 							<Copy size={16} aria-hidden="true" />
 						)}
 						{copied ? m.mcp_copied() : m.mcp_copy()}
-					</button>
-					<button
-						type="button"
-						disabled={!available}
-						aria-pressed={revealed}
-						onClick={() => setRevealed((r) => !r)}
-						className={button({ size: 'md', class: 'min-h-11' })}
-					>
-						{revealed ? (
-							<EyeOff size={16} aria-hidden="true" />
-						) : (
-							<Eye size={16} aria-hidden="true" />
-						)}
-						{revealed ? m.mcp_hide() : m.mcp_reveal()}
 					</button>
 					<button
 						type="button"
