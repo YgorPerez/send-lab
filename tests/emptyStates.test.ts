@@ -81,6 +81,8 @@ const COPY = {
 		held: 'held · readiness',
 		question: 'How did you sleep?',
 		answerCheck: '>Answer the check<',
+		outcome: 'session go?',
+		goTrain: '>Go to Train<',
 		finish: 'Finish &amp; log session',
 		microcycle: 'Microcycle',
 		thursday: 'Thu',
@@ -101,6 +103,8 @@ const COPY = {
 		held: 'segurado · prontidão',
 		question: 'Como foi seu sono?',
 		answerCheck: '>Responder o check<',
+		outcome: 'Como foi a sessão',
+		goTrain: '>Ir para o treino<',
 		finish: 'Concluir e registrar treino',
 		microcycle: 'Microciclo',
 		thursday: 'Qui',
@@ -167,6 +171,11 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(today).not.toContain(copy.question);
 			// The trend has nothing to draw.
 			expect(today).toContain(copy.noTrend);
+			// Nothing trained today, so nothing to rate: the outcome ask waits for a
+			// session (#117). And with no read, the way into Train is not the
+			// screen's primary; the invitation is.
+			expect(today).not.toContain(copy.outcome);
+			expect(today).not.toContain(copy.goTrain);
 		});
 
 		test('Train with a slot but no set ticked off holds the finish button', async () => {

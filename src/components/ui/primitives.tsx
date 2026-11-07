@@ -34,7 +34,8 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
  * The right-hand side holds one of two things, never both (the types refuse it):
  * - `reading` — a short count or reading about the whole screen (`3/12 sets`,
  *   `Week 5 / 8`), baseline-aligned with the title so the two read as one line.
- *   It may be a link (Today's week reading, until the bar carries Week).
+ *   A reading, not a control: Today's week reading was a link to Week until the
+ *   navigation carried Week (#115); it is plain text since #117.
  * - `action` — a single icon control, centred on the title's line because an
  *   icon has no baseline. A screen action belongs in the top strip's slot once
  *   the shell has one (#115); this is where the Timer's cue settings sit until
@@ -147,6 +148,7 @@ export function Section({
 	id,
 	label,
 	meta,
+	face = 'mono',
 	children,
 	className,
 }: {
@@ -155,13 +157,18 @@ export function Section({
 	id?: string;
 	label: ReactNode;
 	meta?: ReactNode;
+	/** The heading's face. The overhaul sets every section head in Inter
+	 *  (`.h-section-sans`, DESIGN.md › Typography) and each screen's ticket moves
+	 *  its own; `mono` is the retiring `.h-section`, the default until the last
+	 *  screen has moved (#125). */
+	face?: 'mono' | 'sans';
 	children: ReactNode;
 	className?: string;
 }) {
 	return (
 		<section id={id} className={cn('flex flex-col gap-group', className)}>
 			<header className="flex items-baseline justify-between gap-2">
-				<h2 className="h-section min-w-0">{label}</h2>
+				<h2 className={cn(face === 'sans' ? 'h-section-sans' : 'h-section', 'min-w-0')}>{label}</h2>
 				{meta ? <div className="eyebrow shrink-0 normal-case">{meta}</div> : null}
 			</header>
 			{children}

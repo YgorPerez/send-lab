@@ -120,6 +120,15 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(today).toContain(locale === 'en-US' ? 'Tender finger' : 'Dedo sensível');
 			expect(today).toContain(locale === 'en-US' ? 'Readiness check' : 'Check de prontidão');
 			expect(today).toContain('71.9');
+			// The way into Train is Today's one primary once there is a read, and
+			// today's trained session is asked about by name (#117; the order and
+			// the ration across states are `tests/today.test.ts`'s).
+			expect(today).toContain(locale === 'en-US' ? '>Go to Train<' : '>Ir para o treino<');
+			expect(today.replaceAll('&#x27;', "'")).toContain(
+				locale === 'en-US'
+					? "How did today's Pull session go?"
+					: 'Como foi a sessão de Puxada hoje?',
+			);
 
 			// Train: the timer, the exercises, the prescriptions.
 			expect(train).toContain(locale === 'en-US' ? 'Sloper Density' : 'Density em Sloper');

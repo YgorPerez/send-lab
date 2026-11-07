@@ -33,7 +33,12 @@ import { displayDate } from '$lib/displayDate';
 import { weekdayLabel } from '$lib/format';
 import type { ExerciseId, TaskKey, WeekdayKey, WeekId } from '$lib/ids';
 import { taskKey, weekdayKeyOf, weekNumberOf } from '$lib/ids';
-import { carryForwardFromYesterday, resolveDayType, trainableExerciseIds } from '$lib/prescription';
+import {
+	carryForwardFromYesterday,
+	dayTemplate,
+	resolveDayType,
+	trainableExerciseIds,
+} from '$lib/prescription';
 import { capByVerdict } from '$lib/readinessPlan';
 import {
 	acwr,
@@ -136,6 +141,12 @@ export interface TodayScreen {
 	 *  **trained** and still fills this in, so `missed` was a claim the value
 	 *  does not make (ADR 0014). */
 	carryForward: CarryForward | null;
+	/** Today's session, when there is one to rate: it is **trained** (a set of it
+	 *  is ticked off, `CONTEXT.md`), so the athlete can say how it went. Named by
+	 *  the day type it ran (ADR 0017), which is what the outcome ask calls it.
+	 *  Null with nothing trained today: an **outcome** is reported afterwards, and
+	 *  asking for one before there is a session is asking about nothing (#117). */
+	sessionToRate: { dayType: string } | null;
 	/** The injury self-check reachable from a body-area flag, and its last result.
 	 *
 	 *  Null when the library has no instrument to offer. `content.selfChecks` is
@@ -191,6 +202,7 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 		done: record.taskDone[taskKey(week, weekday, exercise)] ?? doneExercises.has(exercise),
 	}));
 
+	const day = resolveDayType(content, record, week, weekday);
 	const carried = carryForwardFromYesterday(content, record, now);
 	const latestBodyweight = record.bodyweight[record.bodyweight.length - 1] ?? null;
 
@@ -202,7 +214,7 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 		week,
 		weekNumber,
 		phase: content.phases[phaseId(weekNumber, record.program.weeks)],
-		day: resolveDayType(content, record, week, weekday),
+		day,
 		tasks,
 		isRestDay: tasks.length === 0,
 		answers: todayCheck?.answers ?? {},
@@ -234,6 +246,17 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 					labels: carried.exerciseIds.map((id) => content.exercises[id]?.name ?? id),
 				}
 			: null,
+		sessionToRate:
+			todaySession && doneExercises.size > 0
+				? {
+						// The day type the session recorded, under the name the plan shows
+						// for it when they are the same one (a program may rename it).
+						dayType:
+							todaySession.dayType === day.id
+								? day.type
+								: dayTemplate(content, todaySession.dayType).type,
+					}
+				: null,
 		selfCheck: selfCheckEntry(content, record),
 	};
 }

@@ -1,11 +1,12 @@
 // TODAY.
 //
 // The screen that decides whether "dense and calm" survives contact with a phone.
-// It carries, in one scroll: the read, the five wellness dimensions behind it,
-// the plan and the work the read holds back, yesterday's carry-forward,
-// three counters, a fourteen-point trend, the watch-outs with their advice, the
-// readiness check as one line, the bodyweight nudge, and two injury entry
-// points.
+// A summary since #117, in this order: the read (the verdict, its score, the five
+// wellness dimensions behind it, the readiness check as one line); today's plan,
+// with the work the read holds back marked on its tasks and yesterday's
+// carry-forward inside it, ending in the way into Train; the watch-outs; how
+// today's session went, once there is one; then the secondary block: three
+// counters, a fourteen-point trend, the bodyweight nudge and the injury entry.
 //
 // The ordering rule is *decision first, evidence second, input last*: the verdict
 // is the top of the screen because it is the answer. The check that produces it
@@ -31,7 +32,7 @@
 // file for why length alone is not a reason to promote one.
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, ChevronRight, ExternalLink } from 'lucide-react';
-import { type RefObject, useId, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useId, useMemo, useRef, useState } from 'react';
 import { useBaselineDraft } from '$lib/baselineDraft';
 import { type BodyArea, computeReadiness, getContent, hasWellnessAnswer } from '$lib/content';
 import type { Content, VerdictId } from '$lib/content/types';
@@ -75,6 +76,14 @@ export const Route = createFileRoute('/')({ component: Today });
  *  panels in a row is how a calm screen turns into a warning screen. */
 const FLAG_CARD = { stop: 'stop', warn: 'warn', info: 'plain' } as const;
 const FLAG_CHIP = { stop: 'stop', warn: 'warn', info: 'neutral' } as const;
+/** Severity → the mark beside a flag's title. */
+const FLAG_DOT = { stop: 'bg-flag', warn: 'bg-gold', info: 'bg-ink-faint' } as const;
+/** Severity → what the chip says, in the locale. */
+const FLAG_SEVERITY = {
+	stop: m.flag_severity_stop,
+	warn: m.flag_severity_warn,
+	info: m.flag_severity_info,
+} as const;
 
 /** What the verdict holds when there is no verdict: nothing. */
 const NO_HELD: ReadonlySet<ExerciseId> = new Set();
@@ -190,60 +199,57 @@ function Today() {
 		.map((id) => ({ id, value: answers[id] }));
 	const nextTask = t.tasks.find((x) => !done[x.key] && !heldSet.has(x.exercise));
 
+	// THE ONE PRIMARY (#117, spec #113). While the check is unanswered it is the
+	// invitation into it, in the read's place. Once there is a read, it is the
+	// way into Train, at the foot of the plan the read just shaped: the bodyweight
+	// nudge lost it in #116, the plan heading's "View today's session" link and
+	// each task's own "Train" link went with this.
+	const goTrain = checked ? (
+		<Link to="/train" className={button({ kind: 'primary', size: 'lg', class: 'w-full' })}>
+			{m.td_go_train()}
+		</Link>
+	) : null;
+
+	// WHAT THERE IS TO RATE. An outcome is how a session went, said afterwards
+	// (`CONTEXT.md`), so the ask waits for a trained session: today's in the
+	// record, or a task ticked off here. It names the session by its day type,
+	// so it stops being a permanent block of four buttons about nothing.
+	const toRate =
+		t.sessionToRate ?? (t.tasks.some((task) => done[task.key]) ? { dayType: t.day.type } : null);
+
 	return (
-		// `gap-7` between sections, not `gap-4`. The screen carries the same eight
-		// things it always did; what changed is that the space between them is now
-		// bigger than the space inside them, which is what makes them read as eight
-		// things rather than as one column of rows.
-		//
 		// The page's own frame, not a `Pane`: this is a two-pane page at `lg`, so the
 		// frame is the full width the shell hands over and the header sits outside
 		// `Panes` in order to span both.
 		<div className="flex flex-col gap-sections">
-			{/* ---- day header. Two lines, no card: the frame for everything below. */}
 			<ScreenHeader
 				title={
 					<>
 						{m.td_today_label()} · {t.weekdayLabel}
 					</>
 				}
-				meta={<span className="num">{t.dateLabel}</span>}
-				reading={
-					// THE WAY IN TO WEEK (#63): the week reading is the header's reading
-					// and the control at once, until the bar carries Week (#115). It goes
-					// through the `button` recipe like every other actionable `<Link>` in a
-					// route — "the same button has to be able to be … an `<a>`" — and
-					// hand-rolling it undershot the hit area at 36px, where every sibling
-					// link is 44px.
-					<Link
-						to="/week"
-						className={button({
-							size: 'sm',
-							class: 'num min-h-11 shrink-0 text-[11px] text-ink-faint',
-						})}
-					>
-						{m.week_label({ n: t.weekNumber })}
-					</Link>
-				}
+				// A date with a month name is a phrase, so Inter, not mono (DESIGN.md ›
+				// Typography › Meta).
+				meta={t.dateLabel}
+				// A reading, no longer the way in to Week: the navigation carries Week
+				// since #115 (More on a phone, the rail from `lg`), and a faint 11px link
+				// that looked like the other screens' readings was a control nobody could
+				// see.
+				reading={m.week_label({ n: t.weekNumber })}
 			/>
 
-			{/* THE CUT (#52).
-			    Today is the page a wide screen most obviously earns something on: it
-			    carries nine things in one scroll, and the athlete opens it for the
-			    first two. Measured on the built app: 3222px → 2019px in English and
-			    3367px → 2035px in pt-BR, with the phone unchanged to the pixel.
-			    The cut is *the ordering rule this file already states*, taken
-			    literally: **decision first, evidence second, input last**. Everything
-			    above is the read and what qualifies it — the verdict, the plan it
-			    produced, the counters, the trend, the watch-outs. Everything below is
-			    what the athlete puts *in*: the check, the bodyweight, the injury
-			    entry. On a phone that is a top and a bottom; on a laptop it is a left
-			    and a right, and the plan stops sitting three scrolls above the check
-			    that changes it.
-			    That the two coincide is not luck — it is the constraint. `Panes`
-			    splits at one point in the phone order and cannot interleave, so a
-			    screen only gets two columns if it already reads as two halves. This
-			    one did. */}
+			{/* THE ORDER (#117, spec #113 stories 33–43): the verdict, the plan it
+			    shaped, what to watch for. Then the input that comes after training,
+			    and the secondary block: the counters, the trend, bodyweight, injury.
+			    Before #117 the counters and the trend sat between the plan and the
+			    flags, and the outcome ask sat between the verdict and the plan, asked
+			    every morning about a session that had not happened.
+
+			    THE CUT (#52) is the same rule: *decision and evidence* left, *input and
+			    secondary* right. `Panes` splits at one point in the phone order and
+			    cannot interleave, so the order above is what makes the cut possible:
+			    everything before the outcome ask is the decision, everything from it
+			    on is what the athlete puts in or reads afterwards. */}
 			<Panes
 				primary={
 					<>
@@ -264,7 +270,7 @@ function Today() {
 							// keeps its anchor. Its action opens the check, and it is the
 							// screen's one primary: with no check there is no verdict, and
 							// answering it is the thing to do first.
-							<Section label={m.rd_score()}>
+							<Section face="sans" label={m.rd_score()}>
 								<Empty
 									value={m.td_no_check()}
 									action={
@@ -283,40 +289,6 @@ function Today() {
 							</Section>
 						)}
 
-						{/* Post-session outcome: the input that turns the heuristic weighting into
-			    a personal one.
-
-			    Lifted out of the read card. It was the fifth rule-separated block
-			    inside it, and it is the one thing on this screen answered *after*
-			    training — sitting inside the morning's read, under its own hairline, it
-			    read as another part of the verdict. Its own section, its own heading,
-			    no box: the heading is the question. */}
-						<Section label={m.rd_outcome_q()}>
-							<div className="grid grid-cols-2 gap-1.5">
-								{[3, 2, 1, 0].map((v) => (
-									<button
-										key={v}
-										type="button"
-										aria-pressed={outcome === v}
-										onClick={() => setOutcome(v)}
-										className={button({
-											kind: 'quiet',
-											size: 'md',
-											class: cn(
-												'min-h-11 px-1 text-[12px]',
-												outcome === v && 'border-teal/50 text-teal',
-											),
-										})}
-									>
-										{OUTCOME_LABEL[v]()}
-									</button>
-								))}
-							</div>
-							{outcome != null ? (
-								<p className="text-[11px] text-teal">{m.rd_outcome_saved()}</p>
-							) : null}
-						</Section>
-
 						<PlanCard
 							day={t.day}
 							phase={t.phase}
@@ -327,6 +299,7 @@ function Today() {
 							onToggle={(key) => setDone((p) => ({ ...p, [key]: !p[key] }))}
 							carryForward={carryForwardTaken ? null : t.carryForward}
 							onTakeCarryForward={() => setCarryForwardTaken(true)}
+							action={goTrain}
 						/>
 
 						{/* WHAT THE PLAN IS BUILT FROM, WHEN IT IS BUILT FROM NOTHING (#64).
@@ -369,10 +342,23 @@ function Today() {
 							/>
 						) : null}
 
+						<WatchOuts
+							flags={readiness.flags}
+							content={content}
+							onSelfCheck={() => setSelfCheckOpen(true)}
+						/>
+					</>
+				}
+				secondary={
+					<>
+						{toRate ? (
+							<OutcomeAsk session={toRate.dayType} outcome={outcome} onPick={setOutcome} />
+						) : null}
+
 						{/* ---- counters. Three integers need no box: a rule above them and the
-			     section spacing around them group them perfectly well, and three
-			     bordered boxes for three numbers was the densest-looking and least
-			     dense thing on the screen. */}
+						     section spacing around them group them perfectly well, and three
+						     bordered boxes for three numbers was the densest-looking and least
+						     dense thing on the screen. */}
 						<Bare className="flex divide-x divide-line-soft">
 							<Stat accent value={t.stats.streak} label={m.stat_streak()} />
 							<Stat value={t.stats.last7} suffix="/7" label={m.stat_week_sessions()} />
@@ -380,6 +366,7 @@ function Today() {
 						</Bare>
 						{/* ---- the trend. The one chart the rebuild still has data for. */}
 						<Section
+							face="sans"
 							label={m.readiness_trend()}
 							meta={
 								insights.baseline != null && vsBaseline ? (
@@ -410,15 +397,6 @@ function Today() {
 							)}
 						</Section>
 
-						<WatchOuts
-							flags={readiness.flags}
-							content={content}
-							onSelfCheck={() => setSelfCheckOpen(true)}
-						/>
-					</>
-				}
-				secondary={
-					<>
 						<BodyweightNudge
 							bodyweight={t.bodyweight}
 							draft={bodyweight}
@@ -428,8 +406,8 @@ function Today() {
 						/>
 
 						{/* The library has an instrument for three of the four body areas and none
-			    for the wrist (#71), so the whole section is conditional rather than
-			    rendering a check with nothing behind it. */}
+						    for the wrist (#71), so the whole section is conditional rather than
+						    rendering a check with nothing behind it. */}
 						{t.selfCheck ? (
 							<>
 								<InjuryEntry selfCheck={t.selfCheck} onSelfCheck={() => setSelfCheckOpen(true)} />
@@ -618,6 +596,7 @@ function PlanCard({
 	onToggle,
 	carryForward,
 	onTakeCarryForward,
+	action,
 }: {
 	day: TodayScreen['day'];
 	phase: TodayScreen['phase'];
@@ -628,16 +607,12 @@ function PlanCard({
 	onToggle: (key: TaskKey) => void;
 	carryForward: TodayScreen['carryForward'];
 	onTakeCarryForward: () => void;
+	/** The way into Train, under the plan: the screen's one primary once there
+	 *  is a read. Null while the check is unanswered. */
+	action: ReactNode;
 }) {
 	return (
-		<Section
-			label={`${day.type} · ${day.load}`}
-			meta={
-				<Link to="/train" className="text-ink-dim">
-					{m.btn_view_session()}
-				</Link>
-			}
-		>
+		<Section face="sans" label={`${day.type} · ${day.load}`}>
 			<div className={card({ pad: 'none' })}>
 				{/* The block phase belongs here, not in the page header: it is the reason
 				    today's prescription looks the way it does, and in the header it was a
@@ -689,19 +664,14 @@ function PlanCard({
 								>
 									{task.exName}
 								</span>
+								{/* Held work is marked on the task itself, at the row's end, where
+								    Train marks it too (#118). The row's own "Train" link went with
+								    #117: the plan ends in the one way into Train. */}
 								{held ? (
 									<span className={chip({ tone: 'warn' })}>{m.td_held()}</span>
 								) : isDone ? (
 									<span className={chip({ tone: 'ok' })}>{m.lbl_done()}</span>
-								) : (
-									<Link
-										to="/train"
-										className="flex min-h-11 shrink-0 items-center gap-0.5 text-[11px] text-ink-dim"
-									>
-										{m.td_open_train()}
-										<ChevronRight size={13} />
-									</Link>
-								)}
+								) : null}
 							</li>
 						);
 					})}
@@ -725,6 +695,49 @@ function PlanCard({
 					</div>
 				) : null}
 			</div>
+			{action}
+		</Section>
+	);
+}
+
+/**
+ * How today's session went: the **outcome**, the one input calibration learns
+ * from. Asked only once there is a trained session, and about that session by
+ * name; it used to sit under the verdict every morning, a block of four buttons
+ * asking about a session that had not happened yet (#117).
+ *
+ * Its own section, no box: the heading is the question.
+ */
+function OutcomeAsk({
+	session,
+	outcome,
+	onPick,
+}: {
+	/** The session's day type, as the plan names it. */
+	session: string;
+	outcome: number | null;
+	onPick: (value: number) => void;
+}) {
+	return (
+		<Section face="sans" label={m.rd_outcome_q({ session })}>
+			<div className="grid grid-cols-2 gap-1.5">
+				{[3, 2, 1, 0].map((v) => (
+					<button
+						key={v}
+						type="button"
+						aria-pressed={outcome === v}
+						onClick={() => onPick(v)}
+						className={button({
+							kind: 'quiet',
+							size: 'md',
+							class: cn('min-h-11 px-1', outcome === v && 'border-teal/50 text-teal'),
+						})}
+					>
+						{OUTCOME_LABEL[v]()}
+					</button>
+				))}
+			</div>
+			{outcome != null ? <p className="text-[11px] text-teal">{m.rd_outcome_saved()}</p> : null}
 		</Section>
 	);
 }
@@ -741,16 +754,28 @@ function WatchOuts({
 }) {
 	if (!flags.length) return null;
 	return (
-		<Section label={m.flags_heading()}>
+		<Section face="sans" label={m.flags_heading()}>
 			<div className="flex flex-col gap-2">
 				{flags.map((f) => {
 					const c = content.flags[f.id];
 					if (!c) return null;
 					return (
 						<div key={f.id} className={card({ pad: 'sm', tone: FLAG_CARD[f.severity] })}>
+							{/* Severity twice over, as colour and as a word: the dot (a mark
+							    carries a colour a label cannot) and the card's tone, then the
+							    chip that says it in the locale. It printed the raw id ("stop")
+							    in both locales until #117. */}
 							<div className="flex items-baseline gap-2">
-								<span className="flex-1 text-[13.5px] font-semibold text-ink">{c.title}</span>
-								<span className={chip({ tone: FLAG_CHIP[f.severity] })}>{f.severity}</span>
+								<span
+									aria-hidden="true"
+									className={cn('size-2 shrink-0 self-center rounded-full', FLAG_DOT[f.severity])}
+								/>
+								<span className="min-w-0 flex-1 text-[13.5px] font-semibold text-ink">
+									{c.title}
+								</span>
+								<span className={chip({ tone: FLAG_CHIP[f.severity] })}>
+									{FLAG_SEVERITY[f.severity]()}
+								</span>
 							</div>
 							<p className="prose-inline mt-1 text-[12.5px] leading-snug text-ink-dim">
 								<Prose value={c.text} />
@@ -815,10 +840,10 @@ function BodyweightNudge({
 	if (bodyweight.latestKg == null) return null;
 	const delta = series.length > 1 ? bodyweight.latestKg - series[0].kg : 0;
 	return (
-		<Section label={m.field_bodyweight()}>
+		<Section face="sans" label={m.field_bodyweight()}>
 			<div>
 				<div className="min-w-0">
-					<div className="num text-[18px] leading-none font-bold text-chalk">
+					<div className="num text-[22px] leading-none font-bold text-chalk">
 						{bodyweight.latestKg}
 						<span className="text-[11px] text-ink-faint"> kg</span>
 						<span
@@ -877,7 +902,7 @@ function InjuryEntry({
 	onSelfCheck: () => void;
 }) {
 	return (
-		<Section label={m.rehab_title()}>
+		<Section face="sans" label={m.rehab_title()}>
 			<div className={card({ pad: 'none' })}>
 				<div className="border-b border-line-soft p-3">
 					<RehabStarter />
@@ -900,7 +925,12 @@ function InjuryEntry({
 							</span>
 						) : null}
 					</span>
-					<ChevronRight size={15} className="shrink-0 text-ink-faint" />
+					<ChevronRight
+						size={18}
+						strokeWidth={2}
+						aria-hidden="true"
+						className="shrink-0 text-ink-faint"
+					/>
 				</button>
 				<p className="border-t border-line-soft px-3 py-2 text-[10.5px] leading-snug text-ink-faint">
 					{m.deep_based_on({ source: selfCheck.instrument.source })}{' '}
@@ -911,7 +941,7 @@ function InjuryEntry({
 						className="inline-flex items-center gap-0.5 whitespace-nowrap text-ink-dim underline decoration-line underline-offset-2"
 					>
 						{m.deep_source_link()}
-						<ExternalLink size={9} />
+						<ExternalLink size={12} strokeWidth={2} aria-hidden="true" />
 					</a>
 				</p>
 			</div>

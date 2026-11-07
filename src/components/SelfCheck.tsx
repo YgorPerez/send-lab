@@ -79,23 +79,36 @@ export function SelfCheckSheet({
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-				<Dialog.Popup className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-[520px] flex-col rounded-t-xl border border-line bg-panel transition-transform duration-250 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full">
-					<div className="flex items-start gap-2 border-b border-line px-3 py-2.5">
+				{/* THE SHEET DIALECT (#117). It had its own: a rule under the header, a
+				    bordered close, 250ms and nothing at `lg`, one tap away from the
+				    readiness check's sheet on the same screen. Now it is that sheet's
+				    shape: the title and a 44px close on one line, 200ms from the bottom
+				    edge, and from `lg` a 400px dialog centred in the window that fades
+				    in. It is as tall as its content, up to just under the status bar. */}
+				<Dialog.Popup
+					className={
+						'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[calc(100dvh-max(0.75rem,env(safe-area-inset-top)))] max-w-[520px] flex-col rounded-t-xl border border-b-0 border-line bg-panel pb-[env(safe-area-inset-bottom)] transition-[translate,opacity] duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full ' +
+						'lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:max-h-[min(42rem,calc(100dvh-4rem))] lg:w-100 lg:max-w-none lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-xl lg:border-b lg:pb-0 lg:data-[ending-style]:-translate-y-1/2 lg:data-[ending-style]:opacity-0 lg:data-[starting-style]:-translate-y-1/2 lg:data-[starting-style]:opacity-0'
+					}
+				>
+					<div className="flex items-center gap-2 py-1 pr-1 pl-4">
 						<div className="min-w-0 flex-1">
-							<Dialog.Title className="text-[15px] font-semibold text-ink">
+							<Dialog.Title className="text-[15px] leading-tight font-semibold text-ink">
 								{instrument.title}
 							</Dialog.Title>
-							<Eyebrow className="mt-0.5">{AREA_LABEL[area]?.() ?? area}</Eyebrow>
+							<p className="mt-0.5 text-[11px] leading-tight text-ink-faint">
+								{AREA_LABEL[area]?.() ?? area}
+							</p>
 						</div>
 						<Dialog.Close
 							aria-label={m.btn_close()}
-							className={button({ kind: 'quiet', class: 'size-11 shrink-0 px-0' })}
+							className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-dim transition-colors hover:bg-panel-2 hover:text-ink"
 						>
-							<X size={17} />
+							<X size={20} strokeWidth={1.75} aria-hidden="true" />
 						</Dialog.Close>
 					</div>
 
-					<div className="flex-1 overflow-y-auto px-3 py-3">
+					<div className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
 						<p className="text-[12.5px] leading-snug text-ink-dim">{instrument.intro}</p>
 						{last ? (
 							<p className="num mt-1.5 text-[11px] text-ink-faint">
@@ -138,7 +151,7 @@ export function SelfCheckSheet({
 								<div className="flex items-baseline gap-2">
 									<Eyebrow>{m.deep_result()}</Eyebrow>
 									<span
-										className="num text-[20px] leading-none font-bold"
+										className="num text-[22px] leading-none font-bold"
 										style={{ color: BAND_COLOR[result.band] }}
 									>
 										{result.score}
@@ -174,7 +187,7 @@ export function SelfCheckSheet({
 								className="inline-flex items-center gap-0.5 whitespace-nowrap text-ink-dim underline decoration-line underline-offset-2"
 							>
 								{m.deep_source_link()}
-								<ExternalLink size={9} />
+								<ExternalLink size={12} strokeWidth={2} aria-hidden="true" />
 							</a>
 						</p>
 					</div>
@@ -191,8 +204,11 @@ export function RehabStarter() {
 
 	if (!open) {
 		return (
-			<div className="flex items-center gap-2">
-				<p className="min-w-0 flex-1 text-[12px] leading-snug text-ink-dim">{m.rehab_desc()}</p>
+			// Wraps rather than squeezing: pt-BR's "Iniciar plano de reabilitação"
+			// left the sentence beside it a 130px column of seven lines at 360px
+			// (#117). Under 12rem of text, the button drops under it.
+			<div className="flex flex-wrap items-center gap-2">
+				<p className="min-w-48 flex-1 text-[12px] leading-snug text-ink-dim">{m.rehab_desc()}</p>
 				<button
 					type="button"
 					onClick={() => setOpen(true)}
