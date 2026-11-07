@@ -46,6 +46,9 @@ export function UpdateAnnouncement({ locale }: { locale: AppLocale }) {
 		// this needs is a handle on it, whenever it resolves.
 		void navigator.serviceWorker.ready.then((reg) => {
 			if (cancelled) return;
+			// Read once: a tab the first install claims stays "uncontrolled" here,
+			// and shows no notice for a later update until it is reopened
+			// (`reloadWhenTakenOver` in `lib/appUpdate.ts` has the whole case).
 			unsubscribe = watchForUpdate(reg, navigator.serviceWorker.controller != null, () =>
 				setRegistration(reg),
 			);
