@@ -56,3 +56,17 @@ export function stepBefore(answers: Answers, id: string): string | null {
 	const at = steps.indexOf(id);
 	return at <= 0 ? null : steps[at - 1];
 }
+
+/**
+ * The one answer a follow-up asks about, or `null` when it asks about none.
+ *
+ * The sheet shows it above the follow-up, because "How does it feel?" is about
+ * the answer one step back, which is off screen. Only the severity question has
+ * one: stress and drive join the check on poor sleep *or* low recovery, and skin
+ * on the whole wellness read pointing hard, so the question displayed above
+ * them is where they sit, not why they are asked, and naming it would give the
+ * athlete the wrong reason.
+ */
+export function followsFrom(id: string): string | null {
+	return id === 'pain' ? 'body' : null;
+}

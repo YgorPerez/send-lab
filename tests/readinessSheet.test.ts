@@ -158,6 +158,18 @@ describe('the sheet', () => {
 		expect(question()).toBe('How recovered do you feel?');
 	});
 
+	// A chalky double tap, or a finger that bounces: the second tap lands on the
+	// next question's option in the same place. It must not answer a question the
+	// athlete has not read (ADR 0021). A keyboard press is never held back.
+	test('a tap that lands as a question arrives is not taken as its answer', () => {
+		const tap = worded(sheet() ?? document, 'Normal');
+		act(() => {
+			tap?.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+		});
+		expect(question()).toBe('How recovered do you feel?');
+		expect(sheet()?.querySelector('button[aria-pressed="true"]')).toBeNull();
+	});
+
 	test('a follow-up joins the check only when an answer calls for it', () => {
 		press(worded(sheet() ?? document, 'Normal'));
 		expect(question()).toBe('Muscle soreness?');
@@ -168,14 +180,19 @@ describe('the sheet', () => {
 		expect(rail()).toBe('Question 5 of 7');
 	});
 
-	test('closing halfway keeps the answers, shows the verdict, and reopens where it stopped', () => {
+	test('closing halfway keeps the answers, shows the verdict, and reopens where it stopped', async () => {
 		press(sheet()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+		// Base UI hands focus back once the popup has unmounted, a frame later.
+		await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
 		expect(sheet()).toBeNull();
 		const main = document.querySelector('main');
 		// The verdict is on Today as soon as the sheet is gone.
 		const verdicts = Object.values(getContent('en-US').verdicts).map((v) => v.title);
 		expect(verdicts.some((title) => main?.textContent?.includes(title))).toBe(true);
 		expect(main?.textContent).toContain('4 of 7 answered');
+		// Focus goes to the verdict the answers produced, not to the page's top.
+		expect(document.activeElement?.tagName).toBe('H2');
+		expect(verdicts).toContain(document.activeElement?.textContent);
 		expect(worded(document, 'Answer the check')).toBeUndefined();
 
 		press(worded(main ?? document, 'Continue'));

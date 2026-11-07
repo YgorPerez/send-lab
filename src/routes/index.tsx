@@ -31,7 +31,7 @@
 // file for why length alone is not a reason to promote one.
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, ChevronRight, ExternalLink } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { type RefObject, useId, useMemo, useRef, useState } from 'react';
 import { useBaselineDraft } from '$lib/baselineDraft';
 import { type BodyArea, computeReadiness, getContent, hasWellnessAnswer } from '$lib/content';
 import type { Content, VerdictId } from '$lib/content/types';
@@ -122,6 +122,9 @@ function Today() {
 	// The readiness check's sheet (#116). Closed on arrival: Today invites the
 	// athlete into it, or summarises it, and the questions live in the sheet.
 	const [checkOpen, setCheckOpen] = useState(false);
+	// Where focus lands when the sheet closes: the verdict once there is one, the
+	// invitation while there is not. Only one of the two is ever rendered.
+	const checkReturn = useRef<HTMLElement>(null);
 
 	// A DERIVED PRESCRIPTION — the third pattern. Svelte's `$derived` becomes
 	// `useMemo` over the *inputs*, never a second piece of state kept in step by
@@ -253,6 +256,7 @@ function Today() {
 								scoreNote={t.scoreNote}
 								nextTaskLabel={nextTask?.exName ?? null}
 								check={{ answered, total: questions.length, onOpen: () => setCheckOpen(true) }}
+								headingRef={checkReturn}
 							/>
 						) : (
 							// THE INVITATION (#116, story 21). The read's place, with no read
@@ -265,6 +269,9 @@ function Today() {
 									value={m.td_no_check()}
 									action={
 										<button
+											ref={(el) => {
+												checkReturn.current = el;
+											}}
 											type="button"
 											onClick={() => setCheckOpen(true)}
 											className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
@@ -448,6 +455,7 @@ function Today() {
 				questions={questions}
 				answers={answers}
 				onPick={(id, v) => setAnswers((prev) => ({ ...prev, [id]: v }))}
+				returnFocus={checkReturn}
 			/>
 		</div>
 	);
@@ -486,6 +494,7 @@ function ReadCard({
 	scoreNote,
 	nextTaskLabel,
 	check,
+	headingRef,
 }: {
 	verdict: Content['verdicts'][VerdictId];
 	score: number;
@@ -497,8 +506,11 @@ function ReadCard({
 	/** The check the read came from, summarised: how much of it is answered, and
 	 *  the way back into it. */
 	check: { answered: number; total: number; onOpen: () => void };
+	/** The verdict's heading, which the check's sheet returns focus to. */
+	headingRef: RefObject<HTMLElement | null>;
 }) {
 	const summaryId = useId();
+	const open = check.answered < check.total;
 	return (
 		<div className={card({ pad: 'none' })}>
 			<div className="flex items-start gap-2.5 p-3.5">
@@ -507,7 +519,15 @@ function ReadCard({
 					style={{ background: verdict.color }}
 				/>
 				<div className="min-w-0 flex-1">
-					<h2 className="text-[15px] leading-tight font-semibold text-ink">{verdict.title}</h2>
+					<h2
+						ref={(el) => {
+							headingRef.current = el;
+						}}
+						tabIndex={-1}
+						className="text-[15px] leading-tight font-semibold text-ink outline-none"
+					>
+						{verdict.title}
+					</h2>
 					<Eyebrow className="mt-0.5">{verdict.tag}</Eyebrow>
 				</div>
 				<div className="shrink-0 text-right">
@@ -554,13 +574,18 @@ function ReadCard({
 			{/* THE CHECK, AS ONE LINE (#116, story 31). The read's receipt: what it
 			    was computed from, and the way back in. It sits in the read's own card
 			    because it is the read's source; a row of its own one section gap
-			    below would have looked like a separate thing. "Continue" while a
-			    question the answers called for is still open, "Edit" once none is. */}
-			<div className="flex items-center gap-2 border-t border-line-soft py-0.5 pr-1 pl-3.5">
-				<p id={summaryId} className="min-w-0 flex-1 text-[13px] leading-snug text-ink-dim">
-					{m.rd_check_title()}
-					<span className="text-ink-faint">
-						{' · '}
+			    below would have looked like a separate thing. The count goes under
+			    the name rather than after it: at 360px the one line broke wherever
+			    the locale put the break.
+			    While a question the answers call for is still open, the verdict above
+			    is computed without it, so the row says so with more than a word: a
+			    gold mark (a mark carries a colour a label cannot) and a bordered
+			    Continue. Finished, it is a quiet Edit. */}
+			<div className="flex items-center gap-2.5 border-t border-line-soft py-1 pr-1.5 pl-3.5">
+				{open ? <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-gold" /> : null}
+				<p id={summaryId} className="min-w-0 flex-1 leading-snug">
+					<span className="block text-[13px] text-ink-dim">{m.rd_check_title()}</span>
+					<span className="block text-[11px] text-ink-faint">
 						{m.rd_check_answered({ n: check.answered, total: check.total })}
 					</span>
 				</p>
@@ -568,9 +593,13 @@ function ReadCard({
 					type="button"
 					onClick={check.onOpen}
 					aria-describedby={summaryId}
-					className={button({ kind: 'bare', size: 'md', class: 'min-h-11 gap-0.5 text-ink-dim' })}
+					className={button({
+						kind: open ? 'quiet' : 'bare',
+						size: 'md',
+						class: 'min-h-11 shrink-0 gap-0.5',
+					})}
 				>
-					{check.answered < check.total ? m.btn_continue() : m.btn_edit()}
+					{open ? m.btn_continue() : m.btn_edit()}
 					<ChevronRight size={18} strokeWidth={2} aria-hidden="true" className="text-ink-faint" />
 				</button>
 			</div>

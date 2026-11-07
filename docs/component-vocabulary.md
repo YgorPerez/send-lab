@@ -571,7 +571,16 @@ a component inside the popup, so the lazy `useState(() => openingStep(answers))`
 runs when the sheet opens and no effect keeps it in step. A step the answers have
 since withdrawn falls back to `openingStep`. Each step's question is an `h3`
 focused as it arrives, so a keyboard or a screen reader lands on the new question
-instead of on the option that just unmounted.
+instead of on the option that just unmounted. When the sheet closes, focus goes to
+the verdict's heading (the invitation while there is no verdict) through the
+popup's `finalFocus`: the button that opened the sheet is usually gone by then,
+and the critique measured focus falling to `body`.
+
+**A pick that lands as a question arrives is not an answer.** The next question's
+options sit where the last one's were, so a double tap or a bounce answered a
+question the athlete never read, which is ADR 0021's fabrication by another
+route. A pointer pick within 350ms of the question's arrival is dropped; a
+keyboard press (`detail` 0) never is.
 
 **"Why we ask" is a `<details>` under the question**, closed. The old inline list
 clamped it to two 11px lines on every question; in a step it is one tap away and
@@ -580,16 +589,24 @@ motion in the sheet is the sheet itself (200ms, Base UI's `data-starting-style`
 and `data-ending-style`) and the disclosure's chevron, both finished in one frame
 under reduced motion by `app.css`'s rule.
 
-**A follow-up says what it follows.** "How does it feel?" asks about the answer
-one step back, which is off screen, so the step carries the parent question and
-its answer in a faint line above its own.
+**A follow-up says what it asks about, when it asks about one answer.** "How does
+it feel?" is about the answer one step back, which is off screen, so the step
+carries "Anything hurting today? · Elbow" in a faint line above its own.
+`followsFrom` in `readinessFlow.ts` names that answer, and only the severity
+question has one: stress and drive join on poor sleep *or* low recovery, skin on
+the whole wellness read. The first build took the question displayed above each
+follow-up, which is where it sits rather than why it is asked, and read "How
+recovered do you feel? · Fresh" over a stress question that poor sleep had called
+for.
 
 **Today has one way in for each state.** No wellness answer (`hasWellnessAnswer`,
 unchanged): the read's place holds the invitation, and it is Today's one
 `primary`, which is why the bodyweight nudge's Save dropped to `quiet`. With a
-read: the read's card ends in one summary line, "Readiness check · 6 of 7
-answered", with Continue while a step the answers call for is open and Edit once
-none is. Continue opens on the first unanswered step and Edit on the first. The
+read: the read's card ends in a summary row, "Readiness check" over "6 of 7
+answered". While a step the answers call for is open, the verdict above it is
+computed without that answer, so the row carries a gold mark and a bordered
+(`quiet`) Continue; once none is, a `bare` Edit. Continue opens on the first
+unanswered step and Edit on the first. The
 summary is inside the read's card rather than a row of its own, because a row one
 section gap (28px) below the read looked like a separate thing. #117 owns where it
 finally sits.

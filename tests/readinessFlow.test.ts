@@ -6,7 +6,13 @@
 // reopened check resumes, and when it is over. The sheet that renders it is
 // asserted in `tests/readinessSheet.test.ts`.
 import { describe, expect, test } from 'vitest';
-import { checkSteps, openingStep, stepAfter, stepBefore } from '../src/lib/readinessFlow';
+import {
+	checkSteps,
+	followsFrom,
+	openingStep,
+	stepAfter,
+	stepBefore,
+} from '../src/lib/readinessFlow';
 
 const CORE = ['sleep', 'fatigue', 'soreness', 'body', 'illness', 'time'];
 
@@ -53,6 +59,17 @@ describe('the follow-ups', () => {
 		// A flat day does not get asked about skin: the check ends at time.
 		const flat = { ...fresh, sleep: 7, fatigue: 7, soreness: 3 };
 		expect(stepAfter(flat, 'time')).toBeNull();
+	});
+
+	// The sheet shows a follow-up with the answer it asks about, because that
+	// answer is one step back and off screen. Only the severity question asks
+	// about one answer: stress and drive follow poor sleep *or* low recovery, and
+	// skin follows the whole wellness read, so naming the question above them
+	// would name the wrong reason (#116 critique).
+	test('only the severity question names the answer it asks about', () => {
+		expect(followsFrom('pain')).toBe('body');
+		for (const id of ['stress', 'mood', 'skin', 'sleep', 'time'])
+			expect(followsFrom(id)).toBeNull();
 	});
 
 	test('changing an answer withdraws the follow-up it had called for', () => {

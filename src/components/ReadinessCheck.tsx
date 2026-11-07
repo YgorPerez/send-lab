@@ -33,10 +33,10 @@
 // check is finished and being edited.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronDown, ExternalLink, X } from 'lucide-react';
-import { useId, useState } from 'react';
+import { type RefObject, useId, useRef, useState } from 'react';
 import type { Answers } from '$lib/content';
 import * as m from '$lib/paraglide/messages';
-import { checkSteps, openingStep, stepAfter, stepBefore } from '$lib/readinessFlow';
+import { checkSteps, followsFrom, openingStep, stepAfter, stepBefore } from '$lib/readinessFlow';
 import type { Question } from '$lib/screens/today';
 import { STUDIES } from '$lib/studies';
 import { Stepper } from './ui/Stepper';
@@ -44,9 +44,11 @@ import { option } from './ui/variants';
 
 const studyUrl = (id?: string) => (id ? STUDIES.find((s) => s.id === id)?.url : undefined);
 
-/** Focus a step's question as it arrives, so a keyboard or a screen reader is
- *  taken to the new question rather than left on the option that just went. */
-const focusOnArrival = (el: HTMLElement | null) => el?.focus({ preventScroll: true });
+/** How long after a question arrives a tap on it is taken as the tail of the
+ *  tap that brought it. The next question's options sit where the last one's
+ *  were, so a chalky double tap or a bounce would otherwise answer a question
+ *  the athlete never read (ADR 0021). A keyboard press is never held back. */
+const SETTLE_MS = 350;
 
 /**
  * The sheet. Open and closed by Today, which also holds the answers.
@@ -62,6 +64,7 @@ export function ReadinessCheck({
 	questions,
 	answers,
 	onPick,
+	returnFocus,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -69,12 +72,17 @@ export function ReadinessCheck({
 	questions: readonly Question[];
 	answers: Answers;
 	onPick: (id: string, value: number) => void;
+	/** Where focus goes when the sheet closes. Not its trigger: the invitation
+	 *  that opened it is gone once the first wellness answer lands, so Today
+	 *  hands in the verdict's heading, which is what the athlete should hear. */
+	returnFocus: RefObject<HTMLElement | null>;
 }) {
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
 				<Dialog.Popup
+					finalFocus={returnFocus}
 					className={
 						// The phone: the bottom edge up to just under the status bar.
 						'fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] bottom-0 z-50 mx-auto flex max-w-[520px] flex-col rounded-t-xl border border-b-0 border-line bg-panel pb-[env(safe-area-inset-bottom)] transition-[translate,opacity] duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full ' +
@@ -182,12 +190,11 @@ function Steps({
 	);
 }
 
-/** The core question a follow-up hangs off, and what it was answered: the
- *  nearest question above it that is not itself a follow-up. */
+/** The question a follow-up asks about, with its answer, when it asks about
+ *  one (`followsFrom`). */
 function parentOf(questions: readonly Question[], q: Question): Question | undefined {
-	if (!q.sub) return undefined;
-	const at = questions.indexOf(q);
-	return questions.slice(0, at).findLast((x) => !x.sub);
+	const parent = followsFrom(q.id);
+	return parent ? questions.find((x) => x.id === parent) : undefined;
 }
 
 /** One step: the question, why it is asked, and its options as full-width lines. */
@@ -203,6 +210,16 @@ function Ask({
 	onPick: (value: number) => void;
 }) {
 	const id = useId();
+	// When the question arrived, written as its heading mounts (a ref callback,
+	// so nothing impure runs during render).
+	const arrivedAt = useRef(0);
+	const arrive = (el: HTMLElement | null) => {
+		if (!el) return;
+		arrivedAt.current = performance.now();
+		// Focus the new question, so a keyboard or a screen reader is taken to it
+		// rather than left on the option that just went.
+		el.focus({ preventScroll: true });
+	};
 	const url = studyUrl(q.study);
 	const parentAnswer = parent?.options.find((o) => o.value === parent.answer)?.label;
 	return (
@@ -217,7 +234,7 @@ function Ask({
 				) : null}
 				<h3
 					id={id}
-					ref={focusOnArrival}
+					ref={arrive}
 					tabIndex={-1}
 					className="text-[21px] leading-tight font-semibold tracking-[-0.01em] text-ink outline-none"
 				>
@@ -263,7 +280,11 @@ function Ask({
 						key={o.label}
 						type="button"
 						aria-pressed={answer === o.value}
-						onClick={() => onPick(o.value)}
+						onClick={(e) => {
+							// `detail` is 0 for a keyboard press, and counts clicks for a pointer.
+							if (e.detail > 0 && performance.now() - arrivedAt.current < SETTLE_MS) return;
+							onPick(o.value);
+						}}
 						className={option({
 							on: answer === o.value,
 							width: 'full',
