@@ -837,6 +837,17 @@ back to the default, so the next opens without anything having to notice. Before
 every task drew everything and seeded Train ran to 3,909px; it is 1,614px now (360px,
 seeded), 1,796px empty.
 
+**Two departures from the spec's wording, on purpose.** The spec opens "the first task
+with an unticked set" (story 46, and *Implementation Decisions*). `currentTask` differs
+twice. It skips held work while any unheld task has sets left: held is a mark and not a
+lock, but the verdict held that task for today, so the screen does not lead with it,
+for the reason Today's "applies to" line skips it; held work still opens once it is all
+that is left. And "a set left" is measured against `setTarget`, the prescription's
+lower bound, not the rows: a task opens with one row, so "an unticked set" read
+literally folded a four-to-six-set task away after its first tick (next paragraph).
+Neither changes what the athlete can open; both change only which task opens unasked
+(#113's review).
+
 **A set left is counted against the prescription.** A task opens with one row, and the
 athlete adds the rest with Add set. Counting rows, ticking that one row finished a task
 prescribed four to six sets and folded it away from its own Add set. `setTarget` is the
