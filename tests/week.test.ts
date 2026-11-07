@@ -75,9 +75,15 @@ const cellsOf = (main: ParentNode) => [
 /** Everything Week says, to the eye and to a screen reader. */
 const copyOf = (main: Element) =>
 	[
-		text(main),
+		// Text node by text node: `textContent` runs "Rest" and "OFF" together.
+		...[...walk(main)].map((node) => node.textContent ?? ''),
 		...[...main.querySelectorAll('[aria-label]')].map((el) => el.getAttribute('aria-label')),
 	].join(' ');
+
+function* walk(root: Element): Generator<Node> {
+	const nodes = root.ownerDocument.createTreeWalker(root, 4 /* NodeFilter.SHOW_TEXT */);
+	for (let node = nodes.nextNode(); node; node = nodes.nextNode()) yield node;
+}
 
 const COPY = {
 	'en-US': {
@@ -147,6 +153,12 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 					expect(label).toContain(part);
 				if (!slot.isRestDay) expect(label).toContain(`${done}/${slot.tasks.length}`);
 			});
+			// Today's slot has a task ticked, so it counts in the trained colour:
+			// the head's "1 of 6 trained" has a slot to point at.
+			const thursday = cells[3].querySelector('.num');
+			expect(hexOf(tokenOf(thursday as Element, 'text'))).toBe(
+				hexOf(tokenOf(legend[0].querySelector('[data-slot-mark]') as Element, 'text')),
+			);
 			// A rest slot says rest once, not once per field that holds the word.
 			const sunday = cells[6].getAttribute('aria-label') ?? '';
 			expect(sunday.split(' · ')).toEqual([...new Set(sunday.split(' · '))]);
@@ -239,6 +251,20 @@ describe('Week, mounted', () => {
 		const shown = text(main.querySelector('[data-slot-day]'));
 		expect(shown).toContain(friday.day.type);
 		for (const task of friday.tasks) expect(shown).toContain(task.exName);
+	});
+
+	// `CONTEXT.md` › Rest day: _Avoid_: off day. The library's load for a rest
+	// day is "OFF", and the head already says rest.
+	test('a rest day says rest, never "off"', async () => {
+		const router = await routerAt('/week');
+		root = createRoot(document);
+		act(() => root?.render(createElement(RouterProvider, { router } as never)));
+		const main = document.querySelector('main') as HTMLElement;
+		const sun = cellsOf(main).find((c) => c.getAttribute('aria-label')?.startsWith('Sun'));
+		act(() => sun?.click());
+		const day = main.querySelector('[data-slot-day]');
+		expect(text(day?.querySelector('h2'))).toBe('Sun · Rest');
+		expect(copyOf(day as Element)).not.toMatch(/\boff\b|recovery day/i);
 	});
 });
 

@@ -144,18 +144,15 @@ function Legend() {
 }
 
 /**
- * The count's colour, per scheduled state. Never `text-flag` for `missed`: the
- * signature vermilion at 10px on `--panel-2` measured **4.34:1**, under the
- * floor, though it clears it on `--panel`. The surface decides, so `missed`
- * rides the mark and the number stays chalk. A rest slot has no count: its mark
- * says rest, and #63's faint "—" measured 4.27:1 on the selected surface.
+ * The count's colour: teal once any of the slot's work is ticked, chalk until
+ * then. Today's slot keeps its today mark when it is trained (`slotState`), so
+ * the count is where "1 of 6 trained" finds its slot (#121's critique). Never
+ * `text-flag` for `missed`: the signature vermilion at 10px on `--panel-2`
+ * measured **4.34:1**, under the floor. The surface decides, so `missed` rides
+ * the mark and the number stays chalk. A rest slot has no count: its mark says
+ * rest, and #63's faint "—" measured 4.27:1 on the selected surface.
  */
-const STATE_COUNT_CLASS: Record<Exclude<SlotState, 'rest'>, string> = {
-	trained: 'text-teal',
-	today: 'text-chalk',
-	missed: 'text-chalk',
-	ahead: 'text-chalk',
-};
+const countClass = (slot: WeekSlot) => (slot.trained ? 'text-teal' : 'text-chalk');
 
 /** State as a word, for the cell's accessible name. The visual rule is "mark
  *  state with colour"; colour alone is not a name, so the button says it. */
@@ -303,7 +300,7 @@ function SlotCell({
 				<SlotMark state={slot.state} />
 			</span>
 			{slot.state === 'rest' ? null : (
-				<span className={`num text-[11px] ${STATE_COUNT_CLASS[slot.state]}`}>
+				<span className={`num text-[11px] ${countClass(slot)}`}>
 					{done}/{slot.tasks.length}
 				</span>
 			)}
@@ -336,7 +333,9 @@ function DayPanel({ id, slot }: { id: string; slot: WeekSlot }) {
 								{STATE_LABEL[slot.state]()}
 							</span>
 						)}
-						<span className={chip()}>{slot.day.load}</span>
+						{/* A rest day's load is "OFF", the glossary's avoided "off day";
+						    the head says rest. */}
+						{slot.isRestDay ? null : <span className={chip()}>{slot.day.load}</span>}
 					</span>
 				}
 			>
@@ -349,9 +348,13 @@ function DayPanel({ id, slot }: { id: string; slot: WeekSlot }) {
 							className="mt-1 h-4 w-[3px] shrink-0 rounded-full"
 							style={{ background: slot.day.color }}
 						/>
-						<span className="text-[13px] text-ink">{slot.day.headline}</span>
+						{/* Today's plan card's recipe for the same two lines, so a day reads
+						    at one rank on both screens. */}
+						<span className="text-[13px] leading-snug font-medium text-ink">
+							{slot.day.headline}
+						</span>
 					</span>
-					<span className="text-[13px] text-ink-dim">{slot.day.subhead}</span>
+					<span className="text-[11px] leading-snug text-ink-dim">{slot.day.subhead}</span>
 				</Bare>
 
 				{slot.tasks.length > 0 ? (

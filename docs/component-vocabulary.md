@@ -905,14 +905,19 @@ measures its words. It wraps to two lines in pt-BR at 360px.
 the day type ("Thu · Pull"), so it says which cell it answers; the state is on the
 right as the legend draws it, then the load as a neutral chip. #63 tinted the load
 chip by the slot's state, which painted a missed day's "HIGH" vermilion as if the
-load were the alarm. A rest day's head already says rest, so its state word is
-left out there. Every cell `aria-controls` the day. A done task says so to a
+load were the alarm. A rest day's head already says rest, so its state word and
+its load chip are left out there: the library's load for rest is "OFF", and the
+glossary rules out *off day* (#121's critique). The headline and subhead take
+Today's plan-card recipe (13px medium ink over 11px dim), so the same day reads at
+one rank on both screens. Every cell `aria-controls` the day. A done task says so to a
 screen reader (its ✓ is hidden).
 
 **The selected cell** is the selection language with the chalk edge: `panel-3`, a
 `chalk/60` border, the weekday chalk and semibold. A rest cell has no count (its
 mark says rest; #63's faint "—" measured 4.27:1 on the selected surface), and the
-other counts went from 10px to the ramp's 11px. A rest cell's name says rest once
+other counts went from 10px to the ramp's 11px. A count is teal once any of the
+slot's work is ticked, chalk until then: today's slot keeps its today mark when it
+is trained, so its count is where the head's "1 of 6 trained" finds its slot. A rest cell's name says rest once
 ("Sun · Rest", not "Sun · Rest · Rest · Rest").
 
 **Ready to fold into Program (#65).** The grid section names its own week, so the
