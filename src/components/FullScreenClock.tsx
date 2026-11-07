@@ -68,30 +68,27 @@ export const SEGMENT_COLOR: Record<Segment, string> = {
  * The three control shapes of the clock's row (#110), as class strings: the
  * large middle one, the two square ones beside it. On a field they are drawn
  * in the field's own terms — a ground-filled middle, outlined squares in the
- * ink — so they need no colour of their own; off a field they are the app's
- * buttons. 84px tall in the middle and 64px square at the sides, past the
- * 48px floor because they are found by direction, mid-hang, without looking.
+ * ink — so they need no colour of their own; off a field every one of them is
+ * the clock control (`button({ kind: 'clock' })`, #118), the side ones too, so
+ * a paused row speaks one language and none of it is filled vermilion: the
+ * fill is the screen's one primary, and the clock is a tool on the screen. 84px
+ * tall in the middle and 64px square at the sides, past the 48px floor because
+ * they are found by direction, mid-hang, without looking.
  *
  * Here and not among the `ui/variants.ts` recipes (ADR 0010): it knows the
  * clock's field, which is this file's decision, and only the two clocks that
  * run in this dialog use it.
  */
-export function clockControl(
-	shape: 'main' | 'side',
-	onField: boolean,
-	/** `clock` is the outlined clock control (`ui/variants.ts`), the one Train and
-	 *  the Timer move their start and pause onto (#118). */
-	kind: 'primary' | 'quiet' | 'clock' = 'quiet',
-): string {
+export function clockControl(shape: 'main' | 'side', onField: boolean): string {
 	if (shape === 'side') {
 		return onField
 			? 'flex size-16 shrink-0 items-center justify-center rounded-[18px] border-2 border-current disabled:opacity-100'
-			: button({ size: 'touch', class: 'size-16 shrink-0 rounded-[18px] px-0' });
+			: button({ kind: 'clock', size: 'touch', class: 'size-16 shrink-0 rounded-[18px] px-0' });
 	}
 	return onField
 		? 'flex h-[84px] min-w-[132px] flex-1 max-w-[220px] items-center justify-center gap-2 rounded-[22px] bg-bg text-[20px] font-bold'
 		: button({
-				kind,
+				kind: 'clock',
 				size: 'touch',
 				class: 'h-[84px] min-w-[132px] max-w-[220px] flex-1 rounded-[22px] text-[20px] font-bold',
 			});

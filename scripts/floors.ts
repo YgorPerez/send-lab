@@ -111,9 +111,14 @@ export interface RouteFloor {
  *                `<b>`). Recent and the presets are the same either way: Recent
  *                is a draft on the device, not the record, and the presets are
  *                the library's.
- *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
- *                seeded, 176 empty — the grid is prescribed from the program
- *                before any of it has been trained.
+ *   `/train`     the slot: the timer, the open task's prescription and set
+ *                grid, its working-load ask, and every other task as one folded
+ *                line. 75 seeded, 73 empty (#118; it was 201 and 176 while every
+ *                task drew its grid at once). Seeded opens Sloper Density, two
+ *                sets, its ask folded because a set is ticked; empty opens Pull
+ *                Strength, one set, its ask open. The two counts are close by
+ *                coincidence of those two shapes, and the seeded one is still the
+ *                larger: the held marks and the ticked set are the record's.
  *   `/week`      seven slots and the microcycle's own reading. 30 either way.
  *   `/welcome`   the baseline questionnaire, one question at a time. 22 seeded,
  *                23 empty.
@@ -131,7 +136,7 @@ export const SEEDED_FLOORS: Record<string, RouteFloor> = {
 	// copy edit. What closes it is the seeded rows not being listed, which is
 	// what the control is for.
 	'/timer': { floor: 30, readsRecord: true },
-	'/train': { floor: 140, readsRecord: true },
+	'/train': { floor: 55, readsRecord: true },
 	'/week': { floor: 20, readsRecord: false },
 	'/welcome': { floor: 15, readsRecord: false },
 };

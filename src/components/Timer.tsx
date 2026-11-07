@@ -434,7 +434,7 @@ function ProtocolFullScreen({
 						type="button"
 						onClick={onToggle}
 						className={button({
-							kind: 'primary',
+							kind: 'clock',
 							size: 'touch',
 							class: 'min-h-[60px] w-full rounded-2xl text-[18px] font-semibold',
 						})}
@@ -455,7 +455,7 @@ function ProtocolFullScreen({
 						<button
 							type="button"
 							onClick={onToggle}
-							className={clockControl('main', onField, 'primary')}
+							className={clockControl('main', onField)}
 							style={onField ? { color: field } : undefined}
 						>
 							{running ? (
@@ -865,14 +865,15 @@ export function Timer({
 				type="button"
 				onClick={toggle}
 				// Underway, the toggle is a 52px square either way — Pause on the
-				// field, Resume in vermilion — so pausing never moves the number
-				// beside it. Only before the start, when there is no number, does it
+				// field, Resume as the outlined clock control (#118), never filled:
+				// on Train the one primary is finish-and-log — so pausing never moves
+				// the number beside it. Only before the start, when there is no number, does it
 				// carry its word.
 				className={
 					running
 						? 'flex size-[52px] shrink-0 items-center justify-center rounded-[14px] bg-bg'
 						: button({
-								kind: 'primary',
+								kind: 'clock',
 								size: 'touch',
 								class: cn(
 									'min-h-[52px] shrink-0 rounded-[14px]',

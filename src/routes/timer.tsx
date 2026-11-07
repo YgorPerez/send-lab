@@ -597,8 +597,9 @@ function PresetGroupList({
 	);
 }
 
-/** Make a saved protocol from scratch. Quiet, not primary: the screen's one
- *  primary is the clock's Start, and this is done once in a while. Left-aligned
+/** Make a saved protocol from scratch. Quiet, not primary: the list is picked
+ *  from, not finished, so it has no primary, and the clock's Start is a clock
+ *  control (#118). This is done once in a while. Left-aligned
  *  under the rows, as everything on the list is. */
 function NewProtocol({ onClick }: { onClick: () => void }) {
 	return (

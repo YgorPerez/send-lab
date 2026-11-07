@@ -109,6 +109,23 @@ export interface TrainScreen {
 	canRepeatLast: boolean;
 }
 
+/**
+ * The task Train opens on (#118, spec story 46): the first with a set left to
+ * tick that this morning's verdict did not hold back, or, once only held work
+ * has sets left, the first of that. Held is a mark and not a lock, so held work
+ * still opens when it is all that is left; it is just not what the screen leads
+ * with, for the reason Today's "applies to" line skips it. None once every set
+ * is ticked. The athlete can open another with a tap; this is what the screen
+ * falls back to, so ticking the last set of the open task moves it on.
+ */
+export function currentTask(
+	tasks: readonly PrescribedTask[],
+	held: ReadonlySet<ExerciseId>,
+): PrescribedTask['key'] | null {
+	const left = tasks.filter((t) => t.sets.some((s) => !s.done));
+	return (left.find((t) => !held.has(t.exercise)) ?? left[0])?.key ?? null;
+}
+
 /** Everything Train reads, resolved against the record. */
 export function resolveTrain(content: Content, record: TrainingRecord, now: number): TrainScreen {
 	const at = isoDayOf(now);

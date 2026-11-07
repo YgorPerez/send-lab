@@ -143,7 +143,12 @@ export function SetEditor({
 									placeholder="—"
 									options={GRIPS.map((g) => ({ value: g, label: gripLabel(g) }))}
 									onChange={(v) => onChange({ ...set, grip: GRIPS.find((g) => g === v) ?? null })}
-									className={cn(CELL, 'px-1.5 text-[12px]')}
+									// Two lines and no chevron, so every grip reads whole in a 68px
+									// cell: "Crimp fechada" and "Half-crimp" were cut to "Half…"
+									// (#118). Not an input, so the 16px floor does not bind it.
+									wrap
+									chevron={false}
+									className={cn(CELL, 'justify-center px-1 text-center text-[12px]')}
 								/>
 							) : (
 								<input

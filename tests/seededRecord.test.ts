@@ -343,10 +343,11 @@ describe('the per-route floors', () => {
 	// signed out against 170 seeded, under a global floor of three.
 	it('holds a dense screen to more than the global backstop', () => {
 		expect(floorFor('/log', 'seeded', 3)).toBeGreaterThan(100);
-		expect(floorFor('/train', 'seeded', 3)).toBeGreaterThan(100);
 		// Today came down to 75 when its questions moved into a sheet (#116), and
-		// is still held far above the backstop.
+		// Train to 55 when it folded every task but the open one (#118); both are
+		// still held far above the backstop.
 		expect(floorFor('/', 'seeded', 3)).toBeGreaterThan(50);
+		expect(floorFor('/train', 'seeded', 3)).toBeGreaterThan(50);
 		// The empty pass keeps the backstop: with no record a low count is correct,
 		// and #61 owns what an empty screen should show.
 		expect(floorFor('/log', 'empty', 3)).toBe(3);

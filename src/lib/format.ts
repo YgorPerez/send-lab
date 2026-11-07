@@ -17,7 +17,16 @@
 //
 // ADR-0003 applies: these produce *display strings*. Nothing here is ever
 // matched on, stored, or used as a key.
-import type { Content, Cost, Exercise, Grip, Quality, Range, Region } from '$lib/content/types';
+import type {
+	Content,
+	Cost,
+	Exercise,
+	Grip,
+	Quality,
+	Range,
+	Region,
+	Variant,
+} from '$lib/content/types';
 import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { variantOf } from '$lib/prescription';
@@ -53,6 +62,34 @@ export function formatLoad(r: Range): string {
 /** Edge depth: "18–22mm". */
 export function formatEdge(r: Range): string {
 	return `${formatRange(r)}mm`;
+}
+
+/**
+ * A prescription in one line, for a task folded on Train (#118): how much, then
+ * how hard. "4–6 × 3–5 · +32–48kg", "3 × 30–45s", "1 × 20 × 10s · 18–22mm".
+ *
+ * The volume is sets, then rounds, then reps or the work interval; the
+ * intensity is the load, or the edge, or the share of max. Rests are left out:
+ * they are what the clock runs, not what tells one task from another. A
+ * prescription with none of that says its effort, and one with nothing at all
+ * says nothing rather than a dash that looks like a value.
+ */
+export function shortPrescription(p: Variant): string {
+	const volume = [
+		p.sets ? formatRange(p.sets) : null,
+		p.rounds ? formatRange(p.rounds) : null,
+		p.reps ? formatRange(p.reps) : p.workSec ? formatSecondsRange(p.workSec) : null,
+	].filter((x): x is string => x != null);
+	const intensity = p.loadKg
+		? formatLoad(p.loadKg)
+		: p.edgeMm
+			? formatEdge(p.edgeMm)
+			: p.intensityPct
+				? `${formatRange(p.intensityPct)}%`
+				: null;
+	const parts = [volume.join(' × '), intensity].filter((x): x is string => !!x);
+	if (parts.length > 0) return parts.join(' · ');
+	return p.rpe ? `${m.presc_rpe()} ${formatRange(p.rpe)}` : '';
 }
 
 /**

@@ -100,7 +100,7 @@ const COPY = {
 		noChecks: 'Nenhum check de prontidão registrado ainda',
 		noSessions: 'Nenhuma sessão registrada ainda',
 		usual: 'perto do seu normal',
-		held: 'segurado · prontidão',
+		held: 'retido · prontidão',
 		question: 'Como foi seu sono?',
 		answerCheck: '>Responder o check<',
 		outcome: 'Como foi a sessão',

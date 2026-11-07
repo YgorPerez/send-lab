@@ -21,6 +21,8 @@ export function Picker({
 	onChange,
 	placeholder,
 	ariaLabel,
+	wrap = false,
+	chevron = true,
 	className,
 }: {
 	value: string | null;
@@ -28,6 +30,15 @@ export function Picker({
 	onChange: (value: string) => void;
 	placeholder?: string;
 	ariaLabel?: string;
+	/** The label wraps onto a second line instead of truncating, and the trigger
+	 *  grows to hold it. For a narrow trigger whose labels run long in pt-BR: a
+	 *  grip cut to "Slop…" in a 68px set-grid cell is a value the athlete cannot
+	 *  read back (#118). */
+	wrap?: boolean;
+	/** The trigger's chevron. A set-grid cell gives it up, because its 18px is
+	 *  most of what the label needs there, and the cell's border and surface
+	 *  already say it is a control, as the inputs beside it do. */
+	chevron?: boolean;
 	className?: string;
 }) {
 	const labelOf = (v: unknown) => options.find((o) => o.value === v)?.label ?? placeholder ?? '—';
@@ -45,10 +56,16 @@ export function Picker({
 					className,
 				)}
 			>
-				<Select.Value className="min-w-0 truncate">{labelOf}</Select.Value>
-				<Select.Icon className="shrink-0 text-ink-faint">
-					<ChevronDown size={14} />
-				</Select.Icon>
+				<Select.Value
+					className={cn('min-w-0', wrap ? 'leading-tight [overflow-wrap:anywhere]' : 'truncate')}
+				>
+					{labelOf}
+				</Select.Value>
+				{chevron ? (
+					<Select.Icon className="shrink-0 text-ink-faint">
+						<ChevronDown size={14} />
+					</Select.Icon>
+				) : null}
 			</Select.Trigger>
 			<Select.Portal>
 				<Select.Positioner sideOffset={4} alignItemWithTrigger={false} className="z-40">

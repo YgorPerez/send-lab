@@ -12,7 +12,7 @@
 // The rest is the same dense-but-ruled treatment as Today: one card per task,
 // three ruled bands inside it, no gaps to hunt across.
 import { createFileRoute } from '@tanstack/react-router';
-import { Plus, Repeat } from 'lucide-react';
+import { Check, Repeat } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { getContent } from '$lib/content';
 import {
@@ -27,8 +27,11 @@ import { nextSet, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { protocolOf } from '$lib/protocol';
+import { useReadinessDraft } from '$lib/readinessDraft';
+import { heldToday, resolveToday } from '$lib/screens/today';
 import {
 	atVariant,
+	currentTask,
 	libraryTask,
 	type PrescribedTask,
 	resolveTrain,
@@ -37,18 +40,11 @@ import {
 import { restoredSession, useSessionDraft } from '$lib/sessionDraft';
 import { useTrainingRecord } from '$lib/store/record';
 import { writeWorkingLoad } from '$lib/store/workingLoad';
-import type { WorkingLoad, WorkingLoadSource } from '$lib/types';
+import type { LoggedSet, WorkingLoad, WorkingLoadSource } from '$lib/types';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
-import {
-	Empty,
-	Eyebrow,
-	Pane,
-	ScreenHeader,
-	Section,
-	StickyStrip,
-} from '../components/ui/primitives';
+import { Empty, Pane, ScreenHeader, Section, StickyStrip } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -101,6 +97,27 @@ function Train() {
 	// picks up the new protocol.
 	const [clockOpen, setClockOpen] = useState(false);
 
+	// HELD WORK, MARKED WHERE TODAY MARKS IT (#118, story 35). This morning's
+	// check is read from the same draft Today writes, and resolved against the
+	// same day, at mount, as the prescription is: a task does not become held
+	// under the athlete mid-session. Nothing is held until the check has a
+	// wellness answer (#61).
+	const [today] = useState(() => resolveToday(content, record, Date.now()));
+	const [answers] = useReadinessDraft(today.answers);
+	const held = useMemo(() => heldToday(today, answers), [today, answers]);
+
+	// WHICH TASK IS OPEN (#118, spec stories 46–48). Page state, and mostly not
+	// stored at all: `null` means "the task being worked on", which is
+	// `currentTask` — the first with a set left, held work last — re-derived
+	// every render, so
+	// ticking the open task's last set moves the screen on to the next without
+	// anything here having to notice. A tap on another task's header pins that
+	// one instead, and a tap on the open one folds it (`'none'`). Ticking the last
+	// set of a pinned task hands the choice back to the default, which is "moves
+	// the default on" for a task opened out of order too.
+	const [chosen, setChosen] = useState<TaskKey | 'none' | null>(null);
+	const openKey = chosen === 'none' ? null : (chosen ?? currentTask(tasks, held));
+
 	const [note, setNote] = useState(initial.note);
 	const [duration, setDuration] = useState(initial.duration);
 
@@ -150,7 +167,19 @@ function Train() {
 			exercise,
 			taskKey(screen.week, screen.weekday, exercise),
 		);
-		if (next) setTasks((prev) => [...prev, next]);
+		if (next) {
+			setTasks((prev) => [...prev, next]);
+			// An exercise added mid-session is the one the athlete is about to do.
+			setChosen(next.key);
+		}
+	};
+
+	/** A set changed. Ticking the last set of the open task hands the choice
+	 *  back to the default, which is the next task with a set left. */
+	const changeSet = (task: PrescribedTask, index: number, next: LoggedSet) => {
+		const sets = task.sets.map((s, j) => (j === index ? next : s));
+		update(task.key, (x) => ({ ...x, sets }));
+		if (task.key === openKey && sets.every((s) => s.done)) setChosen(null);
 	};
 
 	const available = useMemo(
@@ -184,7 +213,7 @@ function Train() {
 		// column twice that, put the number the athlete is typing an inch from its
 		// own label. So the page keeps the phone layout and caps itself, and the
 		// desktop width is spent on nothing.
-		<Pane className="gap-6">
+		<Pane className="gap-sections">
 			<ScreenHeader
 				title={
 					<>
@@ -220,20 +249,18 @@ function Train() {
 			{tasks.length === 0 ? (
 				<Empty value={m.train_no_work()} />
 			) : (
-				<div className="flex flex-col gap-2.5">
+				<div className="flex flex-col gap-row">
 					{tasks.map((t) => (
 						<TaskCard
 							key={t.key}
 							task={t}
+							open={t.key === openKey}
+							held={held.has(t.exercise)}
 							active={timerTask?.key === t.key}
+							onToggle={() => setChosen(t.key === openKey ? 'none' : t.key)}
 							onSelectVariant={(i) => selectVariant(t.key, i)}
 							onUseTimer={() => setPinnedKey(t.key)}
-							onChangeSet={(i, next) =>
-								update(t.key, (x) => ({
-									...x,
-									sets: x.sets.map((s, j) => (j === i ? next : s)),
-								}))
-							}
+							onChangeSet={(i, next) => changeSet(t, i, next)}
 							onAnswerLoad={(kg, source) => answerLoad(t, kg, source)}
 							onAddSet={() =>
 								update(t.key, (x) => ({
@@ -254,43 +281,52 @@ function Train() {
 				</div>
 			)}
 
-			<div className="flex flex-col gap-2">
-				<Picker
-					ariaLabel={m.wk_add_ex()}
-					value={null}
-					placeholder={m.wk_add_ex()}
-					options={available}
-					onChange={addExercise}
-					className="min-h-11 border-dashed"
-				/>
-				<button
-					type="button"
-					disabled={!screen.canRepeatLast}
-					title={screen.canRepeatLast ? undefined : m.train_no_prev()}
-					className={button({ size: 'md', class: 'min-h-11 self-start' })}
-				>
-					<Repeat size={14} />
-					{m.train_repeat()}
-				</button>
-			</div>
-
-			{/* The autosave line lives here rather than under the timer. It reports
-			    that the *session* is saved as it is typed, so it belongs with the
-			    session's own fields — under the timer it read as though it described
-			    the interval configuration, and it was one of the things making the
-			    sticky block taller than the thing it sits above. */}
-			<Section label={m.train_note()}>
-				<div className="flex flex-col gap-2">
-					<input
-						id="session-note"
-						className={input({ align: 'left', class: 'min-h-11 text-[14px]' })}
-						value={note}
-						placeholder={m.train_note()}
-						onChange={(e) => setNote(e.currentTarget.value)}
+			{/* SESSION TOOLS, AFTER THE TASKS (#118, spec story 52). What belongs to
+			    the session rather than to one task — another exercise, last session
+			    repeated, the note, the minutes — is one group under one heading, so
+			    none of it competes with the tasks above it. The autosave line ends
+			    it: it reports that the *session* is saved as it is typed, so it
+			    belongs with the session's own fields — under the timer it read as
+			    though it described the interval configuration. */}
+			<Section face="sans" label={m.train_tools()}>
+				<div className="flex flex-col gap-group">
+					<Picker
+						ariaLabel={m.wk_add_ex()}
+						value={null}
+						placeholder={m.wk_add_ex()}
+						options={available}
+						onChange={addExercise}
+						className="min-h-11 border-dashed"
 					/>
+					{/* Disabled with its reason on the line, not in a `title` a phone
+					    never shows (#118's critique). */}
+					<div className="flex flex-col gap-1">
+						<button
+							type="button"
+							disabled={!screen.canRepeatLast}
+							className={button({ size: 'md', class: 'min-h-11 self-start' })}
+						>
+							<Repeat size={16} aria-hidden="true" />
+							{m.train_repeat()}
+						</button>
+						{screen.canRepeatLast ? null : (
+							<p className="text-[11px] leading-snug text-ink-faint">{m.train_no_prev()}</p>
+						)}
+					</div>
+					<div className="flex flex-col gap-1">
+						<label className="eyebrow" htmlFor="session-note">
+							{m.train_note()}
+						</label>
+						<input
+							id="session-note"
+							className={input({ align: 'left', class: 'min-h-11' })}
+							value={note}
+							onChange={(e) => setNote(e.currentTarget.value)}
+						/>
+					</div>
 					<div className="flex items-center gap-2">
-						<label className="shrink-0" htmlFor="session-min">
-							<span className="eyebrow">{m.train_duration()}</span>
+						<label className="eyebrow shrink-0" htmlFor="session-min">
+							{m.train_duration()}
 						</label>
 						<input
 							id="session-min"
@@ -305,7 +341,7 @@ function Train() {
 							{m.train_duration_hint()}
 						</span>
 					</div>
-					<Eyebrow>{m.train_autosave()}</Eyebrow>
+					<p className="text-[11px] leading-snug text-ink-faint">{m.train_autosave()}</p>
 				</div>
 			</Section>
 
@@ -320,7 +356,7 @@ function Train() {
 					disabled={doneSets === 0}
 					className={button({ kind: 'primary', size: 'touch' })}
 				>
-					<Plus size={16} />
+					<Check size={16} aria-hidden="true" />
 					{m.train_finish()}
 				</button>
 				{doneSets === 0 ? (

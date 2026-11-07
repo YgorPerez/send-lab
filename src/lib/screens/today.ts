@@ -18,7 +18,13 @@
 // hand-written snapshot. The shape it hands over is much smaller now: the fixture
 // served four prototype branches that each rendered a different subset, and this
 // serves one screen.
-import { type Answers, phaseId, visibleQuestionsOrdered } from '$lib/content';
+import {
+	type Answers,
+	computeReadiness,
+	hasWellnessAnswer,
+	phaseId,
+	visibleQuestionsOrdered,
+} from '$lib/content';
 import type { LoadSignals } from '$lib/content/logic';
 import type {
 	BodyArea,
@@ -307,4 +313,15 @@ export function heldExercises(tasks: readonly Task[], verdict: VerdictId): Reado
 			verdict,
 		).held,
 	);
+}
+
+/**
+ * Which of today's tasks this morning's check holds back, as Today shows it:
+ * nothing while the check has no wellness answer (#61), otherwise what the
+ * verdict caps. Train marks the same tasks (#118), from the same draft, so the
+ * two screens cannot disagree about what was taken off the plan.
+ */
+export function heldToday(today: TodayScreen, answers: Answers): ReadonlySet<ExerciseId> {
+	if (!hasWellnessAnswer(answers)) return new Set();
+	return heldExercises(today.tasks, computeReadiness(answers, today.load, today.insights).verdict);
 }
