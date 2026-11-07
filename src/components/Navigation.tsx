@@ -21,13 +21,14 @@
 // The six pages that exist. `program` (#65) and `studies` (#67) add a row each to
 // `DESTINATIONS` with `place: 'more'` when they land, and the bar stays four.
 import { Dialog } from '@base-ui/react/dialog';
-import { useLinkProps } from '@tanstack/react-router';
+import { type RegisteredRouter, type RouteIds, useLinkProps } from '@tanstack/react-router';
 import {
 	CalendarDays,
 	ChevronRight,
 	Dumbbell,
 	Ellipsis,
 	House,
+	type LucideIcon,
 	ScrollText,
 	Settings,
 	Timer,
@@ -39,13 +40,24 @@ import type { AppLocale } from '$lib/store/locale';
 import { cn } from '$lib/utils';
 
 /**
+ * A route as the router names it: what `here` is, and what a destination's `to`
+ * and `holds` must be for the current mark to find it.
+ */
+export type RouteId = RouteIds<RegisteredRouter['routeTree']>;
+
+/**
  * Every destination, in the order they are reached in.
  *
  * `bar` is on the bottom edge at every width; `more` is in More's sheet on a
  * phone and in the rail from `lg`. The bar keeps the menu's order, so the muscle
  * memory the menu built survives the move.
+ *
+ * `to` is the link's path *and* the route id `isAt` compares with `here`. They
+ * are one string while every destination is a route of its own under the root,
+ * which `satisfies` holds at compile time and `tests/navigation.test.ts` at run
+ * time: a destination behind a layout route would get an id its path is not.
  */
-const DESTINATIONS = [
+export const DESTINATIONS = [
 	{ to: '/', label: m.nav_today, Icon: House, place: 'bar' },
 	{ to: '/train', label: m.nav_train, Icon: Dumbbell, place: 'bar' },
 	{ to: '/timer', label: m.nav_timer, Icon: Timer, place: 'bar' },
@@ -54,16 +66,22 @@ const DESTINATIONS = [
 	// Sign-in is reached from Settings (its account panel), so it is Settings'
 	// place: the bar never shows the athlete as nowhere (story 6).
 	{ to: '/settings', label: m.nav_settings, Icon: Settings, place: 'more', holds: ['/login'] },
-] as const;
+] as const satisfies readonly {
+	to: RouteId;
+	label: (inputs: object, options: { locale: AppLocale }) => string;
+	Icon: LucideIcon;
+	place: 'bar' | 'more';
+	holds?: readonly RouteId[];
+}[];
 
-type Place = (typeof DESTINATIONS)[number];
+type Destination = (typeof DESTINATIONS)[number];
 
 const IN_MORE = DESTINATIONS.filter((d) => d.place === 'more');
 
 /** Whether the athlete is at `d`: on its own route, or on one it holds. */
-function isAt(d: Place, here: string | null): boolean {
+function isAt(d: Destination, here: RouteId | null): boolean {
 	if (here === null) return false;
-	return d.to === here || ('holds' in d && (d.holds as readonly string[]).includes(here));
+	return d.to === here || ('holds' in d && (d.holds as readonly RouteId[]).includes(here));
 }
 
 /**
@@ -72,7 +90,7 @@ function isAt(d: Place, here: string | null): boolean {
  * The current item is marked by colour, weight and a surface together
  * (DESIGN.md › Navigation): chalk and semibold, on a raised-panel pill behind the
  * icon in the bar and a raised row in the rail. It is keyed on `data-status`,
- * which each `Destination` and More set on themselves, so the two speak one
+ * which each `DestinationLink` and More set on themselves, so the two speak one
  * language.
  *
  * 48px tall in the bar, like the clock's controls, because it is reached without
@@ -103,14 +121,14 @@ const LABEL = 'max-w-full text-center break-words lg:text-left';
  * click (client navigation, modifier keys, preloading); this drops its active
  * props for the ones `here` decides, which are none until the app has hydrated.
  */
-function Destination({
+function DestinationLink({
 	to,
 	current,
 	className,
 	onClick,
 	children,
 }: {
-	to: (typeof DESTINATIONS)[number]['to'];
+	to: Destination['to'];
 	current: boolean;
 	className: string;
 	onClick?: () => void;
@@ -140,9 +158,9 @@ function Destination({
  *
  * `here` is the matched route's id, handed down by the root only once the app
  * has hydrated, so no mark differs from the baked shell on the render that
- * hydrates it (see `Destination`).
+ * hydrates it (see `DestinationLink`).
  */
-export function Navigation({ locale, here }: { locale: AppLocale; here: string | null }) {
+export function Navigation({ locale, here }: { locale: AppLocale; here: RouteId | null }) {
 	const inMore = IN_MORE.some((d) => isAt(d, here));
 	return (
 		<nav
@@ -162,7 +180,7 @@ export function Navigation({ locale, here }: { locale: AppLocale; here: string |
 			)}
 		>
 			{DESTINATIONS.map((d) => (
-				<Destination
+				<DestinationLink
 					key={d.to}
 					to={d.to}
 					current={isAt(d, here)}
@@ -172,7 +190,7 @@ export function Navigation({ locale, here }: { locale: AppLocale; here: string |
 						<d.Icon size={22} strokeWidth={1.75} aria-hidden="true" />
 					</span>
 					<span className={LABEL}>{d.label({}, { locale })}</span>
-				</Destination>
+				</DestinationLink>
 			))}
 			<More locale={locale} here={here} current={inMore} />
 		</nav>
@@ -198,7 +216,7 @@ function More({
 	current,
 }: {
 	locale: AppLocale;
-	here: string | null;
+	here: RouteId | null;
 	current: boolean;
 }) {
 	const [open, setOpen] = useState(false);
@@ -232,7 +250,7 @@ function More({
 					</div>
 					<div className="flex flex-col gap-0.5 px-1.5">
 						{IN_MORE.map((d) => (
-							<Destination
+							<DestinationLink
 								key={d.to}
 								to={d.to}
 								current={isAt(d, here)}
@@ -247,7 +265,7 @@ function More({
 									className="shrink-0 text-ink-faint"
 									aria-hidden="true"
 								/>
-							</Destination>
+							</DestinationLink>
 						))}
 					</div>
 				</Dialog.Popup>

@@ -39,7 +39,7 @@
 import type { ReactNode } from 'react';
 import type { Chrome } from '$lib/chrome';
 import type { AppLocale } from '$lib/store/locale';
-import { Navigation } from './Navigation';
+import { Navigation, type RouteId } from './Navigation';
 import { SyncStatus, useSyncState } from './SyncStatus';
 import { UpdateAnnouncement } from './UpdateAnnouncement';
 
@@ -54,7 +54,7 @@ export function AppShell({
 	 *  app has hydrated (`__root.tsx`). */
 	chrome: Chrome;
 	/** The matched route's id, or `null` until the app has hydrated. */
-	here: string | null;
+	here: RouteId | null;
 	children: ReactNode;
 }) {
 	// Read here and handed down, because two things in the left group are decided

@@ -22,7 +22,7 @@ import { createRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { PINNED_NOW } from '../scripts/seeded-record.ts';
-import { Navigation } from '../src/components/Navigation.tsx';
+import { DESTINATIONS, Navigation } from '../src/components/Navigation.tsx';
 import { chromeFor } from '../src/lib/chrome.ts';
 import { getContent } from '../src/lib/content/index.ts';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
@@ -258,5 +258,20 @@ describe('chromeFor', () => {
 
 	test('with no match yet, it is the baked shell: navigation, no action', () => {
 		expect(chromeFor([])).toEqual({ navigation: true, ScreenAction: null });
+	});
+});
+
+// The current mark compares a destination's link path with the matched route's
+// id (`isAt`). The two are the same string only while a destination is a route of
+// its own with nothing between it and the root: a layout or a pathless route
+// above it gives it an id its path is not, and the bar would mark nothing there,
+// silently (#113's review, S7). `RouteId` types it; this holds it at run time.
+describe('DESTINATIONS', () => {
+	test("every destination's path, and every route it holds, is a registered route id", () => {
+		const ids = new Set(Object.keys(createRouter({ routeTree }).routesById));
+		for (const d of DESTINATIONS) {
+			expect(ids, d.to).toContain(d.to);
+			for (const held of 'holds' in d ? d.holds : []) expect(ids, held).toContain(held);
+		}
 	});
 });
