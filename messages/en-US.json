@@ -287,7 +287,7 @@
 	"login_signout_note": "Signing out is in Settings, where it waits for unsent training to go out first.",
 	"btn_go_today": "Go to Today",
 	"nav_train": "Train",
-	"sec_train": "Session",
+	"sec_train": "Train",
 	"lede_train": "Run your session: a built-in interval timer for hangs and repeaters, and a log of what you actually did — weight, time, reps, and the rest you took on each set.",
 	"timer_title": "Interval timer",
 	"timer_work": "Work",

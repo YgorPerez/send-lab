@@ -13,7 +13,7 @@
 // three ruled bands inside it, no gaps to hunt across.
 import { createFileRoute } from '@tanstack/react-router';
 import { Check, Repeat } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getContent } from '$lib/content';
 import {
 	asExerciseId,
@@ -35,6 +35,8 @@ import {
 	libraryTask,
 	type PrescribedTask,
 	resolveTrain,
+	setsDone,
+	setTarget,
 	withWorkingLoad,
 } from '$lib/screens/train';
 import { restoredSession, useSessionDraft } from '$lib/sessionDraft';
@@ -118,6 +120,23 @@ function Train() {
 	const [chosen, setChosen] = useState<TaskKey | 'none' | null>(null);
 	const openKey = chosen === 'none' ? null : (chosen ?? currentTask(tasks, held));
 
+	// WHERE THE SESSION MOVED ON TO. A tick that finishes the open task folds its
+	// card, which unmounts the tick and drops focus to the page, and the task
+	// that opens can land under the sticky clock. So a tick that moves the
+	// session on leaves a note here (in the handler, never in render), and once
+	// the next task is open its header is scrolled clear of the clock and takes
+	// focus, which also reads its name, count and state out. A tap that opens a
+	// task leaves no note: the athlete is already looking where they tapped.
+	const opened = useRef<HTMLButtonElement>(null);
+	const movedOn = useRef(false);
+	useEffect(() => {
+		if (!movedOn.current || openKey === null) return;
+		movedOn.current = false;
+		const header = opened.current;
+		header?.closest('[data-task-card]')?.scrollIntoView?.({ block: 'start' });
+		header?.focus({ preventScroll: true });
+	}, [openKey]);
+
 	const [note, setNote] = useState(initial.note);
 	const [duration, setDuration] = useState(initial.duration);
 
@@ -174,12 +193,19 @@ function Train() {
 		}
 	};
 
-	/** A set changed. Ticking the last set of the open task hands the choice
-	 *  back to the default, which is the next task with a set left. */
+	/** A set changed. Ticking the open task's last prescribed set hands the
+	 *  choice back to the default, which is the next task with a set left. */
 	const changeSet = (task: PrescribedTask, index: number, next: LoggedSet) => {
 		const sets = task.sets.map((s, j) => (j === index ? next : s));
 		update(task.key, (x) => ({ ...x, sets }));
-		if (task.key === openKey && sets.every((s) => s.done)) setChosen(null);
+		const finishes =
+			task.key === openKey &&
+			setsDone(task) < setTarget(task) &&
+			setsDone({ sets }) >= setTarget({ ...task, sets });
+		if (finishes) {
+			movedOn.current = true;
+			setChosen(null);
+		}
 	};
 
 	const available = useMemo(
@@ -202,8 +228,9 @@ function Train() {
 		? protocolKeyOf(timerTask.key, timerTask.variantIndex)
 		: NO_PROTOCOL;
 
-	const totalSets = tasks.reduce((n, t) => n + t.sets.length, 0);
-	const doneSets = tasks.reduce((n, t) => n + t.sets.filter((s) => s.done).length, 0);
+	// The prescribed sets, as each folded task counts them (`setTarget`).
+	const totalSets = tasks.reduce((n, t) => n + setTarget(t), 0);
+	const doneSets = tasks.reduce((n, t) => n + setsDone(t), 0);
 
 	return (
 		// NO SECOND COLUMN, DELIBERATELY (#52). Train is the one screen defined by
@@ -255,6 +282,7 @@ function Train() {
 							key={t.key}
 							task={t}
 							open={t.key === openKey}
+							headerRef={t.key === openKey ? opened : undefined}
 							held={held.has(t.exercise)}
 							active={timerTask?.key === t.key}
 							onToggle={() => setChosen(t.key === openKey ? 'none' : t.key)}

@@ -51,7 +51,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 |---|---|---|
 | `Eyebrow` | `primitives.tsx` | The furniture rank of the type scale |
 | `ScreenHeader` | `primitives.tsx` | How every screen opens (#114): the title in the top rank and the screen's only `<h1>`, an optional meta line, an optional lede, and one `reading` *or* one `action` on the right. Nothing the page draws comes before it |
-| `Section` | `primitives.tsx` | Heading, optional right-hand meta, body. `face` picks the heading's face: `sans` (`.h-section-sans`, the overhaul's) or the retiring `mono` default; each screen ticket moves its own (Today since #117) |
+| `Section` | `primitives.tsx` | Heading, optional right-hand meta, body. `face` picks the heading's face: `sans` (`.h-section-sans`, the overhaul's) or the retiring `mono` default; each screen ticket moves its own (Today since #117, Train since #118) |
 | `Bare` | `primitives.tsx` | A group with a rule above it and no box |
 | `Empty` | `primitives.tsx` | What a group says when it has nothing to list: a `Bare`, one line of `Prose`, and the one affordance that fills it |
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
@@ -61,7 +61,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Panes` | `primitives.tsx` | A page's two panes from `lg`, stacked below it |
 | `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
 | `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. It sits on the navigation bar (`--nav-clear`, #115), and from `lg` right of the rail on the measure's left edge, capped at `max-w-pane` as `Pane` is |
-| `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
+| `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip. `wrap` lets the label take a second line instead of truncating, and `chevron={false}` gives a set-grid cell its 18px back: the pt-BR grips clipped to "Slop…" and "Half…" in a 68px cell (#118) |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
@@ -84,10 +84,10 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Stopwatch` | The count-up's tick, its laps, and the same two faces — the mini bar and full-screen — in the clock's type and controls, through the same `FullScreenClock`, on a neutral field: running or paused is said in the word and the weight of ink, never a segment's colour (#110). Every lap is listed under its number |
 | `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
-| `TaskCard` | One task mid-session: header, prescription, sets |
+| `TaskCard` | One task mid-session: header, prescription, sets. Open or folded to its header (#118), which the page decides; held and done marks on the header; the sets counted against `setTarget` |
 | `ReadinessCheck` | The readiness check as a sheet, one question per step (#116): the step `lib/readinessFlow.ts` names, its rationale and study collapsed under it, its options with nothing preselected. Full height from a phone's bottom edge, a 400px dialog centred from `lg`. Today holds the answers; the sheet holds only which step is showing |
 | `SelfCheckSheet` / `RehabStarter` | The injury self-check and the rehab switch. The sheet has the readiness check sheet's shape since #117 (title row, 44px close, 200ms, a 400px dialog from `lg`), as tall as its content |
-| `WorkingLoadAsk` | The ladder put at first contact with a weighted exercise, and what the athlete is told about the two numbers under its third rung |
+| `WorkingLoadAsk` | The ladder put at first contact with a weighted exercise, and what the athlete is told about the two numbers under its third rung. One step since #118: four rungs, then what the chosen one needs, then one `quiet` Set load; folded to one line once the task has a set ticked |
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
 `ids.ts` (identity), `readinessFlow.ts` (which question the readiness check asks
@@ -434,8 +434,8 @@ spacing scale, so they work under every spacing prefix:
 | `gutter` | 12px, 20px from `lg` | The page's side margin and the gap between two panes; one variable, so `px-gutter` is right at both widths |
 
 `Pane`, `Panes`, `Section`, `Bare`, `Empty`, the small `card` and the shell use
-them already. Screens still carry literal steps (`gap-6` on Train and the Timer is
-drift, 24px against 28px); each screen ticket moves its own. The inside of a
+them already. Screens still carry literal steps (`gap-6` on the Timer is drift, 24px
+against 28px; Train moved in #118); each screen ticket moves its own. The inside of a
 component keeps the plain 4px steps.
 
 **Every screen sets its title through `ScreenHeader`.** The right-hand side is a
@@ -687,6 +687,59 @@ though the phase's banner is the same text for weeks.
 **Heights.** Seeded at 360px, Today measures 2487px in en-US and 2527px in pt-BR
 (4361px before #116, 2521px after it); at 1280px, 1490px and 1507px. The floor of 75
 elements still sits a quarter under the 104 `check:contrast` counts.
+
+## Train with one task open
+
+Built by [#118](https://github.com/YgorPerez/send-lab/issues/118) from spec #113's
+Train decisions.
+
+**One primary, and the clock is a tool.** "Finish and log the session" is the only
+`primary`. Every control in a clock's row off its field is `button({ kind: 'clock' })`,
+on Train's strip, on the Timer list's mini bar, in the full-screen clock's ready Start
+and its paused row (back, resume, reset), and on the stopwatch, so the Timer screen has
+no primary at all. The task card's clock button, which says which task the clock runs,
+takes the selection mark (chalk on `panel-3`); it was vermilion, a second one next to
+the primary.
+
+**One task open, chosen by the page.** `train.tsx` holds `chosen`: `null` means "the
+task being worked on", re-derived each render by `currentTask` (`lib/screens/train.ts`):
+the first with a set left that today's verdict did not hold, then held work. A tap pins
+another task or folds the open one. A tick that finishes the open task hands the choice
+back to the default, so the next opens without anything having to notice. Before this,
+every task drew everything and seeded Train ran to 3,909px; it is 1,614px now (360px,
+seeded), 1,796px empty.
+
+**A set left is counted against the prescription.** A task opens with one row, and the
+athlete adds the rest with Add set. Counting rows, ticking that one row finished a task
+prescribed four to six sets and folded it away from its own Add set. `setTarget` is the
+larger of the rows and the prescription's lower bound; the folded line, the header's
+reading and the advance all use it. Today's done (any set in the record) is a different
+rule and was left alone: changing it is domain behaviour.
+
+**A tick that moves on moves focus.** Folding the card unmounts the tick that did it, so
+focus fell to the page, and the next card could open under the sticky clock. The handler
+leaves a note in a ref, and an effect keyed on the open task scrolls the new card clear
+of the clock and focuses its header. Scroll the card, not the header: the card's
+`overflow-hidden` makes it a scroll container, and `scrollIntoView` on the header moved
+nothing (measured in the browser; jsdom has no `scrollIntoView` at all).
+
+**Held work is marked as Today marks it.** `heldToday` (`lib/screens/today.ts`) reads the
+same readiness draft Today writes, at mount, so a task does not become held mid-session.
+The warn chip sits at the end of the header line; pt-BR's reads "retido · prontidão" on
+both screens ("segurado" means insured).
+
+**The working-load ask is one step.** The ladder as one choice with nothing pressed (ADR
+0019), the chosen rung's field (labelled, not placeholdered: "Kg adici") or reason, one
+`quiet` Set load and the line saying what it waits for. It folds to "Not set yet" once a
+set is ticked on the task, since the athlete has trained past it.
+
+**Session tools after the tasks**, one `Section` in Inter: add exercise, repeat last
+session (its reason on the line, not in a `title`), the note with a visible label,
+minutes, the autosave line. Then the finish, disabled with its reason.
+
+**Not done here, and why.** Finish and Repeat last session have no handler; that predates
+#118, and wiring them is new behaviour. The set rows are bordered boxes inside the card,
+and the open card's band labels are mono eyebrows; both predate #118 and are #125's.
 
 ## The idiom
 

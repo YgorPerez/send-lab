@@ -85,6 +85,9 @@ function tasksOf(html: string): { name: string; open: boolean; row: string }[] {
 const COPY = {
 	'en-US': {
 		start: 'Start',
+		title: 'Train',
+		thu: 'Thu',
+		sets: 'sets',
 		finish: 'Finish &amp; log session',
 		pull: 'Pull Strength',
 		sloper: 'Sloper Density',
@@ -99,6 +102,9 @@ const COPY = {
 	},
 	'pt-BR': {
 		start: 'Iniciar',
+		title: 'Treinar',
+		thu: 'Qui',
+		sets: 'séries',
 		finish: 'Concluir e registrar treino',
 		pull: 'Puxada',
 		sloper: 'Density em Sloper',
@@ -149,11 +155,23 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(tasks.map((t) => t.open)).toEqual([false, true, false, false]);
 			// A folded task says what it is, how far it got and what it asks for.
 			const [pull, , abrahangs, antagonists] = tasks;
-			expect(pull.row).toContain('0/1');
+			// Counted against the prescription's sets, not the rows on the grid: a
+			// task opens with one row, and "0/1" for a 4–6 set task told the athlete
+			// one set would finish it (#118's critique).
+			expect(pull.row).toContain('0/4');
 			expect(pull.row).toContain('4–6 × 3–5 · +32–48kg');
 			expect(abrahangs.row).toContain('0/1');
 			expect(abrahangs.row).toContain('1 × 20 × 10s · 18–22mm');
 			expect(antagonists.row).toContain('RPE 5–7');
+		});
+
+		// The title names the screen the way the bar does, and its reading counts
+		// the prescribed sets: Pull 4, Sloper Density 3, Abrahangs 1, Antagonists 1.
+		test('is titled as the bar names it, and counts the prescribed sets', async () => {
+			const train = await screen('/train', locale);
+			const title = train.match(/<h1[^>]*>(.*?)<\/h1>/)?.[1].replace(/<[^>]+>/g, '') ?? '';
+			expect(title).toBe(`${copy.title} · ${copy.thu}`);
+			expect(train).toContain(`1/9 ${copy.sets}`);
 		});
 
 		test('marks held work on the task, as Today does', async () => {
@@ -257,15 +275,41 @@ describe('en-US, Train, tapped', () => {
 				if (!tick) throw new Error(`${openTasks(main)} has no set left`);
 				return tick;
 			};
+			const addSet = () =>
+				[...main.querySelectorAll<HTMLButtonElement>('button')].find(
+					(b) => b.textContent === 'Add set',
+				);
 			expect(openTasks(main)).toEqual(['Sloper Density']);
+			// Its last row ticked, but the prescription asks for three sets and two
+			// are done: the task stays open, with Add set under the grid.
+			act(() => left().click());
+			expect(openTasks(main)).toEqual(['Sloper Density']);
+			expect(headerOf(main, 'Sloper Density').textContent).toContain('2/3');
+			act(() => addSet()?.click());
 			act(() => left().click());
 			expect(openTasks(main)).toEqual(['Abrahangs']);
-			// The finished task folds with Today's done mark on it.
+			// The finished task folds with Today's done mark on it, and the one that
+			// opened takes focus, since the tick that moved on was unmounted with
+			// its card.
 			expect(headerOf(main, 'Sloper Density').textContent).toContain('done');
+			expect(document.activeElement).toBe(headerOf(main, 'Abrahangs'));
 			act(() => left().click());
 			// Only held work has sets left now, so the first of it opens: held is a
 			// mark, not a lock, and the athlete may still train it.
 			expect(openTasks(main)).toEqual(['Pull Strength']);
+			expect(document.activeElement).toBe(headerOf(main, 'Pull Strength'));
+		});
+	});
+
+	// A tap opens a task where the athlete is looking; only a tick that moves
+	// the session on moves focus.
+	test('a tap on a header keeps focus where it is', async () => {
+		await mounted((main) => {
+			const header = headerOf(main, 'Abrahangs');
+			header.focus();
+			act(() => header.click());
+			expect(document.activeElement).toBe(header);
+			act(() => header.click());
 		});
 	});
 

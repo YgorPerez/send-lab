@@ -205,12 +205,14 @@ export function WorkingLoadAsk({
 			    bodyweight because other numbers are expressed against it, and with
 			    none there is nothing to divide by. */}
 					{predicted && !offered ? (
-						<p className="text-[11px] leading-snug text-ink-faint">
+						<p className="text-[11px] leading-snug text-pretty text-ink-faint">
 							{m.wl_predicted()} <span className="num text-ink-dim">+{predicted.addedKg}kg</span> ·{' '}
 							{m.wl_at_floor()}
 						</p>
 					) : predicted ? null : (
-						<p className="text-[11px] leading-snug text-ink-faint">{m.wl_no_estimate()}</p>
+						<p className="text-[11px] leading-snug text-pretty text-ink-faint">
+							{m.wl_no_estimate()}
+						</p>
 					)}
 
 					{/* What the chosen rung needs, then the one action. A typed rung gets its
@@ -218,7 +220,7 @@ export function WorkingLoadAsk({
 			    clipped to "Kg adici" in an 80px field); a suggestion, the reason for
 			    its number. */}
 					{rung === 'floor' || rung === 'predicted' ? (
-						<p className="text-[11px] leading-snug text-ink-faint">
+						<p className="text-[11px] leading-snug text-pretty text-ink-faint">
 							{rung === 'floor' ? m.wl_floor_why() : m.wl_predicted_why()}
 						</p>
 					) : null}
@@ -255,12 +257,12 @@ export function WorkingLoadAsk({
 					{/* Disabled with the line saying what it waits for (ADR 0019's rule,
 			    and Train's own for the finish). */}
 					{answer === null ? (
-						<p className="-mt-1 text-[11px] leading-snug text-ink-faint">
+						<p className="-mt-1 text-[11px] leading-snug text-pretty text-ink-faint">
 							{typedRung ? m.wl_type() : m.wl_pick()}
 						</p>
 					) : null}
 
-					<p className="text-[11px] leading-snug text-ink-faint">
+					<p className="text-[11px] leading-snug text-pretty text-ink-faint">
 						{prescribesLoad ? m.wl_later_builtin() : m.wl_later()}
 					</p>
 				</div>

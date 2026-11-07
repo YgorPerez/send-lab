@@ -22,7 +22,7 @@
 // Which task is open is the page's decision (`train.tsx`); the card only draws
 // the state it is handed and says when its header is tapped.
 import { ChevronDown, Plus, Timer as TimerIcon } from 'lucide-react';
-import { useId } from 'react';
+import { type Ref, useId } from 'react';
 import type { Variant } from '$lib/content/types';
 import {
 	costLabel,
@@ -35,7 +35,7 @@ import {
 	workingLoadSourceLabel,
 } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
-import type { PrescribedTask } from '$lib/screens/train';
+import { type PrescribedTask, setsDone, setTarget } from '$lib/screens/train';
 import type { LoggedSet, WorkingLoadSource } from '$lib/types';
 import { cn } from '$lib/utils';
 import { SetEditor } from './SetRows';
@@ -103,7 +103,7 @@ function Prescription({ prescription }: { prescription: Variant }) {
 				</div>
 			) : null}
 			{prescription.note ? (
-				<p className="prose-inline mt-1.5 text-[11.5px] leading-snug text-ink-faint">
+				<p className="prose-inline mt-1.5 text-[11.5px] leading-snug text-pretty text-ink-faint">
 					<Prose value={prescription.note} />
 				</p>
 			) : null}
@@ -122,6 +122,7 @@ export function TaskCard({
 	onChangeSet,
 	onAddSet,
 	onAnswerLoad,
+	headerRef,
 }: {
 	task: PrescribedTask;
 	/** This is the task being worked on: its prescription and sets are drawn. */
@@ -139,6 +140,9 @@ export function TaskCard({
 	/** What to do when the athlete answers the working-load question. Only ever
 	 *  called for a task carrying an `ask`. */
 	onAnswerLoad: (addedKg: number, source: WorkingLoadSource) => void;
+	/** The header's disclosure, for the page to move focus to when a tick
+	 *  opens this task (the tick's own card folds and takes focus with it). */
+	headerRef?: Ref<HTMLButtonElement>;
 }) {
 	const bodyId = useId();
 	// Two-axis exercises (tool × speed) get two pickers; everything else gets one
@@ -151,8 +155,11 @@ export function TaskCard({
 		const i = task.variants.findIndex((v) => v.tool === tool && v.speed === speed);
 		if (i >= 0) onSelectVariant(i);
 	};
-	const doneCount = task.sets.filter((s) => s.done).length;
-	const finished = task.sets.length > 0 && doneCount === task.sets.length;
+	const doneCount = setsDone(task);
+	// Counted against the prescription, not the rows: one row ticked of four
+	// prescribed sets is not a finished task (`setTarget`).
+	const target = setTarget(task);
+	const finished = target > 0 && doneCount >= target;
 
 	return (
 		<div
@@ -161,7 +168,14 @@ export function TaskCard({
 			// used to take a vermilion edge for it too, which read as a warning from
 			// the wall and put a second vermilion beside the screen's one primary
 			// (#118's critique).
-			className="overflow-hidden rounded-lg border border-l-2 border-line bg-panel"
+			//
+			// The card, not its header, is what the page scrolls to when a tick
+			// opens it: `overflow-hidden` makes the card a scroll container, and
+			// one asked to bring its own header into view does nothing for the
+			// window. Clear of what is sticky above it: the 44px strip and the
+			// clock's 84px (`StickyStrip`).
+			data-task-card
+			className="scroll-mt-[128px] overflow-hidden rounded-lg border border-l-2 border-line bg-panel"
 			style={{ borderLeftColor: `var(${task.catVar})` }}
 		>
 			<div className="flex items-center gap-2 py-1 pr-3">
@@ -170,6 +184,7 @@ export function TaskCard({
 				    target. What the line shows is the button's content, so a screen
 				    reader hears the name, the count and the held mark with it. */}
 				<button
+					ref={headerRef}
 					type="button"
 					aria-expanded={open}
 					aria-controls={open ? bodyId : undefined}
@@ -206,7 +221,7 @@ export function TaskCard({
 						</span>
 					</span>
 					<span className="num shrink-0 text-[11px] text-ink-faint">
-						{doneCount}/{task.sets.length}
+						{doneCount}/{target}
 					</span>
 					<ChevronDown
 						size={18}
