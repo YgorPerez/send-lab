@@ -40,7 +40,7 @@ import { checkSteps, followsFrom, openingStep, stepAfter, stepBefore } from '$li
 import type { Question } from '$lib/screens/today';
 import { STUDIES } from '$lib/studies';
 import { Stepper } from './ui/Stepper';
-import { option } from './ui/variants';
+import { option, sheet } from './ui/variants';
 
 const studyUrl = (id?: string) => (id ? STUDIES.find((s) => s.id === id)?.url : undefined);
 
@@ -81,17 +81,7 @@ export function ReadinessCheck({
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-				<Dialog.Popup
-					finalFocus={returnFocus}
-					className={
-						// The phone: the bottom edge up to just under the status bar.
-						'fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] bottom-0 z-50 mx-auto flex max-w-[520px] flex-col rounded-t-xl border border-b-0 border-line bg-panel pb-[env(safe-area-inset-bottom)] transition-[translate,opacity] duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full ' +
-						// `lg`: centred, at phone width, a fixed height so the controls
-						// do not move from one question to the next. It fades rather than
-						// rises: there is no edge for it to come from.
-						'lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:h-[min(42rem,calc(100dvh-4rem))] lg:w-100 lg:max-w-none lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-xl lg:border-b lg:pb-0 lg:data-[ending-style]:-translate-y-1/2 lg:data-[ending-style]:opacity-0 lg:data-[starting-style]:-translate-y-1/2 lg:data-[starting-style]:opacity-0'
-					}
-				>
+				<Dialog.Popup finalFocus={returnFocus} className={sheet({ height: 'full' })}>
 					<Steps
 						questions={questions}
 						answers={answers}

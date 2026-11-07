@@ -1,4 +1,4 @@
-// The class recipes: five shapes every screen reuses.
+// The class recipes: six shapes every screen reuses.
 //
 // These are `tailwind-variants` and not components, because that is the whole
 // point of them — a `<label>`, an `<input>`, a `<button>`, an `<a>` and a
@@ -209,4 +209,26 @@ export const option = tv({
 		},
 	},
 	defaultVariants: { on: false, width: 'auto' },
+});
+
+/**
+ * A sheet's popup: on a phone it rises from the bottom edge, at most the
+ * window's width under 520px; from `lg` it is a 400px dialog centred in the
+ * window that fades, since there is no edge for it to come from.
+ *
+ * `height` is the one thing the two sheets differ in. `full` reaches up to just
+ * under the status bar and, from `lg`, holds one fixed height, so a stepped flow's
+ * controls do not move from one step to the next (the readiness check, #116).
+ * `content` is as tall as what it holds, up to the same limits (the self-check,
+ * #117). It was one class string pasted into both until #113's review.
+ */
+export const sheet = tv({
+	base: 'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[520px] flex-col rounded-t-xl border border-b-0 border-line bg-panel pb-[env(safe-area-inset-bottom)] transition-[translate,opacity] duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:w-100 lg:max-w-none lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-xl lg:border-b lg:pb-0 lg:data-[ending-style]:-translate-y-1/2 lg:data-[ending-style]:opacity-0 lg:data-[starting-style]:-translate-y-1/2 lg:data-[starting-style]:opacity-0',
+	variants: {
+		height: {
+			full: 'top-[max(0.75rem,env(safe-area-inset-top))] lg:h-[min(42rem,calc(100dvh-4rem))]',
+			content:
+				'max-h-[calc(100dvh-max(0.75rem,env(safe-area-inset-top)))] lg:max-h-[min(42rem,calc(100dvh-4rem))]',
+		},
+	},
 });

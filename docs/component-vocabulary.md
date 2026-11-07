@@ -30,7 +30,7 @@ decision. Demotion is allowed and cheaper than it looks.
 
 ## The primitives
 
-Domain-blind, so any page can use them. Five are `tailwind-variants` recipes
+Domain-blind, so any page can use them. Six are `tailwind-variants` recipes
 rather than components, because the same button has to be able to be a `<label>`,
 an `<input>`, an `<a>` and a `<Dialog.Close>` — a component that owns its element
 cannot do that without an `asChild` hatch nobody remembers to reach for.
@@ -44,6 +44,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `input` | `align` left/center | `text-base` is not a style choice — under 16px iOS zooms on focus, and it sets the floor for how narrow a set-row column can get. |
 | `button` | `kind` primary/quiet/bare/clock · `size` sm/md/lg/touch | `quiet` is the default; `primary` is rationed to one per screen. `touch` is 48px. `clock` is a clock's start, pause and resume off its field: a 2px dim-ink outline, no fill, never vermilion (#114); pair it with `touch` or larger |
 | `option` | `on` · `width` auto/full | A choice in a picker. `full` is Direction B's finding, kept though its direction lost. |
+| `sheet` | `height` full/content | A sheet's popup: from the bottom edge on a phone, a 400px dialog centred from `lg` that fades. `full` reaches to just under the status bar and holds one height from `lg`, so a stepped flow's controls stay put (the readiness check); `content` is as tall as what it holds (the self-check). One recipe since #113's review; it was one class string pasted into both. More's sheet is not on it: it has no `lg` form (the rail replaces it) |
 
 ### Components — `ui/`
 

@@ -23,7 +23,7 @@ import { displayDate } from '$lib/displayDate';
 import * as m from '$lib/paraglide/messages';
 import type { SelfCheck } from '$lib/types';
 import { Eyebrow, Prose } from './ui/primitives';
-import { button, card, option } from './ui/variants';
+import { button, card, option, sheet } from './ui/variants';
 
 const BAND_LABEL: Record<SelfCheckBand, () => string> = {
 	manageable: m.deep_band_manageable,
@@ -83,12 +83,7 @@ export function SelfCheckSheet({
 				    shape: the title and a 44px close on one line, 200ms from the bottom
 				    edge, and from `lg` a 400px dialog centred in the window that fades
 				    in. It is as tall as its content, up to just under the status bar. */}
-				<Dialog.Popup
-					className={
-						'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[calc(100dvh-max(0.75rem,env(safe-area-inset-top)))] max-w-[520px] flex-col rounded-t-xl border border-b-0 border-line bg-panel pb-[env(safe-area-inset-bottom)] transition-[translate,opacity] duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full ' +
-						'lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:max-h-[min(42rem,calc(100dvh-4rem))] lg:w-100 lg:max-w-none lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-xl lg:border-b lg:pb-0 lg:data-[ending-style]:-translate-y-1/2 lg:data-[ending-style]:opacity-0 lg:data-[starting-style]:-translate-y-1/2 lg:data-[starting-style]:opacity-0'
-					}
-				>
+				<Dialog.Popup className={sheet({ height: 'content' })}>
 					<div className="flex items-center gap-2 py-1 pr-1 pl-4">
 						<div className="min-w-0 flex-1">
 							<Dialog.Title className="text-[15px] leading-tight font-semibold text-ink">
