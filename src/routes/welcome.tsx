@@ -49,8 +49,10 @@
 // The athlete is an athlete. Not a user, a client or a patient — intake copy
 // is where that slips, and every string on this page is second person.
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { X } from 'lucide-react';
 import { type ReactNode, useId, useMemo, useState } from 'react';
 import { useBaselineDraft } from '$lib/baselineDraft';
+import type { ScreenAction } from '$lib/chrome';
 import { getContent } from '$lib/content';
 import { isoToday } from '$lib/dates';
 import * as m from '$lib/paraglide/messages';
@@ -78,16 +80,45 @@ import {
 	type Level,
 	type Program,
 } from '$lib/types';
-import { Bare, Eyebrow, Pane, Prose, ScreenHeader, Section } from '../components/ui/primitives';
+import { cn } from '$lib/utils';
+import { Bare, Pane, Prose, ScreenHeader, Section } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { type Step, Stepper } from '../components/ui/Stepper';
 import { button, card, chip, input, option } from '../components/ui/variants';
 
+/**
+ * The way out, on every step (#123, spec story 73).
+ *
+ * With no bar on this screen (#115) the athlete has nowhere else to tap, so the
+ * exit is the strip's screen action: the strip is fixed, so no step, however
+ * long in pt-BR, scrolls it out of view, and it is there on the proposal and
+ * while the record is still arriving, which the steps' own controls are not.
+ * The ✕ of every sheet and of the protocol editor, in the 44px ghost square the
+ * Timer's cue settings use, named for what it does: nothing is lost by it,
+ * since the draft stays on the device and Today offers to finish it.
+ *
+ * A link, not a button that navigates: leaving is a place, and a link is what
+ * a long-press or a middle click expects. `locale` is the strip's, as the strip
+ * requires of its action.
+ */
+const IntakeExit: ScreenAction = ({ locale }) => (
+	<Link
+		to="/"
+		aria-label={m.welcome_exit({}, { locale })}
+		title={m.welcome_exit({}, { locale })}
+		// The ring is drawn inside, as the cue settings' is: the control is the
+		// strip's full height, and a ring 2px outside it falls off the window.
+		className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-dim transition-colors hover:bg-panel-2 hover:text-ink focus-visible:-outline-offset-2"
+	>
+		<X size={20} strokeWidth={1.75} aria-hidden="true" />
+	</Link>
+);
+
 // No navigation here (#115, spec story 72): the stepper has the whole screen, and
-// its way out is on every step instead. Read by the shell through `lib/chrome.ts`.
+// its way out is the strip's action instead. Read by the shell through `lib/chrome.ts`.
 export const Route = createFileRoute('/welcome')({
 	component: Welcome,
-	staticData: { navigation: false },
+	staticData: { navigation: false, screenAction: IntakeExit },
 });
 
 /** Labels for the closed sets, as message *functions* — each reads the locale
@@ -277,6 +308,14 @@ function Flow({
 	const at = draft.step;
 	const last = STEP_ANSWERS.length - 1;
 	const patch = (fields: Partial<BaselineDraft>) => setDraft((prev) => ({ ...prev, ...fields }));
+	// Whether the step on screen was reached by Next or Back, rather than opened
+	// (a fresh visit, a resumed draft). Only a step the athlete moved to takes the
+	// focus: on arrival nothing was pressed, and focus stays where the page put it.
+	const [moved, setMoved] = useState(false);
+	const go = (step: number) => {
+		setMoved(true);
+		patch({ step });
+	};
 
 	// Built at render, not at module scope: every one of these is a message
 	// function and has to be *called* after a locale switch re-keys the tree.
@@ -310,27 +349,32 @@ function Flow({
 				steps={steps}
 				at={at}
 				railLabel={m.welcome_progress({ n: at + 1, total: steps.length })}
-				{...(at > 0
-					? { back: { label: m.btn_back(), onClick: () => patch({ step: at - 1 }) } }
-					: {})}
+				// The intake's sections gap between the rail, the step and the
+				// controls, where the sheet keeps the primitive's tighter one: here
+				// each is a section of the page (DESIGN.md › The spacing scale).
+				className="gap-sections"
+				{...(at > 0 ? { back: { label: m.btn_back(), onClick: () => go(at - 1) } } : {})}
 				next={{
 					label: at === last ? m.btn_generate() : m.btn_next(),
-					onClick: () => (at === last ? onPropose() : patch({ step: at + 1 })),
+					onClick: () => (at === last ? onPropose() : go(at + 1)),
 					disabled: !complete,
 					waitingFor: reason,
 				}}
 			>
-				{at === 0 ? <GoalStep draft={draft} patch={patch} /> : null}
-				{at === 1 ? <LevelStep draft={draft} patch={patch} /> : null}
-				{at === 2 ? <WeekStep draft={draft} patch={patch} setDraft={setDraft} /> : null}
-				{at === 3 ? <BodyStep draft={draft} patch={patch} /> : null}
+				{at === 0 ? <GoalStep draft={draft} patch={patch} arrived={moved} /> : null}
+				{at === 1 ? <LevelStep draft={draft} patch={patch} arrived={moved} /> : null}
+				{at === 2 ? (
+					<WeekStep draft={draft} patch={patch} setDraft={setDraft} arrived={moved} />
+				) : null}
+				{at === 3 ? <BodyStep draft={draft} patch={patch} arrived={moved} /> : null}
 			</Stepper>
 
 			{/* Skippable, and it says so rather than leaving the athlete to discover
 			    it by pressing Back. `bare`, because leaving is not an action this
-			    screen is for. */}
+			    screen is for. The strip's ✕ is the same way out, always in view; this
+			    one says what leaving costs (nothing), where a step ends. */}
 			<Bare className="flex flex-col items-start gap-2">
-				<p className="text-[12.5px] leading-snug text-ink-dim">{m.welcome_skip_note()}</p>
+				<p className="text-[13px] leading-snug text-ink-dim">{m.welcome_skip_note()}</p>
 				<Link to="/" className={button({ kind: 'bare', size: 'md', class: 'min-h-11 px-0' })}>
 					{m.welcome_skip()}
 				</Link>
@@ -341,6 +385,14 @@ function Flow({
 
 type Patch = (fields: Partial<BaselineDraft>) => void;
 
+/** What every step takes. `arrived`: the athlete moved here with Next or Back,
+ *  so the step takes the focus (`StepBody`). */
+interface StepProps {
+	draft: BaselineDraft;
+	patch: Patch;
+	arrived: boolean;
+}
+
 /**
  * One question, answered from a stacked list of full-width options.
  *
@@ -349,6 +401,9 @@ type Patch = (fields: Partial<BaselineDraft>) => void;
  * each, because a choice is a toggle and the set is the value. Options carry an
  * optional second line, which is what the three experience levels need: the
  * labels alone ("Advanced") do not tell the athlete which one they are.
+ *
+ * The legend is the question, so it is the section head in Inter (#123), as on
+ * every screen before this one, with the options a row gap apart under it.
  */
 function Choices<T extends string>({
 	label,
@@ -362,8 +417,8 @@ function Choices<T extends string>({
 	onPick: (next: T) => void;
 }) {
 	return (
-		<fieldset className="flex min-w-0 flex-col gap-1.5">
-			<legend className="eyebrow mb-1.5">{label}</legend>
+		<fieldset className="flex min-w-0 flex-col gap-row">
+			<legend className="h-section-sans mb-group">{label}</legend>
 			{options.map((o) => (
 				<button
 					key={o.id}
@@ -396,6 +451,7 @@ function TextField({
 	onChange,
 	type = 'text',
 	inputMode,
+	rank = 'field',
 }: {
 	label: string;
 	/** A unit or a format, shown beside the label rather than in the field. */
@@ -404,11 +460,21 @@ function TextField({
 	onChange: (next: string) => void;
 	type?: 'text' | 'number' | 'date';
 	inputMode?: 'decimal' | 'numeric';
+	/** `question` when the field is one of its step's questions (the session
+	 *  length, beside the days and the equipment), so it heads itself as they
+	 *  do; `field` when it sits under a question or a section that heads it (the
+	 *  grades under the level, the context under Optional). */
+	rank?: 'question' | 'field';
 }) {
 	const id = useId();
 	return (
-		<div className="flex min-w-0 flex-1 flex-col gap-1">
-			<label className="eyebrow" htmlFor={id}>
+		<div
+			className={cn('flex min-w-0 flex-1 flex-col', rank === 'question' ? 'gap-group' : 'gap-1')}
+		>
+			<label
+				className={rank === 'question' ? 'h-section-sans' : 'text-[13px] leading-snug text-ink'}
+				htmlFor={id}
+			>
 				{label}
 				{hint ? <span className="text-ink-faint"> {hint}</span> : null}
 			</label>
@@ -426,9 +492,9 @@ function TextField({
 
 /** Step 1 — what you train for. Reorders which weekdays train, and bumps the
  *  focus's signature day to the front of that order. */
-function GoalStep({ draft, patch }: { draft: BaselineDraft; patch: Patch }) {
+function GoalStep({ draft, patch, arrived }: StepProps) {
 	return (
-		<StepBody help={m.welcome_goals_help()}>
+		<StepBody help={m.welcome_goals_help()} arrived={arrived}>
 			<Choices
 				label={m.field_goal()}
 				value={draft.goal}
@@ -453,9 +519,9 @@ function GoalStep({ draft, patch }: { draft: BaselineDraft; patch: Patch }) {
  *  the two apart would hide that one overrides the other. Free text and not a
  *  scale picker — `Baseline` types both as strings deliberately, so an athlete
  *  who grades in Font or on a circuit board can still answer. */
-function LevelStep({ draft, patch }: { draft: BaselineDraft; patch: Patch }) {
+function LevelStep({ draft, patch, arrived }: StepProps) {
 	return (
-		<StepBody help={m.welcome_level_help()}>
+		<StepBody help={m.welcome_level_help()} arrived={arrived}>
 			<Choices
 				label={m.field_level()}
 				value={draft.level}
@@ -490,9 +556,8 @@ function WeekStep({
 	draft,
 	patch,
 	setDraft,
-}: {
-	draft: BaselineDraft;
-	patch: Patch;
+	arrived,
+}: StepProps & {
 	setDraft: (next: (prev: BaselineDraft) => BaselineDraft) => void;
 }) {
 	// Resolved against the previous draft rather than against `draft.equipment`,
@@ -506,12 +571,12 @@ function WeekStep({
 		}));
 
 	return (
-		<StepBody help={m.welcome_week_help()}>
+		<StepBody help={m.welcome_week_help()} arrived={arrived}>
 			{/* Digits, so `Segmented` rather than a stacked list: the measured rule
 			    about ragged rows is about label *length*, and `4` is four pixels wide
 			    in both languages. */}
-			<fieldset className="flex min-w-0 flex-col gap-1.5">
-				<legend className="eyebrow mb-1.5">{m.field_days()}</legend>
+			<fieldset className="flex min-w-0 flex-col">
+				<legend className="h-section-sans mb-group">{m.field_days()}</legend>
 				<Segmented
 					value={draft.daysPerWeek}
 					options={DAYS.map((id) => ({ id, label: String(id) }))}
@@ -526,10 +591,11 @@ function WeekStep({
 				onChange={(sessionMinutes) => patch({ sessionMinutes })}
 				type="number"
 				inputMode="numeric"
+				rank="question"
 			/>
 
-			<fieldset className="flex min-w-0 flex-col gap-1.5">
-				<legend className="eyebrow mb-1.5">{m.field_equipment()}</legend>
+			<fieldset className="flex min-w-0 flex-col gap-row">
+				<legend className="h-section-sans mb-group">{m.field_equipment()}</legend>
 				{EQUIPMENT.map((eq) => {
 					const on = draft.equipment.includes(eq);
 					return (
@@ -559,25 +625,30 @@ function WeekStep({
  * the fingers self-check. Both are required. Neither has a default, and
  * `false` is an answer rather than the absence of one.
  */
-function BodyStep({ draft, patch }: { draft: BaselineDraft; patch: Patch }) {
+function BodyStep({ draft, patch, arrived }: StepProps) {
 	return (
-		<StepBody help={m.welcome_body_help()}>
-			<Section label={m.welcome_fingers_title()}>
-				<YesNo
-					question={m.field_niggle()}
-					help={m.welcome_niggle_help()}
-					value={draft.niggle}
-					onAnswer={(niggle) => patch({ niggle })}
-				/>
-				<YesNo
-					question={m.field_synovitis()}
-					help={m.welcome_synovitis_help()}
-					value={draft.synovitis}
-					onAnswer={(synovitis) => patch({ synovitis })}
-				/>
+		<StepBody help={m.welcome_body_help()} arrived={arrived}>
+			<Section face="sans" label={m.welcome_fingers_title()}>
+				{/* 20px between the two questions: each holds its own 4px and 8px
+				    steps, so the section's 10px left the second question's line on
+				    the first one's buttons. Still under the 28px between sections. */}
+				<div className="flex flex-col gap-5">
+					<YesNo
+						question={m.field_niggle()}
+						help={m.welcome_niggle_help()}
+						value={draft.niggle}
+						onAnswer={(niggle) => patch({ niggle })}
+					/>
+					<YesNo
+						question={m.field_synovitis()}
+						help={m.welcome_synovitis_help()}
+						value={draft.synovitis}
+						onAnswer={(synovitis) => patch({ synovitis })}
+					/>
+				</div>
 			</Section>
 
-			<Section label={m.welcome_optional()}>
+			<Section face="sans" label={m.welcome_optional()}>
 				<p className="text-[11px] leading-snug text-ink-faint">{m.welcome_context_help()}</p>
 				<div className="flex gap-2.5">
 					{/* Kilograms, said out loud. Storage is canonical (ADR 0009) and
@@ -613,11 +684,38 @@ function BodyStep({ draft, patch }: { draft: BaselineDraft; patch: Patch }) {
 /** One step's content: the line saying what this step decides, then the fields.
  *  The line is not decoration — each of the four answers changes something
  *  specific about the generated program, and saying which is what makes an
- *  intake question worth answering carefully. */
-function StepBody({ help, children }: { help: string; children: ReactNode }) {
+ *  intake question worth answering carefully.
+ *
+ *  **A step the athlete moved to takes the focus, on that line** (#123). The
+ *  advance sits at the end of a step that runs past the fold at 360px in pt-BR,
+ *  and the next step rendered under a page still scrolled there: the athlete met
+ *  the end of a step whose questions were above them, and a keyboard stayed on
+ *  the advance. So the page goes back to its top (the title, the rail) and the
+ *  line saying what this step decides takes the focus, the way the readiness
+ *  sheet focuses each question as it arrives. A ref callback, so it runs as the
+ *  step mounts and nothing impure runs during render. Questions are spaced a
+ *  sections gap apart, each a head over its options (DESIGN.md › The spacing
+ *  scale). */
+function StepBody({
+	help,
+	arrived,
+	children,
+}: {
+	help: string;
+	arrived: boolean;
+	children: ReactNode;
+}) {
+	const arrive = (el: HTMLElement | null) => {
+		if (!el || !arrived) return;
+		// `?.`: jsdom has no scrolling. Instant under reduced motion (app.css).
+		document.documentElement.scrollTo?.({ top: 0 });
+		el.focus({ preventScroll: true });
+	};
 	return (
-		<div className="flex flex-col gap-5">
-			<p className="text-[12.5px] leading-snug text-ink-dim">{help}</p>
+		<div className="flex flex-col gap-sections">
+			<p ref={arrive} tabIndex={-1} className="text-[13px] leading-snug text-ink-dim outline-none">
+				{help}
+			</p>
 			{children}
 		</div>
 	);
@@ -697,7 +795,14 @@ function ProposalView({
 				}
 			/>
 
-			<Section label={m.prop_training_days({ n: proposal.trainingDays })}>
+			<Section
+				face="sans"
+				label={
+					proposal.trainingDays === 1
+						? m.prop_training_days_one({ n: proposal.trainingDays })
+						: m.prop_training_days_other({ n: proposal.trainingDays })
+				}
+			>
 				<div className={card({ pad: 'sm', class: 'flex flex-col gap-3' })}>
 					<p className="text-[13px] leading-snug text-ink">
 						{m.prop_week({ phase: proposal.firstPhase })}
@@ -734,23 +839,27 @@ function ProposalView({
 			    because it qualifies the plan without stopping it. */}
 			{proposal.niggle || proposal.synovitis ? (
 				<div className={card({ pad: 'sm', tone: 'warn', class: 'flex flex-col gap-2' })}>
-					<Eyebrow>{m.welcome_fingers_title()}</Eyebrow>
+					<h2 className="h-section-sans">{m.welcome_fingers_title()}</h2>
 					{proposal.niggle ? (
-						<p className="text-[12.5px] leading-snug text-ink">{m.prop_niggle_flagged()}</p>
+						<p className="text-[13px] leading-snug text-ink">{m.prop_niggle_flagged()}</p>
 					) : null}
 					{proposal.synovitis ? (
-						<p className="text-[12.5px] leading-snug text-ink">{m.prop_synovitis_flagged()}</p>
+						<p className="text-[13px] leading-snug text-ink">{m.prop_synovitis_flagged()}</p>
 					) : null}
 				</div>
 			) : null}
 
 			<div className="flex flex-col gap-2">
-				<div className="flex gap-2.5">
+				{/* They share a row where both fit (from about 400px) and stack below
+				    it, the primary on top. At 360px the change button took its
+				    label's width and left Start 133px, which pt-BR's "Começar a
+				    treinar" wrapped in two (#123). */}
+				<div className="flex flex-wrap gap-2.5">
 					<button
 						type="button"
 						disabled={saving}
 						onClick={onStart}
-						className={button({ kind: 'primary', size: 'touch', class: 'flex-1' })}
+						className={button({ kind: 'primary', size: 'touch', class: 'grow basis-[180px]' })}
 					>
 						{m.prop_start()}
 					</button>
@@ -758,7 +867,7 @@ function ProposalView({
 						type="button"
 						disabled={saving}
 						onClick={onEdit}
-						className={button({ size: 'lg', class: 'min-h-11' })}
+						className={button({ size: 'lg', class: 'min-h-11 grow' })}
 					>
 						{m.welcome_edit()}
 					</button>
@@ -766,7 +875,7 @@ function ProposalView({
 				{/* Gold, like Settings' caveats: it is a warning about this device, and
 				    the answers are still here to try again with. */}
 				{failed ? (
-					<p className="text-[12.5px] leading-snug text-gold">{m.welcome_save_failed()}</p>
+					<p className="text-[13px] leading-snug text-gold">{m.welcome_save_failed()}</p>
 				) : null}
 			</div>
 		</>

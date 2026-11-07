@@ -90,10 +90,13 @@ export function Stepper({
 							className="min-w-0 flex-1"
 							{...(index === at ? { 'aria-current': 'step' as const } : {})}
 						>
-							{/* The progress bar carries no text, so an accent fill on it is free
-							    — the contrast rule that keeps white off `--flag` is about a
-							    text/background pair, and there is none here. */}
-							<div className={cn('h-1.5 rounded-full', reached ? 'bg-flag' : 'bg-line')} />
+							{/* Chalk, not vermilion (#123). Vermilion fills once per screen,
+							    and that is the advance below (DESIGN.md › The Rationed Fill
+							    Rule); a vermilion rail made two on every step, and it said
+							    "limit" about progress. Chalk is what the app already fills a
+							    chosen thing with (the switch, the selected option's edge). One
+							    decision for both users, the intake and the readiness sheet. */}
+							<div className={cn('h-1.5 rounded-full', reached ? 'bg-chalk' : 'bg-line')} />
 							{step.label ? (
 								<div
 									className={cn(
@@ -134,7 +137,7 @@ export function Stepper({
 					</button>
 				</div>
 				{next.disabled && next.waitingFor ? (
-					<p className="text-[12.5px] leading-snug text-gold">{next.waitingFor}</p>
+					<p className="text-[13px] leading-snug text-gold">{next.waitingFor}</p>
 				) : null}
 			</div>
 		</div>
