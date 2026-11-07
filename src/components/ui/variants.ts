@@ -71,6 +71,24 @@ export const chip = tv({
 });
 
 /**
+ * A state's mark: the dot beside a score, a verdict or a flag's title (#125
+ * gathered the three copies Today and Log kept). A mark carries a colour a label
+ * cannot, since a dot needs 3:1 where 11px text needs 4.5:1, so the state goes
+ * on the mark and the number or the words beside it stay ink. `info` is a state
+ * too, and the quietest: faint ink, no accent.
+ */
+export const STATE_MARK = {
+	ok: 'bg-teal',
+	warn: 'bg-gold',
+	stop: 'bg-flag',
+	info: 'bg-ink-faint',
+} as const;
+
+/** A flag's severity as its chip's tone: `info` takes no tint, because three
+ *  tinted chips in a row is how a calm screen turns into a warning screen. */
+export const SEVERITY_CHIP = { stop: 'stop', warn: 'warn', info: 'neutral' } as const;
+
+/**
  * Every text and number input on every screen.
  *
  * `text-base` is not a style choice: a computed font-size under 16px makes iOS

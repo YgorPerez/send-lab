@@ -24,19 +24,17 @@ import { OUTCOME_LABEL } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import {
-	type FlagSeverity,
 	type LogDay,
 	type LoggedCheckRow,
 	type LoggedSessionRow,
 	resolveLog,
-	type ScoreTone,
 } from '$lib/screens/log';
 import { useTrainingRecord } from '$lib/store/record';
 import { cn } from '$lib/utils';
 import { SetTable } from '../components/SetRows';
 import { Empty, Pane, Panes, ScreenHeader } from '../components/ui/primitives';
 import { Row, RowGroup, RowsEnd, useRowsInPlace } from '../components/ui/Rows';
-import { button, card, chip } from '../components/ui/variants';
+import { button, card, chip, SEVERITY_CHIP, STATE_MARK } from '../components/ui/variants';
 
 export const Route = createFileRoute('/log')({ component: Log });
 
@@ -49,25 +47,8 @@ function counted(
 	return n === 1 ? one({ n }) : other({ n });
 }
 
-/** The score's mark: its verdict's state as a dot, which clears 3:1 as a mark on
- *  every surface a row takes, where the accents as 11px text do not (DESIGN.md ›
- *  The Pair, Not the Palette Rule). Never the library's verdict colour: it
- *  paints a good day vermilion (`screens/log.ts`). */
-const TONE_MARK: Record<ScoreTone, string> = {
-	ok: 'bg-teal',
-	warn: 'bg-gold',
-	stop: 'bg-flag',
-};
-
 /** Chalk on every line of the selected row from `lg` (`Row`'s `aside`). */
 const PICKED = 'lg:group-data-[current]:text-chalk';
-
-/** A flag's severity as its chip's tone, as Today draws it. */
-const FLAG_CHIP: Record<FlagSeverity, 'stop' | 'warn' | 'neutral'> = {
-	stop: 'stop',
-	warn: 'warn',
-	info: 'neutral',
-};
 
 function Log() {
 	// The history, live. `useTrainingRecord` subscribes to the collections, so a
@@ -205,7 +186,7 @@ function DaySummary({ day }: { day: LogDay }) {
 						<span
 							data-score-tone=""
 							aria-hidden="true"
-							className={cn('size-2 shrink-0 self-center rounded-full', TONE_MARK[check.tone])}
+							className={cn('size-2 shrink-0 self-center rounded-full', STATE_MARK[check.tone])}
 						/>
 						<span className={cn('num text-[13px] font-semibold text-ink', PICKED)}>
 							<span className="sr-only">{m.rd_score()} </span>
@@ -271,7 +252,7 @@ function Block({
 	return (
 		<section className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
 			<header className="flex items-baseline justify-between gap-2">
-				<Heading className="h-section-sans min-w-0">{title}</Heading>
+				<Heading className="h-section min-w-0">{title}</Heading>
 				{reading ? (
 					<span className="num shrink-0 text-[11px] text-ink-faint">{reading}</span>
 				) : null}
@@ -288,7 +269,7 @@ function CheckDetail({ check, level }: { check: LoggedCheckRow; level: 3 | 4 }) 
 			<div className="flex items-start gap-2">
 				<span
 					aria-hidden="true"
-					className={cn('mt-1.5 size-2 shrink-0 rounded-full', TONE_MARK[check.tone])}
+					className={cn('mt-1.5 size-2 shrink-0 rounded-full', STATE_MARK[check.tone])}
 				/>
 				<p className="min-w-0 text-[13px] leading-snug">
 					<span className="num font-semibold text-ink">{check.score}</span>{' '}
@@ -299,7 +280,7 @@ function CheckDetail({ check, level }: { check: LoggedCheckRow; level: 3 | 4 }) 
 			{check.flags.length ? (
 				<div className="flex flex-wrap gap-1">
 					{check.flags.map((f) => (
-						<span key={f.title} className={chip({ tone: FLAG_CHIP[f.severity] })}>
+						<span key={f.title} className={chip({ tone: SEVERITY_CHIP[f.severity] })}>
 							{f.title}
 						</span>
 					))}

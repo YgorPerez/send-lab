@@ -303,7 +303,7 @@ function TimerScreen() {
 		<Pane className="gap-sections">
 			<ScreenHeader title={m.nav_timer()} />
 
-			<Section face="sans" label={m.timer_saved()}>
+			<Section label={m.timer_saved()}>
 				{screen.saved.length ? (
 					<div className="flex flex-col gap-row">
 						{screen.saved.map((p) => row(p))}
@@ -345,7 +345,7 @@ function TimerScreen() {
 				/>
 			</button>
 
-			<Section face="sans" label={m.timer_recent()}>
+			<Section label={m.timer_recent()}>
 				{recent.length ? (
 					<div className="flex flex-col gap-row">{recent.map((p) => row(p))}</div>
 				) : (
@@ -353,7 +353,7 @@ function TimerScreen() {
 				)}
 			</Section>
 
-			<Section face="sans" label={m.timer_presets()}>
+			<Section label={m.timer_presets()}>
 				<RowGroup multiple value={openGroups} onValueChange={toggleGroups}>
 					{groups.map((g) => (
 						<Row

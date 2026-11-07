@@ -190,9 +190,6 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				const advance = worded(main(), step === 3 ? copy.generate : copy.next);
 				expect(advance?.disabled, label).toBe(true);
 				expect(main().textContent, label).toContain(copy.waiting[step]);
-				// Section heads in Inter, like every screen delivered before it
-				// (DESIGN.md › Typography): the mono caps head is retiring.
-				expect(main().querySelector('.h-section'), label).toBeNull();
 				// The glossary's words, in the copy and in what is read aloud.
 				expect(copyOf(main()), label).not.toMatch(copy.avoided);
 				answerStep();
@@ -203,7 +200,6 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(worded(main(), copy.start)).toBeTruthy();
 			expect(exitLink(copy.exit)).toBeTruthy();
 			expect(vermilionFills()).toHaveLength(1);
-			expect(main().querySelector('.h-section')).toBeNull();
 			expect(copyOf(main())).not.toMatch(copy.avoided);
 			// A count with its noun in the right number.
 			expect([...main().querySelectorAll('h2')].map((h) => h.textContent)).toContain(

@@ -156,7 +156,7 @@ export function CueSettingsShortcut({ locale }: { locale: AppLocale }) {
 			<Popover.Portal>
 				<Popover.Positioner sideOffset={6} align="end" collisionPadding={16} className="z-50">
 					<Popover.Popup className="w-[min(320px,calc(100vw-32px))] rounded-lg border border-line bg-panel px-3 pt-2.5 pb-1 shadow-lg transition-[opacity,transform] duration-150 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0">
-						<Popover.Title className="h-section-sans pb-1">{title}</Popover.Title>
+						<Popover.Title className="h-section pb-1">{title}</Popover.Title>
 						<CueSettings surface={false} />
 					</Popover.Popup>
 				</Popover.Positioner>

@@ -773,7 +773,7 @@ export function Timer({
 	const adjustId = useId();
 	const setup = editable ? (
 		<section aria-labelledby={`${adjustId}-heading`} className="mt-6 flex flex-col gap-1 pb-2">
-			<h2 id={`${adjustId}-heading`} className="h-section-sans">
+			<h2 id={`${adjustId}-heading`} className="h-section">
 				{m.timer_setup()}
 			</h2>
 			<ProtocolRows

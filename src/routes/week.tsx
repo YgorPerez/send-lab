@@ -204,14 +204,8 @@ function Week() {
 			<Panes
 				primary={
 					<Section
-						face="sans"
 						label={m.wk_training_week({ n: w.weekNumber, total: w.weekCount })}
-						meta={
-							// A phrase, so Inter at the meta size, not the eyebrow's mono.
-							<span className="font-sans text-[11px] tracking-normal">
-								{m.wk_adherence({ trained: w.trainedSlots, scheduled: w.scheduledSlots })}
-							</span>
-						}
+						meta={m.wk_adherence({ trained: w.trainedSlots, scheduled: w.scheduledSlots })}
 					>
 						<Legend />
 						{/* Four columns is what 360px allows after the gutters; seven is
@@ -323,11 +317,9 @@ function DayPanel({ id, slot }: { id: string; slot: WeekSlot }) {
 	return (
 		<div id={id} data-slot-day="">
 			<Section
-				face="sans"
 				label={`${slot.weekdayLabel} · ${slot.day.type}`}
 				meta={
-					// Inter at the meta size, as Today's trend says its words.
-					<span className="inline-flex items-center gap-2 font-sans text-[11px] tracking-normal text-ink-dim">
+					<span className="inline-flex items-center gap-2 text-ink-dim">
 						{/* A rest day's head already says rest ("Sun · Rest"). */}
 						{slot.isRestDay ? null : (
 							<span className="inline-flex items-center gap-1.5">

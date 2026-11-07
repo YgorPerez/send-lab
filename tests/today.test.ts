@@ -62,7 +62,9 @@ const COPY = {
 	'en-US': {
 		invite: '>Answer the check<',
 		summary: 'answered',
-		plan: '>Pull · ',
+		plan: '>Pull<',
+		trainingWeek: /Training week \d of 8/,
+		bareWeek: /Week 5 \/ 8/,
 		rest: 'Rest day',
 		flags: '>Watch-outs<',
 		outcome: "How did today's Pull session go?",
@@ -77,7 +79,9 @@ const COPY = {
 	'pt-BR': {
 		invite: '>Responder o check<',
 		summary: 'respondidas',
-		plan: '>Puxada · ',
+		plan: '>Puxada<',
+		trainingWeek: /Semana de treino \d de 8/,
+		bareWeek: /Semana 5 \/ 8/,
 		rest: 'Dia de descanso',
 		flags: '>Pontos de atenção<',
 		outcome: 'Como foi a sessão de Puxada hoje?',
@@ -172,6 +176,38 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				expect(go).toContain('bg-flag');
 				expect(go).toContain('href="/train"');
 			}
+		});
+
+		// The glossary's words for the training week, as Week heads its grid
+		// (#121), and nowhere a bare "Week 5 / 8" (#125). Seeded is in week 5,
+		// a new account in week 1.
+		test('names the training week under the title, in the glossary’s words', async () => {
+			for (const seeded of [true, false]) {
+				const screen = await today(THURSDAY, locale, seeded);
+				const header = screen.slice(0, screen.indexOf('</header>'));
+				expect(header, `seeded: ${seeded}`).toMatch(copy.trainingWeek);
+				expect(screen, `seeded: ${seeded}`).not.toMatch(copy.bareWeek);
+			}
+		});
+
+		// The plan heads its day as Week heads the same day: the day type, the
+		// load as a chip beside it, and on a rest day no load at all, because the
+		// library's rest load is "OFF", the glossary's avoided *off day* (#125).
+		test('heads the plan with the day type, and a rest day with no "off"', async () => {
+			for (const seeded of [true, false]) {
+				const rest = await today(SUNDAY, locale, seeded);
+				expect(rest, `seeded: ${seeded}`).not.toMatch(/>(OFF|FOLGA)</);
+				expect(rest, `seeded: ${seeded}`).not.toMatch(/ · (OFF|FOLGA)/);
+			}
+		});
+
+		// The verdict's mark is its state, as Log's score dot is (#120): the
+		// library paints a green day vermilion, the stop colour (spec story 61).
+		test('marks the verdict with its state, never the library’s colour', async () => {
+			const screen = await today(THURSDAY, locale, true);
+			const read = screen.slice(0, screen.indexOf(copy.summary));
+			expect(read).toMatch(/data-verdict-tone="(ok|warn|stop)"/);
+			expect(read).not.toMatch(/style="background:var\(--flag\)"/);
 		});
 
 		test('marks each flag’s severity in the locale, never the raw id', async () => {

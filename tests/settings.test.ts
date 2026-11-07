@@ -108,7 +108,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			const main = await screen(locale);
 			const heads = [...main.querySelectorAll('h2')];
 			expect(heads.map(text)).toEqual(copy.groups);
-			for (const head of heads) expect(head.className, text(head)).toContain('h-section-sans');
+			for (const head of heads) expect(head.className, text(head)).toContain('h-section');
 			expect(main.querySelectorAll('h3, h4')).toHaveLength(0);
 		});
 

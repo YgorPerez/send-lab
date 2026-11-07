@@ -120,7 +120,7 @@ export function ProtocolRows({
 				});
 				return group.heading ? (
 					<fieldset key={headingId} aria-labelledby={headingId} className="min-w-0">
-						<h3 id={headingId} className="h-section-sans">
+						<h3 id={headingId} className="h-section">
 							{group.heading()}
 						</h3>
 						{rows}

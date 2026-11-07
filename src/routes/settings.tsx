@@ -95,7 +95,7 @@ function Settings() {
 			    group pattern names: prose, a config and actions, so a `Bare`. */}
 			<Display prefs={prefs} />
 			{/* The same rows the Timer screen opens from the strip (#105, #119). */}
-			<Section face="sans" label={m.cues_title()}>
+			<Section label={m.cues_title()}>
 				<CueSettings />
 			</Section>
 			<Notifications cueNotices={prefs.cueNotices} />
@@ -125,7 +125,7 @@ function Display({ prefs }: { prefs: Prefs }) {
 	const weightId = useId();
 	const lengthId = useId();
 	return (
-		<Section face="sans" label={m.set_units()}>
+		<Section label={m.set_units()}>
 			<ControlList>
 				<ControlRow id={weightId} label={m.field_weight()}>
 					<Segmented
@@ -217,7 +217,7 @@ function Notifications({ cueNotices }: { cueNotices: boolean }) {
 	}
 
 	return (
-		<Section face="sans" label={m.notifications_title()}>
+		<Section label={m.notifications_title()}>
 			{/* One row, and still a card: a list of controls is a card of rows, one
 			    row or many (#122). As a `Bare` it was the one group on the page that
 			    looked like prose. */}
@@ -271,7 +271,7 @@ function Account({ online }: { online: boolean }) {
 	if (isPending) return null;
 
 	return (
-		<Section face="sans" label={m.set_account()}>
+		<Section label={m.set_account()}>
 			<Empty
 				value={m.set_signed_out()}
 				action={
@@ -333,7 +333,7 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 	}
 
 	return (
-		<Section face="sans" label={m.set_account()}>
+		<Section label={m.set_account()}>
 			<ControlList>
 				<div>
 					{/* The email is the session's answer, so offline on a cold load
@@ -474,7 +474,7 @@ function ApiToken({ online }: { online: boolean }) {
 	}
 
 	return (
-		<Section face="sans" label={m.mcp_title()}>
+		<Section label={m.mcp_title()}>
 			{/* Not a list of controls but prose, a config and the actions on it, so
 			    the group pattern's other body: a `Bare` (DESIGN.md › The group
 			    pattern). */}

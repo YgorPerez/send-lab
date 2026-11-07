@@ -15,32 +15,12 @@
 import type { Content, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
-import { exerciseLabel, weekdayLabel } from '$lib/format';
+import { exerciseLabel, type StateTone, verdictTone, weekdayLabel } from '$lib/format';
 import { asExerciseId, type ExerciseId, type WeekdayKey } from '$lib/ids';
 import { fieldsFor, type SetField } from '$lib/loggedSet';
 import { dayTemplate, variantOf } from '$lib/prescription';
 import type { TrainingRecord } from '$lib/store/record';
 import type { LoggedSet } from '$lib/types';
-
-/** How a score reads at a glance: the state its verdict sets, in the three
- *  state tones. */
-export type ScoreTone = 'ok' | 'warn' | 'stop';
-
-/**
- * The verdict's state, not the library's colour for it.
- *
- * The library paints `green` and `short` vermilion (`var(--flag)`), the colour
- * that means at the limit or stop everywhere else, so Log showed a good day's
- * score in the stop colour (spec #113 story 61). Both are a session trained as
- * planned, one of them shorter; `moderate` and `tissue` cap it; `rest` stops it.
- */
-const VERDICT_TONE: Record<VerdictId, ScoreTone> = {
-	green: 'ok',
-	short: 'ok',
-	moderate: 'warn',
-	tissue: 'warn',
-	rest: 'stop',
-};
 
 export type FlagSeverity = 'stop' | 'warn' | 'info';
 
@@ -57,7 +37,7 @@ export interface LoggedCheckRow {
 	score: number;
 	verdictId: VerdictId;
 	verdict: Content['verdicts'][VerdictId];
-	tone: ScoreTone;
+	tone: StateTone;
 	/** The check as answered — question text against the chosen answer. */
 	responses: { question: string; answer: string }[];
 	/** The flags it raised, each with the severity it was raised at. */
@@ -161,7 +141,7 @@ function checkRow(
 		score: r.score,
 		verdictId,
 		verdict: content.verdicts[verdictId],
-		tone: VERDICT_TONE[verdictId],
+		tone: verdictTone(verdictId),
 		responses: content.quiz.flatMap((q) => {
 			const v = r.answers?.[q.id];
 			if (v == null) return [];

@@ -430,7 +430,7 @@ function Choices<T extends string>({
 }) {
 	return (
 		<fieldset className="flex min-w-0 flex-col gap-row">
-			<legend className="h-section-sans mb-group">{label}</legend>
+			<legend className="h-section mb-group">{label}</legend>
 			{options.map((o) => (
 				<button
 					key={o.id}
@@ -578,7 +578,7 @@ function WeekStep({
 			    about ragged rows is about label *length*, and `4` is four pixels wide
 			    in both languages. */}
 			<fieldset className="flex min-w-0 flex-col">
-				<legend className="h-section-sans mb-group">{m.field_days()}</legend>
+				<legend className="h-section mb-group">{m.field_days()}</legend>
 				<Segmented
 					value={draft.daysPerWeek}
 					options={DAYS.map((id) => ({ id, label: String(id) }))}
@@ -602,7 +602,7 @@ function WeekStep({
 			<fieldset className="flex min-w-0 flex-col gap-row">
 				{/* Says it takes several, which the option lines alone do not: they
 				    are drawn like step 1's single choices. */}
-				<legend className="h-section-sans mb-group">
+				<legend className="h-section mb-group">
 					{m.field_equipment()}{' '}
 					<span className="font-normal text-ink-faint">{m.welcome_all_you_have()}</span>
 				</legend>
@@ -656,7 +656,7 @@ function BodyStep({ draft, patch, arrived }: StepProps) {
 				onAnswer={(synovitis) => patch({ synovitis })}
 			/>
 
-			<Section face="sans" label={m.welcome_optional()}>
+			<Section label={m.welcome_optional()}>
 				<p className="text-[11px] leading-snug text-ink-faint">{m.welcome_context_help()}</p>
 				<div className="flex gap-2.5">
 					{/* Kilograms, said out loud. Storage is canonical (ADR 0009) and
@@ -750,7 +750,7 @@ function YesNo({
 }) {
 	return (
 		<fieldset className="flex min-w-0 flex-col gap-2">
-			<legend className="h-section-sans mb-1.5">{question}</legend>
+			<legend className="h-section mb-1.5">{question}</legend>
 			{/* 13px dim, not the 11px faint of a hint: the synovitis line is an
 			    instruction the athlete carries out (a fist, a hook) before answering. */}
 			<p className="text-[13px] leading-snug text-pretty text-ink-dim">{help}</p>
@@ -824,7 +824,6 @@ function ProposalView({
 			/>
 
 			<Section
-				face="sans"
 				label={
 					proposal.trainingDays === 1
 						? m.prop_training_days_one({ n: proposal.trainingDays })
@@ -867,7 +866,7 @@ function ProposalView({
 			    because it qualifies the plan without stopping it. */}
 			{proposal.niggle || proposal.synovitis ? (
 				<div className={card({ pad: 'sm', tone: 'warn', class: 'flex flex-col gap-2' })}>
-					<h2 className="h-section-sans">{m.welcome_fingers_title()}</h2>
+					<h2 className="h-section">{m.welcome_fingers_title()}</h2>
 					{proposal.niggle ? (
 						<p className="text-[13px] leading-snug text-ink">{m.prop_niggle_flagged()}</p>
 					) : null}

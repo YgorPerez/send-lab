@@ -38,7 +38,7 @@ import { type BodyArea, computeReadiness, getContent, hasWellnessAnswer } from '
 import type { Content, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
-import { OUTCOME_LABEL, WELLNESS_LABEL } from '$lib/format';
+import { OUTCOME_LABEL, type StateTone, verdictTone, WELLNESS_LABEL } from '$lib/format';
 import type { ExerciseId, TaskKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
@@ -68,16 +68,21 @@ import {
 	Stat,
 } from '../components/ui/primitives';
 import { Sparkline } from '../components/ui/Sparkline';
-import { button, card, chip, input, option } from '../components/ui/variants';
+import {
+	button,
+	card,
+	chip,
+	input,
+	option,
+	SEVERITY_CHIP,
+	STATE_MARK,
+} from '../components/ui/variants';
 
 export const Route = createFileRoute('/')({ component: Today });
 
 /** Severity → surface tone. `info` deliberately gets no tint: three tinted
  *  panels in a row is how a calm screen turns into a warning screen. */
 const FLAG_CARD = { stop: 'stop', warn: 'warn', info: 'plain' } as const;
-const FLAG_CHIP = { stop: 'stop', warn: 'warn', info: 'neutral' } as const;
-/** Severity → the mark beside a flag's title. */
-const FLAG_DOT = { stop: 'bg-flag', warn: 'bg-gold', info: 'bg-ink-faint' } as const;
 /** Severity → what the chip says, in the locale. */
 const FLAG_SEVERITY = {
 	stop: m.flag_severity_stop,
@@ -231,13 +236,10 @@ function Today() {
 					</>
 				}
 				// A date with a month name is a phrase, so Inter, not mono (DESIGN.md ›
-				// Typography › Meta).
-				meta={t.dateLabel}
-				// A reading, no longer the way in to Week: the navigation carries Week
-				// since #115 (More on a phone, the rail from `lg`), and a faint 11px link
-				// that looked like the other screens' readings was a control nobody could
-				// see.
-				reading={m.week_label({ n: t.weekNumber })}
+				// Typography › Meta). The training week follows it in the glossary's
+				// words, as Week heads its grid (#121); it was "Week 5 / 8" on the
+				// right, a bare *week* and a hard-coded 8 (#125).
+				meta={`${t.dateLabel} · ${m.wk_training_week({ n: t.weekNumber, total: t.weekCount })}`}
 			/>
 
 			{/* THE ORDER (#117, spec #113 stories 33–43): the verdict, the plan it
@@ -258,6 +260,7 @@ function Today() {
 						{checked ? (
 							<ReadCard
 								verdict={verdict}
+								tone={verdictTone(readiness.verdict)}
 								score={readiness.score}
 								vsBaseline={vsBaseline}
 								breakdown={breakdown}
@@ -272,7 +275,7 @@ function Today() {
 							// keeps its anchor. Its action opens the check, and it is the
 							// screen's one primary: with no check there is no verdict, and
 							// answering it is the thing to do first.
-							<Section face="sans" label={m.rd_score()}>
+							<Section label={m.rd_score()}>
 								<Empty
 									value={m.td_no_check()}
 									action={
@@ -369,15 +372,12 @@ function Today() {
 						</Bare>
 						{/* ---- the trend. The one chart the rebuild still has data for. */}
 						<Section
-							face="sans"
 							label={m.readiness_trend()}
 							meta={
 								insights.baseline != null && vsBaseline ? (
-									// Inter at the meta size, as the read card says the same words:
-									// inside the eyebrow it kept 0.14em mono tracking on a sentence.
-									<span className="font-sans text-[11px] tracking-normal">
+									<>
 										<span className="num">⌀ {Math.round(insights.baseline)}</span> · {vsBaseline}
-									</span>
+									</>
 								) : null
 							}
 						>
@@ -470,6 +470,7 @@ function Today() {
 /** The read: the anchor of the screen, and the only place a 30px number appears. */
 function ReadCard({
 	verdict,
+	tone,
 	score,
 	vsBaseline,
 	breakdown,
@@ -479,6 +480,8 @@ function ReadCard({
 	headingRef,
 }: {
 	verdict: Content['verdicts'][VerdictId];
+	/** The verdict's state (`verdictTone`), which its mark is drawn in. */
+	tone: StateTone;
 	score: number;
 	/** Null until the history has a usual to compare against. */
 	vsBaseline: string | null;
@@ -496,9 +499,12 @@ function ReadCard({
 	return (
 		<div className={card({ pad: 'none' })}>
 			<div className="flex items-start gap-2.5 p-3.5">
+				{/* The verdict's state, as Log marks a day's score (#120): never the
+				    library's colour, which paints a green day vermilion (#125). */}
 				<span
-					className="mt-1.5 size-2.5 shrink-0 rounded-full"
-					style={{ background: verdict.color }}
+					aria-hidden="true"
+					data-verdict-tone={tone}
+					className={cn('mt-1.5 size-2.5 shrink-0 rounded-full', STATE_MARK[tone])}
 				/>
 				<div className="min-w-0 flex-1">
 					<h2
@@ -612,7 +618,10 @@ function PlanCard({
 	onTakeCarryForward: () => void;
 }) {
 	return (
-		<Section face="sans" label={`${day.type} · ${day.load}`}>
+		// The day type, and its load as a neutral chip on the right, as Week heads
+		// the same day (#121). A rest day's load is the library's "OFF", the
+		// glossary's avoided *off day*, and the head already says rest (#125).
+		<Section label={day.type} meta={isRestDay ? null : <span className={chip()}>{day.load}</span>}>
 			<div className={card({ pad: 'none' })}>
 				{/* The block phase belongs here, not in the page header: it is the reason
 				    today's prescription looks the way it does, and in the header it was a
@@ -724,7 +733,7 @@ function OutcomeAsk({
 	onPick: (value: number) => void;
 }) {
 	return (
-		<Section face="sans" label={m.rd_outcome_q({ session })}>
+		<Section label={m.rd_outcome_q({ session })}>
 			<div className="grid grid-cols-2 gap-1.5">
 				{[3, 2, 1, 0].map((v) => (
 					<button
@@ -757,7 +766,7 @@ function WatchOuts({
 }) {
 	if (!flags.length) return null;
 	return (
-		<Section face="sans" label={m.flags_heading()}>
+		<Section label={m.flags_heading()}>
 			<div className="flex flex-col gap-row">
 				{flags.map((f) => {
 					const c = content.flags[f.id];
@@ -771,10 +780,10 @@ function WatchOuts({
 							<div className="flex items-baseline gap-2">
 								<span
 									aria-hidden="true"
-									className={cn('size-2 shrink-0 self-center rounded-full', FLAG_DOT[f.severity])}
+									className={cn('size-2 shrink-0 self-center rounded-full', STATE_MARK[f.severity])}
 								/>
 								<span className="min-w-0 flex-1 text-[13px] font-semibold text-ink">{c.title}</span>
-								<span className={chip({ tone: FLAG_CHIP[f.severity] })}>
+								<span className={chip({ tone: SEVERITY_CHIP[f.severity] })}>
 									{FLAG_SEVERITY[f.severity]()}
 								</span>
 							</div>
@@ -841,7 +850,7 @@ function BodyweightNudge({
 	if (bodyweight.latestKg == null) return null;
 	const delta = series.length > 1 ? bodyweight.latestKg - series[0].kg : 0;
 	return (
-		<Section face="sans" label={m.field_bodyweight()}>
+		<Section label={m.field_bodyweight()}>
 			<div>
 				<div className="min-w-0">
 					<div className="num text-[22px] leading-none font-bold text-chalk">
@@ -904,7 +913,7 @@ function InjuryEntry({
 	onSelfCheck: () => void;
 }) {
 	return (
-		<Section face="sans" label={m.rehab_title()}>
+		<Section label={m.rehab_title()}>
 			<div className={card({ pad: 'none' })}>
 				<div className="border-b border-line-soft p-3">
 					<RehabStarter />

@@ -187,7 +187,7 @@ export function parseWeekId(value: unknown): WeekId | null {
 	return typeof value === 'string' && WEEK_PATTERN.test(value) ? (value as WeekId) : null;
 }
 
-/** The week number behind a week id — for `m.week_label({ n })` and ordering. */
+/** The week number behind a week id — for "Training week 5 of 8" and ordering. */
 export function weekNumberOf(id: WeekId): number {
 	const match = WEEK_PATTERN.exec(id);
 	if (!match) throw new Error(`"${id}" is not a week id`);

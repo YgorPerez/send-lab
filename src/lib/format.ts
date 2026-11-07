@@ -26,6 +26,7 @@ import type {
 	Range,
 	Region,
 	Variant,
+	VerdictId,
 } from '$lib/content/types';
 import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
@@ -302,3 +303,27 @@ export const OUTCOME_LABEL = [
 	m.rd_outcome_ok,
 	m.rd_outcome_strong,
 ];
+
+/** How a verdict reads at a glance: its state, in the three state tones. */
+export type StateTone = 'ok' | 'warn' | 'stop';
+
+/**
+ * The verdict's state, not the library's colour for it (#120, shared since #125).
+ *
+ * The library paints `green` and `short` vermilion (`var(--flag)`), the colour
+ * that means at the limit or stop everywhere else, so Log showed a good day's
+ * score in the stop colour (spec #113 story 61), and Today its verdict. Both are
+ * a session trained as planned, one of them shorter; `moderate` and `tissue` cap
+ * it; `rest` stops it. Today's read and Log's score dot both draw this.
+ */
+const VERDICT_TONE: Record<VerdictId, StateTone> = {
+	green: 'ok',
+	short: 'ok',
+	moderate: 'warn',
+	tissue: 'warn',
+	rest: 'stop',
+};
+
+export function verdictTone(verdict: VerdictId): StateTone {
+	return VERDICT_TONE[verdict];
+}

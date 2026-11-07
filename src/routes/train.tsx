@@ -316,7 +316,7 @@ function Train() {
 			    it: it reports that the *session* is saved as it is typed, so it
 			    belongs with the session's own fields — under the timer it read as
 			    though it described the interval configuration. */}
-			<Section face="sans" label={m.train_tools()}>
+			<Section label={m.train_tools()}>
 				<div className="flex flex-col gap-group">
 					<Picker
 						ariaLabel={m.wk_add_ex()}

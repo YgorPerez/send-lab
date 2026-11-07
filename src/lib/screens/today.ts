@@ -116,6 +116,9 @@ export interface TodayScreen {
 	weekdayLabel: string;
 	week: WeekId;
 	weekNumber: number;
+	/** How many training weeks the program runs: the "of 8" in "Training week
+	 *  5 of 8", as Week says it. */
+	weekCount: number;
 	/** The block phase this week falls in, localized. */
 	phase: Content['phases'][PhaseId];
 	/** Today's day type — category, headline, subhead, load label. */
@@ -219,6 +222,7 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 		weekdayLabel: weekdayLabel(content, weekday),
 		week,
 		weekNumber,
+		weekCount: record.program.weeks,
 		phase: content.phases[phaseId(weekNumber, record.program.weeks)],
 		day,
 		tasks,

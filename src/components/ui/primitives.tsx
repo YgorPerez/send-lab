@@ -15,7 +15,7 @@ import { cn } from '$lib/utils';
  * "this is a section of the screen" and "this labels the field below it", so
  * every heading on Today weighed the same and the screen read as one long list —
  * the athlete's "a hierarquia ficou confusa". The ranks are `.h-screen-title`,
- * `.h-section` and `.eyebrow`, defined in `app.css`, and they differ on size,
+ * `.h-section` (Inter since #125) and `.eyebrow`, defined in `app.css`, and they differ on size,
  * weight *and* colour at once because at this density any one axis alone is too
  * quiet to register.
  */
@@ -159,7 +159,6 @@ export function Section({
 	id,
 	label,
 	meta,
-	face = 'mono',
 	children,
 	className,
 }: {
@@ -168,19 +167,18 @@ export function Section({
 	id?: string;
 	label: ReactNode;
 	meta?: ReactNode;
-	/** The heading's face. The overhaul sets every section head in Inter
-	 *  (`.h-section-sans`, DESIGN.md › Typography) and each screen's ticket moves
-	 *  its own; `mono` is the retiring `.h-section`, the default until the last
-	 *  screen has moved (#125). */
-	face?: 'mono' | 'sans';
 	children: ReactNode;
 	className?: string;
 }) {
 	return (
 		<section id={id} className={cn('flex flex-col gap-group', className)}>
 			<header className="flex items-baseline justify-between gap-2">
-				<h2 className={cn(face === 'sans' ? 'h-section-sans' : 'h-section', 'min-w-0')}>{label}</h2>
-				{meta ? <div className="eyebrow shrink-0 normal-case">{meta}</div> : null}
+				{/* One section rank, in Inter (DESIGN.md › Typography). It took a
+				    `face` until every screen had moved off the mono caps (#125). */}
+				<h2 className="h-section min-w-0">{label}</h2>
+				{/* The meta rank (11px, faint, Inter): every caller's meta is a phrase
+				    or a chip, and each one undid the eyebrow's mono caps until #125. */}
+				{meta ? <div className="shrink-0 text-[11px] text-ink-faint">{meta}</div> : null}
 			</header>
 			{children}
 		</section>
@@ -314,7 +312,7 @@ export function Field({
 			className={cn('flex min-w-0 flex-1 flex-col', rank === 'question' ? 'gap-group' : 'gap-1')}
 		>
 			<label
-				className={rank === 'question' ? 'h-section-sans' : 'text-[13px] leading-snug text-ink'}
+				className={rank === 'question' ? 'h-section' : 'text-[13px] leading-snug text-ink'}
 				htmlFor={id}
 			>
 				{label}

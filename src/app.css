@@ -357,7 +357,7 @@
 	   of them alone is too quiet to register.
 
 	   h1  — the screen. 21px, sans, one per screen.
-	   h2  — a section. 11.5px mono caps, semibold, `--ink-dim`.
+	   h2  — a section. 14px sans, semibold, `--ink-dim`.
 	   eyebrow — furniture: a field label, a unit, a meta reading. 10px, faint.
 
 	   They are classes rather than variants because they are typography, not
@@ -370,21 +370,11 @@
 		letter-spacing: -0.01em;
 		color: var(--ink);
 	}
+	/* The section rank, in Inter (#110 for the Timer screens, every screen by
+	   #123, the only section rank since #125). Sentence case: a section head is
+	   words, not furniture. It was 11.5px Roboto Mono caps at 0.12em, which made
+	   the first thing under every header read as a label. */
 	.h-section {
-		font-family: var(--font-mono);
-		font-size: 11.5px;
-		line-height: 1.2;
-		font-weight: 600;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--ink-dim);
-	}
-	/* The section rank, in Inter: the Timer screens' (#110 took Roboto Mono out
-	   of their headings and labels, so their section heads are words, not
-	   furniture). Same job and colour as `.h-section`, a step up in size because
-	   sentence case at 11.5px reads smaller than mono caps at it. The other
-	   screens keep `.h-section` until a ticket moves them. */
-	.h-section-sans {
 		font-size: 14px;
 		line-height: 1.2;
 		font-weight: 600;
