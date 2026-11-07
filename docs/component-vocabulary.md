@@ -620,7 +620,7 @@ height is fixed so the controls do not move between steps.
 
 **Today got shorter, and its floor came down with a measurement.** Seeded, Today
 measured 4361px at 360px and 2476px at 1280px with the questions listed; with the
-sheet it is 2517px and 1772px. `check:contrast` counted 103 text elements seeded
+sheet it is 2521px and 1776px. `check:contrast` counted 103 text elements seeded
 and 52 empty where it counted 154 and 99, so `scripts/floors.ts` holds `/` at 75,
 the same quarter under the measurement as before.
 
