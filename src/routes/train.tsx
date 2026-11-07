@@ -13,7 +13,7 @@
 // three ruled bands inside it, no gaps to hunt across.
 import { createFileRoute } from '@tanstack/react-router';
 import { Check, Repeat } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { getContent } from '$lib/content';
 import {
 	asExerciseId,
@@ -46,7 +46,15 @@ import type { LoggedSet, WorkingLoad, WorkingLoadSource } from '$lib/types';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
-import { Empty, Pane, ScreenHeader, Section, StickyStrip } from '../components/ui/primitives';
+import {
+	Empty,
+	Field,
+	Notice,
+	Pane,
+	ScreenHeader,
+	Section,
+	StickyStrip,
+} from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -138,6 +146,8 @@ function Train() {
 	}, [openKey]);
 
 	const [note, setNote] = useState(initial.note);
+	const noPrevId = useId();
+	const finishHeldId = useId();
 	const [duration, setDuration] = useState(initial.duration);
 
 	useEffect(() => {
@@ -328,32 +338,37 @@ function Train() {
 					/>
 					{/* Disabled with its reason on the line, not in a `title` a phone
 					    never shows (#118's critique). */}
-					<div className="flex flex-col gap-1">
+					{/* A held control says why under it, as a `Notice` it is described by
+					    (#124): `info` here, since nothing the athlete does today changes
+					    it. */}
+					<div className="flex flex-col gap-1.5">
 						<button
 							type="button"
 							disabled={!screen.canRepeatLast}
+							aria-describedby={screen.canRepeatLast ? undefined : noPrevId}
 							className={button({ size: 'md', class: 'min-h-11 self-start' })}
 						>
 							<Repeat size={16} aria-hidden="true" />
 							{m.train_repeat()}
 						</button>
 						{screen.canRepeatLast ? null : (
-							<p className="text-[11px] leading-snug text-ink-faint">{m.train_no_prev()}</p>
+							<Notice tone="info" id={noPrevId}>
+								{m.train_no_prev()}
+							</Notice>
 						)}
 					</div>
-					<div className="flex flex-col gap-1">
-						<label className="eyebrow" htmlFor="session-note">
-							{m.train_note()}
-						</label>
+					{/* Labelled in words over the field, as the intake and sign-in label
+					    theirs (`Field`), not in the mono label rank (#125). */}
+					<Field id="session-note" label={m.train_note()}>
 						<input
 							id="session-note"
 							className={input({ align: 'left', class: 'min-h-11' })}
 							value={note}
 							onChange={(e) => setNote(e.currentTarget.value)}
 						/>
-					</div>
+					</Field>
 					<div className="flex items-center gap-2">
-						<label className="eyebrow shrink-0" htmlFor="session-min">
+						<label className="shrink-0 text-[13px] leading-snug text-ink" htmlFor="session-min">
 							{m.train_duration()}
 						</label>
 						<input
@@ -369,7 +384,7 @@ function Train() {
 							{m.train_duration_hint()}
 						</span>
 					</div>
-					<p className="text-[11px] leading-snug text-ink-faint">{m.train_autosave()}</p>
+					<Notice tone="info">{m.train_autosave()}</Notice>
 				</div>
 			</Section>
 
@@ -382,15 +397,18 @@ function Train() {
 				<button
 					type="button"
 					disabled={doneSets === 0}
+					aria-describedby={doneSets === 0 ? finishHeldId : undefined}
 					className={button({ kind: 'primary', size: 'touch' })}
 				>
 					<Check size={16} aria-hidden="true" />
 					{m.train_finish()}
 				</button>
+				{/* The held primary's line, as the intake's advance and sign-in's
+				    button carry theirs: under it, 13px, gold (#125). */}
 				{doneSets === 0 ? (
-					<p className="text-center text-[11px] leading-snug text-ink-faint">
+					<Notice tone="warn" id={finishHeldId}>
 						{m.train_no_set_done()}
-					</p>
+					</Notice>
 				) : null}
 			</div>
 		</Pane>

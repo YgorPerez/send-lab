@@ -29,8 +29,9 @@
 // looking for it" — and a stepper is where an athlete most needs it, because the
 // missing answer is somewhere above the fold. The disabled button drops its fill
 // rather than its opacity, which the `button` recipe already handles.
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { cn } from '$lib/utils';
+import { Notice } from './primitives';
 import { button } from './variants';
 
 /** One step of the flow. Domain-blind: an id to key on and a label to show.
@@ -75,6 +76,7 @@ export function Stepper({
 	className?: string;
 	children: ReactNode;
 }) {
+	const waitingId = useId();
 	return (
 		<div className={cn('flex flex-col gap-5', className)}>
 			{/* The rail. One segment per step, and the labels under them — pt-BR runs
@@ -97,10 +99,12 @@ export function Stepper({
 							    chosen thing with (the switch, the selected option's edge). One
 							    decision for both users, the intake and the readiness sheet. */}
 							<div className={cn('h-1.5 rounded-full', reached ? 'bg-chalk' : 'bg-line')} />
+							{/* Inter at the meta size: the rail's words were the last
+							    letter-spaced mono on the intake (#125). */}
 							{step.label ? (
 								<div
 									className={cn(
-										'eyebrow mt-1.5 normal-case',
+										'mt-1.5 text-[11px] leading-snug',
 										// The current step in the selection mark's chalk and weight:
 										// on the last step every segment is filled, and the label is
 										// what still says where the athlete is (#123 critique).
@@ -137,6 +141,7 @@ export function Stepper({
 					<button
 						type="button"
 						disabled={next.disabled}
+						aria-describedby={next.disabled && next.waitingFor ? waitingId : undefined}
 						onClick={next.onClick}
 						className={button({ kind: 'primary', size: 'touch', class: 'flex-1' })}
 					>
@@ -144,7 +149,9 @@ export function Stepper({
 					</button>
 				</div>
 				{next.disabled && next.waitingFor ? (
-					<p className="text-[13px] leading-snug text-pretty text-gold">{next.waitingFor}</p>
+					<Notice tone="warn" id={waitingId}>
+						{next.waitingFor}
+					</Notice>
 				) : null}
 			</div>
 		</div>

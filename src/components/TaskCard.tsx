@@ -40,7 +40,7 @@ import type { LoggedSet, WorkingLoadSource } from '$lib/types';
 import { cn } from '$lib/utils';
 import { SetEditor } from './SetRows';
 import { Picker } from './ui/Picker';
-import { Eyebrow, Prose } from './ui/primitives';
+import { Prose } from './ui/primitives';
 import { button, chip } from './ui/variants';
 import { WorkingLoadAsk } from './WorkingLoadAsk';
 
@@ -82,7 +82,7 @@ function Prescription({ prescription }: { prescription: Variant }) {
 			<div className="flex flex-wrap gap-x-3 gap-y-1">
 				{pairs.map(([label, value]) => (
 					<span key={label} className="whitespace-nowrap">
-						<span className="eyebrow">{label}</span>{' '}
+						<span className="text-[11px] text-ink-faint">{label}</span>{' '}
 						<span className="num text-[13px] text-chalk">{value}</span>
 					</span>
 				))}
@@ -205,7 +205,7 @@ export function TaskCard({
 						    rather than squeezing the name. */}
 						<span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
 							{open ? (
-								<span className="eyebrow min-w-0 truncate">{task.cat}</span>
+								<span className="min-w-0 truncate text-[11px] text-ink-faint">{task.cat}</span>
 							) : (
 								<span className="num min-w-0 truncate text-[11px] text-ink-dim">
 									{shortPrescription(task.prescription)}
@@ -261,7 +261,7 @@ export function TaskCard({
 				<div id={bodyId}>
 					{task.variants.length > 1 ? (
 						<div className="border-t border-line-soft px-3 py-2">
-							<Eyebrow className="mb-1">{m.swap_label()}</Eyebrow>
+							<p className="h-section mb-1.5">{m.swap_label()}</p>
 							{twoAxis ? (
 								<div className="flex gap-1.5">
 									<Picker
@@ -295,7 +295,7 @@ export function TaskCard({
 					) : null}
 
 					<div className="border-t border-line-soft px-3 py-2">
-						<Eyebrow className="mb-1">{m.train_target()}</Eyebrow>
+						<p className="h-section mb-1.5">{m.train_target()}</p>
 						<Prescription prescription={task.prescription} />
 						{/* Where the load in that row came from. The number is already in the
 				    prescription — `effectiveVariant` reads the working load as the base
@@ -331,7 +331,10 @@ export function TaskCard({
 						</div>
 					) : null}
 
-					<div className="flex flex-col gap-1.5 border-t border-line-soft px-3 py-2">
+					{/* The sets are rows of the card under hairlines, not boxes inside it
+					    (a card in a card, #125): a ticked one is told by its tint and its
+					    tick, which is what the box's teal edge said. */}
+					<div className="flex flex-col border-t border-line-soft pb-2">
 						{task.sets.map((s, i) => (
 							<SetEditor
 								// biome-ignore lint/suspicious/noArrayIndexKey: a set's identity is its position in the task
@@ -351,7 +354,7 @@ export function TaskCard({
 						<button
 							type="button"
 							onClick={onAddSet}
-							className={button({ size: 'md', class: 'min-h-11 self-start' })}
+							className={button({ size: 'md', class: 'mx-3 mt-2 min-h-11 self-start' })}
 						>
 							<Plus size={16} aria-hidden="true" />
 							{m.train_add_set()}

@@ -104,6 +104,7 @@ export function SetEditor({
 }) {
 	return (
 		<div
+			data-set-row=""
 			className={cn(
 				// A finished set is marked by colour, not by fading it out.
 				//
@@ -116,8 +117,11 @@ export function SetEditor({
 				//
 				// Direction B hit the same wall independently, which is why the rule is
 				// in the vocabulary (`ui/variants.ts`, `chip`) rather than only here.
-				'rounded-md border p-2 transition-colors',
-				set.done ? 'border-teal/30 bg-teal/[0.06]' : 'border-line-soft bg-panel-2/50',
+				//
+				// A row of the card since #125, under a hairline, not a box of its own
+				// inside the card: the done tint runs edge to edge.
+				'border-b border-line-soft px-3 py-2 transition-colors last:border-b-0',
+				set.done && 'bg-teal/[0.06]',
 			)}
 		>
 			<div className="grid grid-cols-4 gap-1.5">

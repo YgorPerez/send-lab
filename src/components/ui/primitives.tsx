@@ -323,10 +323,12 @@ export function Field({
 	);
 }
 
-/** What a notice's colour says. `warn` is about this device or the network
- *  (offline, a server that could not be reached): gold. `stop` refuses what the
- *  athlete typed: vermilion, as a refused value's rule is. `info` changes nothing
- *  the athlete has to do: dim ink. */
+/** What a notice's colour says. `warn` is something that has to change before
+ *  this works: this device or the network (offline, a server that could not be
+ *  reached), or an answer or a tick still missing under a held control (the
+ *  intake's advance, Train's finish; #125): gold. `stop` refuses what the athlete
+ *  typed: vermilion, as a refused value's rule is. `info` changes nothing the
+ *  athlete has to do: dim ink. */
 export type NoticeTone = 'info' | 'warn' | 'stop';
 
 const NOTICE_TONE: Record<NoticeTone, string> = {

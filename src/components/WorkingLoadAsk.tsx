@@ -60,7 +60,7 @@ import * as m from '$lib/paraglide/messages';
 import { isPinch } from '$lib/strength';
 import type { WorkingLoadSource } from '$lib/types';
 import type { LoadSuggestion } from '$lib/workingLoad';
-import { Eyebrow } from './ui/primitives';
+import { Notice } from './ui/primitives';
 import { button, input, option } from './ui/variants';
 
 export function WorkingLoadAsk({
@@ -88,6 +88,7 @@ export function WorkingLoadAsk({
 }) {
 	const [open, setOpen] = useState(!folded);
 	const bodyId = useId();
+	const heldId = useId();
 	const [rung, setRung] = useState<WorkingLoadSource | null>(null);
 	const [typed, setTyped] = useState('');
 
@@ -151,7 +152,7 @@ export function WorkingLoadAsk({
 				className="-my-1 flex min-h-11 w-full items-center gap-2 text-left"
 			>
 				<span className="min-w-0 flex-1">
-					<Eyebrow>{m.wl_title()}</Eyebrow>
+					<span className="h-section block">{m.wl_title()}</span>
 					<span className="mt-0.5 block text-[13px] leading-snug text-ink-dim">
 						{open ? m.wl_first() : m.wl_unset()}
 					</span>
@@ -227,7 +228,7 @@ export function WorkingLoadAsk({
 					<div className="flex items-end gap-2">
 						{typedRung ? (
 							<div className="flex flex-col gap-0.5">
-								<label className="microlabel" htmlFor={fieldId}>
+								<label className="text-[13px] leading-snug text-ink" htmlFor={fieldId}>
 									{m.wl_added()}
 								</label>
 								<input
@@ -245,6 +246,7 @@ export function WorkingLoadAsk({
 						<button
 							type="button"
 							disabled={answer === null}
+							aria-describedby={answer === null ? heldId : undefined}
 							onClick={() => {
 								if (rung !== null && answer !== null) onAnswer(answer, rung);
 							}}
@@ -257,9 +259,9 @@ export function WorkingLoadAsk({
 					{/* Disabled with the line saying what it waits for (ADR 0019's rule,
 			    and Train's own for the finish). */}
 					{answer === null ? (
-						<p className="-mt-1 text-[11px] leading-snug text-pretty text-ink-faint">
+						<Notice tone="warn" id={heldId}>
 							{typedRung ? m.wl_type() : m.wl_pick()}
-						</p>
+						</Notice>
 					) : null}
 
 					<p className="text-[11px] leading-snug text-pretty text-ink-faint">

@@ -99,6 +99,8 @@ const COPY = {
 		repeat: 'Repeat last session',
 		note: 'Session note (optional)',
 		minutes: 'Minutes',
+		bands: ['Swap — same adaptation', 'Target'],
+		noPrev: 'No previous session for this day yet',
 	},
 	'pt-BR': {
 		start: 'Iniciar',
@@ -116,8 +118,12 @@ const COPY = {
 		repeat: 'Repetir última sessão',
 		note: 'Nota da sessão (opcional)',
 		minutes: 'Minutos',
+		bands: ['Trocar — mesma adaptação', 'Alvo'],
+		noPrev: 'Ainda não há sessão anterior pra este dia',
 	},
 } as const;
+
+const parsed = (html: string) => new DOMParser().parseFromString(html, 'text/html');
 
 for (const locale of ['en-US', 'pt-BR'] as const) {
 	const copy = COPY[locale];
@@ -206,6 +212,44 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(train).toMatch(
 				new RegExp(`<label[^>]*for="session-note"[^>]*>${copy.note.replace(/[()]/g, '\\$&')}<`),
 			);
+		});
+
+		// The sweep (#125): the open card reads as one surface. Its sets are rows
+		// of the card under hairlines, not boxes inside it (a card in a card), and
+		// its bands are headed in the section rank's Inter, as Log heads the parts
+		// of an open day, not in letter-spaced mono caps.
+		test('draws the open card’s sets as rows of the card, its bands under Inter heads', async () => {
+			const page = parsed(await screen('/train', locale));
+			const rows = [...page.querySelectorAll('[data-task-card] [data-set-row]')];
+			expect(rows).toHaveLength(2);
+			for (const row of rows) {
+				expect(row.className).not.toMatch(/\brounded/);
+				expect(row.className).not.toMatch(/(^|\s)border(\s|$)/);
+			}
+			const heads = [...page.querySelectorAll('[data-task-card] .h-section')].map((h) =>
+				h.textContent?.trim(),
+			);
+			for (const band of copy.bands) expect(heads).toContain(band);
+			expect(page.querySelector('[data-task-card] .eyebrow')).toBeNull();
+		});
+
+		// A typed field's label is words over it, as on the intake and sign-in
+		// (`Field`), and a line the page says is a `Notice` (#124).
+		test('labels the session’s fields in words, and says why Repeat is held', async () => {
+			const page = parsed(await screen('/train', locale));
+			for (const id of ['session-note', 'session-min']) {
+				const label = page.querySelector(`label[for="${id}"]`);
+				expect(label?.className, id).not.toContain('eyebrow');
+				expect(label?.className, id).toContain('text-[13px]');
+			}
+			const why = [...page.querySelectorAll('[data-notice]')].find(
+				(n) => n.textContent === copy.noPrev,
+			);
+			expect(why?.getAttribute('data-notice')).toBe('info');
+			const repeat = [...page.querySelectorAll('button')].find((b) =>
+				b.textContent?.includes(copy.repeat),
+			);
+			expect(repeat?.getAttribute('aria-describedby')).toBe(why?.id);
 		});
 
 		test('shows the set grid of the open task only', async () => {
