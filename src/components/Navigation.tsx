@@ -81,7 +81,7 @@ function isAt(d: Place, here: string | null): boolean {
 const ITEM = cn(
 	'group flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 text-[11px] leading-tight text-ink-faint transition-colors hover:text-ink',
 	'data-[status=active]:font-semibold data-[status=active]:text-chalk',
-	'lg:min-h-11 lg:flex-none lg:flex-row lg:justify-start lg:gap-3 lg:rounded-md lg:px-3 lg:text-[13.5px] lg:hover:bg-panel-2 lg:data-[status=active]:bg-panel-3',
+	'lg:min-h-11 lg:flex-none lg:flex-row lg:justify-start lg:gap-3 lg:rounded-md lg:px-3 lg:text-[13px] lg:hover:bg-panel-2 lg:data-[status=active]:bg-panel-3',
 );
 
 /** The pill behind the bar's icon: the surface half of the current mark. */

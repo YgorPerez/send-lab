@@ -246,9 +246,12 @@ function Row({
 					// to look like one. In `--ink-faint`, because the rule is what says
 					// it is a field, and `--line` measured 2.31:1 against the ground,
 					// under the 3:1 a control's edge needs. A zero — no rest, no
-					// cooldown — reads dimmer than a number that runs.
+					// cooldown — reads dimmer than a number that runs. The keyboard's
+					// ring comes back from `lg`, as the `input` recipe's does (#124):
+					// its `outline-none` beat app.css's ring, so a tabbed-to number
+					// showed only the rule turning ink (#125).
 					className={cn(
-						'display h-12 w-[4.5rem] shrink-0 rounded-none border-b-2 border-ink-faint bg-transparent text-center text-[30px] leading-none font-semibold text-ink outline-none focus:border-ink',
+						'display h-12 w-[4.5rem] shrink-0 rounded-none border-b-2 border-ink-faint bg-transparent text-center text-[30px] leading-none font-semibold text-ink outline-none focus:border-ink lg:focus-visible:outline-2 lg:focus-visible:outline-offset-2 lg:focus-visible:outline-ring lg:focus-visible:outline-solid',
 						!typing && !refused && value === 0 && 'text-ink-dim',
 						refused && 'border-stop focus:border-stop',
 					)}
@@ -266,7 +269,7 @@ function Row({
 				<p
 					id={noteId}
 					className={cn(
-						'pb-1 pl-[1.125rem] text-[12px] leading-snug',
+						'pb-1 pl-[1.125rem] text-[13px] leading-snug',
 						refused ? 'text-stop' : 'num text-ink-dim',
 					)}
 				>

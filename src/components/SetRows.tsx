@@ -149,7 +149,7 @@ export function SetEditor({
 									// (#118). Not an input, so the 16px floor does not bind it.
 									wrap
 									chevron={false}
-									className={cn(CELL, 'justify-center px-1 text-center text-[12px]')}
+									className={cn(CELL, 'justify-center px-1 text-center text-[11px]')}
 								/>
 							) : (
 								<input
@@ -243,7 +243,7 @@ export function SetTable({
 						<tr key={i} className="border-t border-line-soft">
 							<td className="num py-1 text-[11px] text-ink-faint">{i + 1}</td>
 							{cols.map((f) => (
-								<td key={f} className="num py-1 pl-2 text-right text-[12px] text-ink-dim">
+								<td key={f} className="num py-1 pl-2 text-right text-[11px] text-ink-dim">
 									{f === 'grip'
 										? s.grip
 											? gripLabel(s.grip)

@@ -83,7 +83,7 @@ function Prescription({ prescription }: { prescription: Variant }) {
 				{pairs.map(([label, value]) => (
 					<span key={label} className="whitespace-nowrap">
 						<span className="eyebrow">{label}</span>{' '}
-						<span className="num text-[12.5px] text-chalk">{value}</span>
+						<span className="num text-[13px] text-chalk">{value}</span>
 					</span>
 				))}
 			</div>
@@ -103,7 +103,7 @@ function Prescription({ prescription }: { prescription: Variant }) {
 				</div>
 			) : null}
 			{prescription.note ? (
-				<p className="prose-inline mt-1.5 text-[11.5px] leading-snug text-pretty text-ink-faint">
+				<p className="prose-inline mt-1.5 text-[11px] leading-snug text-pretty text-ink-faint">
 					<Prose value={prescription.note} />
 				</p>
 			) : null}
@@ -207,7 +207,7 @@ export function TaskCard({
 							{open ? (
 								<span className="eyebrow min-w-0 truncate">{task.cat}</span>
 							) : (
-								<span className="num min-w-0 truncate text-[12px] text-ink-dim">
+								<span className="num min-w-0 truncate text-[11px] text-ink-dim">
 									{shortPrescription(task.prescription)}
 								</span>
 							)}

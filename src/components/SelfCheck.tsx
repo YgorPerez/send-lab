@@ -152,7 +152,7 @@ export function SelfCheckSheet({
 										style={{ color: BAND_COLOR[result.band] }}
 									>
 										{result.score}
-										<span className="text-[12px] text-ink-faint">/100</span>
+										<span className="text-[11px] text-ink-faint">/100</span>
 									</span>
 									<span
 										className="text-[13px] font-semibold"
@@ -161,7 +161,7 @@ export function SelfCheckSheet({
 										{BAND_LABEL[result.band]()}
 									</span>
 								</div>
-								<p className="mt-1.5 text-[12.5px] leading-snug text-ink-dim">
+								<p className="mt-1.5 text-[13px] leading-snug text-ink-dim">
 									{BAND_REC[result.band]()}
 								</p>
 								<div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -205,7 +205,7 @@ export function RehabStarter() {
 			// left the sentence beside it a 130px column of seven lines at 360px
 			// (#117). Under 12rem of text, the button drops under it.
 			<div className="flex flex-wrap items-center gap-2">
-				<p className="min-w-48 flex-1 text-[12px] leading-snug text-ink-dim">{m.rehab_desc()}</p>
+				<p className="min-w-48 flex-1 text-[13px] leading-snug text-ink-dim">{m.rehab_desc()}</p>
 				<button
 					type="button"
 					onClick={() => setOpen(true)}

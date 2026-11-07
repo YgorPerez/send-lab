@@ -152,7 +152,7 @@ export function WorkingLoadAsk({
 			>
 				<span className="min-w-0 flex-1">
 					<Eyebrow>{m.wl_title()}</Eyebrow>
-					<span className="mt-0.5 block text-[12px] leading-snug text-ink-dim">
+					<span className="mt-0.5 block text-[13px] leading-snug text-ink-dim">
 						{open ? m.wl_first() : m.wl_unset()}
 					</span>
 				</span>

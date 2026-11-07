@@ -522,7 +522,7 @@ function ReadCard({
 					<div className="num text-[30px] leading-none font-bold text-chalk">{score}</div>
 					<Eyebrow className="mt-0.5">{m.rd_score()}</Eyebrow>
 					{vsBaseline ? (
-						<div className="mt-0.5 text-[10px] text-ink-faint">{vsBaseline}</div>
+						<div className="mt-0.5 text-[11px] text-ink-faint">{vsBaseline}</div>
 					) : null}
 				</div>
 			</div>
@@ -547,13 +547,13 @@ function ReadCard({
 				{breakdown.map((b) => (
 					<Meter key={b.id} label={WELLNESS_LABEL[b.id]?.() ?? b.id} value={b.value} />
 				))}
-				<p className="mt-1.5 text-[10.5px] leading-snug text-ink-faint italic">
+				<p className="mt-1.5 text-[11px] leading-snug text-ink-faint">
 					{scoreNote === 'tuned' ? m.rd_note_tuned() : m.rd_note_heuristic()}
 				</p>
 				{/* Was its own rule-separated strip. It is a footnote on the read, so it
 				    sits inside the read rather than under another hairline. */}
 				{nextTaskLabel ? (
-					<p className="mt-2 text-[12px] text-ink-faint">
+					<p className="mt-2 text-[11px] text-ink-faint">
 						{m.td_applies()} <b className="font-semibold text-chalk">{nextTaskLabel}</b>
 					</p>
 				) : null}
@@ -673,7 +673,7 @@ function PlanCard({
 								</button>
 								<span
 									className={cn(
-										'min-w-0 flex-1 truncate text-[13.5px]',
+										'min-w-0 flex-1 truncate text-[13px]',
 										isDone ? 'text-ink-faint line-through' : held ? 'text-ink-faint' : 'text-ink',
 									)}
 								>
@@ -696,7 +696,7 @@ function PlanCard({
 				    it is one more thing that could be trained today. */}
 				{carryForward ? (
 					<div className="flex items-center gap-2 border-t border-line px-3 py-2">
-						<span className="min-w-0 flex-1 text-[12px] leading-snug text-ink-dim">
+						<span className="min-w-0 flex-1 text-[13px] leading-snug text-ink-dim">
 							{m.td_carry_forward({ day: carryForward.weekdayLabel })}
 							<span className="text-ink-faint"> · {carryForward.labels.join(' · ')}</span>
 						</span>
@@ -787,7 +787,7 @@ function WatchOuts({
 									{FLAG_SEVERITY[f.severity]()}
 								</span>
 							</div>
-							<p className="prose-inline mt-1 text-[12.5px] leading-snug text-pretty text-ink-dim">
+							<p className="prose-inline mt-1 text-[13px] leading-snug text-pretty text-ink-dim">
 								<Prose value={c.text} />
 							</p>
 							<div className="mt-1.5 flex flex-wrap gap-1">
@@ -877,7 +877,7 @@ function BodyweightNudge({
 				</div>
 				{bodyweight.promptToday && !logged ? (
 					<div className="mt-2 flex items-center gap-2 border-t border-line-soft pt-2">
-						<label className="min-w-0 flex-1 text-[12px] text-ink-dim" htmlFor="bw">
+						<label className="min-w-0 flex-1 text-[13px] text-ink-dim" htmlFor="bw">
 							{m.bw_prompt()}
 						</label>
 						<input
@@ -943,7 +943,7 @@ function InjuryEntry({
 						className="shrink-0 text-ink-faint"
 					/>
 				</button>
-				<p className="border-t border-line-soft px-3 py-2 text-[10.5px] leading-snug text-ink-faint">
+				<p className="border-t border-line-soft px-3 py-2 text-[11px] leading-snug text-ink-faint">
 					{m.deep_based_on({ source: selfCheck.instrument.source })}{' '}
 					<a
 						href={selfCheck.instrument.url}

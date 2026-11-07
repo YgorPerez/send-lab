@@ -273,11 +273,7 @@
       },
       "section": {
         "displayName": "Section",
-        "purpose": "Section heads on the Timer screens (.h-section-sans)."
-      },
-      "section-mono": {
-        "displayName": "Section, mono",
-        "purpose": "Section heads on the other screens (.h-section), uppercase."
+        "purpose": "Section heads on every screen (.h-section), Inter, sentence case."
       },
       "body": {
         "displayName": "Body",
