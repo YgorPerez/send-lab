@@ -124,14 +124,16 @@ function SlotMark({ state }: { state: SlotState }) {
  * The marks' key, over the grid rather than under it, so the selected day sits
  * directly under the grid on a phone (story 67). A list a screen reader can
  * read, and that `check:contrast` therefore measures; each cell also names its
- * state in words.
+ * state in words. Items 10px apart, wider than the 6px from a mark to its word:
+ * the pt-BR entries measure 288px, so at 14px "Descanso" wrapped alone at 360px
+ * (344 of 336px) and at 10px they fit (328px). At 320px they wrap.
  */
 function Legend() {
 	return (
 		<ul
 			data-slot-legend=""
 			aria-label={m.wk_legend()}
-			className="flex flex-wrap gap-x-3.5 gap-y-1 text-[11px] text-ink-dim"
+			className="flex flex-wrap gap-x-2.5 gap-y-1 text-[11px] text-ink-dim"
 		>
 			{LEGEND.map((state) => (
 				<li key={state} className="inline-flex items-center gap-1.5">

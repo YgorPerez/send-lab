@@ -898,7 +898,9 @@ the cell's only colour, and the day type's accent stays on the day below.
 **A legend over the grid, not under it,** so nothing sits between the grid and the
 day it selects. It draws the same marks, in the order trained, missed, today, to
 come, rest, as a list a screen reader can read (named "Key"), so `check:contrast`
-measures its words. It wraps to two lines in pt-BR at 360px.
+measures its words. Its items sit 10px apart: pt-BR's five measure 288px, so at
+14px "Descanso" wrapped alone at 360px, and at 10px they fit in 328px. At 320px it
+wraps to two lines.
 
 **The selected day sits directly under the grid** on a phone, and beside it from
 `lg` (`Panes`, as before; `lg:grid-cols-7` kept). Its head names the weekday and
