@@ -101,7 +101,14 @@ export function Stepper({
 								<div
 									className={cn(
 										'eyebrow mt-1.5 normal-case',
-										reached ? 'text-ink-dim' : 'text-ink-faint',
+										// The current step in the selection mark's chalk and weight:
+										// on the last step every segment is filled, and the label is
+										// what still says where the athlete is (#123 critique).
+										index === at
+											? 'font-semibold text-chalk'
+											: reached
+												? 'text-ink-dim'
+												: 'text-ink-faint',
 									)}
 								>
 									{step.label}
@@ -137,7 +144,7 @@ export function Stepper({
 					</button>
 				</div>
 				{next.disabled && next.waitingFor ? (
-					<p className="text-[13px] leading-snug text-gold">{next.waitingFor}</p>
+					<p className="text-[13px] leading-snug text-pretty text-gold">{next.waitingFor}</p>
 				) : null}
 			</div>
 		</div>

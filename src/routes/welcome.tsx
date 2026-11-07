@@ -197,6 +197,9 @@ function Welcome() {
 	// held here rather than persisted: nothing about it is account data until they
 	// accept it, and going back to change an answer must not have written one.
 	const [accepted, setAccepted] = useState<Baseline | null>(null);
+	/** The athlete came back from the proposal to change an answer, so the step
+	 *  that opens was moved to, and takes the focus like one reached by Back. */
+	const [returned, setReturned] = useState(false);
 	const [saving, setSaving] = useState(false);
 	/** The write threw. Kept on screen rather than swallowed: the athlete has just
 	 *  answered thirteen questions, the draft still holds every one of them, and a
@@ -253,10 +256,13 @@ function Welcome() {
 					saving={saving}
 					failed={failed}
 					onStart={() => void start(accepted, program)}
-					onEdit={() => setAccepted(null)}
+					onEdit={() => {
+						setReturned(true);
+						setAccepted(null);
+					}}
 				/>
 			) : (
-				<Flow draft={draft} setDraft={setDraft} onPropose={propose} />
+				<Flow draft={draft} setDraft={setDraft} onPropose={propose} returned={returned} />
 			)}
 		</Pane>
 	);
@@ -300,10 +306,13 @@ function Flow({
 	draft,
 	setDraft,
 	onPropose,
+	returned,
 }: {
 	draft: BaselineDraft;
 	setDraft: (next: (prev: BaselineDraft) => BaselineDraft) => void;
 	onPropose: () => void;
+	/** Opened again from the proposal's Change your answers. */
+	returned: boolean;
 }) {
 	const at = draft.step;
 	const last = STEP_ANSWERS.length - 1;
@@ -311,7 +320,7 @@ function Flow({
 	// Whether the step on screen was reached by Next or Back, rather than opened
 	// (a fresh visit, a resumed draft). Only a step the athlete moved to takes the
 	// focus: on arrival nothing was pressed, and focus stays where the page put it.
-	const [moved, setMoved] = useState(false);
+	const [moved, setMoved] = useState(returned);
 	const go = (step: number) => {
 		setMoved(true);
 		patch({ step });
@@ -343,7 +352,11 @@ function Flow({
 
 	return (
 		<>
-			<ScreenHeader title={m.welcome_title()} lede={m.welcome_sub()} />
+			{/* The lede on the first step only: it says what the four steps are,
+			    once, and on the later ones it cost 70px that put the advance under
+			    the fold at 360px in pt-BR (#123 critique). The rail names the
+			    steps from then on. */}
+			<ScreenHeader title={m.welcome_title()} {...(at === 0 ? { lede: m.welcome_sub() } : {})} />
 
 			<Stepper
 				steps={steps}
@@ -374,7 +387,7 @@ function Flow({
 			    screen is for. The strip's ✕ is the same way out, always in view; this
 			    one says what leaving costs (nothing), where a step ends. */}
 			<Bare className="flex flex-col items-start gap-2">
-				<p className="text-[13px] leading-snug text-ink-dim">{m.welcome_skip_note()}</p>
+				<p className="text-[13px] leading-snug text-pretty text-ink-dim">{m.welcome_skip_note()}</p>
 				<Link to="/" className={button({ kind: 'bare', size: 'md', class: 'min-h-11 px-0' })}>
 					{m.welcome_skip()}
 				</Link>
@@ -476,7 +489,7 @@ function TextField({
 				htmlFor={id}
 			>
 				{label}
-				{hint ? <span className="text-ink-faint"> {hint}</span> : null}
+				{hint ? <span className="font-normal text-ink-faint"> {hint}</span> : null}
 			</label>
 			<input
 				id={id}
@@ -592,10 +605,18 @@ function WeekStep({
 				type="number"
 				inputMode="numeric"
 				rank="question"
+				// Blank is an answer here (no cap on exercises per day), so the head
+				// says so beside the required ones.
+				hint={m.welcome_optional_hint()}
 			/>
 
 			<fieldset className="flex min-w-0 flex-col gap-row">
-				<legend className="h-section-sans mb-group">{m.field_equipment()}</legend>
+				{/* Says it takes several, which the option lines alone do not: they
+				    are drawn like step 1's single choices. */}
+				<legend className="h-section-sans mb-group">
+					{m.field_equipment()}{' '}
+					<span className="font-normal text-ink-faint">{m.welcome_all_you_have()}</span>
+				</legend>
 				{EQUIPMENT.map((eq) => {
 					const on = draft.equipment.includes(eq);
 					return (
@@ -628,25 +649,23 @@ function WeekStep({
 function BodyStep({ draft, patch, arrived }: StepProps) {
 	return (
 		<StepBody help={m.welcome_body_help()} arrived={arrived}>
-			<Section face="sans" label={m.welcome_fingers_title()}>
-				{/* 20px between the two questions: each holds its own 4px and 8px
-				    steps, so the section's 10px left the second question's line on
-				    the first one's buttons. Still under the 28px between sections. */}
-				<div className="flex flex-col gap-5">
-					<YesNo
-						question={m.field_niggle()}
-						help={m.welcome_niggle_help()}
-						value={draft.niggle}
-						onAnswer={(niggle) => patch({ niggle })}
-					/>
-					<YesNo
-						question={m.field_synovitis()}
-						help={m.welcome_synovitis_help()}
-						value={draft.synovitis}
-						onAnswer={(synovitis) => patch({ synovitis })}
-					/>
-				</div>
-			</Section>
+			{/* The two finger questions head themselves, as every other step's
+			    questions do. A "Fingers" head over them was a 14px dim line over
+			    two 13px ink questions, so the head read quieter than what it held
+			    (#123 critique); the rail's "Body" and the line above already say
+			    what the step is about. */}
+			<YesNo
+				question={m.field_niggle()}
+				help={m.welcome_niggle_help()}
+				value={draft.niggle}
+				onAnswer={(niggle) => patch({ niggle })}
+			/>
+			<YesNo
+				question={m.field_synovitis()}
+				help={m.welcome_synovitis_help()}
+				value={draft.synovitis}
+				onAnswer={(synovitis) => patch({ synovitis })}
+			/>
 
 			<Section face="sans" label={m.welcome_optional()}>
 				<p className="text-[11px] leading-snug text-ink-faint">{m.welcome_context_help()}</p>
@@ -713,7 +732,11 @@ function StepBody({
 	};
 	return (
 		<div className="flex flex-col gap-sections">
-			<p ref={arrive} tabIndex={-1} className="text-[13px] leading-snug text-ink-dim outline-none">
+			<p
+				ref={arrive}
+				tabIndex={-1}
+				className="text-[13px] leading-snug text-pretty text-ink-dim outline-none"
+			>
 				{help}
 			</p>
 			{children}
@@ -738,8 +761,10 @@ function YesNo({
 }) {
 	return (
 		<fieldset className="flex min-w-0 flex-col gap-2">
-			<legend className="mb-1.5 text-[13px] leading-snug text-ink">{question}</legend>
-			<p className="text-[11px] leading-snug text-ink-faint">{help}</p>
+			<legend className="h-section-sans mb-1.5">{question}</legend>
+			{/* 13px dim, not the 11px faint of a hint: the synovitis line is an
+			    instruction the athlete carries out (a fist, a hook) before answering. */}
+			<p className="text-[13px] leading-snug text-pretty text-ink-dim">{help}</p>
 			<Segmented
 				value={value}
 				options={[
@@ -781,16 +806,30 @@ function ProposalView({
 	onStart: () => void;
 	onEdit: () => void;
 }) {
+	const arrive = (el: HTMLElement | null) => {
+		if (!el) return;
+		document.documentElement.scrollTo?.({ top: 0 });
+		el.focus({ preventScroll: true });
+	};
 	return (
 		<>
 			<ScreenHeader
+				// The proposal arrives on a press at the end of the last step, so its
+				// title takes the focus, as a step's first line does (#123 critique:
+				// focus fell to the body).
+				titleRef={arrive}
 				title={m.prop_title()}
 				lede={
 					<>
 						{m.prop_intro()}{' '}
-						<b className="font-semibold text-chalk">{GOAL_LABEL[baseline.goal]()}</b> ·{' '}
-						<b className="font-semibold text-chalk">{FOCUS_LABEL[baseline.focus]()}</b> ·{' '}
-						{LEVEL_LABEL[baseline.level]()}
+						<b className="font-semibold whitespace-nowrap text-chalk">
+							{GOAL_LABEL[baseline.goal]()}
+						</b>{' '}
+						·{' '}
+						<b className="font-semibold whitespace-nowrap text-chalk">
+							{FOCUS_LABEL[baseline.focus]()}
+						</b>{' '}
+						· {LEVEL_LABEL[baseline.level]()}
 					</>
 				}
 			/>

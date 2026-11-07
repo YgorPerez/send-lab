@@ -41,6 +41,11 @@ const COPY = {
 		trainingWeek: 'Your training week (1 day)',
 		levelHelp: 'How hard each phase pushes.',
 		goalsHelp: 'What you train for.',
+		bodyHelp: 'Both finger questions change the program',
+		proposalTitle: 'Your starting program',
+		edit: 'Change your answers',
+		equipment: 'Equipment on hand (all you have)',
+		session: 'Typical session length (min) (optional)',
 		// `CONTEXT.md`: Intake avoids onboarding, setup, wizard, first run,
 		// assessment; Equipment avoids gear and kit; Baseline avoids profile, survey.
 		avoided: /onboarding|set-?up|wizard|first run|assessment|\bgear\b|\bkit\b|profile|survey/i,
@@ -60,6 +65,11 @@ const COPY = {
 		trainingWeek: 'Sua semana de treino (1 dia)',
 		levelHelp: 'O quanto cada fase puxa.',
 		goalsHelp: 'Pra que você treina.',
+		bodyHelp: 'As duas perguntas sobre dedo mudam o programa',
+		proposalTitle: 'Seu programa inicial',
+		edit: 'Mudar suas respostas',
+		equipment: 'Equipamento disponível (tudo o que tiver)',
+		session: 'Duração típica da sessão (min) (opcional)',
 		avoided: /onboarding|configuração inicial|assistente|avaliação|\bkit\b|perfil|questionário/i,
 		waiting: [
 			'Escolha um objetivo e um limitante.',
@@ -218,6 +228,33 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(focused().startsWith(copy.levelHelp)).toBe(true);
 			press(worded(main(), copy.back));
 			expect(focused().startsWith(copy.goalsHelp)).toBe(true);
+
+			// And on the way to the proposal and back from it: the proposal's title,
+			// then the last step's first line.
+			press(worded(main(), copy.next));
+			for (let step = 1; step < 4; step++) {
+				answerStep();
+				press(worded(main(), step === 3 ? copy.generate : copy.next));
+			}
+			expect(document.activeElement?.tagName).toBe('H1');
+			expect(document.activeElement?.textContent).toBe(copy.proposalTitle);
+			press(worded(main(), copy.edit));
+			expect(focused().startsWith(copy.bodyHelp)).toBe(true);
+		});
+
+		// The Week step mixes a multiple choice, a required single one and an
+		// optional field; the heads say which is which.
+		test('the week step says which answer takes several and which can stay blank', async () => {
+			await mount(locale);
+			for (let step = 0; step < 2; step++) {
+				answerStep();
+				press(worded(main(), copy.next));
+			}
+			const heads = [...main().querySelectorAll('legend, label')].map((h) =>
+				h.textContent?.replace(/\s+/g, ' ').trim(),
+			);
+			expect(heads).toContain(copy.equipment);
+			expect(heads).toContain(copy.session);
 		});
 
 		test('the way out goes to Today, and adds no gate on the way back', async () => {

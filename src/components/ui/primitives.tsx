@@ -5,7 +5,7 @@
 // primitive takes a label, a value and children, so it can be used anywhere,
 // and a component that names the training domain in its props can only be used
 // where that domain object already is.
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { cn } from '$lib/utils';
 
 /**
@@ -59,16 +59,27 @@ export function ScreenHeader({
 	lede,
 	reading,
 	action,
+	titleRef,
 }: {
 	title: ReactNode;
 	/** One line, furniture: the date, the phase. Truncated, never wrapped. */
 	meta?: ReactNode;
 	lede?: ReactNode;
+	/** For a screen that moves focus to its title as it arrives (the intake's
+	 *  proposal, #123): the title becomes focusable from script, with no ring,
+	 *  as the readiness sheet's questions are. */
+	titleRef?: Ref<HTMLHeadingElement>;
 } & ({ reading?: ReactNode; action?: never } | { action?: ReactNode; reading?: never })) {
 	return (
 		<header data-screen-header="" className="flex items-baseline justify-between gap-2 pt-1.5">
 			<div className="min-w-0">
-				<h1 className="h-screen-title">{title}</h1>
+				{titleRef ? (
+					<h1 ref={titleRef} tabIndex={-1} className="h-screen-title outline-none">
+						{title}
+					</h1>
+				) : (
+					<h1 className="h-screen-title">{title}</h1>
+				)}
 				{meta ? <p className="mt-1 truncate text-[11px] text-ink-faint">{meta}</p> : null}
 				{lede ? <p className="mt-1.5 text-[13px] leading-snug text-ink-dim">{lede}</p> : null}
 			</div>
