@@ -39,6 +39,86 @@ typography:
     lineHeight: 1
     letterSpacing: "0em"
     fontFeature: "\"tnum\" 1"
+  clock-total:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "64px"
+    fontWeight: 600
+    lineHeight: 0.9
+  clock-paused:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "34px"
+    fontWeight: 700
+    lineHeight: 1
+  clock-position:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "28px"
+    fontWeight: 600
+    lineHeight: 1
+  clock-segment-length:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "24px"
+    fontWeight: 600
+    lineHeight: 1
+  clock-control:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "20px"
+    fontWeight: 700
+    lineHeight: 1
+  clock-lap:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "19px"
+    fontWeight: 600
+    lineHeight: 1
+  clock-lap-table:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "18px"
+    fontWeight: 500
+    lineHeight: 1
+  clock-start:
+    fontFamily: "Inter Variable, Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontSize: "18px"
+    fontWeight: 600
+    lineHeight: 1
+  clock-strip-count:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "56px"
+    fontWeight: 700
+    lineHeight: 0.9
+  clock-strip-stopwatch:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "44px"
+    fontWeight: 700
+    lineHeight: 0.9
+  clock-editor-total:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "36px"
+    fontWeight: 600
+    lineHeight: 1
+  clock-strip-segment:
+    fontFamily: "Barlow Condensed, Roboto Mono Variable, ui-sans-serif, sans-serif"
+    fontSize: "17px"
+    fontWeight: 700
+    lineHeight: 1
+  ready-title:
+    fontFamily: "Inter Variable, Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontSize: "25px"
+    fontWeight: 600
+    lineHeight: 1.15
+  dialog-title:
+    fontFamily: "Inter Variable, Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontSize: "17px"
+    fontWeight: 600
+    lineHeight: 1.25
+  reading-large:
+    fontFamily: "Roboto Mono Variable, Roboto Mono, SFMono-Regular, ui-monospace, Menlo, monospace"
+    fontSize: "22px"
+    fontWeight: 700
+    lineHeight: 1
+  reading-score:
+    fontFamily: "Roboto Mono Variable, Roboto Mono, SFMono-Regular, ui-monospace, Menlo, monospace"
+    fontSize: "30px"
+    fontWeight: 700
+    lineHeight: 1
   headline:
     fontFamily: "Inter Variable, Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
     fontSize: "21px"
@@ -270,13 +350,14 @@ The semantic names alias these and are what components should reach for: `--ok` 
 - **Clock face** (700, `min(88vw, 46dvh)` for a two-glyph reading, line-height 0.8): the full-screen number. It is stepped down by glyph count against one `--face` value (0.58 for `2:30`, 0.47 for `10:00`, a stopwatch tenth counting as a glyph and a half), so seconds fill the width. On a phone held sideways `--face` is `min(40vw, 78dvh)`; on a desktop `min(60vw, 100dvh − 16rem)`.
 - **Clock segment** (700, 30px, 0.04em, uppercase): the segment name at the top left of the clock. The same face carries PAUSED (34px, 0.12em) and Round · Set (28px, 600, 0.03em) under the number.
 - **Clock readings** (Barlow, clock files only): the ready state's total (64px, 600) and each segment's length beside its name (24px); the stopwatch strip's reading (44px), its current lap (19px) and the lap table (18px); the ready state's Start (18px, 600) and the control row's labels (20px, 700). Read from arm's length or further, so they sit off the screen ramp; `tests/typeRamp.test.ts` allows them only in `Timer`, `Stopwatch`, `FullScreenClock`, `ProtocolEditor` and `ProtocolRows`.
-- **Count** (600, 22px; up to 36px and 56px, 700, in the strip): totals and counts that sit beside words: a protocol row's length, the editor's total, the strip's reading in a fixed right-aligned slot.
+- **Count** (600, 22px; up to 36px and 56px, 700, in the strip): totals and counts that sit beside words: a protocol row's length, the editor's total, the strip's reading in a fixed right-aligned slot. The strip's segment name is 17px, 700.
+- **Reading, large** (700, mono, 22px; 30px for Today's score): the readings on the dense screens that stand alone: Today's score, its three counters, the bodyweight and a self-check's result. Roboto Mono, not Barlow (Barlow is the clock's, The Numbers-Only Rule). A unit or a denominator beside one (`/7`, `kg`, `/100`) is the meta rank at normal weight, never the number's bold.
 - **Headline** (600, 21px, 1.15, −0.01em): the screen title, one per screen. The ready state's title is the same rank at 25px.
 - **Title** (600, 16px, 1.25): a list row's name. The editor's dialog title is 17px.
 - **Section** (600, 14px, 1.2, `ink-dim`, `.h-section`): the one section rank, in Inter and sentence case, on every screen (the Timer screens since #110, the rest by #123; #125 dropped the mono caps rule and `Section`'s `face`). The cue-settings popover, Log's day detail and Train's open task card head their parts the same way.
 - **Body, large** (500, 15px, 1.25): the large and `touch` buttons, the editor's rows, a preset group's head, menu items: words a thumb lands on mid-set.
 - **Body** (400–500, 13px, 1.375): prose, buttons, options, control rows.
-- **Meta** (400, 11px, `ink-faint`): the one line under a screen's title (the date, the phase), truncated rather than wrapped. Mono only when it is all digits (a count, a ratio); a date with a month name is a phrase and stays in Inter.
+- **Meta** (400, 11px, `ink-faint`): the one line under a screen's title (the date, the phase; Today's says "Aug 13 · Training week 5 of 8"), truncated rather than wrapped; a `Section`'s right-hand meta; a verdict's tag; the stepper's rail labels. Mono only when it is all digits (a count, a ratio); a date with a month name is a phrase and stays in Inter.
 - **Data** (400, mono, tabular, mostly 11px): every reading on the dense screens, via `.num`.
 - **Label** (400, mono, 10px, 0.14em, uppercase, `ink-faint`): furniture only: a field label, a unit, a meta reading.
 - **Microlabel** (400, mono, 9px, 0.04em, uppercase, `ink-faint`): column labels in a four-column grid at 360px. Measured, not chosen: at the label's 10px and 0.14em, "DESCANSO (S)" clips in a 73px column. It stands against any generic 11px floor.
@@ -370,7 +451,7 @@ Quiet by default; a dense screen with loud buttons is not calm.
 - **Bare:** no fill, no border, faint ink that lightens on hover.
 - **Clock control:** the start, pause and resume of a clock off its coloured field: a 2px `ink-dim` outline (at least 7:1 on the ground and on a panel), no fill, `ink` glyph and label. Hover takes the border to chalk; a press fills the control with inset graphite, whatever it sits on (the ground in the full-screen clock, a panel in the stopped strip). At least 48px, and larger by role: the strip's 52px square at 14px corners, the clock row's 84px main control at 22px, the ready state's 60px full-width Start at 16px. It is the same control on Train, on the Timer list's mini bar and in the full-screen clock, and off the field it is every control in the clock's row, the side ones too (back, skip, reset), so a paused row speaks one language. It is never filled vermilion: the clock is a tool on the screen, not what the screen is for, and on Train the one primary is "finish and log the session". On a coloured field the clock keeps its own shapes (a ground-filled main control, outlines in the ground ink). The recipe is `button({ kind: 'clock' })`, on every clock since #118.
 - **Sizes:** 32 / 36 / 44px, and `touch` at 48px for anything operated mid-set.
-- **Disabled:** drops its fill and border and keeps a faint label (7.14:1). Never opacity. Disabled, not hidden, with the line that says what it waits for.
+- **Disabled:** drops its fill, takes its border down to `line-soft` and keeps a faint label (7.14:1). Never opacity. Disabled, not hidden, with the line that says what it waits for.
 - **Hover / Focus:** hover moves a surface or a border, never a measured text/background pair, and only under `(hover: hover)`. Focus is a 2px vermilion outline 2px off the control on `:focus-visible`; on a coloured field it is drawn in the ink.
 
 ### Chips
@@ -423,13 +504,13 @@ The full-screen clock both clocks run in. Running, the popup's background is the
 One 72px line. Running, it is the segment's colour, as the full-screen clock is, with a 52px ground square for Pause. Stopped, it is a bordered panel with a 52px Resume in the clock control (outlined, never filled, since #118), because on Train the screen's one primary is finish-and-log. The number sits in a fixed right-aligned slot so neither the labels nor the button move as it crosses ten or a minute. The number is the way into the full-screen clock and says so: underlined on Train, the whole line on the Timer list's mini bar.
 
 ### Task cards (Train)
-One card per task, its category as a 2px left edge and nowhere else. One is open at a time: the first with a set left that today's verdict did not hold back. Every other task is its header alone: the name in 16px semibold, the short prescription under it in 11px mono (`4–6 × 3–5 · +32–48kg`), the sets ticked against the prescription's (`0/4`, never the rows on the grid), a chevron, and the clock's 44px button. Held work carries Today's warn chip at the end of that line, a task with its sets ticked carries Today's ok chip, done. The whole header is the disclosure. The clock's button marks the task the clock runs in the selection mark (chalk on raised graphite), never vermilion. Open, the card adds its bands under hairlines: swap, target, the working-load ask (only at first contact, folded to one line once a set is ticked), the set grid and Add set. A tick that finishes the open task folds it, opens the next, scrolls that card clear of the sticky clock and moves focus to its header.
+One card per task, its category as a 2px left edge and nowhere else. One is open at a time: the first with a set left that today's verdict did not hold back. Every other task is its header alone: the name in 16px semibold, the short prescription under it in 11px mono (`4–6 × 3–5 · +32–48kg`), the sets ticked against the prescription's (`0/4`, never the rows on the grid), a chevron, and the clock's 44px button. Held work carries Today's warn chip at the end of that line, a task with its sets ticked carries Today's ok chip, done. The whole header is the disclosure. The clock's button marks the task the clock runs in the selection mark (chalk on raised graphite), never vermilion. Open, the card adds its bands under hairlines, each headed in the section rank: swap, prescription, the working-load ask (only at first contact, folded to one line once a set is ticked), then the sets as rows of the card under hairlines (never boxes inside it; a ticked set is tinted teal edge to edge) and Add set. A tick that finishes the open task folds it, opens the next, scrolls that card clear of the sticky clock and moves focus to its header.
 
 ### The Log timeline
 One accordion card, a 44px row per date, newest first: the date in 11px mono faint, the readiness score in 13px semibold ink after an 8px dot in its verdict's state (teal for green and short, gold for moderate and tissue, vermilion only for rest), the session's day type in 13px ink (or "No session" in faint ink), wrapping at its spaces, and its sets counted in 11px mono, dropping under the day type when the two do not fit. Nothing is open on arrival. A day opens to its check (score and verdict, flags, each answer on a hairline row) and its session (each exercise's sets, the note), each under an Inter section head with its time or length on the right. The header's meta line counts both, with their nouns. From `lg` the second pane shows the last day opened (the newest until one is), a card headed by the full date, held in view while the timeline scrolls and scrolling inside itself; the row stops opening under itself and the shown day's row takes the selection mark with a chalk edge.
 
 ### The week grid
-Week's training week (#121): an Inter section head, "Training week 5 of 8", with the adherence as a phrase on the right; a legend; then the seven slots, four columns on a phone and seven from `lg`, each a 64px cell on inset graphite with the weekday in a microlabel, a 12px state mark and the count in 11px mono. Each state is a shape as well as a colour: trained a filled teal disc, missed a vermilion cross, today a gold ring with a centre, to come an empty faint ring, rest a faint dash, all at least 3:1 on both cell surfaces. The selected cell takes the selection mark with its chalk edge. The selected day sits directly under the grid (beside it from `lg`), headed "Thu · Pull" with its state and a neutral load chip on the right (neither on a rest day, whose head says rest), its headline (13px medium) beside the day type's accent over its subhead (11px dim), as Today's plan card sets them, and its tasks as lines in one card. A cell's count is teal once any of its work is ticked.
+Week's training week (#121): an Inter section head, "Training week 5 of 8", with the adherence as a phrase on the right; a legend; then the seven slots, four columns on a phone and seven from `lg`, each a 64px cell on inset graphite with the weekday in a microlabel, a 12px state mark and the count in 11px mono. Each state is a shape as well as a colour: trained a filled teal disc, missed a vermilion cross, today a gold ring with a centre, to come an empty faint ring, rest a faint dash, all at least 3:1 on both cell surfaces. The seven cells are one radio group (#125): one tab stop on the selected day, the arrows move through the week and the day follows. The selected cell takes the selection mark with its chalk edge. The selected day sits directly under the grid (beside it from `lg`), headed "Thu · Pull" with its state and a neutral load chip on the right (neither on a rest day, whose head says rest), its headline (13px medium) beside the day type's accent over its subhead (11px dim), as Today's plan card sets them, and its tasks as lines in one card, each led by a 16px mark (a teal check when done, a faint ring when not) and, on today's slot, carrying the warn chip of work this morning's check held, as Today and Train mark it. A cell's count is teal once any of its work is ticked.
 
 ### Settings
 Settings (#122): one list. Every group is an Inter section head over one `ControlList`: Units & display (weight, length, and the language by its full names, "English" and "Português"), Timer cues (the same `CueSettings` the Timer's popover shows, there without the card), Notifications (one row, still a card) and Account (the email, or "Signed in" until the session answers, beside Sign out). The choices are Inter, `kg` included: mono is for readings that are all digits. Signed out, Account is an `Empty`. AI access is the one `Bare` group, because it is prose, a config and three actions rather than controls on rows. Offline, the 13px gold line saying which controls need a connection is the first group under the header, and each control it disables says so again under its own row.
@@ -439,6 +520,9 @@ Sign-in (#124): the header (Sign in, Create account, or Account when signed in),
 
 ### Protocol rows
 A list row is a 56px panel at 14px corners: the name in 16px semibold, the shape under it in 13px dim ink, the length in a 22px Barlow count on the right. Its ⋯ is a separate, filled, bordered 44px square centred beside it, never inside it and never stretched to the row's height (`RowMenu`), and only a saved protocol has one; a preset's one action, a copy, is in its ready state. A tap opens the ready state, so a stray tap never starts anything. The list runs Saved, the stopwatch's row, Recent, Presets (#119). The presets are one accordion card: each exercise a 48px head in the rows' 15px with its count, today's exercises first, open and labelled "Today", the rest closed; inside a group the presets are lines in the card with no surface of their own, their names in the head's 15px, and the group ends on its study, "Study: <title>" with the 12px external mark, worded and drawn as the ready state's. The protocol the clock is on is marked with the selection language: a raised panel, a chalk edge, chalk on every line, the shape line in semibold.
+
+### Notices and held controls
+One family for every line a screen says that is not under a control's row: `Notice`, 13px, wrapping evenly, its tone the only weight. Gold (`warn`) for something that has to change first: this device or the network, or an answer or tick still missing. Vermilion (`stop`) refuses what was typed. Dim ink (`info`) asks nothing. A held control, primary or not, says why directly under it in one, and is described by it: the intake's and the readiness sheet's advance, Train's finish and Set load, Repeat last session, sign-in's button, a confirm dialog's busy confirm (#124, #125). A line under a `ControlRow` is the same line as `ControlNote`.
 
 ## Do's and Don'ts
 
