@@ -51,7 +51,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 |---|---|---|
 | `Eyebrow` | `primitives.tsx` | The furniture rank of the type scale |
 | `ScreenHeader` | `primitives.tsx` | How every screen opens (#114): the title in the top rank and the screen's only `<h1>`, an optional meta line, an optional lede, and one `reading` *or* one `action` on the right. Nothing the page draws comes before it |
-| `Section` | `primitives.tsx` | Heading, optional right-hand meta, body. `face` picks the heading's face: `sans` (`.h-section-sans`, the overhaul's) or the retiring `mono` default; each screen ticket moves its own (Today since #117, Train since #118) |
+| `Section` | `primitives.tsx` | Heading, optional right-hand meta, body. `face` picks the heading's face: `sans` (`.h-section-sans`, the overhaul's) or the retiring `mono` default; each screen ticket moves its own (Today since #117, Train since #118). Every screen is on `sans` since the intake (#123); #125 flips the default |
 | `Bare` | `primitives.tsx` | A group with a rule above it and no box |
 | `Empty` | `primitives.tsx` | What a group says when it has nothing to list: a `Bare`, one line of `Prose`, and the one affordance that fills it |
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
@@ -71,7 +71,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `ControlRow` | `primitives.tsx` | One control on its own line: what it is on the left, the control on the right. 56px whatever the control since #122 (it was 44px for a switch and 56px for a choice). Promoted out of Settings by #105 when the cue settings needed it on a second screen |
 | `ControlList` | `primitives.tsx` | A group's controls as one list: a card of `ControlRow`s divided by hairlines, one row or many (#122). `surface={false}` keeps the rows and drops the card, for a container that already is a surface (the cue popover) |
 | `ControlNote` | `primitives.tsx` | The 13px gold line under a `ControlRow` saying why its control did not do what was asked, or cannot on this device; inside the row's item, never under the card (#122) |
-| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes. A step's rail label is optional (the readiness check's six to nine segments have no room for words at 360px), and in a container taller than it the controls settle at the bottom (#116) |
+| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes. A step's rail label is optional (the readiness check's six to nine segments have no room for words at 360px), and in a container taller than it the controls settle at the bottom (#116). The rail is chalk to the current step, slate after it, never vermilion: the advance is the one vermilion fill (#123). `className` can widen its gaps (the intake's `gap-sections`); the waiting line is 13px gold, `ControlNote`'s size |
 
 ## The domain pieces — `src/components/`
 
@@ -339,6 +339,28 @@ built-in one, or how far a half-finished baseline got, with the one affordance t
 fills it. `quiet`, because an intake is not what Today is opened for (its one
 primary is the readiness check's invitation since #116).
 
+**The way out is the strip's ✕, on every step** ([#123](https://github.com/YgorPerez/send-lab/issues/123)).
+With no bar on the intake (#115) the athlete has nothing else to tap, and the old
+"Not now" link under the stepper sat below the fold on the first step at 360px and
+was not on the proposal at all. So the route names a screen action, `IntakeExit`: a
+link to Today in the cue settings' 44px ghost square, named "Not now: back to
+Today". The strip is fixed, so no step scrolls it away, and it is there while the
+record arrives too. Leaving costs nothing (the draft stays, and Today offers to
+finish it), so it asks nothing. The worded link and its note stay at the end of the
+flow, where a step ends. `tests/intake.test.ts` walks every step and the proposal and
+asserts the exit, one primary, and a held advance with its line on each.
+
+**Aligned to the screens before it (#123).** Each question heads itself in the
+section rank (`h-section-sans` on the `legend`; the session length, a question
+beside the days and the equipment, on its label), questions a sections gap apart,
+options a row gap apart. A typed field under a question or a section that heads it
+(the grades under the level, the context under Optional) takes a 13px ink label,
+one rank below. A step reached by Next or Back puts the page back at its top and
+focuses the step's first line, the readiness sheet's answer to the same problem:
+the advance is at the end of a step that runs past the fold, so the next step
+otherwise opened scrolled to its end. On the proposal, Start and Change your
+answers share a row from about 400px and stack below it, Start on top.
+
 The draft is the fourth ephemeral store (`lib/baselineDraft.ts`) and the first one
 **scoped to the account** rather than to something shorter-lived.
 `lib/ephemeral.ts` named the case that would justify it — two athletes sharing a
@@ -569,8 +591,9 @@ reads two keys: `navigation: false` (the intake: no bar, no rail, nothing reserv
 and `screenAction`, a component the strip renders on its right as the screen's one
 action. Read in `__root.tsx` and held at the baked answer (navigation, no action)
 until the app has hydrated, the same deferral the locale gets. The Timer names one,
-its cue settings (#119); the strip renders it in the strip's locale, so a screen
-action takes `locale` as a prop rather than reading the ambient one.
+its cue settings (#119), and the intake its way out (#123); the strip renders it in
+the strip's locale, so a screen action takes `locale` as a prop rather than reading
+the ambient one.
 
 **From `lg` a page starts on the measure's left edge.** `Pane` no longer centres
 in the 1000px measure, so a one-pane page's title, a two-pane page's title and the
