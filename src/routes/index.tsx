@@ -3,15 +3,16 @@
 // The screen that decides whether "dense and calm" survives contact with a phone.
 // It carries, in one scroll: the read, the five wellness dimensions behind it,
 // the plan and the work the read holds back, yesterday's carry-forward,
-// three counters, a fourteen-point trend, the watch-outs with their advice, a
-// nine-question readiness check, the bodyweight nudge, and two injury entry
+// three counters, a fourteen-point trend, the watch-outs with their advice, the
+// readiness check as one line, the bodyweight nudge, and two injury entry
 // points.
 //
 // The ordering rule is *decision first, evidence second, input last*: the verdict
-// is the top of the screen because it is the answer; the check that produced it
-// is near the bottom because it is already answered. That inverts the SvelteKit
-// screen, where the check came first and the athlete scrolled past nine questions
-// to reach the one line they opened the app for.
+// is the top of the screen because it is the answer. The check that produces it
+// is a sheet since #116 (`ReadinessCheck`): unanswered, the read's place invites
+// the athlete into it; answered, the read carries it as one summary line that
+// reopens it. Before that its six to nine questions were listed near the bottom
+// of the page, and the athlete scrolled past them to reach everything else.
 //
 // The screen is genuinely live, and as of #56 it is live over the real store. It
 // re-runs `computeReadiness` against whatever the check currently says, using the
@@ -30,7 +31,7 @@
 // file for why length alone is not a reason to promote one.
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, ChevronRight, ExternalLink } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { useBaselineDraft } from '$lib/baselineDraft';
 import { type BodyArea, computeReadiness, getContent, hasWellnessAnswer } from '$lib/content';
 import type { Content, VerdictId } from '$lib/content/types';
@@ -78,9 +79,6 @@ const FLAG_CHIP = { stop: 'stop', warn: 'warn', info: 'neutral' } as const;
 /** What the verdict holds when there is no verdict: nothing. */
 const NO_HELD: ReadonlySet<ExerciseId> = new Set();
 
-/** Where the empty read sends the athlete: the check, further down the page. */
-const CHECK_ANCHOR = 'readiness-check';
-
 function Today() {
 	const now = useMemo(() => Date.now(), []);
 	// The store, live. Everything below is a function of it: `resolveToday` reads
@@ -121,7 +119,9 @@ function Today() {
 	const [bodyweight, setBodyweight] = useState('');
 	const [bodyweightLogged, setBodyweightLogged] = useState(false);
 	const [selfCheckOpen, setSelfCheckOpen] = useState(false);
-	const [checkOpen, setCheckOpen] = useState(true);
+	// The readiness check's sheet (#116). Closed on arrival: Today invites the
+	// athlete into it, or summarises it, and the questions live in the sheet.
+	const [checkOpen, setCheckOpen] = useState(false);
 
 	// A DERIVED PRESCRIPTION — the third pattern. Svelte's `$derived` becomes
 	// `useMemo` over the *inputs*, never a second piece of state kept in step by
@@ -252,23 +252,25 @@ function Today() {
 								breakdown={breakdown}
 								scoreNote={t.scoreNote}
 								nextTaskLabel={nextTask?.exName ?? null}
+								check={{ answered, total: questions.length, onOpen: () => setCheckOpen(true) }}
 							/>
 						) : (
-							// The read's place, with no read in it. Under the same label the
-							// score carries, so the screen keeps its anchor; the action jumps
-							// to the check, which is at the bottom on a phone and to the right
-							// on a laptop — a link to the anchor is right on both.
+							// THE INVITATION (#116, story 21). The read's place, with no read
+							// in it, under the same label the score carries so the screen
+							// keeps its anchor. Its action opens the check, and it is the
+							// screen's one primary: with no check there is no verdict, and
+							// answering it is the thing to do first.
 							<Section label={m.rd_score()}>
 								<Empty
 									value={m.td_no_check()}
 									action={
-										<Link
-											to="/"
-											hash={CHECK_ANCHOR}
-											className={button({ size: 'md', class: 'min-h-11' })}
+										<button
+											type="button"
+											onClick={() => setCheckOpen(true)}
+											className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
 										>
-											{m.td_answer_check()}
-										</Link>
+											{answered > 0 ? m.td_continue_check() : m.td_answer_check()}
+										</button>
 									}
 								/>
 							</Section>
@@ -330,9 +332,8 @@ function Today() {
 
 						    It sits under the plan rather than in the input column, because it
 						    is about the plan directly above it: the sentence only makes sense
-						    next to the week it is describing. `quiet`, not `primary` — the
-						    bodyweight nudge holds this screen's one primary, and an intake
-						    is not what the athlete opened Today to do.
+						    next to the week it is describing. `quiet`, not `primary` — an
+						    intake is not what the athlete opened Today to do.
 
 						    AND IT WAITS FOR THE RECORD. `record.baseline` is `null` both when
 						    the account has no baseline and when `/api/state` has not answered
@@ -411,46 +412,6 @@ function Today() {
 				}
 				secondary={
 					<>
-						{/* ---- the readiness check. Answered, so it opens as a receipt with the
-			     form underneath; the toggle collapses it back to the receipt. */}
-						<Section
-							id={CHECK_ANCHOR}
-							label={m.log_readiness()}
-							meta={
-								<button
-									type="button"
-									onClick={() => setCheckOpen((v) => !v)}
-									className="text-ink-dim"
-								>
-									{checkOpen ? m.btn_close() : m.td_recheck()}
-								</button>
-							}
-						>
-							<div>
-								<div className="flex items-baseline justify-between gap-2 text-[12px] text-ink-faint">
-									<span className="num">
-										{answered}/{questions.length}
-									</span>
-									<button
-										type="button"
-										onClick={() => setAnswers({})}
-										className="text-[11px] text-ink-dim underline decoration-line underline-offset-2"
-									>
-										{m.td_recheck()}
-									</button>
-								</div>
-								{checkOpen ? (
-									<div className="mt-3 border-t border-line-soft pt-3">
-										<ReadinessCheck
-											questions={questions}
-											answers={answers}
-											onPick={(id, v) => setAnswers((prev) => ({ ...prev, [id]: v }))}
-										/>
-									</div>
-								) : null}
-							</div>
-						</Section>
-
 						<BodyweightNudge
 							bodyweight={t.bodyweight}
 							draft={bodyweight}
@@ -476,6 +437,17 @@ function Today() {
 						) : null}
 					</>
 				}
+			/>
+
+			{/* The check's sheet. A portal, so where it sits in the tree changes
+			    nothing on screen; it reads and writes the same draft the verdict is
+			    computed from, so the read behind it moves with every pick. */}
+			<ReadinessCheck
+				open={checkOpen}
+				onOpenChange={setCheckOpen}
+				questions={questions}
+				answers={answers}
+				onPick={(id, v) => setAnswers((prev) => ({ ...prev, [id]: v }))}
 			/>
 		</div>
 	);
@@ -513,6 +485,7 @@ function ReadCard({
 	breakdown,
 	scoreNote,
 	nextTaskLabel,
+	check,
 }: {
 	verdict: Content['verdicts'][VerdictId];
 	score: number;
@@ -521,7 +494,11 @@ function ReadCard({
 	breakdown: { id: string; value: number }[];
 	scoreNote: 'heuristic' | 'tuned';
 	nextTaskLabel: string | null;
+	/** The check the read came from, summarised: how much of it is answered, and
+	 *  the way back into it. */
+	check: { answered: number; total: number; onOpen: () => void };
 }) {
+	const summaryId = useId();
 	return (
 		<div className={card({ pad: 'none' })}>
 			<div className="flex items-start gap-2.5 p-3.5">
@@ -572,6 +549,30 @@ function ReadCard({
 						{m.td_applies()} <b className="font-semibold text-chalk">{nextTaskLabel}</b>
 					</p>
 				) : null}
+			</div>
+
+			{/* THE CHECK, AS ONE LINE (#116, story 31). The read's receipt: what it
+			    was computed from, and the way back in. It sits in the read's own card
+			    because it is the read's source; a row of its own one section gap
+			    below would have looked like a separate thing. "Continue" while a
+			    question the answers called for is still open, "Edit" once none is. */}
+			<div className="flex items-center gap-2 border-t border-line-soft py-0.5 pr-1 pl-3.5">
+				<p id={summaryId} className="min-w-0 flex-1 text-[13px] leading-snug text-ink-dim">
+					{m.rd_check_title()}
+					<span className="text-ink-faint">
+						{' · '}
+						{m.rd_check_answered({ n: check.answered, total: check.total })}
+					</span>
+				</p>
+				<button
+					type="button"
+					onClick={check.onOpen}
+					aria-describedby={summaryId}
+					className={button({ kind: 'bare', size: 'md', class: 'min-h-11 gap-0.5 text-ink-dim' })}
+				>
+					{check.answered < check.total ? m.btn_continue() : m.btn_edit()}
+					<ChevronRight size={18} strokeWidth={2} aria-hidden="true" className="text-ink-faint" />
+				</button>
 			</div>
 		</div>
 	);
@@ -827,7 +828,7 @@ function BodyweightNudge({
 							type="button"
 							disabled={draft === ''}
 							onClick={onLog}
-							className={button({ kind: 'primary', size: 'md', class: 'min-h-11 shrink-0' })}
+							className={button({ size: 'md', class: 'min-h-11 shrink-0' })}
 						>
 							{m.btn_save()}
 						</button>

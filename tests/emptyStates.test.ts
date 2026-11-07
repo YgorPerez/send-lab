@@ -80,6 +80,7 @@ const COPY = {
 		usual: 'about your usual',
 		held: 'held · readiness',
 		question: 'How did you sleep?',
+		answerCheck: '>Answer the check<',
 		finish: 'Finish &amp; log session',
 		microcycle: 'Microcycle',
 		thursday: 'Thu',
@@ -99,6 +100,7 @@ const COPY = {
 		usual: 'perto do seu normal',
 		held: 'segurado · prontidão',
 		question: 'Como foi seu sono?',
+		answerCheck: '>Responder o check<',
 		finish: 'Concluir e registrar treino',
 		microcycle: 'Microciclo',
 		thursday: 'Qui',
@@ -159,8 +161,10 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(today).not.toContain(copy.usual);
 			// No verdict, so no work is held from it.
 			expect(today).not.toContain(copy.held);
-			// The check itself is still there to be answered — it is the way out.
-			expect(today).toContain(copy.question);
+			// The check is still there to be answered — it is the way out. Since #116
+			// that is the invitation into its sheet, not the questions on the page.
+			expect(today).toContain(copy.answerCheck);
+			expect(today).not.toContain(copy.question);
 			// The trend has nothing to draw.
 			expect(today).toContain(copy.noTrend);
 		});

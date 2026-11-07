@@ -92,8 +92,10 @@ export interface RouteFloor {
  * design, because "sparse" is a claim worth writing down rather than a gap.
  *
  *   `/`          Today: the verdict, the plan, the held work, the watch-outs, the
- *                open readiness check, the counters, the trend and the
- *                carry-forward. 154 seeded, 99 empty.
+ *                counters, the trend, the carry-forward and the readiness check
+ *                as one summary line. 103 seeded, 52 empty (#116; it was 154 and
+ *                99 while the check's six to nine questions were listed on the
+ *                page, and they are in a sheet now, which the gate does not open).
  *   `/log`       five weeks of sessions and fourteen readiness checks. 170
  *                seeded, 13 empty — the screen #73 was written about.
  *   `/login`     the sign-in form. 10 either way.
@@ -117,7 +119,7 @@ export interface RouteFloor {
  *                23 empty.
  */
 export const SEEDED_FLOORS: Record<string, RouteFloor> = {
-	'/': { floor: 110, readsRecord: true },
+	'/': { floor: 75, readsRecord: true },
 	'/log': { floor: 125, readsRecord: true },
 	'/login': { floor: 6, readsRecord: false },
 	'/settings': { floor: 12, readsRecord: false },

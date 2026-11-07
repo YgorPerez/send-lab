@@ -112,12 +112,13 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				expect(html.length).toBeGreaterThan(2000);
 			}
 
-			// Today: verdict, plan, held work, watch-outs, check, bodyweight.
+			// Today: verdict, plan, held work, watch-outs, the check's summary (its
+			// questions are in a sheet since #116), bodyweight.
 			expect(today).toContain(locale === 'en-US' ? 'Moderate' : 'Moderado');
 			expect(today).toContain(locale === 'en-US' ? 'Pull Strength' : 'Puxada');
 			expect(today).toContain(locale === 'en-US' ? 'Antagonists' : 'Antagonistas');
 			expect(today).toContain(locale === 'en-US' ? 'Tender finger' : 'Dedo sensível');
-			expect(today).toContain(locale === 'en-US' ? 'How did you sleep?' : 'Como foi seu sono?');
+			expect(today).toContain(locale === 'en-US' ? 'Readiness check' : 'Check de prontidão');
 			expect(today).toContain('71.9');
 
 			// Train: the timer, the exercises, the prescriptions.

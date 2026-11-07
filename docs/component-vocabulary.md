@@ -68,7 +68,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
 | `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`). Promoted out of Settings by #64 when a second screen needed it. A `fieldset`; `labelledBy` names the group after the row that asks it |
 | `ControlRow` | `primitives.tsx` | One control on its own 44px line: what it is on the left, the control on the right. Promoted out of Settings by #105 when the cue settings needed it on a second screen |
-| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes |
+| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes. A step's rail label is optional (the readiness check's six to nine segments have no room for words at 360px), and in a container taller than it the controls settle at the bottom (#116) |
 
 ## The domain pieces — `src/components/`
 
@@ -85,12 +85,13 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets |
-| `ReadinessCheck` | Nine questions, their rationale, and the study behind each |
+| `ReadinessCheck` | The readiness check as a sheet, one question per step (#116): the step `lib/readinessFlow.ts` names, its rationale and study collapsed under it, its options with nothing preselected. Full height from a phone's bottom edge, a 400px dialog centred from `lg`. Today holds the answers; the sheet holds only which step is showing |
 | `SelfCheckSheet` / `RehabStarter` | The injury self-check and the rehab switch |
 | `WorkingLoadAsk` | The ladder put at first contact with a weighted exercise, and what the athlete is told about the two numbers under its third rung |
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
-`ids.ts` (identity), `protocol.ts` (the timer's arithmetic, and which cue
+`ids.ts` (identity), `readinessFlow.ts` (which question the readiness check asks
+next, and where a reopened one resumes), `protocol.ts` (the timer's arithmetic, and which cue
 each transition fires), `stopwatch.ts` (the stopwatch's, and its laps), `cues.ts` (playing those cues: its beeps, haptics and voice), `timerSetup.ts` (the clock's draft: restored paused, one per screen, and on the Timer screen one per protocol), `stopwatchDraft.ts` (the stopwatch's draft, paused and unscoped), `recentProtocols.ts` (the Timer screen's Recent: the last protocols run, as keys, on this device), `wakeLock.ts` (keeping the screen on while either clock counts), `loggedSet.ts` (which of the seven per-set fields an
 exercise shows, and what a fresh row is prefilled with), `prescription.ts`
 (what a slot runs, and at what numbers), `workingLoad.ts` (which exercises carry
@@ -296,7 +297,8 @@ has hydrated, bounces a returning athlete *with* a baseline into an intake
 whole entry path is one line on Today under the plan it describes: an `Empty` — the
 one group on that page that genuinely has nothing in it — saying the week is the
 built-in one, or how far a half-finished baseline got, with the one affordance that
-fills it. `quiet`, because Today's one primary is the bodyweight nudge.
+fills it. `quiet`, because an intake is not what Today is opened for (its one
+primary is the readiness check's invitation since #116).
 
 The draft is the fourth ephemeral store (`lib/baselineDraft.ts`) and the first one
 **scoped to the account** rather than to something shorter-lived.
@@ -539,6 +541,71 @@ are the same width and nothing moves sideways between them.
 **A new spacing token is two edits, and the second is easy to miss.** Add it to
 `app.css` and to `twMergeConfig` in `lib/utils.ts`; `tests/spacingTokens.test.ts`
 fails until both agree. The reasons are the next two rules.
+
+## The readiness check sheet
+
+Built by [#116](https://github.com/YgorPerez/send-lab/issues/116) from spec
+#113's readiness check decisions.
+
+**What comes next is a pure function, and it is "the next step", not "the next
+unanswered one".** `lib/readinessFlow.ts` takes the answers and nothing else:
+`checkSteps` (the six core questions, each follow-up straight after the question
+that revealed it), `openingStep` (the first unanswered step, or the first step
+when all are answered), `stepAfter` and `stepBefore`. The list is recomputed on
+every call, because a pick can add a follow-up (poor sleep adds stress and drive)
+or withdraw one. A pick moves to `stepAfter` the answers *with* the pick, so the
+follow-up it calls for comes next and the rail grows by a segment while the
+athlete watches. Moving to the next unanswered step instead would close a
+finished check on the first changed answer, so editing would cost a reopen per
+question.
+
+**Every pick advances except the last.** On the last step the pick stays on
+screen and the advance reads Done and closes the sheet. The advance is the
+`Stepper`'s, so it is the sheet's one `primary`, disabled with "Pick an answer to
+go on" until the step is answered (ADR 0021: nothing is preselected, and the
+advance does not skip). Closing with ✕ is always there and keeps every answer: the
+draft is still idiom 2's `readinessDraft`, written on each pick.
+
+**The step is the sheet's state, and it starts fresh on every open.** It lives in
+a component inside the popup, so the lazy `useState(() => openingStep(answers))`
+runs when the sheet opens and no effect keeps it in step. A step the answers have
+since withdrawn falls back to `openingStep`. Each step's question is an `h3`
+focused as it arrives, so a keyboard or a screen reader lands on the new question
+instead of on the option that just unmounted.
+
+**"Why we ask" is a `<details>` under the question**, closed. The old inline list
+clamped it to two 11px lines on every question; in a step it is one tap away and
+costs 44px. The study link is the in-text 12px icon beside its word. The only
+motion in the sheet is the sheet itself (200ms, Base UI's `data-starting-style`
+and `data-ending-style`) and the disclosure's chevron, both finished in one frame
+under reduced motion by `app.css`'s rule.
+
+**A follow-up says what it follows.** "How does it feel?" asks about the answer
+one step back, which is off screen, so the step carries the parent question and
+its answer in a faint line above its own.
+
+**Today has one way in for each state.** No wellness answer (`hasWellnessAnswer`,
+unchanged): the read's place holds the invitation, and it is Today's one
+`primary`, which is why the bodyweight nudge's Save dropped to `quiet`. With a
+read: the read's card ends in one summary line, "Readiness check · 6 of 7
+answered", with Continue while a step the answers call for is open and Edit once
+none is. Continue opens on the first unanswered step and Edit on the first. The
+summary is inside the read's card rather than a row of its own, because a row one
+section gap (28px) below the read looked like a separate thing. #117 owns where it
+finally sits.
+
+**The sheet is More's sheet, taller.** Same backdrop, panel, title row and 44px
+close, same 520px cap and 200ms rise. It runs from the bottom edge to 12px under
+the status bar, so the controls sit at the thumb whatever the question's length.
+From `lg` it is a 400px dialog, 42rem tall or the window less 4rem, centred, and
+it fades instead of rising, since there is no edge for it to come from. The
+height is fixed so the controls do not move between steps.
+
+**Today got shorter, and its floor came down with a measurement.** Seeded, Today
+measured 4361px at 360px and 2476px at 1280px with the questions listed; with the
+sheet it is 2517px and 1772px. `check:contrast` counted 103 text elements seeded
+and 52 empty where it counted 154 and 99, so `scripts/floors.ts` holds `/` at 75,
+the same quarter under the measurement as before.
 
 ## The idiom
 
