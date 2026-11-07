@@ -203,6 +203,33 @@ describe('the chrome is one nav and one main, below the shell', () => {
 		expect(nav, 'More is not hidden at lg, where the rail lists everything').toMatch(
 			/className=\{cn\(ITEM, 'lg:hidden'\)\}/,
 		);
+		// The box is what the page reserves, border and padding included: 56px plus
+		// the home indicator is `--nav-clear`, and the rail is the 200px of
+		// `--nav-rail`. With `box-content` the rail measured 217px and sat its
+		// border 3px from every title between 1024px and ~1215px (#115's critique).
+		expect(element, 'the bar adds padding or a border outside what it reserves').not.toContain(
+			'box-content',
+		);
+		expect(element, 'the bar is not as tall as what the page reserves').toContain(
+			'h-[var(--nav-clear)]',
+		);
+	});
+
+	// More's sheet stays visible at every width. Hidden from `lg` while still
+	// open (a phone rotated past 1024px, a window widened), it was a modal nobody
+	// could see, holding focus and the page's scroll.
+	test('More hides its trigger at lg, never its open sheet', () => {
+		const sheet = /<Dialog\.Portal>[\s\S]*?<\/Dialog\.Portal>/.exec(nav)?.[0] ?? '';
+		expect(sheet, 'the sheet was not found').not.toBe('');
+		expect(sheet).not.toContain('lg:hidden');
+	});
+
+	// The navigation is read before the page: a keyboard reaches the rail (drawn
+	// first at lg) without tabbing through the whole screen, and a screen reader
+	// meets the landmark first. Both are fixed, so nothing moves on screen.
+	test('the navigation comes before main in the document', () => {
+		expect(shell.indexOf('<Navigation')).toBeGreaterThan(-1);
+		expect(shell.indexOf('<Navigation')).toBeLessThan(shell.indexOf('<main'));
 	});
 
 	// What the rest of the page clears is one variable that changes at `lg` and

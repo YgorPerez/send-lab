@@ -62,10 +62,12 @@ export function UpdateAnnouncement({ locale }: { locale: AppLocale }) {
 
 	return (
 		<div
-			// Above More's sheet and its backdrop, so an athlete who opens it does
-			// not lose the notice behind it. The home indicator is the bar's to
-			// clear; only where there is no bar does the notice pad for it.
-			className="fixed inset-x-0 bottom-[var(--nav-clear)] z-[60] flex items-center justify-between gap-3 border-t border-line bg-panel px-3 py-2.5 pb-[max(10px,calc(env(safe-area-inset-bottom)-var(--nav-clear)))] lg:left-[var(--nav-rail)]"
+			// Above the bar and the Timer's mini bar, under More's sheet and its
+			// backdrop: the sheet opens from the bottom edge, over the place this
+			// sits, and the notice on top hid the sheet's first row. Dimmed while
+			// the sheet is open, back when it closes. The home indicator is the
+			// bar's to clear; only where there is no bar does the notice pad for it.
+			className="fixed inset-x-0 bottom-[var(--nav-clear)] z-[35] flex items-center justify-between gap-3 border-t border-line bg-panel px-3 py-2.5 pb-[max(10px,calc(env(safe-area-inset-bottom)-var(--nav-clear)))] lg:left-[var(--nav-rail)]"
 			role="status"
 		>
 			<span className="min-w-0 flex-1 text-[13px] text-ink">{m.app_update_ready()}</span>

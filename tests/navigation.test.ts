@@ -126,6 +126,14 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			}
 		});
 
+		// Sign-in is reached from Settings, so it is Settings' place: the bar never
+		// shows the athlete as nowhere (story 6), not even on a page it has no row for.
+		test('sign-in is marked as Settings, under More', async () => {
+			const nav = navOf(await render('/login'));
+			expect(moreOf(nav, copy.more)).toContain('aria-current="true"');
+			expect(linkTo(nav, '/settings')).toContain('aria-current="page"');
+		});
+
 		// Story 15: the rail lists everything, so More is hidden there and its
 		// rows are in the same element, hidden below `lg`. One DOM, two stylesheets.
 		test('the rail lists every destination, and More is the bar’s alone', async () => {

@@ -475,7 +475,25 @@ the bar stays four plus More.
 | Current | chalk, semibold, a `panel-3` pill behind the icon | chalk, semibold, a `panel-3` row | chalk, semibold, a `panel-3` row |
 
 More is marked current (`aria-current="true"`, same look) on any destination it
-holds, so the bar never shows the athlete as nowhere.
+holds, so the bar never shows the athlete as nowhere. A destination can hold a
+route it has no row for: Settings holds `/login`, which is reached from it
+(`holds` in `DESTINATIONS`).
+
+**The bar's box is exactly what the page reserves.** `h-[var(--nav-clear)]`,
+border-box, so its border and the home indicator's padding are inside the 56px and
+the inset; the rail is `w-50`, border-box, so it is the 200px of `--nav-rail`. The
+first build had `box-content`: the rail measured 217px and its border sat 3px
+from every title between 1024px and about 1215px, where the centred measure has
+no margin to hide it. The screenshots at 1280px did not show it; the critique's
+box arithmetic and a measurement at 1024px did (#115).
+
+**The `<nav>` comes before `main` in the document**, though a phone draws it
+below: a keyboard reaches the rail without tabbing through the whole screen, and
+a screen reader meets the landmark first. **More's sheet is never hidden by
+width**, only its trigger: a sheet left open as the window crosses `lg` stays
+visible and closable instead of a hidden modal holding focus. **The update notice
+sits under the sheet** (`z-[35]`, below the backdrop), because the sheet opens over
+the place the notice sits and the notice on top hid its first row.
 
 **The current mark comes from `here`, never from the router's link state.** The
 shell is baked once, at `/`. With `Link`'s own active state the baked bar marked
@@ -514,7 +532,7 @@ until the app has hydrated, the same deferral the locale gets. No route names a
 
 **From `lg` a page starts on the measure's left edge.** `Pane` no longer centres
 in the 1000px measure, so a one-pane page's title, a two-pane page's title and the
-strip's wordmark share x=253 at 1280px. The window reserves the scrollbar's gutter
+strip's wordmark share x=252.5 at 1280px (x=220 at 1024px, 20px right of the rail). The window reserves the scrollbar's gutter
 from `lg` (`scrollbar-gutter: stable` on `html`), so a long page and a short one
 are the same width and nothing moves sideways between them.
 

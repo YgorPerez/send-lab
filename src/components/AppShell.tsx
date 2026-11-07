@@ -112,6 +112,13 @@ export function AppShell({
 				</div>
 			</header>
 
+			{/* The one `<nav>`. Not on the intake, which needs the whole screen and
+			    has its own way out on every step (story 72). Before `main` in the
+			    document, though it is drawn below it on a phone: a keyboard reaches
+			    the rail without tabbing through the whole screen, and a screen reader
+			    meets the landmark first. Fixed, so the order moves nothing on screen. */}
+			{chrome.navigation ? <Navigation locale={locale} here={here} /> : null}
+
 			{/* `max-w-[520px]` is the phone measure and it stays the phone measure.
 			    1000px is two of the 360px columns these screens were designed against
 			    plus their gutters — the width a second column needs, and no more.
@@ -128,10 +135,6 @@ export function AppShell({
 			>
 				{children}
 			</main>
-
-			{/* The one `<nav>`. Not on the intake, which needs the whole screen and
-			    has its own way out on every step (story 72). */}
-			{chrome.navigation ? <Navigation locale={locale} here={here} /> : null}
 
 			{/* Nothing until a new version is actually waiting, and nothing at all on
 			    the server — see the file for why the prerendered shell must not carry

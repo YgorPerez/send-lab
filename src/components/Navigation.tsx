@@ -51,10 +51,20 @@ const DESTINATIONS = [
 	{ to: '/timer', label: m.nav_timer, Icon: Timer, place: 'bar' },
 	{ to: '/log', label: m.nav_log, Icon: ScrollText, place: 'bar' },
 	{ to: '/week', label: m.nav_week, Icon: CalendarDays, place: 'more' },
-	{ to: '/settings', label: m.nav_settings, Icon: Settings, place: 'more' },
+	// Sign-in is reached from Settings (its account panel), so it is Settings'
+	// place: the bar never shows the athlete as nowhere (story 6).
+	{ to: '/settings', label: m.nav_settings, Icon: Settings, place: 'more', holds: ['/login'] },
 ] as const;
 
+type Place = (typeof DESTINATIONS)[number];
+
 const IN_MORE = DESTINATIONS.filter((d) => d.place === 'more');
+
+/** Whether the athlete is at `d`: on its own route, or on one it holds. */
+function isAt(d: Place, here: string | null): boolean {
+	if (here === null) return false;
+	return d.to === here || ('holds' in d && (d.holds as readonly string[]).includes(here));
+}
 
 /**
  * One item, bar or rail.
@@ -133,7 +143,7 @@ function Destination({
  * hydrates it (see `Destination`).
  */
 export function Navigation({ locale, here }: { locale: AppLocale; here: string | null }) {
-	const inMore = IN_MORE.some((d) => d.to === here);
+	const inMore = IN_MORE.some((d) => isAt(d, here));
 	return (
 		<nav
 			aria-label={m.nav_label({}, { locale })}
@@ -142,23 +152,26 @@ export function Navigation({ locale, here }: { locale: AppLocale; here: string |
 			// screen under it is replaced (#54), as the strip does.
 			style={{ viewTransitionName: 'navigation' }}
 			className={cn(
-				// The bar: the bottom edge, clearing the home indicator.
-				'fixed inset-x-0 bottom-0 z-20 box-content flex h-14 items-stretch border-t border-line bg-bg/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur',
-				// The rail: under the strip, down the left edge.
+				// The bar: the bottom edge, clearing the home indicator. Its whole box,
+				// border and padding included, is `--nav-clear` (56px and the home
+				// indicator), the height everything else on the page reserves.
+				'fixed inset-x-0 bottom-0 z-20 flex h-[var(--nav-clear)] items-stretch border-t border-line bg-bg/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur',
+				// The rail: under the strip, down the left edge, 200px border included,
+				// which is `--nav-rail`.
 				'lg:top-11 lg:right-auto lg:h-auto lg:w-50 lg:flex-col lg:gap-0.5 lg:border-t-0 lg:border-r lg:px-2 lg:pt-4 lg:pb-4',
 			)}
 		>
-			{DESTINATIONS.map(({ to, label, Icon, place }) => (
+			{DESTINATIONS.map((d) => (
 				<Destination
-					key={to}
-					to={to}
-					current={here === to}
-					className={cn(ITEM, place === 'more' && 'hidden lg:flex')}
+					key={d.to}
+					to={d.to}
+					current={isAt(d, here)}
+					className={cn(ITEM, d.place === 'more' && 'hidden lg:flex')}
 				>
 					<span className={PILL}>
-						<Icon size={22} strokeWidth={1.75} aria-hidden="true" />
+						<d.Icon size={22} strokeWidth={1.75} aria-hidden="true" />
 					</span>
-					<span className={LABEL}>{label({}, { locale })}</span>
+					<span className={LABEL}>{d.label({}, { locale })}</span>
 				</Destination>
 			))}
 			<More locale={locale} here={here} current={inMore} />
@@ -170,7 +183,10 @@ export function Navigation({ locale, here }: { locale: AppLocale; here: string |
  * More: the bar's fifth item, and the sheet it opens from the bottom edge.
  *
  * A sheet rather than a dropdown, because it opens against the same thumb that
- * pressed it (story 4). Hidden from `lg`, where the rail lists every row.
+ * pressed it (story 4). The trigger is hidden from `lg`, where the rail lists
+ * every row; the sheet is not, so a sheet left open as the window crosses `lg`
+ * (a phone rotated, a window widened) stays visible and closable rather than a
+ * hidden modal holding focus.
  *
  * Marked current on any destination it holds (story 6), so the bar never shows
  * the athlete as nowhere. `aria-current="true"` rather than `"page"`: More is not
@@ -201,8 +217,8 @@ function More({
 				<span className={LABEL}>{label}</span>
 			</Dialog.Trigger>
 			<Dialog.Portal>
-				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 lg:hidden" />
-				<Dialog.Popup className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[520px] flex-col rounded-t-xl border border-b-0 border-line bg-panel pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-transform duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full lg:hidden">
+				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+				<Dialog.Popup className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[520px] flex-col rounded-t-xl border border-b-0 border-line bg-panel pb-[max(0.5rem,env(safe-area-inset-bottom))] transition-transform duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full">
 					<div className="flex items-center gap-2 py-1 pr-1 pl-4">
 						<Dialog.Title className="min-w-0 flex-1 text-[15px] font-semibold text-ink">
 							{label}
@@ -215,16 +231,16 @@ function More({
 						</Dialog.Close>
 					</div>
 					<div className="flex flex-col gap-0.5 px-1.5">
-						{IN_MORE.map(({ to, label: rowLabel, Icon }) => (
+						{IN_MORE.map((d) => (
 							<Destination
-								key={to}
-								to={to}
-								current={here === to}
+								key={d.to}
+								to={d.to}
+								current={isAt(d, here)}
 								onClick={() => setOpen(false)}
 								className="flex min-h-12 items-center gap-3 rounded-md px-3 text-[15px] text-ink transition-colors hover:bg-panel-2 data-[status=active]:bg-panel-3 data-[status=active]:font-semibold data-[status=active]:text-chalk"
 							>
-								<Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
-								<span className="min-w-0 flex-1">{rowLabel({}, { locale })}</span>
+								<d.Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+								<span className="min-w-0 flex-1">{d.label({}, { locale })}</span>
 								<ChevronRight
 									size={18}
 									strokeWidth={2}
