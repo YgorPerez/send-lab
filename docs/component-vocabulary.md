@@ -1123,6 +1123,26 @@ had.
 `/log` 1,636, `/settings` 909, `/welcome` 941. Element counts moved by at most two;
 floors unchanged.
 
+## The one primary
+
+The spec's rule is one `primary` per screen (spec #113, Testing Decisions), and
+`tests/primaries.test.ts` counts it on all eight screens, seeded and empty, in both
+locales, and on every intake step. The primary marks the action a screen exists
+for, so four screens have one and four have none, on purpose:
+
+| Screen | Primaries | The one, or why none |
+|---|---|---|
+| Today | 1 | Answer the check while it is unanswered; Go to Train once it is (#117) |
+| Train | 1 | Finish and log the session, disabled with its reason until a set is ticked (#118) |
+| The intake | 1 per step | The step's advance; Start training on the proposal (#123) |
+| Sign-in | 1 | The submit (#124) |
+| Timer | 0 | The list is picked from, not finished, and every clock control is `kind: 'clock'`, a tool on the screen (#118, answered on #119) |
+| Settings | 0 | A list of controls has none: no control is what the athlete came to do. The primary is the `AlertDialog`'s confirm, the only action on its surface (since #62) |
+| Log | 0 | Read-only: there is no action the screen exists for. Its rows open a day; the empty timeline's Go to Today is `quiet`, a way out rather than the screen's purpose |
+| Week | 0 | Read-only the same way: its only controls pick which day the page shows, and nothing on it is finished |
+
+A dialog is its own surface and is not counted on the screen under it.
+
 ## The idiom
 
 Svelte 5 runes have no direct React equivalent and naive translation produces bad
