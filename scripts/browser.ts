@@ -24,6 +24,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { landedOn } from './landed.ts';
 import { clientOutputDir } from './output-dir.ts';
 import { LOCALE_KEY } from './paraglide-strategy.ts';
 import { discoverRoutesIn } from './routes.ts';
@@ -493,7 +494,7 @@ export async function open(options: OpenOptions): Promise<Session> {
 				// Not `hover` or `pointer`: headless Chrome accepts them here and
 				// ignores them (#124 measured `(hover: hover)` false under `--desktop`,
 				// so no hover rule was ever in force in a desktop run). The input
-				// device is a launch flag instead; see `inputDevice` below.
+				// device is a launch flag instead; see `inputDevice` above.
 			],
 		});
 
@@ -521,7 +522,8 @@ export async function open(options: OpenOptions): Promise<Session> {
 		}
 
 		/**
-		 * Navigate, and come back once the document on screen has lived `settleMs`.
+		 * Navigate, and come back once the document on screen is at `url` and has
+		 * lived `settleMs`.
 		 *
 		 * The age is the document's, not the wait's (#122). A page that is
 		 * replaced after the navigation (a reload) is younger than the wait, and
@@ -533,19 +535,39 @@ export async function open(options: OpenOptions): Promise<Session> {
 		 * measured the shell. The app no longer reloads on a first install
 		 * (`lib/appUpdate.ts`), and this keeps any other reload from turning into a
 		 * reading of a page that never got its time.
+		 *
+		 * And the document must be at the URL asked for (#113's review). Age
+		 * alone accepted any old-enough document, wherever it was: a page that
+		 * ended up on another route (a redirect, a `history.replaceState`) was
+		 * measured and reported as the route asked for. `landedOn`
+		 * (`scripts/landed.ts`) is the comparison. Control, run on the review:
+		 * a page that replaces `/train` with `/log` on load fails here, and the
+		 * age-only `goto` read it as `/train`. (A request held back never gets
+		 * this far: `Page.navigate` waits for the commit. A navigation blocked
+		 * outright leaves an empty page at the target URL, which no URL check
+		 * sees; each gate's element floor does.)
 		 */
 		const goto = async (url: string) => {
 			await cdp.send('Page.navigate', { url });
 			let wait = settleMs;
+			let seen: { age: number; href: string } | undefined;
 			for (let tries = 0; tries < 5; tries++) {
 				await new Promise((r) => setTimeout(r, wait));
 				// `performance.now()` counts from this document's navigation. A reload
 				// in progress destroys the context mid-read; that is a young document.
-				const age = await evaluate<number>('performance.now()').catch(() => 0);
-				if (age >= settleMs) return;
-				wait = Math.max(50, settleMs - (age ?? 0));
+				seen = await evaluate<{ age: number; href: string }>(
+					'({ age: performance.now(), href: location.href })',
+				).catch(() => undefined);
+				const age = seen?.age ?? 0;
+				if (landedOn(url, seen?.href) && age >= settleMs) return;
+				wait = Math.max(50, landedOn(url, seen?.href) ? settleMs - age : settleMs);
 			}
-			fail(`${url}: the page kept reloading; no document lived ${settleMs}ms to be read`);
+			fail(
+				landedOn(url, seen?.href)
+					? `${url}: the page kept reloading; no document lived ${settleMs}ms to be read`
+					: `${url}: the page on screen is ${seen?.href ?? 'unreadable'}, not the one asked for.\n` +
+							'  Whatever this run measured there would be reported as this route.',
+			);
 		};
 
 		// The boot state, installed as a script that runs before the page's own on
