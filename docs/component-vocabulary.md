@@ -566,8 +566,9 @@ component keeps the plain 4px steps.
 both, and the types refuse both. Neither sets the title's height: the slot
 overhangs the title's 24px line by up to 10px each way, so a 44px control beside
 it leaves the title where every other screen has it (before that, the title sat at
-61.5, 69 and 71.5px across the screens and jumped on navigation). Today's week
-reading is a link and goes in `reading`. A screen action goes in the top
+61.5, 69 and 71.5px across the screens and jumped on navigation; #125 measured
+the h1 at y=58 on every route at 360px and y=66 at 1280px, both locales). Train's
+set count is a `reading`. A screen action goes in the top
 strip's slot since #115 (below), and the header keeps readings: the Timer's cue
 settings moved there in #119, so no screen uses the header's `action` today. `tests/screens.test.ts` asserts
 every screen opens with it.
@@ -795,7 +796,9 @@ locales until #117.
 while nothing else led there. The navigation carries Week since #115, and a faint
 11px link that looked exactly like the other screens' readings was a control
 nobody could see, so it is text. The date under the title is Inter: it has a month
-name in it, and DESIGN.md keeps mono for meta that is all digits.
+name in it, and DESIGN.md keeps mono for meta that is all digits. (#125 then moved
+the training week into that meta line, "Aug 13 · Training week 5 of 8", in the
+glossary's words, and Today's header has no reading.)
 
 **Colour on Today reports state only.** Three things wore an accent without one:
 the verdict's first focus chip was always `stop` (the recommended "repeaters" in the
@@ -1055,6 +1058,67 @@ day is short enough that the window shows both panes whole at 1280px.
 
 **Heights.** `/week` is the viewport at 360px and 1280px, seeded and empty, as it
 was. `check:contrast` 38 elements seeded / 37 empty at 360px (39 / 38 at 1280px).
+
+## The consistency sweep
+
+Done by [#125](https://github.com/YgorPerez/send-lab/issues/125), the last ticket
+of the overhaul ([#113](https://github.com/YgorPerez/send-lab/issues/113)): all
+eight screens reviewed together from a contact sheet (360px and 1280px, both
+locales, seeded and empty), with a cross-screen critique over it. What the
+screens now share, and the two gates that keep it.
+
+**One of each.** One section rank, `.h-section`, Inter (the mono caps rule and
+`Section`'s `face` are gone). One meta rank for everything on a header's or a
+section's right that is words. One state mark (`STATE_MARK` in `variants.ts`):
+Today's verdict, Log's score and a flag's title draw the same dot from the same
+map, and the verdict's state is `verdictTone` (`format.ts`), never the library's
+colour. One way a day is drawn: the day type heads it with its load as a neutral
+chip (none on a rest day), the headline sits beside the day type's accent, and
+each task line leads with a mark that clears 3:1 and ends in the held chip when
+this morning's check took it off the plan, on Today, Train and Week alike. One way
+a held control says why: a `Notice` under it, described by it (warn when
+something has to change first, info when nothing can). One label for a set's
+column on Train and Log, units included.
+
+**The training week is said in the glossary's words wherever it appears.** Today's
+meta reads "Aug 13 · Training week 5 of 8", as Week heads its grid. The bare "Week
+5 / 8", with the 8 written into the message, is gone.
+
+**A language switch keeps the athlete where they were.** The root re-keys the
+tree on a switch, so the pressed button went with the old language and focus fell
+to `body`; the press leaves a note outside the tree, and the new language's row
+focuses its pressed choice. And `<html lang>` follows the live locale once the app
+has hydrated (the baked shell keeps "en", ADR 0006).
+
+**Week's grid is one radio group.** Seven `aria-pressed` toggles were seven tab
+stops for one answer. It is the APG radio group on buttons (a cell holds more than
+a native radio can): one stop, arrows move through the week and the day follows.
+
+**Two gates in `pnpm verify`, each with its own control.**
+
+- `tests/typeRamp.test.ts`: every `text-[Npx]` and CSS `font-size` in `src/` is a
+  step of DESIGN.md's ramp (9, 10, 11, 13, 14, 15, 16, 17, 21, 22, 30), the
+  clock's own sizes only in the clock's five files, and DESIGN.md names every
+  step the test allows. The sweep moved 19 off-ramp literals (10.5, 11.5, 12,
+  12.5, 13.5px) to the nearest step. A new size is a line in DESIGN.md › Hierarchy
+  and an entry in the test, on purpose: that is two places to argue it.
+- `tests/focusRing.test.ts`: an `outline-none` sits beside the ring that replaces
+  it, on an element only script focuses (`tabIndex={-1}`), or on a menu item. It
+  found the Timer editor's typed numbers, which #124 had named.
+
+Both controls are the same shape as the hover gate's: the scan must find what the
+app has (a scanner that stops matching reports a clean tree), and a planted
+offender must be caught.
+
+**And the harness tells the truth about the device.** `--desktop` now really
+hovers (*Measuring it*, below): the gates that ran "with hover" since #52 never
+had.
+
+**Heights after the sweep** (`check:contrast`'s summary, seeded at 360px): `/`
+2,577px, `/train` 1,618, `/timer` 1,807, `/log` 1,713, `/settings` 975, `/welcome` 969,
+`/week` and `/login` the viewport. At 1280px: `/` 1,516, `/train` 1,521, `/timer` 1,685,
+`/log` 1,636, `/settings` 909, `/welcome` 941. Element counts moved by at most two;
+floors unchanged.
 
 ## The idiom
 

@@ -32,10 +32,10 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
  * own `gap-sections`: the header is the first of the screen's sections.
  *
  * The right-hand side holds one of two things, never both (the types refuse it):
- * - `reading` — a short count or reading about the whole screen (`3/12 sets`,
- *   `Week 5 / 8`), baseline-aligned with the title so the two read as one line.
- *   A reading, not a control: Today's week reading was a link to Week until the
- *   navigation carried Week (#115); it is plain text since #117.
+ * - `reading` — a short count or reading about the whole screen (Train's
+ *   `3/12 sets`), baseline-aligned with the title so the two read as one line.
+ *   A reading, not a control. Today's "Week 5 / 8" was one until #125 moved the
+ *   training week into its meta, in the glossary's words.
  * - `action` — a single icon control, centred on the title's line because an
  *   icon has no baseline. A screen action belongs in the top strip's slot once
  *   the shell has one (#115); this is where the Timer's cue settings sit until

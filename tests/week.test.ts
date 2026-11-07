@@ -230,7 +230,8 @@ describe('Week, the selected day', () => {
 			const heldLines = lines.filter((li) => text(li).includes(held)).map((li) => text(li));
 			expect(heldLines).toHaveLength(2);
 			for (const li of lines) expect(li.querySelector('svg'), text(li)).not.toBeNull();
-			for (const li of lines) expect(text(li), 'a task line led by a bare dot').not.toMatch(/^[·✓]/);
+			for (const li of lines)
+				expect(text(li), 'a task line led by a bare dot').not.toMatch(/^[·✓]/);
 		});
 	}
 });
