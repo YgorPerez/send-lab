@@ -63,7 +63,8 @@ export function Picker({
 				</Select.Value>
 				{chevron ? (
 					<Select.Icon className="shrink-0 text-ink-faint">
-						<ChevronDown size={14} />
+						{/* An inline control's icon (DESIGN.md › Icons): 16px, stroke 2. */}
+						<ChevronDown size={16} strokeWidth={2} />
 					</Select.Icon>
 				) : null}
 			</Select.Trigger>

@@ -210,6 +210,15 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(read).not.toMatch(/style="background:var\(--flag\)"/);
 		});
 
+		// CONTEXT.md › Injury self-check: _Avoid_ deep assessment. The flag's way
+		// into the sheet the screen calls a self-check said "Deeper assessment"
+		// (#125's critique).
+		test('calls the injury self-check by its name, never a deeper assessment', async () => {
+			const screen = await today(THURSDAY, locale, true);
+			expect(screen).not.toMatch(/deep(er)? assessment|avaliação detalhada/i);
+			expect(screen).toContain(locale === 'en-US' ? '>Self-check<' : '>Autoavaliação<');
+		});
+
 		test('marks each flag’s severity in the locale, never the raw id', async () => {
 			const screen = await today(THURSDAY, locale, true);
 			const flags = screen.slice(screen.indexOf(copy.flags));

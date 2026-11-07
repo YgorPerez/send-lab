@@ -285,7 +285,9 @@ function Today() {
 											}}
 											type="button"
 											onClick={() => setCheckOpen(true)}
-											className={button({ kind: 'primary', size: 'lg' })}
+											// Full width, as Go to Train and every other screen's
+											// primary is (#125's critique).
+											className={button({ kind: 'primary', size: 'lg', class: 'w-full' })}
 										>
 											{answered > 0 ? m.td_continue_check() : m.td_answer_check()}
 										</button>
@@ -512,11 +514,13 @@ function ReadCard({
 							headingRef.current = el;
 						}}
 						tabIndex={-1}
-						className="text-[15px] leading-tight font-semibold text-ink outline-none"
+						className="text-[15px] leading-tight font-semibold text-balance text-ink outline-none"
 					>
 						{verdict.title}
 					</h2>
-					<Eyebrow className="mt-0.5">{verdict.tag}</Eyebrow>
+					{/* Inter at the meta size, as Log's open day sets the same tag
+					    (#125's critique): it is words, not furniture. */}
+					<p className="mt-0.5 text-[11px] leading-snug text-ink-faint">{verdict.tag}</p>
 				</div>
 				<div className="shrink-0 text-right">
 					<div className="num text-[30px] leading-none font-bold text-chalk">{score}</div>
@@ -631,7 +635,16 @@ function PlanCard({
 				    of the overhaul put the phase in chalk and today's headline in the
 				    faintest line under it (#117's critique). */}
 				<div className="border-b border-line-soft px-3 py-2.5">
-					<p className="text-[13px] leading-snug font-medium text-ink">{day.headline}</p>
+					{/* Week's recipe for the same day (#121): the day type's accent
+					    beside its headline, the one place the accent appears. */}
+					<p className="flex items-start gap-2 text-[13px] leading-snug font-medium text-ink">
+						<span
+							aria-hidden="true"
+							className="mt-0.5 h-4 w-[3px] shrink-0 rounded-full"
+							style={{ background: day.color }}
+						/>
+						<span className="min-w-0">{day.headline}</span>
+					</p>
 					<p className="mt-0.5 text-[11px] leading-snug text-ink-dim">{day.subhead}</p>
 					<p className="mt-1.5 text-[11px] leading-snug text-ink-faint">
 						<span className="text-ink-dim">{phase.name}</span> · {phase.banner}
@@ -855,7 +868,7 @@ function BodyweightNudge({
 				<div className="min-w-0">
 					<div className="num text-[22px] leading-none font-bold text-chalk">
 						{bodyweight.latestKg}
-						<span className="text-[11px] text-ink-faint"> kg</span>
+						<span className="text-[11px] font-normal text-ink-faint"> kg</span>
 						<span
 							className={cn(
 								// The change in faint ink, either way: a kilo up or down is not a
@@ -927,8 +940,9 @@ function InjuryEntry({
 						<span className="block text-[13px] font-medium text-ink">
 							{selfCheck.instrument.title}
 						</span>
+						{/* Inter: it has a month name in it (DESIGN.md › Meta). */}
 						{selfCheck.last ? (
-							<span className="num mt-0.5 block text-[11px] text-ink-faint">
+							<span className="mt-0.5 block text-[11px] text-ink-faint">
 								{m.deep_last({
 									score: selfCheck.last.score,
 									date: displayDate(isoDayOf(selfCheck.last.at)),

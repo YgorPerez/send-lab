@@ -217,6 +217,21 @@ describe('Week, the selected day', () => {
 			// Each cell says which region it changes.
 			for (const cell of cellsOf(main)) expect(cell.getAttribute('aria-controls')).toBe(day.id);
 		});
+
+		// The sweep (#125's critique): the day is drawn as Today and Train draw
+		// it. This morning's check holds Pull Strength and Antagonists on the
+		// seeded Thursday, and each task line leads with a mark that clears 3:1
+		// (an SVG icon), not an 11px "·" that was all but invisible.
+		test(`${locale}: marks today's held work as Today and Train do, and every task with a mark`, async () => {
+			const main = await screen(locale);
+			const day = main.querySelector('[data-slot-day]') as Element;
+			const held = locale === 'en-US' ? 'held · readiness' : 'retido · prontidão';
+			const lines = [...day.querySelectorAll('li')];
+			const heldLines = lines.filter((li) => text(li).includes(held)).map((li) => text(li));
+			expect(heldLines).toHaveLength(2);
+			for (const li of lines) expect(li.querySelector('svg'), text(li)).not.toBeNull();
+			for (const li of lines) expect(text(li), 'a task line led by a bare dot').not.toMatch(/^[·✓]/);
+		});
 	}
 });
 

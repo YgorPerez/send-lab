@@ -41,11 +41,14 @@
 // matched on. **The check happens in pt-BR**, where `Seg` and `Mon` stop being
 // the same string.
 import { createFileRoute } from '@tanstack/react-router';
+import { Check, Circle } from 'lucide-react';
 import { type ReactNode, useId, useMemo, useState } from 'react';
 import { getContent } from '$lib/content';
-import type { WeekdayKey } from '$lib/ids';
+import type { ExerciseId, WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
+import { useReadinessDraft } from '$lib/readinessDraft';
+import { heldToday, resolveToday } from '$lib/screens/today';
 import { resolveWeek, type SlotState, type WeekSlot } from '$lib/screens/week';
 import { useTrainingRecord } from '$lib/store/record';
 import { Bare, Empty, Panes, ScreenHeader, Section } from '../components/ui/primitives';
@@ -176,6 +179,12 @@ function Week() {
 	const locale = getLocale();
 	const content = useMemo(() => getContent(locale), [locale]);
 	const w = useMemo(() => resolveWeek(content, record, now), [content, record, now]);
+	// Held work on today's slot, read from the same draft and rule as Today and
+	// Train (`heldToday`), so the day under the grid marks what this morning's
+	// check took off it, as the other two do (#125's critique).
+	const today = useMemo(() => resolveToday(content, record, now), [content, record, now]);
+	const [answers] = useReadinessDraft(today.answers);
+	const heldNow = useMemo(() => heldToday(today, answers), [today, answers]);
 
 	// The selected slot, held by **identity**. A label here is the ADR-0003 bug
 	// this page exists to not have: `'Seg' === selected` is false against a key
@@ -269,11 +278,22 @@ function Week() {
 						{w.scheduledSlots === 0 ? <Empty value={m.wk_nothing_scheduled()} /> : null}
 					</Section>
 				}
-				secondary={slot ? <DayPanel id={dayId} slot={slot} /> : null}
+				secondary={
+					slot ? (
+						<DayPanel
+							id={dayId}
+							slot={slot}
+							held={slot.weekday === w.today ? heldNow : NONE_HELD}
+						/>
+					) : null
+				}
 			/>
 		</div>
 	);
 }
+
+/** Nothing held: every day but today. */
+const NONE_HELD: ReadonlySet<ExerciseId> = new Set();
 
 /**
  * One slot in the grid.
@@ -355,7 +375,16 @@ function SlotCell({
  * neutral chip: #63 tinted the load by the slot's state, which painted a missed
  * day's "HIGH" vermilion, as if the load were the alarm.
  */
-function DayPanel({ id, slot }: { id: string; slot: WeekSlot }) {
+function DayPanel({
+	id,
+	slot,
+	held,
+}: {
+	id: string;
+	slot: WeekSlot;
+	/** Today's held work; empty on any other day. */
+	held: ReadonlySet<ExerciseId>;
+}) {
 	return (
 		<div id={id} data-slot-day="">
 			<Section
@@ -404,16 +433,31 @@ function DayPanel({ id, slot }: { id: string; slot: WeekSlot }) {
 									i > 0 ? 'border-t border-line-soft' : ''
 								}`}
 							>
-								<span
-									aria-hidden
-									className={`num w-3 text-[11px] ${task.done ? 'text-teal' : 'text-ink-faint'}`}
-								>
-									{task.done ? '✓' : '·'}
-								</span>
-								<span className="flex-1 text-[13px] text-ink">
+								{/* A mark that clears 3:1, as Week's slot marks do: the 11px "·"
+								    for not done was all but invisible (#125's critique). */}
+								{task.done ? (
+									<Check
+										size={16}
+										strokeWidth={2}
+										aria-hidden="true"
+										className="shrink-0 text-teal"
+									/>
+								) : (
+									<Circle
+										size={16}
+										strokeWidth={2}
+										aria-hidden="true"
+										className="shrink-0 text-ink-faint"
+									/>
+								)}
+								<span className="min-w-0 flex-1 text-[13px] text-ink">
 									{task.exName}
 									{task.done ? <span className="sr-only"> · {m.lbl_done()}</span> : null}
 								</span>
+								{/* Held work at the line's end, as Today and Train mark it. */}
+								{held.has(task.exercise) && !task.done ? (
+									<span className={chip({ tone: 'warn' })}>{m.td_held()}</span>
+								) : null}
 							</li>
 						))}
 					</ul>

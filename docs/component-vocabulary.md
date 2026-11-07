@@ -51,7 +51,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 |---|---|---|
 | `Eyebrow` | `primitives.tsx` | The furniture rank of the type scale |
 | `ScreenHeader` | `primitives.tsx` | How every screen opens (#114): the title in the top rank and the screen's only `<h1>`, an optional meta line, an optional lede, and one `reading` *or* one `action` on the right. Nothing the page draws comes before it. `titleRef` makes the title a focus target for a screen that arrives on a press (the intake's proposal, #123) |
-| `Section` | `primitives.tsx` | Heading, optional right-hand meta, body. `face` picks the heading's face: `sans` (`.h-section-sans`, the overhaul's) or the retiring `mono` default; each screen ticket moves its own (Today since #117, Train since #118). Every screen is on `sans` since the intake (#123); #125 flips the default |
+| `Section` | `primitives.tsx` | Heading in the section rank (`.h-section`, 14px semibold Inter), optional right-hand meta in the meta rank (11px faint Inter, or a chip), body. One face since #125: each screen ticket of #113 moved its own off the mono caps, and the sweep dropped the `face` prop and the mono rule. `labelId` names the heading, for a control in the section to be named by it (Week's grid) |
 | `Bare` | `primitives.tsx` | A group with a rule above it and no box |
 | `Empty` | `primitives.tsx` | What a group says when it has nothing to list: a `Bare`, one line of `Prose`, and the one affordance that fills it |
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
@@ -64,14 +64,16 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip. `wrap` lets the label take a second line instead of truncating, and `chevron={false}` gives a set-grid cell its 18px back: the pt-BR grips clipped to "Slop…" and "Half…" in a 68px cell (#118) |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row, in one card; Log's timeline and the Timer's preset groups. `multiple` lets several rows stay open; `value` / `onValueChange` hand the open rows to the caller (the change arrives before it renders, with the press that made it). `touch` gives a row a 48px head in the rows' 15px semibold, for a list worked through mid-set. `aside` is for a list whose detail the page shows beside it from `lg` (Log, #120): there the panel and chevron are hidden, and `current` marks the row being shown with the selection language. A head's focus ring is drawn inside, since the card's `overflow-hidden` cut the outside one to a line or two. The trailing chevron is the row icon (18px, stroke 2, faint). `useRowsInPlace` and `RowsEnd` keep the tapped head under the finger as rows close (below, *Log as one timeline*) |
 | `RowMenu` | `Menu.tsx` | A row's ⋯ (#119): Base UI's menu behind a separate, bordered, filled 44px square centred beside the row, Train's clock-button shape, never stretched to the row's height (or the 48px square in a dialog's header), labelled with what it acts on. A row with one action does not get one: put that action where the row leads. Takes `{ label, onSelect }` actions in order; nothing in it is coloured apart, and a destructive item's guard is the `AlertDialog` the caller opens next |
-| `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
+| `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for. The current reading is a round 7px chalk mark over the drawing's right end, not an SVG circle (the stretched drawing made it an ellipse, half clipped at the edge), and the axis keeps a decimal when whole numbers would read the same ("72 / 72", #125) |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
-| `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
+| `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface. `held` says why a busy confirm waits, as a warn `Notice` under it (the Timer's delete offline, #125) |
 | `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`). Promoted out of Settings by #64 when a second screen needed it. A `fieldset`; `labelledBy` names the group after the row that asks it |
 | `ControlRow` | `primitives.tsx` | One control on its own line: what it is on the left, the control on the right. 56px whatever the control since #122 (it was 44px for a switch and 56px for a choice). Promoted out of Settings by #105 when the cue settings needed it on a second screen |
 | `ControlList` | `primitives.tsx` | A group's controls as one list: a card of `ControlRow`s divided by hairlines, one row or many (#122). `surface={false}` keeps the rows and drops the card, for a container that already is a surface (the cue popover) |
 | `ControlNote` | `primitives.tsx` | The 13px gold line under a `ControlRow` saying why its control did not do what was asked, or cannot on this device; inside the row's item, never under the card (#122) |
-| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes. A step's rail label is optional (the readiness check's six to nine segments have no room for words at 360px), and in a container taller than it the controls settle at the bottom (#116). The rail is chalk to the current step, slate after it, never vermilion: the advance is the one vermilion fill (#123). The current step's label is chalk and semibold, so the last step still shows where the athlete is once every segment is filled. `className` can widen its gaps (the intake's `gap-sections`); the waiting line is 13px gold, `ControlNote`'s size |
+| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes. A step's rail label is optional (the readiness check's six to nine segments have no room for words at 360px), and in a container taller than it the controls settle at the bottom (#116). The rail is chalk to the current step, slate after it, never vermilion: the advance is the one vermilion fill (#123). The current step's label is chalk and semibold, so the last step still shows where the athlete is once every segment is filled; the labels are Inter at 11px since #125 (they were the intake's last letter-spaced mono). `className` can widen its gaps (the intake's `gap-sections`); the waiting line is a `Notice tone="warn"` the advance is described by (#125) |
+| `Notice` | `primitives.tsx` | Every line a screen says that is not under a control's row (#124): 13px, `text-pretty`, `data-notice` its tone. `warn` (gold) is something that has to change first: this device or the network, or an answer or tick still missing under a held control; `stop` (vermilion) refuses what was typed; `info` (dim ink) asks nothing. **A held control says why under it in one, described by it** (#125): the intake's and readiness sheet's advance, Train's finish and Set load (warn), Repeat last session (info), sign-in's button, an `AlertDialog`'s confirm (`held`) |
+| `Field` | `primitives.tsx` | A typed field: its label in words (13px ink) over the input, `hint` after the label in faint ink, `rank="question"` when the field heads itself in the section rank (#123, #124). The intake, sign-in and Train's session note use it; no field is labelled in the mono label rank since #125 |
 
 ## The domain pieces — `src/components/`
 
@@ -243,7 +245,7 @@ machinery it needs. And the unit preferences are
 recorded but nothing yet converts for display: `format.ts` is the seam that
 grows the conversion back, and it says so.
 
-**One list (#122).** Every group is an Inter section head (`Section face="sans"`) over
+**One list (#122).** Every group is an Inter section head (`Section`) over
 one `ControlList`, and every control sits on a `ControlRow`: Units & display holds
 weight, length and the language; Timer cues the shared `CueSettings`; Notifications its
 one switch, in a card like the rest (as a `Bare` it was the one group that read as
@@ -351,7 +353,7 @@ flow, where a step ends. `tests/intake.test.ts` walks every step and the proposa
 asserts the exit, one primary, and a held advance with its line on each.
 
 **Aligned to the screens before it (#123).** Each question heads itself in the
-section rank (`h-section-sans` on the `legend`; the session length, a question
+section rank (`.h-section` on the `legend`; the session length, a question
 beside the days and the equipment, on its label), questions a sections gap apart,
 options a row gap apart. A typed field under a question or a section that heads it
 (the grades under the level, the context under Optional) takes a 13px ink label,
@@ -523,9 +525,14 @@ labels, each line's tone and place, the busy label and the signed-in view;
 is a utility, so the recipe won and a tabbed-to field showed only its 1px border
 step. A text field matches `:focus-visible` on any focus, a tap included, so the
 recipe puts the ring back at `lg` only: the phone keeps the border step. Not
-`(hover: hover)` or `(pointer: fine)`: the gates' headless Chrome reports `hover:
-none` and `pointer: coarse` even under `--desktop`, so a ring keyed on them could
-not be seen by any check.
+`(hover: hover)` or `(pointer: fine)`: the layout has one breakpoint, and a laptop
+with a touch screen still types with keys. (#124 also found the gates could not
+see a ring keyed on those: headless Chrome ignored the `hover`/`pointer`
+emulation. #125 fixed the harness; the ring stays on `lg`.) The Timer editor's
+typed numbers (`ProtocolRows`) carry their own `outline-none` and take the same
+ring since #125, and `tests/focusRing.test.ts` refuses any `outline-none` without
+it, except on an element focused only from script (`tabIndex={-1}`) or a menu
+item.
 
 ---
 
@@ -855,8 +862,9 @@ session (its reason on the line, not in a `title`), the note with a visible labe
 minutes, the autosave line. Then the finish, disabled with its reason.
 
 **Not done here, and why.** Finish and Repeat last session have no handler; that predates
-#118, and wiring them is new behaviour. The set rows are bordered boxes inside the card,
-and the open card's band labels are mono eyebrows; both predate #118 and are #125's.
+#118, and wiring them is new behaviour (#126). The set rows were bordered boxes inside the
+card and the open card's band labels mono eyebrows; #125 made the sets rows of the card
+under hairlines and headed the bands in the section rank.
 
 ## The Timer list
 
@@ -866,7 +874,7 @@ Timer decisions.
 **Saved first.** Saved, then the stopwatch's row, Recent, Presets. The stopwatch
 stays one row with no heading of its own (a "Stopwatch" head over a "Stopwatch" row
 says it twice); its leading icon is what sets it apart from the protocol rows above.
-The sections sit `gap-sections` apart and their heads are `Section face="sans"`.
+The sections sit `gap-sections` apart and their heads are `Section`s.
 
 **Presets are one `RowGroup`**, a `touch` row per exercise (its name and a count),
 `multiple`. Today's groups lead it, open, each head saying "Today": `todaysPresetGroups`
@@ -938,7 +946,8 @@ stop. The library paints `green` and `short` in vermilion, so a good day's score
 was red (spec story 61). The tone is an 8px dot beside the number, which stays
 ink: a dot needs 3:1 on whatever surface the row takes (the selected row is
 `panel-3`), where the accents as 11px text do not clear 4.5:1 there. Today's
-verdict dot still reads the library colour; that is the sweep's (#125).
+verdict dot reads the same map since #125 (`verdictTone` in `format.ts`, the dot's
+class from `STATE_MARK` in `variants.ts`).
 
 **The header says what it counts.** "28 sessions · 15 readiness checks" is the
 meta line, Inter, singular at one (the message format has no plurals, so each
@@ -1131,12 +1140,11 @@ remembered.
 - **Three ranks of type, differing on size, weight *and* colour at once.**
   `.h-screen-title` / `.h-section` / `.eyebrow`, with `.microlabel` below them for
   a four-column grid. One rank doing two jobs is what made Today read as one long
-  list. **The Timer screens set the section rank in Inter** (`.h-section-sans`,
-  14px semibold `--ink-dim`): #110 decided that Roboto Mono leaves their headings
-  and labels, so the list's group heads, the editor's group heads and its name
-  label, and the clock's Adjust share that one class rather than a size each. Same
-  rank and job as `.h-section`; the other screens keep the mono one until a ticket
-  moves them. A preset group's head is not a rank but a row: a disclosure as
+  list. **The section rank is Inter** (`.h-section`, 14px semibold `--ink-dim`):
+  #110 took Roboto Mono out of the Timer screens' headings, every screen of #113
+  followed, and #125 dropped the mono caps rule. The list's group heads, the
+  editor's group heads and its name label, the clock's Adjust, Log's day detail and
+  Train's open card all share that one class rather than a size each. A preset group's head is not a rank but a row: a disclosure as
   tall as the rows it opens, set in the row's 15px.
 - **44px for anything touched mid-set, 48px for the timer.** The timer is
   operated without looking at it; the set grid cannot afford 48px without pushing
@@ -1465,8 +1473,15 @@ Both are answered once, and both are free on touch.
 ### Measuring it
 
 The **four** browser checks take `--desktop`, which picks a 1280×900 viewport
-*and* emulates `hover`/`pointer` — width alone is not enough, because under mobile
-emulation Chrome reports `hover: none` and every hover rule is inert.
+*and* a mouse: `hover: hover` and `pointer: fine` — width alone is not enough,
+because under mobile emulation Chrome reports `hover: none` and every hover rule is
+inert. **Until #125 it only asked for the mouse.** CDP's `setEmulatedMedia`
+accepts `hover` and `pointer` and headless Chrome ignores both, so every desktop
+run measured `hover: none` and `pointer: none` (#124 found it). The device is a
+launch flag now (`--blink-settings` pointer and hover types, `inputDevice` in
+`scripts/browser.ts`), and every session reads the media back before it measures
+and stops if it is not the device it asked for: a phone session must read `hover:
+none, pointer: coarse`, a desktop one `hover: hover, pointer: fine`.
 
 ```
 pnpm build

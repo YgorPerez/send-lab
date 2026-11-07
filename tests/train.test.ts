@@ -99,7 +99,7 @@ const COPY = {
 		repeat: 'Repeat last session',
 		note: 'Session note (optional)',
 		minutes: 'Minutes',
-		bands: ['Swap — same adaptation', 'Target'],
+		bands: ['Swap — same adaptation', 'Prescription'],
 		noPrev: 'No previous session for this day yet',
 	},
 	'pt-BR': {
@@ -118,7 +118,7 @@ const COPY = {
 		repeat: 'Repetir última sessão',
 		note: 'Nota da sessão (opcional)',
 		minutes: 'Minutos',
-		bands: ['Trocar — mesma adaptação', 'Alvo'],
+		bands: ['Trocar — mesma adaptação', 'Prescrição'],
 		noPrev: 'Ainda não há sessão anterior pra este dia',
 	},
 } as const;

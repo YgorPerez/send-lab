@@ -81,7 +81,9 @@ export function ScreenHeader({
 					<h1 className="h-screen-title">{title}</h1>
 				)}
 				{meta ? <p className="mt-1 truncate text-[11px] text-ink-faint">{meta}</p> : null}
-				{lede ? <p className="mt-1.5 text-[13px] leading-snug text-ink-dim">{lede}</p> : null}
+				{lede ? (
+					<p className="mt-1.5 text-[13px] leading-snug text-pretty text-ink-dim">{lede}</p>
+				) : null}
 			</div>
 			{reading ? (
 				<div className="num -my-2.5 shrink-0 text-[11px] text-ink-faint">{reading}</div>
@@ -107,7 +109,10 @@ export function ScreenHeader({
  */
 export function StickyStrip({ children }: { children: ReactNode }) {
 	return (
-		<div className="sticky top-[44px] z-10 -mx-3 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
+		// `-mb-2` gives back the 8px of ground under the clock (there so the
+		// stuck strip has a margin of blur), so the next section still starts a
+		// sections gap below the clock, not 36px (#125's critique).
+		<div className="sticky top-[44px] z-10 -mx-3 -mb-2 bg-bg/95 px-3 pt-1 pb-2 backdrop-blur">
 			{children}
 		</div>
 	);
@@ -594,7 +599,7 @@ export function Stat({
 			    "stop" on the rest day that broke it (#117). */}
 			<span className="num text-[22px] leading-none font-bold text-chalk">
 				{value}
-				{suffix ? <span className="text-[13px] text-ink-faint">{suffix}</span> : null}
+				{suffix ? <span className="text-[13px] font-normal text-ink-faint">{suffix}</span> : null}
 			</span>
 			<span className="eyebrow w-full text-center">{label}</span>
 		</div>

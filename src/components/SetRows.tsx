@@ -44,18 +44,9 @@ const FIELD_LABEL: Record<SetField, () => string> = {
 	workSec: () => `${strip(m.field_time())} s`,
 	reps: m.field_reps,
 	grip: m.field_grip,
-	restSec: () => strip(m.field_rest()),
-	rpe: m.field_rpe,
-};
-
-/** Compact label for the read-only table: the unit is in the value there. */
-const FIELD_ABBR: Record<SetField, () => string> = {
-	loadKg: m.field_weight,
-	edgeMm: m.field_edge,
-	workSec: m.field_time,
-	reps: m.field_reps,
-	grip: m.field_grip,
-	restSec: m.field_rest,
+	// Its unit too since #125 (it was the one timed column without one): "DESCANSO
+	// S" fits the 73px column where "DESCANSO (S)" clipped.
+	restSec: () => `${strip(m.field_rest())} s`,
 	rpe: m.field_rpe,
 };
 
@@ -240,11 +231,13 @@ export function SetTable({
 							<th
 								key={f}
 								className={cn(
-									'eyebrow pb-1 pl-2 font-normal',
-									f === 'grip' ? 'text-left' : 'text-right',
+									'eyebrow pb-1 font-normal',
+									f === 'grip' ? 'pl-4 text-left' : 'pl-2 text-right',
 								)}
 							>
-								{FIELD_ABBR[f]()}
+								{/* The grid's labels, units and all: Log's table said "Weight" over
+								    a bare 38, and the unit was nowhere (#125's critique). */}
+								{FIELD_LABEL[f]()}
 							</th>
 						))}
 					</tr>
@@ -258,8 +251,8 @@ export function SetTable({
 								<td
 									key={f}
 									className={cn(
-										'py-1 pl-2 text-[11px] text-ink-dim',
-										f === 'grip' ? 'text-left' : 'num text-right',
+										'py-1 text-[11px] text-ink-dim',
+										f === 'grip' ? 'pl-4 text-left' : 'num pl-2 text-right',
 									)}
 								>
 									{f === 'grip'

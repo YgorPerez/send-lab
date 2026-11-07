@@ -334,7 +334,7 @@ function Train() {
 						placeholder={m.wk_add_ex()}
 						options={available}
 						onChange={addExercise}
-						className="min-h-11 border-dashed"
+						className="min-h-11"
 					/>
 					{/* Disabled with its reason on the line, not in a `title` a phone
 					    never shows (#118's critique). */}

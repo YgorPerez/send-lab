@@ -205,7 +205,9 @@ export function RehabStarter() {
 			// left the sentence beside it a 130px column of seven lines at 360px
 			// (#117). Under 12rem of text, the button drops under it.
 			<div className="flex flex-wrap items-center gap-2">
-				<p className="min-w-48 flex-1 text-[13px] leading-snug text-ink-dim">{m.rehab_desc()}</p>
+				<p className="min-w-48 flex-1 text-[13px] leading-snug text-pretty text-ink-dim">
+					{m.rehab_desc()}
+				</p>
 				<button
 					type="button"
 					onClick={() => setOpen(true)}
