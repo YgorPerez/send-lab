@@ -269,8 +269,10 @@ describe('the chrome is one nav and one main, below the shell', () => {
 	test('the strip carries no locale switch', () => {
 		expect(shell).not.toContain('LocaleSwitch');
 		expect(shell).not.toContain('chooseLocale');
-		expect(code('src/routes/settings.tsx'), 'Settings lost the language choice').toContain(
-			'onChange={chooseLocale}',
+		// Through a handler since #125, which notes the press so focus can come
+		// back to the language after the tree re-keys.
+		expect(code('src/routes/settings.tsx'), 'Settings lost the language choice').toMatch(
+			/onChange=\{\(next\) => \{[^}]*chooseLocale\(next\);/,
 		);
 	});
 
