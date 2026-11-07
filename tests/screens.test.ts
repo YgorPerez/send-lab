@@ -335,8 +335,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			const more = locale === 'en-US' ? `Actions for ${name}` : `Ações de ${name}`;
 			const trigger = screen.slice(screen.lastIndexOf('<button', screen.indexOf(more)));
 			const tag = trigger.slice(0, trigger.indexOf('>'));
-			expect(tag).toContain('w-11');
-			expect(tag).toContain('min-h-11');
+			expect(tag).toContain('size-11');
 			expect(tag).toContain('border');
 			expect(tag).toContain('aria-haspopup="menu"');
 			// The actions are in its menu, not right-floating under a row.
@@ -393,8 +392,15 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(heads.length).toBe(8);
 			const open = heads.filter((h) => h[1] === 'true').map((h) => h[2]);
 			expect(open).toHaveLength(2);
+			// Today's lead the list and say so; the rest follow in the library's order.
+			expect(heads.slice(0, 2).map((h) => h[1])).toEqual(['true', 'true']);
 			expect(open[0]).toContain(locale === 'en-US' ? 'Sloper Density' : 'Density em Sloper');
 			expect(open[1]).toContain('Abrahangs');
+			for (const head of open) expect(head).toContain(locale === 'en-US' ? 'Today' : 'Hoje');
+			expect(heads[2][2]).toContain('Recruitment Pulls');
+			expect(heads[2][2]).not.toContain(locale === 'en-US' ? 'Today' : 'Hoje');
+			// A preset's one action, a copy, is in its ready state: no ⋯ on its row.
+			expect(presets).not.toContain(locale === 'en-US' ? 'Actions for' : 'Ações de');
 			expect(presets).toContain(locale === 'en-US' ? '2 presets' : '2 predefinidos');
 			// Today's rows are listed; a closed group's wait behind the tap.
 			expect(presets).toContain(

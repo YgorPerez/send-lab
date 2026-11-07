@@ -180,7 +180,7 @@ export function todaysPresetGroups(
 	const today = new Set(
 		trainableExerciseIds(content, record, record.currentWeek, weekdayKeyOf(isoDayOf(now))),
 	);
-	return screen.presets.filter((g) => today.has(g.exercise)).map((g) => g.exercise);
+	return screen.presets.flatMap((g) => (today.has(g.exercise) ? [g.exercise] : []));
 }
 
 /**

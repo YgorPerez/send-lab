@@ -312,7 +312,7 @@ export function StudyLink({ study, className }: { study: Study; className?: stri
 			target="_blank"
 			rel="noopener noreferrer"
 			className={cn(
-				'flex min-h-11 items-center self-start py-2 text-[14px] font-medium text-ink-dim hover:text-ink',
+				'flex min-h-11 w-fit items-center self-start py-2 text-[14px] font-medium text-ink-dim hover:text-ink',
 				className,
 			)}
 		>

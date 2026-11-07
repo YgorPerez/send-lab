@@ -153,8 +153,20 @@ function TimerScreen() {
 	// plan schedules today that carry presets — and after that whatever the
 	// athlete opens. Read once, at mount: a group does not fold under the athlete
 	// because the clock crossed midnight.
-	const [openGroups, setOpenGroups] = useState<string[]>(() =>
-		todaysPresetGroups(screen, content, record, Date.now()),
+	//
+	// Today's groups also lead the list, each head saying so: open and unlabelled
+	// in the library's order, they sat under four closed heads and below the fold
+	// at 360px, with nothing saying why those two were open (#119 critique).
+	const [todays] = useState<ReadonlySet<string>>(
+		() => new Set(todaysPresetGroups(screen, content, record, Date.now())),
+	);
+	const [openGroups, setOpenGroups] = useState<string[]>(() => [...todays]);
+	const groups = useMemo(
+		() => [
+			...screen.presets.filter((g) => todays.has(g.exercise)),
+			...screen.presets.filter((g) => !todays.has(g.exercise)),
+		],
+		[screen.presets, todays],
 	);
 
 	// THE TAPPED HEAD STAYS UNDER THE FINGER.
@@ -173,7 +185,8 @@ function TimerScreen() {
 		const end = tail.current;
 		if (end) {
 			const head = event.target instanceof Element ? event.target.closest('[aria-controls]') : null;
-			const closing = openGroups.some((g) => !next.includes(g));
+			const stays = new Set(next);
+			const closing = openGroups.some((g) => !stays.has(g));
 			const panelId = closing ? head?.getAttribute('aria-controls') : null;
 			const panel = panelId ? document.getElementById(panelId) : null;
 			const shrink = panel?.getBoundingClientRect().height ?? 0;
@@ -243,43 +256,47 @@ function TimerScreen() {
 	const [deleting, setDeleting] = useState(false);
 
 	/**
-	 * A protocol's ⋯, on its row and in its clock's ready state: Duplicate, and
-	 * for a saved protocol Edit and Delete. A preset is the library's, so the one
-	 * thing to do with it besides running it is to keep a copy that is the
-	 * athlete's. Picked from the ready state, each leaves the clock first, for
-	 * the list, the editor or the question it leads to. Delete is worded, not
-	 * coloured; the question it opens is what guards it.
+	 * A protocol's ⋯: Edit, Duplicate and Delete for a saved protocol, Edit first
+	 * because it is the common one, on its row and in its clock's ready state. A
+	 * preset is the library's, so the one thing to do with it besides running it
+	 * is to keep a copy that is the athlete's, and that is in its ready state's ⋯
+	 * only: on the list it would be a menu of one item beside every preset, the
+	 * loudest outline in the card and 50px off every name (#119 critique). Picked
+	 * from the ready state, each leaves the clock first, for the list, the editor
+	 * or the question it leads to. Delete is worded, not coloured; the question it
+	 * opens is what guards it.
 	 */
 	const rowActions = (p: ProtocolListing, placement: 'row' | 'header') => {
 		const own = screen.saved.find((s) => s.key === p.key);
+		if (!own && placement === 'row') return null;
 		const leave = () => setOpenKey(null);
-		const actions: MenuAction[] = [
-			{
-				label: m.timer_duplicate(),
-				onSelect: () => {
-					leave();
-					void duplicate(p);
-				},
+		const copy: MenuAction = {
+			label: m.timer_duplicate(),
+			onSelect: () => {
+				leave();
+				void duplicate(p);
 			},
-		];
-		if (own)
-			actions.push(
-				{
-					label: m.timer_edit(),
-					onSelect: () => {
-						leave();
-						openEditor(own);
+		};
+		const actions: MenuAction[] = own
+			? [
+					{
+						label: m.timer_edit(),
+						onSelect: () => {
+							leave();
+							openEditor(own);
+						},
 					},
-				},
-				{
-					label: m.btn_delete(),
-					onSelect: () => {
-						leave();
-						setDoomed(own);
-						setConfirming(true);
+					copy,
+					{
+						label: m.btn_delete(),
+						onSelect: () => {
+							leave();
+							setDoomed(own);
+							setConfirming(true);
+						},
 					},
-				},
-			);
+				]
+			: [copy];
 		return (
 			<RowMenu
 				label={m.timer_row_actions({ name: p.name })}
@@ -358,8 +375,13 @@ function TimerScreen() {
 
 			<Section face="sans" label={m.timer_presets()}>
 				<RowGroup multiple value={openGroups} onValueChange={toggleGroups}>
-					{screen.presets.map((g) => (
-						<Row key={g.exercise} value={g.exercise} touch summary={<GroupHead group={g} />}>
+					{groups.map((g) => (
+						<Row
+							key={g.exercise}
+							value={g.exercise}
+							touch
+							summary={<GroupHead group={g} today={todays.has(g.exercise)} />}
+						>
 							<div className="flex flex-col gap-row">{g.presets.map((p) => row(p, true))}</div>
 							{/* Every group's citation in one place, its last line, on the
 							    rows' left edge, worded as the ready state words it. A
@@ -457,7 +479,7 @@ function TimerScreen() {
  * so their left edges, their height and their padding are one rule.
  */
 const ROW =
-	'flex min-h-14 min-w-0 items-center gap-3 rounded-xl bg-panel px-3.5 py-2.5 text-left transition-colors hover:bg-panel-2';
+	'flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-transparent bg-panel px-3.5 py-2.5 text-left transition-colors hover:bg-panel-2';
 
 /**
  * One protocol: its name, its shape, how long it runs; and beside it, not in
@@ -471,7 +493,15 @@ const ROW =
  * The protocol the clock is on is marked as the navigation marks the current
  * destination (#119): a raised panel, and chalk on every line, with the shape
  * line in semibold — the name is semibold on every row, so the weight that
- * changes is the line under it.
+ * changes is the line under it. And a chalk edge, as Train's clock button and a
+ * picked option carry: the bar's mark starts from faint ink on the ground, a
+ * row's from ink on a panel, and there the surface step (1.27:1) and chalk
+ * against ink (1.11:1) alone did not show which protocol the mini bar runs
+ * (#119 critique). The edge is non-text contrast, well over 3:1.
+ *
+ * Inside a group a name is set in the head's 15px rather than the rows' 16px:
+ * a 16px child outranked its 15px head, and the head leads by its place, its
+ * rule and its chevron.
  */
 function ProtocolRow({
 	row,
@@ -485,6 +515,7 @@ function ProtocolRow({
 	current: boolean;
 	inGroup: boolean;
 	onOpen: () => void;
+	/** Its ⋯, or nothing: a preset's one action is in its ready state. */
 	actions: ReactNode;
 	/** Scrolls a row just made into view. */
 	reveal?: (el: HTMLElement | null) => void;
@@ -501,7 +532,7 @@ function ProtocolRow({
 					ROW,
 					'flex-1',
 					inGroup && 'rounded-lg bg-transparent px-2.5',
-					current && 'bg-panel-3 hover:bg-panel-3',
+					current && 'border-chalk/60 bg-panel-3 hover:bg-panel-3',
 				)}
 			>
 				{/* The separators are spoken only: without them a screen reader runs the
@@ -509,7 +540,8 @@ function ProtocolRow({
 				<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<span
 						className={cn(
-							'line-clamp-2 text-[16px] leading-tight font-semibold',
+							'line-clamp-2 leading-tight font-semibold',
+							inGroup ? 'text-[15px]' : 'text-[16px]',
 							current ? 'text-chalk' : 'text-ink',
 						)}
 					>
@@ -542,13 +574,22 @@ function ProtocolRow({
 	);
 }
 
-/** A preset group's head: the exercise, and how many presets it holds — a
- *  count to the eye, the words to a screen reader. */
-function GroupHead({ group }: { group: PresetGroup }) {
+/** A preset group's head: the exercise, "Today" when the plan schedules it
+ *  today, and how many presets it holds — a count to the eye, the words to a
+ *  screen reader. */
+function GroupHead({ group, today }: { group: PresetGroup; today: boolean }) {
 	const n = group.presets.length;
 	return (
 		<span className="flex items-baseline gap-2.5">
-			<span className="min-w-0 flex-1">{group.name}</span>
+			<span className="min-w-0 flex-1">
+				{group.name}
+				{today ? (
+					<>
+						<span className="sr-only">, </span>
+						<span className="ml-2 text-[13px] font-medium text-ink-dim">{m.nav_today()}</span>
+					</>
+				) : null}
+			</span>
 			<span aria-hidden="true" className="shrink-0 text-[13px] font-medium text-ink-dim">
 				{n}
 			</span>

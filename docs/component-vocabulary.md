@@ -63,7 +63,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. It sits on the navigation bar (`--nav-clear`, #115), and from `lg` right of the rail on the measure's left edge, capped at `max-w-pane` as `Pane` is |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip. `wrap` lets the label take a second line instead of truncating, and `chevron={false}` gives a set-grid cell its 18px back: the pt-BR grips clipped to "Slop…" and "Half…" in a 68px cell (#118) |
 | `RowGroup` / `Row` | `Rows.tsx` | The expanding row, in one card; the Log screen's whole structure and the Timer's preset groups. `multiple` lets several rows stay open; `value` / `onValueChange` hand the open rows to the caller (the change arrives before it renders, with the press that made it). `touch` gives a row a 48px head in the rows' 15px semibold, for a list worked through mid-set. The trailing chevron is the row icon (18px, stroke 2, faint) |
-| `RowMenu` | `Menu.tsx` | A row's ⋯ (#119): Base UI's menu behind a separate, bordered 44px square beside the row (or the 48px square in a dialog's header), labelled with what it acts on. Takes `{ label, onSelect }` actions in order; nothing in it is coloured apart, and a destructive item's guard is the `AlertDialog` the caller opens next |
+| `RowMenu` | `Menu.tsx` | A row's ⋯ (#119): Base UI's menu behind a separate, bordered, filled 44px square centred beside the row, Train's clock-button shape, never stretched to the row's height (or the 48px square in a dialog's header), labelled with what it acts on. A row with one action does not get one: put that action where the row leads. Takes `{ label, onSelect }` actions in order; nothing in it is coloured apart, and a destructive item's guard is the `AlertDialog` the caller opens next |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
 | `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
@@ -754,21 +754,31 @@ says it twice); its leading icon is what sets it apart from the protocol rows ab
 The sections sit `gap-sections` apart and their heads are `Section face="sans"`.
 
 **Presets are one `RowGroup`**, a `touch` row per exercise (its name and a count),
-`multiple`. Open by default are today's groups: `todaysPresetGroups`
+`multiple`. Today's groups lead it, open, each head saying "Today": `todaysPresetGroups`
 (`lib/screens/timer.ts`) reads the plan's exercises for today and keeps those with
-presets, in list order, read once at mount. Seeded Thursday opens Sloper Density and
-Abrahangs; a rest day opens none. Inside a group the presets are lines in the card,
-not surfaces of their own (a card is never inside a card), each with its `RowMenu`.
+presets, in list order, read once at mount. Seeded Thursday leads with Sloper Density
+and Abrahangs; a rest day opens none and keeps the library's order. Inside a group the
+presets are lines in the card, not surfaces of their own (a card is never inside a
+card), their names in the head's 15px so a child does not outrank its head.
+
+**Only a saved protocol has a ⋯ on the list** (Edit, Duplicate, Delete, Edit first).
+A preset's one action is a copy, and it is in the preset's ready state: on the list it
+was a menu of one item beside every preset, the loudest outline in the card, and it
+took 50px off every name (the critique's finding).
 
 **Each open group ends on its study**, through `StudyLink` (`Timer.tsx`): "Study:
 <title>" and the 12px external mark, on the rows' left edge, the same component the
 clock's ready state uses, so every citation on the Timer is one sentence shape. An
 exercise with no study (Wrist / Sloper Strength) has no line.
 
-**The selection is the bar's.** The protocol the clock is on (the row last opened, or
-the one the clock was left in) carries `aria-current="true"`, a `panel-3` surface and
-chalk on every line, with its shape line in semibold, since the name is semibold on
-every row. A fresh visit marks nothing rather than whatever is listed first. The same
+**The selection is the bar's, plus Train's edge.** The protocol the clock is on (the
+row last opened, or the one the clock was left in) carries `aria-current="true"`, a
+`panel-3` surface, a `chalk/60` border and chalk on every line, with its shape line in
+semibold, since the name is semibold on every row. The border is not in the bar's mark
+and is needed here: the bar starts from faint ink on the ground, a row from ink on a
+panel, and the surface step (1.27:1) and chalk against ink (1.11:1) alone did not show
+which protocol the mini bar runs. Train's clock button and a picked option carry the
+same edge. A fresh visit marks nothing rather than whatever is listed first. The same
 protocol listed twice (Recent and its group) is marked twice.
 
 **Closing a group keeps the page as long as it was.** Presets is the end of the page,
@@ -781,7 +791,9 @@ reads zero once the panel animates.
 
 **The cue settings are the strip's screen action**, a 44px ghost square (no border:
 alone on the strip's right it is attached to nothing larger, and a border would sit
-on the strip's edges), its icon 20px at stroke 1.75.
+on the strip's edges), its icon 20px at stroke 1.75. Its focus ring is drawn inside
+(`-outline-offset-2`): the control is the strip's full height and the global ring, 2px
+outside, fell off the top of the window.
 
 **Heights.** Seeded `/timer` at 360px: 1,783px (en-US), 1,799px (pt-BR), with two
 groups open; 1,641px at 1280px. Empty: 1,728 / 1,706px at 360px.

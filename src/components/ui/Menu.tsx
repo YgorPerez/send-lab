@@ -9,7 +9,10 @@
 // ------------------------------
 // A separate, bordered 44px square beside the row, never an icon inside it: an
 // icon-only affordance attached to a larger control does not read as one
-// (`component-vocabulary.md`, the measured rules). Its label names what it acts
+// (`component-vocabulary.md`, the measured rules). A fixed square centred on the
+// row, the shape of Train's clock button beside a task, rather than a capsule
+// as tall as the row: a name that wraps to two lines does not stretch it, so
+// the ⋯ down a list stay one column of one shape (#119 critique). Its label names what it acts
 // on — "Delete" alone does not say what goes — so the caller passes a label, not
 // a word.
 //
@@ -40,8 +43,8 @@ export function RowMenu({
 	label: string;
 	/** In the order offered. */
 	actions: readonly MenuAction[];
-	/** Beside a row, the row's height at 14px corners; in a dialog's header, the
-	 *  48px square of the close beside it. */
+	/** Beside a row, a 44px square; in a dialog's header, the 48px square of the
+	 *  close beside it. Both filled and bordered, as Train's clock button is. */
 	placement?: 'row' | 'header';
 }) {
 	return (
@@ -49,10 +52,8 @@ export function RowMenu({
 			<Base.Trigger
 				aria-label={label}
 				className={cn(
-					'flex shrink-0 items-center justify-center border border-line text-ink-dim transition-colors hover:bg-panel-2 hover:text-ink data-[popup-open]:bg-panel-3 data-[popup-open]:text-ink',
-					placement === 'row'
-						? 'min-h-11 w-11 self-stretch rounded-xl'
-						: 'size-12 self-start rounded-md bg-panel-2',
+					'flex shrink-0 items-center justify-center rounded-md border border-line bg-panel-2 text-ink-dim transition-colors hover:bg-panel-3 hover:text-ink data-[popup-open]:bg-panel-3 data-[popup-open]:text-ink',
+					placement === 'row' ? 'size-11 self-center' : 'size-12 self-start',
 				)}
 			>
 				<Ellipsis size={20} strokeWidth={1.75} aria-hidden="true" />

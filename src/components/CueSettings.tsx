@@ -147,7 +147,9 @@ export function CueSettingsShortcut({ locale }: { locale: AppLocale }) {
 		<Popover.Root>
 			<Popover.Trigger
 				render={<button type="button" aria-label={title} />}
-				className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-dim transition-colors hover:bg-panel-2 hover:text-ink data-[popup-open]:bg-panel-3 data-[popup-open]:text-chalk"
+				// The ring is drawn inside: the control is the strip's full height and
+				// a ring 2px outside it fell off the top of the window.
+				className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-dim focus-visible:-outline-offset-2 transition-colors hover:bg-panel-2 hover:text-ink data-[popup-open]:bg-panel-3 data-[popup-open]:text-chalk"
 			>
 				<SlidersHorizontal size={20} strokeWidth={1.75} aria-hidden="true" />
 			</Popover.Trigger>
