@@ -185,6 +185,7 @@ function Week() {
 	const slot = w.slots.find((s) => s.weekday === selected) ?? w.slots[0];
 	// What every cell changes, so a screen reader can say where the day went.
 	const dayId = useId();
+	const gridHeadId = useId();
 
 	return (
 		// The page's frame, not a pane: at `lg` this is two panes, so the frame is
@@ -204,14 +205,50 @@ function Week() {
 			<Panes
 				primary={
 					<Section
+						labelId={gridHeadId}
 						label={m.wk_training_week({ n: w.weekNumber, total: w.weekCount })}
 						meta={m.wk_adherence({ trained: w.trainedSlots, scheduled: w.scheduledSlots })}
 					>
 						<Legend />
 						{/* Four columns is what 360px allows after the gutters; seven is
 						    what the shape wants, and a wide screen has room for it. One
-						    `lg:` utility, per ADR 0018 — no second layout. */}
-						<div data-week-grid="" className="grid grid-cols-4 gap-1.5 lg:grid-cols-7">
+						    `lg:` utility, per ADR 0018 — no second layout.
+
+						    ONE CHOICE, SO ONE RADIO GROUP (#125, raised on #121). The cells
+						    were seven `aria-pressed` toggles, seven tab stops for what is one
+						    answer. Now the group is one stop, on the selected day; the
+						    arrows move through the week in reading order (wrapping), Home
+						    and End go to its ends, and the day under the grid follows, as a
+						    radio's selection follows its focus. */}
+						<div
+							data-week-grid=""
+							role="radiogroup"
+							aria-labelledby={gridHeadId}
+							onKeyDown={(e) => {
+								const at = w.slots.findIndex((x) => x.weekday === selected);
+								const last = w.slots.length - 1;
+								const to =
+									e.key === 'ArrowRight' || e.key === 'ArrowDown'
+										? at === last
+											? 0
+											: at + 1
+										: e.key === 'ArrowLeft' || e.key === 'ArrowUp'
+											? at === 0
+												? last
+												: at - 1
+											: e.key === 'Home'
+												? 0
+												: e.key === 'End'
+													? last
+													: null;
+								if (to === null) return;
+								e.preventDefault();
+								const next = w.slots[to].weekday;
+								setSelected(next);
+								e.currentTarget.querySelector<HTMLElement>(`[data-weekday="${next}"]`)?.focus();
+							}}
+							className="grid grid-cols-4 gap-1.5 lg:grid-cols-7"
+						>
 							{w.slots.map((s) => (
 								<SlotCell
 									key={s.weekday}
@@ -261,10 +298,15 @@ function SlotCell({
 	const done = slot.tasks.filter((t) => t.done).length;
 
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: a cell holds a weekday, a mark and a count, which a native radio cannot; this is the APG radio group on buttons.
 		<button
 			type="button"
+			role="radio"
+			data-weekday={slot.weekday}
 			onClick={onSelect}
-			aria-pressed={on}
+			aria-checked={on}
+			// One tab stop for the group: the selected day (roving focus).
+			tabIndex={on ? 0 : -1}
 			aria-controls={controls}
 			// The name a screen reader gets. `aria-label` REPLACES the button's
 			// content rather than adding to it, so everything visible has to be in

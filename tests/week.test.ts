@@ -67,9 +67,10 @@ const weekIn = (locale: Locale) =>
 const text = (el: Element | null | undefined) =>
 	(el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-/** The grid's cells: one toggle per slot. */
+/** The grid's cells: one radio per slot, in one group (#125; seven
+ *  `aria-pressed` toggles until then). */
 const cellsOf = (main: ParentNode) => [
-	...main.querySelectorAll<HTMLButtonElement>('button[aria-pressed]'),
+	...main.querySelectorAll<HTMLButtonElement>('[role="radiogroup"] [role="radio"]'),
 ];
 
 /** Everything Week says, to the eye and to a screen reader. */
@@ -242,15 +243,54 @@ describe('Week, mounted', () => {
 
 		const cells = cellsOf(main);
 		const fri = cells.find((c) => c.getAttribute('aria-label')?.startsWith('Fri'));
-		expect(cells.filter((c) => c.getAttribute('aria-pressed') === 'true').map(text)).toEqual([
+		expect(cells.filter((c) => c.getAttribute('aria-checked') === 'true').map(text)).toEqual([
 			expect.stringContaining('Thu'),
 		]);
 		act(() => fri?.click());
-		expect(fri?.getAttribute('aria-pressed')).toBe('true');
-		expect(cells.filter((c) => c.getAttribute('aria-pressed') === 'true')).toHaveLength(1);
+		expect(fri?.getAttribute('aria-checked')).toBe('true');
+		expect(cells.filter((c) => c.getAttribute('aria-checked') === 'true')).toHaveLength(1);
 		const shown = text(main.querySelector('[data-slot-day]'));
 		expect(shown).toContain(friday.day.type);
 		for (const task of friday.tasks) expect(shown).toContain(task.exName);
+	});
+
+	// The sweep (#125, raised on #121): the seven cells are one choice, so they
+	// are one radio group: one tab stop, the arrows move through the week and
+	// show the day they land on, Home and End go to its ends.
+	test('the grid is one choice: one tab stop, arrows move the selection', async () => {
+		const router = await routerAt('/week');
+		root = createRoot(document);
+		act(() => root?.render(createElement(RouterProvider, { router } as never)));
+		const main = document.querySelector('main') as HTMLElement;
+		const group = main.querySelector('[role="radiogroup"]');
+		expect(group?.getAttribute('aria-labelledby')).toBeTruthy();
+		const cells = cellsOf(main);
+		expect(cells).toHaveLength(7);
+		const stops = () => cells.filter((c) => c.tabIndex === 0).map((c) => text(c));
+		expect(stops()).toEqual([expect.stringContaining('Thu')]);
+
+		const key = (el: Element | null, k: string) =>
+			act(() => {
+				el?.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+			});
+		const checked = () =>
+			cells.find((c) => c.getAttribute('aria-checked') === 'true')?.getAttribute('aria-label');
+		const thu = cells.find((c) => c.getAttribute('aria-label')?.startsWith('Thu')) as HTMLElement;
+		thu.focus();
+		key(thu, 'ArrowRight');
+		expect(checked()).toMatch(/^Fri/);
+		expect(document.activeElement?.getAttribute('aria-label')).toMatch(/^Fri/);
+		expect(text(main.querySelector('[data-slot-day] h2'))).toMatch(/^Fri/);
+		expect(stops()).toEqual([expect.stringContaining('Fri')]);
+		key(document.activeElement, 'ArrowLeft');
+		key(document.activeElement, 'ArrowLeft');
+		expect(checked()).toMatch(/^Wed/);
+		key(document.activeElement, 'Home');
+		expect(checked()).toMatch(/^Mon/);
+		key(document.activeElement, 'ArrowLeft');
+		expect(checked()).toMatch(/^Sun/);
+		key(document.activeElement, 'End');
+		expect(checked()).toMatch(/^Sun/);
 	});
 
 	// `CONTEXT.md` › Rest day: _Avoid_: off day. The library's load for a rest

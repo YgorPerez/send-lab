@@ -234,8 +234,16 @@ export function SetTable({
 				<thead>
 					<tr>
 						<th className="eyebrow w-6 pb-1 font-normal">#</th>
+						{/* Numbers right-aligned so their digits line up; the grip is a
+						    word, left-aligned as words are (#120's critique, #125). */}
 						{cols.map((f) => (
-							<th key={f} className="eyebrow pb-1 pl-2 text-right font-normal">
+							<th
+								key={f}
+								className={cn(
+									'eyebrow pb-1 pl-2 font-normal',
+									f === 'grip' ? 'text-left' : 'text-right',
+								)}
+							>
 								{FIELD_ABBR[f]()}
 							</th>
 						))}
@@ -247,7 +255,13 @@ export function SetTable({
 						<tr key={i} className="border-t border-line-soft">
 							<td className="num py-1 text-[11px] text-ink-faint">{i + 1}</td>
 							{cols.map((f) => (
-								<td key={f} className="num py-1 pl-2 text-right text-[11px] text-ink-dim">
+								<td
+									key={f}
+									className={cn(
+										'py-1 pl-2 text-[11px] text-ink-dim',
+										f === 'grip' ? 'text-left' : 'num text-right',
+									)}
+								>
 									{f === 'grip'
 										? s.grip
 											? gripLabel(s.grip)

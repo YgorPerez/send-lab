@@ -220,7 +220,9 @@ export function RehabStarter() {
 	return (
 		<div className="flex flex-col gap-2.5">
 			<div className="flex flex-col gap-1.5">
-				<Eyebrow>{m.rehab_area()}</Eyebrow>
+				{/* Each a question of its own, headed in the section rank as the
+				    intake's questions are, not the mono label rank (#125). */}
+				<p className="h-section">{m.rehab_area()}</p>
 				<div className="grid grid-cols-2 gap-1.5">
 					{['fingers', 'elbow', 'shoulder', 'wrist'].map((a) => (
 						<button
@@ -236,7 +238,7 @@ export function RehabStarter() {
 				</div>
 			</div>
 			<div className="flex flex-col gap-1.5">
-				<Eyebrow>{m.rehab_stage()}</Eyebrow>
+				<p className="h-section">{m.rehab_stage()}</p>
 				<div className="flex flex-col gap-1.5">
 					{['acute', 'subacute', 'returning'].map((s) => (
 						<button

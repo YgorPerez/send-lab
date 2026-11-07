@@ -157,6 +157,7 @@ export function BottomBar({ children }: { children: ReactNode }) {
  */
 export function Section({
 	id,
+	labelId,
 	label,
 	meta,
 	children,
@@ -165,6 +166,9 @@ export function Section({
 	/** An anchor, so an `Empty` elsewhere on the page can point at the section
 	 *  that fills it. */
 	id?: string;
+	/** The heading's id, for a control in the section to be named by it (Week's
+	 *  grid is the radio group its head names). */
+	labelId?: string;
 	label: ReactNode;
 	meta?: ReactNode;
 	children: ReactNode;
@@ -175,7 +179,9 @@ export function Section({
 			<header className="flex items-baseline justify-between gap-2">
 				{/* One section rank, in Inter (DESIGN.md › Typography). It took a
 				    `face` until every screen had moved off the mono caps (#125). */}
-				<h2 className="h-section min-w-0">{label}</h2>
+				<h2 id={labelId} className="h-section min-w-0">
+					{label}
+				</h2>
 				{/* The meta rank (11px, faint, Inter): every caller's meta is a phrase
 				    or a chip, and each one undid the eyebrow's mono caps until #125. */}
 				{meta ? <div className="shrink-0 text-[11px] text-ink-faint">{meta}</div> : null}
