@@ -4,7 +4,7 @@
 // A summary since #117, in this order: the read (the verdict, its score, the five
 // wellness dimensions behind it, the readiness check as one line); today's plan,
 // with the work the read holds back marked on its tasks and yesterday's
-// carry-forward inside it, ending in the way into Train; the watch-outs; how
+// carry-forward inside it; the watch-outs, then the way into Train; how
 // today's session went, once there is one; then the secondary block: three
 // counters, a fourteen-point trend, the bodyweight nudge and the injury entry.
 //
@@ -32,7 +32,7 @@
 // file for why length alone is not a reason to promote one.
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, ChevronRight, ExternalLink } from 'lucide-react';
-import { type ReactNode, type RefObject, useId, useMemo, useRef, useState } from 'react';
+import { type RefObject, useId, useMemo, useRef, useState } from 'react';
 import { useBaselineDraft } from '$lib/baselineDraft';
 import { type BodyArea, computeReadiness, getContent, hasWellnessAnswer } from '$lib/content';
 import type { Content, VerdictId } from '$lib/content/types';
@@ -68,7 +68,7 @@ import {
 	Stat,
 } from '../components/ui/primitives';
 import { Sparkline } from '../components/ui/Sparkline';
-import { button, card, chip, input } from '../components/ui/variants';
+import { button, card, chip, input, option } from '../components/ui/variants';
 
 export const Route = createFileRoute('/')({ component: Today });
 
@@ -201,9 +201,11 @@ function Today() {
 
 	// THE ONE PRIMARY (#117, spec #113). While the check is unanswered it is the
 	// invitation into it, in the read's place. Once there is a read, it is the
-	// way into Train, at the foot of the plan the read just shaped: the bodyweight
-	// nudge lost it in #116, the plan heading's "View today's session" link and
-	// each task's own "Train" link went with this.
+	// way into Train, after the watch-outs: the last thing the decision pane says,
+	// so a problem is read before the athlete starts (story 36), which the first
+	// build put it ahead of. The bodyweight nudge lost it in #116; the plan
+	// heading's "View today's session" link and each task's own "Train" link went
+	// with this.
 	const goTrain = checked ? (
 		<Link to="/train" className={button({ kind: 'primary', size: 'lg', class: 'w-full' })}>
 			{m.td_go_train()}
@@ -211,11 +213,11 @@ function Today() {
 	) : null;
 
 	// WHAT THERE IS TO RATE. An outcome is how a session went, said afterwards
-	// (`CONTEXT.md`), so the ask waits for a trained session: today's in the
-	// record, or a task ticked off here. It names the session by its day type,
-	// so it stops being a permanent block of four buttons about nothing.
-	const toRate =
-		t.sessionToRate ?? (t.tasks.some((task) => done[task.key]) ? { dayType: t.day.type } : null);
+	// (`CONTEXT.md`), so the ask waits for a session the record says is trained,
+	// and names it by its day type. Not a tick on this page: those are the page's
+	// own state and gone on reload, so a stray tick would summon a question about
+	// a session that was never recorded (#117's critique).
+	const toRate = t.sessionToRate;
 
 	return (
 		// The page's own frame, not a `Pane`: this is a two-pane page at `lg`, so the
@@ -280,7 +282,7 @@ function Today() {
 											}}
 											type="button"
 											onClick={() => setCheckOpen(true)}
-											className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
+											className={button({ kind: 'primary', size: 'lg' })}
 										>
 											{answered > 0 ? m.td_continue_check() : m.td_answer_check()}
 										</button>
@@ -299,7 +301,6 @@ function Today() {
 							onToggle={(key) => setDone((p) => ({ ...p, [key]: !p[key] }))}
 							carryForward={carryForwardTaken ? null : t.carryForward}
 							onTakeCarryForward={() => setCarryForwardTaken(true)}
-							action={goTrain}
 						/>
 
 						{/* WHAT THE PLAN IS BUILT FROM, WHEN IT IS BUILT FROM NOTHING (#64).
@@ -347,6 +348,8 @@ function Today() {
 							content={content}
 							onSelfCheck={() => setSelfCheckOpen(true)}
 						/>
+
+						{goTrain}
 					</>
 				}
 				secondary={
@@ -360,7 +363,7 @@ function Today() {
 						     bordered boxes for three numbers was the densest-looking and least
 						     dense thing on the screen. */}
 						<Bare className="flex divide-x divide-line-soft">
-							<Stat accent value={t.stats.streak} label={m.stat_streak()} />
+							<Stat value={t.stats.streak} label={m.stat_streak()} />
 							<Stat value={t.stats.last7} suffix="/7" label={m.stat_week_sessions()} />
 							<Stat value={t.stats.total} label={m.stat_total()} />
 						</Bare>
@@ -370,8 +373,10 @@ function Today() {
 							label={m.readiness_trend()}
 							meta={
 								insights.baseline != null && vsBaseline ? (
-									<span className="num">
-										⌀ {Math.round(insights.baseline)} · {vsBaseline}
+									// Inter at the meta size, as the read card says the same words:
+									// inside the eyebrow it kept 0.14em mono tracking on a sentence.
+									<span className="font-sans text-[11px] tracking-normal">
+										<span className="num">⌀ {Math.round(insights.baseline)}</span> · {vsBaseline}
 									</span>
 								) : null
 							}
@@ -389,7 +394,7 @@ function Today() {
 										baseline={insights.baseline}
 										{...(checked ? { current: readiness.score } : {})}
 									/>
-									<div className="num mt-1 flex justify-between text-[9px] text-ink-faint">
+									<div className="num mt-1 flex justify-between text-[10px] text-ink-faint">
 										<span>{t.trendPoints[0]?.label}</span>
 										<span>{t.trendPoints[t.trendPoints.length - 1]?.label}</span>
 									</div>
@@ -412,7 +417,6 @@ function Today() {
 							<>
 								<InjuryEntry selfCheck={t.selfCheck} onSelfCheck={() => setSelfCheckOpen(true)} />
 								<SelfCheckSheet
-									area={t.selfCheck.area}
 									instrument={t.selfCheck.instrument}
 									last={t.selfCheck.last}
 									open={selfCheckOpen}
@@ -522,8 +526,8 @@ function ReadCard({
 					<Prose value={verdict.text} />
 				</p>
 				<div className="mt-2 flex flex-wrap gap-1">
-					{verdict.focus.map((f, i) => (
-						<span key={f} className={chip({ tone: i === 0 ? 'stop' : 'neutral' })}>
+					{verdict.focus.map((f) => (
+						<span key={f} className={chip({ tone: 'neutral' })}>
 							<Prose value={f} />
 						</span>
 					))}
@@ -596,7 +600,6 @@ function PlanCard({
 	onToggle,
 	carryForward,
 	onTakeCarryForward,
-	action,
 }: {
 	day: TodayScreen['day'];
 	phase: TodayScreen['phase'];
@@ -607,9 +610,6 @@ function PlanCard({
 	onToggle: (key: TaskKey) => void;
 	carryForward: TodayScreen['carryForward'];
 	onTakeCarryForward: () => void;
-	/** The way into Train, under the plan: the screen's one primary once there
-	 *  is a read. Null while the check is unanswered. */
-	action: ReactNode;
 }) {
 	return (
 		<Section face="sans" label={`${day.type} · ${day.load}`}>
@@ -617,11 +617,15 @@ function PlanCard({
 				{/* The block phase belongs here, not in the page header: it is the reason
 				    today's prescription looks the way it does, and in the header it was a
 				    truncated fragment next to the date. */}
-				<div className="border-b border-line-soft px-3 py-2">
-					<p className="text-[11.5px] leading-snug font-medium text-chalk">{phase.name}</p>
-					<p className="mt-0.5 text-[11px] leading-snug text-ink-faint">{phase.banner}</p>
-					<p className="mt-1 text-[11px] leading-snug text-ink-faint">
-						{day.headline} · {day.subhead}
+				{/* Today's headline first: it is the answer for today, and the phase's
+				    banner is the same three lines every day for weeks. The first build
+				    of the overhaul put the phase in chalk and today's headline in the
+				    faintest line under it (#117's critique). */}
+				<div className="border-b border-line-soft px-3 py-2.5">
+					<p className="text-[13px] leading-snug font-medium text-ink">{day.headline}</p>
+					<p className="mt-0.5 text-[11px] leading-snug text-ink-dim">{day.subhead}</p>
+					<p className="mt-1.5 text-[11px] leading-snug text-ink-faint">
+						<span className="text-ink-dim">{phase.name}</span> · {phase.banner}
 					</p>
 				</div>
 				{/* A rest day is an answer, not an empty list. The day type prescribes no
@@ -647,7 +651,9 @@ function PlanCard({
 								<button
 									type="button"
 									aria-pressed={isDone}
-									aria-label={task.exName}
+									// What the row shows goes in the name too: `aria-label` replaces the
+									// button's content, and a held task sounded like any other.
+									aria-label={held ? `${task.exName} · ${m.td_held()}` : task.exName}
 									onClick={() => onToggle(task.key)}
 									className={cn(
 										'flex size-11 shrink-0 items-center justify-center rounded-md border transition-colors',
@@ -695,7 +701,6 @@ function PlanCard({
 					</div>
 				) : null}
 			</div>
-			{action}
 		</Section>
 	);
 }
@@ -727,11 +732,9 @@ function OutcomeAsk({
 						type="button"
 						aria-pressed={outcome === v}
 						onClick={() => onPick(v)}
-						className={button({
-							kind: 'quiet',
-							size: 'md',
-							class: cn('min-h-11 px-1', outcome === v && 'border-teal/50 text-teal'),
-						})}
+						// The app's one selection language (chalk, weight, a raised panel),
+						// not teal: teal is the ok state, and "Bailed" picked is not ok.
+						className={option({ on: outcome === v, width: 'full', class: 'min-h-11' })}
 					>
 						{OUTCOME_LABEL[v]()}
 					</button>
@@ -755,7 +758,7 @@ function WatchOuts({
 	if (!flags.length) return null;
 	return (
 		<Section face="sans" label={m.flags_heading()}>
-			<div className="flex flex-col gap-2">
+			<div className="flex flex-col gap-row">
 				{flags.map((f) => {
 					const c = content.flags[f.id];
 					if (!c) return null;
@@ -770,14 +773,12 @@ function WatchOuts({
 									aria-hidden="true"
 									className={cn('size-2 shrink-0 self-center rounded-full', FLAG_DOT[f.severity])}
 								/>
-								<span className="min-w-0 flex-1 text-[13.5px] font-semibold text-ink">
-									{c.title}
-								</span>
+								<span className="min-w-0 flex-1 text-[13px] font-semibold text-ink">{c.title}</span>
 								<span className={chip({ tone: FLAG_CHIP[f.severity] })}>
 									{FLAG_SEVERITY[f.severity]()}
 								</span>
 							</div>
-							<p className="prose-inline mt-1 text-[12.5px] leading-snug text-ink-dim">
+							<p className="prose-inline mt-1 text-[12.5px] leading-snug text-pretty text-ink-dim">
 								<Prose value={c.text} />
 							</p>
 							<div className="mt-1.5 flex flex-wrap gap-1">
@@ -848,8 +849,9 @@ function BodyweightNudge({
 						<span className="text-[11px] text-ink-faint"> kg</span>
 						<span
 							className={cn(
-								'ml-1.5 text-[11px]',
-								delta < 0 ? 'text-teal' : delta > 0 ? 'text-gold' : 'text-ink-faint',
+								// The change in faint ink, either way: a kilo up or down is not a
+								// state, and teal for a loss was a judgement (#117's critique).
+								'ml-1.5 text-[11px] text-ink-faint',
 							)}
 						>
 							{delta > 0 ? '+' : ''}
@@ -859,7 +861,7 @@ function BodyweightNudge({
 					<div className="mt-1 w-full">
 						<Sparkline
 							points={series.map((s) => ({ value: s.kg, label: displayDate(isoDayOf(s.at)) }))}
-							color="var(--violet)"
+							color="var(--ink-dim)"
 							height={20}
 						/>
 					</div>
@@ -910,7 +912,7 @@ function InjuryEntry({
 				<button
 					type="button"
 					onClick={onSelfCheck}
-					className="flex w-full items-center gap-2 p-3 text-left transition-colors active:bg-panel-2"
+					className="flex min-h-11 w-full items-center gap-2 p-3 text-left transition-colors active:bg-panel-2"
 				>
 					<span className="min-w-0 flex-1">
 						<span className="block text-[13px] font-medium text-ink">

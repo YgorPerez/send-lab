@@ -405,21 +405,16 @@ export function Stat({
 	value,
 	suffix,
 	label,
-	accent,
 }: {
 	value: number | string;
 	suffix?: string;
 	label: string;
-	accent?: boolean;
 }) {
 	return (
 		<div className="flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1">
-			<span
-				className={cn(
-					'num text-[22px] leading-none font-bold',
-					accent ? 'text-flag' : 'text-chalk',
-				)}
-			>
+			{/* No accent: a count is not a state, and the vermilion streak read as
+			    "stop" on the rest day that broke it (#117). */}
+			<span className="num text-[22px] leading-none font-bold text-chalk">
 				{value}
 				{suffix ? <span className="text-[13px] text-ink-faint">{suffix}</span> : null}
 			</span>

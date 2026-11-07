@@ -120,12 +120,15 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 	const copy = COPY[locale];
 
 	describe(`${locale}, Today`, () => {
-		test('seeded: the verdict, the plan, the flags, the outcome ask, then the rest', async () => {
+		// The way into Train comes after the flags, so a problem is read before
+		// the athlete starts (story 36).
+		test('seeded: the verdict, the plan, the flags, the way in, the outcome ask, then the rest', async () => {
 			const screen = await today(THURSDAY, locale, true);
 			expectInOrder(screen, [
 				copy.summary,
 				copy.plan,
 				copy.flags,
+				copy.goTrain,
 				copy.outcome,
 				copy.streak,
 				copy.trend,

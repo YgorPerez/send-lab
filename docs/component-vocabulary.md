@@ -641,19 +641,26 @@ seeded and empty, on a training day and the rest day, in both locales.
 
 **One primary in every state, and it moves with the check.** Unanswered, it is the
 invitation in the read's place (#116). Answered, it is "Go to Train", a full-width
-`lg` link at the foot of the plan, because the plan is what the athlete is about to
-train. It replaced two weaker ways in: the plan heading's "View today's session →"
-and a 44px "Train ›" link on every task row, which pointed at the same screen five
-times. A rest day with a read keeps the link: Train is where an unplanned session
-is logged, and the ration is one per screen, not one per training day.
+`lg` link after the watch-outs: the last thing the decision pane says, so a problem
+is read before the athlete starts (story 36). The first build put it at the foot of
+the plan, ahead of the flags; the critique caught it. It replaced two weaker ways in:
+the plan heading's "View today's session →" and a 44px "Train ›" link on every task
+row, which pointed at the same screen five times. A rest day with a read keeps it:
+Train is where an unplanned session is logged, and the spec's rule is one primary in
+every state. The rehab starter's "Switch to rehab program" was a second filled
+primary whenever it was opened on Today; it is `quiet` now.
 
 **The outcome ask waits for something to rate.** An **outcome** is how a session
 went, said afterwards (`CONTEXT.md`), and the ask used to sit under the verdict
 every morning, four buttons about a session that had not happened. It shows once
 today's session is trained (a set ticked in the record, which `resolveToday`
-returns as `sessionToRate`, or a task ticked on Today) and names it by the day type
-it recorded: "How did today's Pull session go?". Where the outcome is kept is not
-this ticket's: it is still the page's own state, as it was.
+returns as `sessionToRate`) and names it by the day type it recorded: "How did
+today's Pull session go?". A tick on Today does not count: ticks there are the
+page's own state, gone on reload, and a stray one summoned a question about a
+session the record never held. Its picks use `option`, the app's one selection
+language; selected was teal, the ok colour, which made a picked "Bailed" read as
+fine. Where the outcome is kept is not this ticket's: it is still the page's own
+state, as it was.
 
 **A flag says its severity twice, in colour and in the locale.** The card's tone
 and a dot beside the title carry the colour (a mark can carry a colour a label
@@ -666,10 +673,20 @@ while nothing else led there. The navigation carries Week since #115, and a fain
 nobody could see, so it is text. The date under the title is Inter: it has a month
 name in it, and DESIGN.md keeps mono for meta that is all digits.
 
-**Heights.** Seeded at 360px, Today measures 2444px in en-US and 2599px in pt-BR
-(4361px before #116, 2521px after it); at 1280px, 1452px and 1500px. The page grew
-by the primary it gained and lost the per-row links; the floor of 75 elements still
-sits a quarter under the 102 `check:contrast` counts.
+**Colour on Today reports state only.** Three things wore an accent without one:
+the verdict's first focus chip was always `stop` (the recommended "repeaters" in the
+stop colour), the streak was vermilion (a red **0** on the rest day that reset it),
+and the bodyweight change was teal for a loss and gold for a gain, on a violet line.
+The chips are neutral, `Stat` lost its `accent` prop, and bodyweight is in ink.
+
+**The plan card leads with today.** Today's headline (13px ink) and the day's
+supporting work come first, and the block phase follows in one faint line. It was
+the other way round, the phase in chalk and today's headline in the faintest line,
+though the phase's banner is the same text for weeks.
+
+**Heights.** Seeded at 360px, Today measures 2487px in en-US and 2527px in pt-BR
+(4361px before #116, 2521px after it); at 1280px, 1490px and 1507px. The floor of 75
+elements still sits a quarter under the 104 `check:contrast` counts.
 
 ## The idiom
 

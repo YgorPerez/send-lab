@@ -16,7 +16,7 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { ExternalLink, X } from 'lucide-react';
 import { useState } from 'react';
-import { type BodyArea, type SelfCheckBand, scoreSelfCheck } from '$lib/content';
+import { type SelfCheckBand, scoreSelfCheck } from '$lib/content';
 import type { SelfCheckInstrument } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
@@ -59,13 +59,11 @@ const STAGE_DESC: Record<string, () => string> = {
 };
 
 export function SelfCheckSheet({
-	area,
 	instrument,
 	last,
 	open,
 	onOpenChange,
 }: {
-	area: BodyArea;
 	instrument: SelfCheckInstrument;
 	last: SelfCheck | null;
 	open: boolean;
@@ -96,9 +94,15 @@ export function SelfCheckSheet({
 							<Dialog.Title className="text-[15px] leading-tight font-semibold text-ink">
 								{instrument.title}
 							</Dialog.Title>
-							<p className="mt-0.5 text-[11px] leading-tight text-ink-faint">
-								{AREA_LABEL[area]?.() ?? area}
-							</p>
+							{/* The faint line under the title, where the readiness check keeps
+							    its progress: the last result, which is what the athlete compares
+							    a new one against. It named the body area until #117's critique,
+							    which the title already says. */}
+							{last ? (
+								<p className="mt-0.5 text-[11px] leading-tight text-ink-faint">
+									{m.deep_last({ score: last.score, date: displayDate(isoDayOf(last.at)) })}
+								</p>
+							) : null}
 						</div>
 						<Dialog.Close
 							aria-label={m.btn_close()}
@@ -109,23 +113,16 @@ export function SelfCheckSheet({
 					</div>
 
 					<div className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
-						<p className="text-[12.5px] leading-snug text-ink-dim">{instrument.intro}</p>
-						{last ? (
-							<p className="num mt-1.5 text-[11px] text-ink-faint">
-								{m.deep_last({ score: last.score, date: displayDate(isoDayOf(last.at)) })}
-							</p>
-						) : null}
+						<p className="text-[13px] leading-snug text-ink-dim">{instrument.intro}</p>
 
-						<div className="mt-3.5 flex flex-col gap-3.5">
-							{instrument.questions.map((q, i) => (
-								<div key={q.id}>
-									<div className="flex gap-1.5 text-[13.5px] leading-snug font-medium text-ink">
-										<span className="num shrink-0 pt-px text-[11px] text-ink-faint">
-											{String(i + 1).padStart(2, '0')}
-										</span>
-										<span className="min-w-0">{q.q}</span>
-									</div>
-									<div className="mt-1.5 flex flex-col gap-1 pl-[22px]">
+						{/* Each question over full-width 48px lines in the 15px a thumb lands
+						    on, the readiness check's options (#117). They were 44px lines at
+						    13px, indented under a mono "01". */}
+						<div className="mt-sections flex flex-col gap-sections">
+							{instrument.questions.map((q) => (
+								<fieldset key={q.id} className="flex min-w-0 flex-col gap-group">
+									<legend className="text-[15px] leading-snug font-medium text-ink">{q.q}</legend>
+									<div className="flex flex-col gap-1.5">
 										{q.a.map((a) => (
 											<button
 												key={a.t}
@@ -135,14 +132,14 @@ export function SelfCheckSheet({
 												className={option({
 													on: answers[q.id] === a.v,
 													width: 'full',
-													class: 'min-h-11',
+													class: 'min-h-12 px-3 text-[15px]',
 												})}
 											>
 												{a.t}
 											</button>
 										))}
 									</div>
-								</div>
+								</fieldset>
 							))}
 						</div>
 
@@ -260,7 +257,9 @@ export function RehabStarter() {
 			<div className="flex gap-1.5">
 				<button
 					type="button"
-					className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
+					// `quiet`: opened on Today, a filled one here was the screen's second
+					// primary (#117). The rationed fill is Today's own.
+					className={button({ size: 'md', class: 'min-h-11' })}
 				>
 					{m.rehab_apply()}
 				</button>
