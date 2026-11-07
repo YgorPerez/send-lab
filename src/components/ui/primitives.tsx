@@ -31,13 +31,23 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
  * meta sits and the space below are decided once. The space below is the page's
  * own `gap-sections`: the header is the first of the screen's sections.
  *
- * The right-hand side holds one of two things, never both:
+ * The right-hand side holds one of two things, never both (the types refuse it):
  * - `reading` — a short count or reading about the whole screen (`3/12 sets`,
- *   `Week 5`), baseline-aligned with the title so the two read as one line.
- * - `action` — a single icon control, centred on the title row because an
+ *   `Week 5 / 8`), baseline-aligned with the title so the two read as one line.
+ *   It may be a link (Today's week reading, until the bar carries Week).
+ * - `action` — a single icon control, centred on the title's line because an
  *   icon has no baseline. A screen action belongs in the top strip's slot once
  *   the shell has one (#115); this is where the Timer's cue settings sit until
  *   then.
+ *
+ * NEITHER SETS THE TITLE'S HEIGHT. A 44px control beside a 24px title line used
+ * to push the title down: by baseline on Today (the week link) and by centring
+ * on the Timer (the cue settings), so the title sat at three heights across the
+ * eight screens and jumped on every navigation (#114's critique, measured at
+ * 61.5 / 69 / 71.5px). So the right-hand slot takes `-my-2.5`: up to 44px of
+ * hit area overhangs the title's 24px line by 10px each way instead of growing
+ * it, into the 6px above (and the strip's 8px under it) and the sections gap
+ * below.
  *
  * `lede` is a sentence under the title for a screen that has to explain itself
  * before it asks anything (the intake). Most screens have none.
@@ -53,24 +63,20 @@ export function ScreenHeader({
 	/** One line, furniture: the date, the phase. Truncated, never wrapped. */
 	meta?: ReactNode;
 	lede?: ReactNode;
-	reading?: ReactNode;
-	action?: ReactNode;
-}) {
+} & ({ reading?: ReactNode; action?: never } | { action?: ReactNode; reading?: never })) {
 	return (
-		<header
-			data-screen-header=""
-			className={cn(
-				'flex justify-between gap-2 pt-1.5',
-				action ? 'items-center' : 'items-baseline',
-			)}
-		>
+		<header data-screen-header="" className="flex items-baseline justify-between gap-2 pt-1.5">
 			<div className="min-w-0">
 				<h1 className="h-screen-title">{title}</h1>
 				{meta ? <p className="mt-1 truncate text-[11px] text-ink-faint">{meta}</p> : null}
 				{lede ? <p className="mt-1.5 text-[13px] leading-snug text-ink-dim">{lede}</p> : null}
 			</div>
-			{reading ? <div className="num shrink-0 text-[11px] text-ink-faint">{reading}</div> : null}
-			{action ?? null}
+			{reading ? (
+				<div className="num -my-2.5 shrink-0 text-[11px] text-ink-faint">{reading}</div>
+			) : null}
+			{/* `self-start` and the overhang put a 44px control's centre on the
+			    title line's centre (24px line, 44px control: 10px over each way). */}
+			{action ? <div className="-my-2.5 shrink-0 self-start">{action}</div> : null}
 		</header>
 	);
 }

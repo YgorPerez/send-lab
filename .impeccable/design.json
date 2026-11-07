@@ -298,6 +298,10 @@
       "meta": {
         "displayName": "Meta",
         "purpose": "The one line under a screen's title: the date, the phase. Truncated, mono when a number."
+      },
+      "body-large": {
+        "displayName": "Body, large",
+        "purpose": "Large and touch buttons, the editor's rows, a preset group's head, menu items."
       }
     },
     "shadows": [
@@ -521,7 +525,7 @@
       },
       {
         "name": "The Inside-Smaller Rule",
-        "body": "Each step is larger than the one inside it: sections (28) > group (10) > row (6). A screen whose section gap equals its row gap reads as one long list.",
+        "body": "Each gap between siblings is larger than the gap between the siblings inside them: sections (28) > group (10) > row (6). A screen whose section gap equals its row gap reads as one long list. `inset` (12) is not on this ladder: it is padding between a surface's edge and its content, not a gap between siblings.",
         "section": "layout"
       }
     ],
@@ -531,7 +535,7 @@
       "**Do** mark state with colour or with a mark beside the text; re-measure any colour moved onto a new surface.",
       "**Do** group with space and a `line-soft` hairline (`Bare`) first, and reach for a card only when it carries state or a shared list edge. A list of controls is a card of rows, one row or many.",
       "**Do** open every screen with `ScreenHeader`, and space a page with the named steps (`gap-sections`, `gap-group`, `gap-row`, `p-inset`, `px-gutter`) rather than a number picked for one screen.",
-      "**Do** size icons by context: 22px in the bar, 20px in a row or alone in a control, 16px beside a label, 12px in text.",
+      "**Do** size icons by context: 22px in the bar, 20px leading a row or alone in a control, 18px for a row's chevron, 16px beside a label, 12px in text.",
       "**Do** keep one `primary` per screen, and give a disabled control the line that says what it is waiting for.",
       "**Do** set numbers that change in a tabular face: Barlow Condensed on the clock and its strip, Roboto Mono for data elsewhere.",
       "**Do** size touch targets at 44px for anything touched mid-set and 48px or more on the clock (64px side and 84px main controls on its row).",

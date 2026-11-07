@@ -61,6 +61,11 @@ typography:
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "0.12em"
+  body-large:
+    fontFamily: "Inter Variable, Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+    fontSize: "15px"
+    fontWeight: 500
+    lineHeight: 1.25
   body:
     fontFamily: "Inter Variable, Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
     fontSize: "13px"
@@ -274,9 +279,10 @@ The semantic names alias these and are what components should reach for: `--ok` 
 - **Headline** (600, 21px, 1.15, −0.01em): the screen title, one per screen. The ready state's title is the same rank at 25px.
 - **Title** (600, 16px, 1.25): a list row's name. The editor's dialog title is 17px.
 - **Section** (600, 14px, 1.2, `ink-dim`): section heads on the Timer screens, in Inter and sentence case.
-- **Section, mono** (600, 11.5px, 0.12em, uppercase, `ink-dim`): section heads on the other screens, until a ticket moves them to Inter.
-- **Body** (400–500, 13px, 1.375): prose, buttons, options, control rows. The editor's rows, a preset group's head and menu items run at 15px.
-- **Meta** (400, 11px, `ink-faint`): the one line under a screen's title (the date, the phase), truncated rather than wrapped. Mono when it is a number.
+- **Section, mono** (600, 11.5px, 0.12em, uppercase, `ink-dim`): section heads on the other screens today. **Retiring:** the overhaul sets every section head in Inter (the rank above), and each screen ticket of #113 moves its own (#116–#124). It sits right under every header, so two ranks there is the first inconsistency an athlete meets.
+- **Body, large** (500, 15px, 1.25): the large and `touch` buttons, the editor's rows, a preset group's head, menu items: words a thumb lands on mid-set.
+- **Body** (400–500, 13px, 1.375): prose, buttons, options, control rows.
+- **Meta** (400, 11px, `ink-faint`): the one line under a screen's title (the date, the phase), truncated rather than wrapped. Mono only when it is all digits (a count, a ratio); a date with a month name is a phrase and stays in Inter.
 - **Data** (400, mono, tabular, mostly 11px): every reading on the dense screens, via `.num`.
 - **Label** (400, mono, 10px, 0.14em, uppercase, `ink-faint`): furniture only: a field label, a unit, a meta reading.
 - **Microlabel** (400, mono, 9px, 0.04em, uppercase, `ink-faint`): column labels in a four-column grid at 360px. Measured, not chosen: at the label's 10px and 0.14em, "DESCANSO (S)" clips in a 73px column. It stands against any generic 11px floor.
@@ -295,7 +301,8 @@ The phone at 360px is the design width. There is one breakpoint, `lg` at 1024px;
 ### The grid
 
 - **Phone.** One column. A 12px gutter each side leaves 336px at 360px; the column stops growing at 520px and centres. The top strip is 44px and fixed. The navigation bar (spec #113, built in #115) is fixed to the bottom edge, clears `env(safe-area-inset-bottom)`, and `main` reserves its height so the last row scrolls clear.
-- **`lg`.** The bar becomes a 200px rail down the left edge. Right of it, the strip and `main` share one 1000px measure, centred in what the rail leaves, with a 20px gutter, so the strip's wordmark and the page's first column start on the same left edge. Two panes sit 20px apart. A one-pane page caps itself at 560px (`max-w-pane`) and centres in the measure. The arithmetic is ADR 0018's: a 200px rail beside two 360px columns and their gutters first fits at about 992px, and `lg` is the next stop.
+- **`lg`, today.** The strip runs the full window with a 20px gutter; `main` is a 1000px measure centred in the window. Two panes sit 20px apart. A one-pane page caps itself at 560px (`max-w-pane`) and centres in the measure, so its title starts 200px right of a two-pane page's (x=361 against x=161 at 1280px).
+- **`lg`, the target #115 builds.** The bar becomes a 200px rail down the left edge. Right of it, the strip and `main` share one 1000px measure, centred in what the rail leaves, with a 20px gutter. **Every page starts on the measure's left edge:** a two-pane page fills it, and a one-pane page keeps its 560px cap but aligns left instead of centring. So the strip's wordmark and every screen's title share one left edge (spec #113, story 16), and the title does not jump sideways between screens. For the same reason the window reserves the scrollbar's gutter from `lg` (`scrollbar-gutter: stable`): today a page that scrolls is 15px narrower than one that does not, and its content sits 7.5px further left. The arithmetic is ADR 0018's: a 200px rail beside two 360px columns and their gutters first fits at about 992px, and `lg` is the next stop.
 - A page is a `Pane` (one column) or `Panes` (two from `lg`, stacked below it with `display: contents`, so the phone order is the reading order). Today, Log and Week take two panes; Train, Timer, Settings, Welcome and Login stay capped.
 
 ### The spacing scale
@@ -308,7 +315,7 @@ Five named steps, as tokens in `app.css` and Tailwind utilities (`gap-sections`,
 - **Inset** (12px): padding inside a group's surface: the space under a `Bare` rule, a small card's padding.
 - **Gutter** (12px, 20px from `lg`): the page's side margin and the gap between two panes. One variable that changes at `lg`, so `px-gutter` is right at both widths.
 
-**The Inside-Smaller Rule.** Each step is larger than the one inside it: sections (28) > group (10) > row (6). A screen whose section gap equals its row gap reads as one long list.
+**The Inside-Smaller Rule.** Each gap between siblings is larger than the gap between the siblings inside them: sections (28) > group (10) > row (6). A screen whose section gap equals its row gap reads as one long list. `inset` (12) is not on this ladder: it is padding between a surface's edge and its content, not a gap between siblings.
 
 Train and the Timer list still sit their sections 24px apart; that is drift, and their tickets (#118, #119) move them to `sections`.
 
@@ -320,7 +327,9 @@ Every screen opens with `ScreenHeader`, and nothing the page draws comes before 
 - **Meta:** at most one line under the title, 4px below it, in the meta rank: the date, the phase. It truncates; a second line of meta is a section.
 - **Lede:** a sentence under the title, 6px below, in 13px dim ink, only for a screen that has to explain itself before it asks (the intake).
 - **Right side, one thing or nothing:** a short reading about the whole screen (`3/12 sets`, `Week 5 / 8`), 11px mono faint and baseline-aligned with the title; or one icon control, centred on the title row. A screen action belongs in the top strip's slot once the shell has one (#115); the header keeps readings.
-- **Space:** 6px above the title (under the 44px strip), and the sections gap below it.
+- **Space:** the title's line starts 14px under the 44px strip on a phone (`main`'s 8px plus the header's 6px) and 22px under it from `lg` (16px plus 6px), and the sections gap follows the header. #115 owns the strip and may move the first number; the header's own 6px stays.
+- **Height:** the title sets the header's height and nothing on the right does. A 44px control in the right-hand slot overhangs the title's 24px line by 10px each way, so the title sits at the same height on every screen.
+- **What is not the header:** a notice about the whole screen (Settings' offline line, sign-in's notices) is the first group after the header, a sections gap below it, never a second meta line pulled up with a negative margin.
 
 ### The group pattern
 
@@ -367,7 +376,7 @@ Quiet by default; a dense screen with loud buttons is not calm.
 - **Primary:** vermilion fill, ground text, rationed to one per screen. Its hover is a chalk border. Its press is pressed vermilion. A stepper's advance is its step's primary; a settings page has none outside its confirm dialog.
 - **Quiet:** inset graphite, dim ink, slate border. Hover raises the panel a step and lightens the text.
 - **Bare:** no fill, no border, faint ink that lightens on hover.
-- **Clock control:** the start, pause and resume of a clock off its coloured field: a 2px `ink-dim` outline (at least 7:1 on the ground and on a panel), no fill, `ink` glyph and label. Hover takes the border to chalk; a press steps the surface to inset graphite. At least 48px, and larger by role: the strip's 52px square at 14px corners, the clock row's 84px main control at 22px, the ready state's 60px full-width Start at 16px. It is the same control on Train, on the Timer list's mini bar and in the full-screen clock, and it is never filled vermilion: the clock is a tool on the screen, not what the screen is for, and on Train the one primary is "finish and log the session". On a coloured field the clock keeps its own shapes (a ground-filled main control, outlines in the ground ink). The recipe is `button({ kind: 'clock' })`; #118 moves the clocks onto it.
+- **Clock control:** the start, pause and resume of a clock off its coloured field: a 2px `ink-dim` outline (at least 7:1 on the ground and on a panel), no fill, `ink` glyph and label. Hover takes the border to chalk; a press fills the control with inset graphite, whatever it sits on (the ground in the full-screen clock, a panel in the stopped strip). At least 48px, and larger by role: the strip's 52px square at 14px corners, the clock row's 84px main control at 22px, the ready state's 60px full-width Start at 16px. It is the same control on Train, on the Timer list's mini bar and in the full-screen clock, and off the field it is every control in the clock's row, the side ones too (back, skip, reset), so a paused row speaks one language. It is never filled vermilion: the clock is a tool on the screen, not what the screen is for, and on Train the one primary is "finish and log the session". On a coloured field the clock keeps its own shapes (a ground-filled main control, outlines in the ground ink). The recipe is `button({ kind: 'clock' })`; #118 moves the clocks onto it.
 - **Sizes:** 32 / 36 / 44px, and `touch` at 48px for anything operated mid-set.
 - **Disabled:** drops its fill and border and keeps a faint label (7.14:1). Never opacity. Disabled, not hidden, with the line that says what it waits for.
 - **Hover / Focus:** hover moves a surface or a border, never a measured text/background pair, and only under `(hover: hover)`. Focus is a 2px vermilion outline 2px off the control on `:focus-visible`; on a coloured field it is drawn in the ink.
@@ -395,9 +404,9 @@ Quiet by default; a dense screen with loud buttons is not calm.
 
 ### Navigation
 Decided by spec #113 and built in #115; until then every destination sits in `Menu` behind one control in the strip.
-- **Phone:** a bottom bar with the four places a training day moves between (Today, Train, Timer, Log) and a fifth item, More, that opens a sheet from the bottom edge holding Week and Settings, and later Program and Studies. Each item is a 22px line icon over an 11px Inter label in the locale, at least 48px tall. The current destination is marked by colour and weight together: chalk and semibold, where the others are faint ink at regular weight. More shows as current on any destination it holds. Sheet rows are 48px.
+- **Phone:** a bottom bar with the four places a training day moves between (Today, Train, Timer, Log) and a fifth item, More, that opens a sheet from the bottom edge holding Week and Settings, and later Program and Studies. Each item is a 22px line icon over an 11px Inter label in the locale, at least 48px tall. The current destination is marked by colour, weight and a surface together: chalk and semibold, on a raised-panel pill behind the icon, where the others are faint ink at regular weight with no surface. More shows as current on any destination it holds. Sheet rows are 48px.
 - **`lg`:** the same element becomes the 200px rail, listing every destination as 44px rows (icon beside label); More is hidden there. The current row is a raised panel, chalk, semibold.
-- **One selection language.** Anything else in the app marked as the current choice in a list (the selected protocol on the Timer) uses the bar's mark: chalk, semibold, a raised panel.
+- **One selection language.** Anything else in the app marked as the current choice in a list (the selected protocol on the Timer) uses the bar's mark: chalk, semibold, a raised panel (`panel-raised`). An option in a picker keeps its own chalk border on top of that, because nine of them can stack on one screen and the border is what separates them.
 - **Top strip:** 44px, ground at 95% with a blur, the wordmark and the sync state on the left, and at most one action for the current screen on the right. Refused work replaces the wordmark with a filled vermilion sentence. The locale switch lives in Settings.
 
 ### Icons
@@ -407,7 +416,7 @@ One family: Lucide line icons, never filled, except the clock's glyphs. An icon 
 - **Icon-only control** (a 44px ⋯, the cue settings, a sheet's close): 20px, stroke 1.75.
 - **Inline control** (an icon beside a button's label: add, copy, repeat): 16px, stroke 2.
 - **In text** (the external-link mark after a citation): 12px, stroke 2.
-- **The clock:** solid glyphs (play, pause, skip; `strokeWidth` 0 and a fill), 24px on the side controls, 34px on the main one, 22px in the strip; the close is a 22px line X.
+- **The clock:** solid glyphs (play, pause, skip; `strokeWidth` 0 and a fill), 24px on the side controls, 34px on the main one, 22px in the strip; the close is a 22px line X at stroke 2.
 
 Lucide draws on a 24px grid and scales the stroke with the icon, so the drawn line is `stroke × size / 24`. These pairs keep it between 1.33px and 1.6px from 16px up (22 at 1.75 draws 1.6px, 16 at 2 draws 1.33px), which is why the stroke steps up as the icon gets smaller. At 12px it draws 1px, so an in-text icon always sits beside its text, never alone.
 
@@ -415,7 +424,7 @@ Lucide draws on a 24px grid and scales the stroke with the icon, so the drawn li
 The full-screen clock both clocks run in. Running, the popup's background is the segment's colour and its ink the ground: the segment name top left in condensed caps, a 48px outlined close top right, the face centred and stepped to fill the width, Round · Set under it, and back · pause · skip in the thumb zone. Paused, the field drops to the ground, the number turns solid in the segment colour, PAUSED and Round · Set sit under it, the main control reads Resume, and Reset takes skip's place. The whole face is a tap target that starts and pauses; the buttons are its tappable equivalent. Before the start, a ready state titled with the protocol's name shows its shape and one full-width 60px Start. A segment change washes the screen and fades out (40% at the peak, ink on a field), timed by the cue planner and never drawn under reduced motion. The stopwatch uses the same dialog on the ground and says running or paused in words and in the weight of its ink, never with a segment colour.
 
 ### The Strip and the Mini Bar
-One 72px line. Running, it is the segment's colour, as the full-screen clock is, with a 52px ground square for Pause. Stopped, it is a bordered panel with a 52px vermilion Resume. The number sits in a fixed right-aligned slot so neither the labels nor the button move as it crosses ten or a minute. The number is the way into the full-screen clock and says so: underlined on Train, the whole line on the Timer list's mini bar.
+One 72px line. Running, it is the segment's colour, as the full-screen clock is, with a 52px ground square for Pause. Stopped, it is a bordered panel with a 52px Resume. Today that Resume is filled vermilion; #118 makes it the clock control (outlined, never filled), because on Train the screen's one primary is finish-and-log. The number sits in a fixed right-aligned slot so neither the labels nor the button move as it crosses ten or a minute. The number is the way into the full-screen clock and says so: underlined on Train, the whole line on the Timer list's mini bar.
 
 ### Protocol rows
 A list row is a 56px panel at 14px corners: the name in 16px semibold, the shape under it in 13px dim ink, the length in a 22px Barlow count on the right. Its ⋯ is a separate 44px bordered control beside it, never inside it. A tap opens the ready state, so a stray tap never starts anything. A preset group's head is a 48px disclosure row in the rows' 15px, not a heading rank.
@@ -428,7 +437,7 @@ A list row is a 56px panel at 14px corners: the name in 16px semibold, the shape
 - **Do** mark state with colour or with a mark beside the text; re-measure any colour moved onto a new surface.
 - **Do** group with space and a `line-soft` hairline (`Bare`) first, and reach for a card only when it carries state or a shared list edge. A list of controls is a card of rows, one row or many.
 - **Do** open every screen with `ScreenHeader`, and space a page with the named steps (`gap-sections`, `gap-group`, `gap-row`, `p-inset`, `px-gutter`) rather than a number picked for one screen.
-- **Do** size icons by context: 22px in the bar, 20px in a row or alone in a control, 16px beside a label, 12px in text.
+- **Do** size icons by context: 22px in the bar, 20px leading a row or alone in a control, 18px for a row's chevron, 16px beside a label, 12px in text.
 - **Do** keep one `primary` per screen, and give a disabled control the line that says what it is waiting for.
 - **Do** set numbers that change in a tabular face: Barlow Condensed on the clock and its strip, Roboto Mono for data elsewhere.
 - **Do** size touch targets at 44px for anything touched mid-set and 48px or more on the clock (64px side and 84px main controls on its row).

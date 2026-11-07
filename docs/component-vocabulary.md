@@ -439,10 +439,21 @@ component keeps the plain 4px steps.
 **Every screen sets its title through `ScreenHeader`.** The right-hand side is a
 `reading` (a count or reading about the whole screen, baseline-aligned) or an
 `action` (one icon control, centred, because an icon has no baseline), never
-both. Today's week reading is a link and goes in `reading`. A screen action is
+both, and the types refuse both. Neither sets the title's height: the slot
+overhangs the title's 24px line by up to 10px each way, so a 44px control beside
+it leaves the title where every other screen has it (before that, the title sat at
+61.5, 69 and 71.5px across the screens and jumped on navigation). Today's week
+reading is a link and goes in `reading`. A screen action is
 the top strip's business once #115 gives the strip a slot; until then the
 Timer's cue settings are the header's `action`. `tests/screens.test.ts` asserts
 every screen opens with it.
+
+**Two decisions for later tickets, written in DESIGN.md.** From `lg`, every
+page starts on the measure's left edge: a one-pane page keeps its 560px cap but
+stops centring, so the wordmark and every title share one left edge (#115 does
+it with the rail). And off the coloured field, every control in the clock's row
+takes `kind: 'clock'`, the side ones included, so a paused row is one language
+(#118).
 
 **A new spacing token is two edits, and the second is easy to miss.** Add it to
 `app.css` and to `twMergeConfig` in `lib/utils.ts`; `tests/spacingTokens.test.ts`
