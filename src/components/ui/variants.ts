@@ -1,4 +1,4 @@
-// The class recipes: five shapes every screen reuses.
+// The class recipes: six shapes every screen reuses.
 //
 // These are `tailwind-variants` and not components, because that is the whole
 // point of them — a `<label>`, an `<input>`, a `<button>`, an `<a>` and a
@@ -13,7 +13,12 @@
 // Animation lives here too, in the variant rather than as a Motion prop (#46).
 // There is deliberately very little of it: the whole direction rests on
 // repetition, and a dense screen where things move is not a calm one.
-import { tv } from 'tailwind-variants';
+import { createTV } from 'tailwind-variants';
+import { twMergeConfig } from '$lib/utils';
+
+// Merging with the spacing tokens known, so `card({ class: 'p-0' })` beats
+// `p-inset` the way `cn` does (`lib/utils.ts`).
+const tv = createTV({ twMergeConfig });
 
 /**
  * The one surface.
@@ -30,7 +35,7 @@ import { tv } from 'tailwind-variants';
 export const card = tv({
 	base: 'rounded-lg border border-line bg-panel',
 	variants: {
-		pad: { none: '', sm: 'p-3', md: 'p-3.5' },
+		pad: { none: '', sm: 'p-inset', md: 'p-3.5' },
 		tone: {
 			plain: '',
 			inset: 'border-line-soft bg-panel-2',
@@ -66,6 +71,24 @@ export const chip = tv({
 });
 
 /**
+ * A state's mark: the dot beside a score, a verdict or a flag's title (#125
+ * gathered the three copies Today and Log kept). A mark carries a colour a label
+ * cannot, since a dot needs 3:1 where 11px text needs 4.5:1, so the state goes
+ * on the mark and the number or the words beside it stay ink. `info` is a state
+ * too, and the quietest: faint ink, no accent.
+ */
+export const STATE_MARK = {
+	ok: 'bg-teal',
+	warn: 'bg-gold',
+	stop: 'bg-flag',
+	info: 'bg-ink-faint',
+} as const;
+
+/** A flag's severity as its chip's tone: `info` takes no tint, because three
+ *  tinted chips in a row is how a calm screen turns into a warning screen. */
+export const SEVERITY_CHIP = { stop: 'stop', warn: 'warn', info: 'neutral' } as const;
+
+/**
  * Every text and number input on every screen.
  *
  * `text-base` is not a style choice: a computed font-size under 16px makes iOS
@@ -78,9 +101,15 @@ export const input = tv({
 	// `outline-none` removes the UA outline and `focus:border-ink-faint` replaces
 	// it, which is enough for a finger and not enough for a keyboard: the border
 	// step is small and it says nothing about *which* of four columns in a set row
-	// has the caret. `app.css` puts a real ring back on `:focus-visible`, which a
-	// touch focus never matches — so this costs the phone nothing (#52, question 6).
-	base: 'w-full min-w-0 rounded-md border border-line bg-panel-2 px-2 py-1.5 text-base text-ink tabular-nums outline-none transition-colors hover:border-line-soft focus:border-ink-faint',
+	// has the caret. The ring comes back here, not from `app.css`: its
+	// `:focus-visible` rule is in the base layer, and `outline-none` is a utility,
+	// so it won (#124's critique measured `outline: none` on a tabbed-to field).
+	// And a text field matches `:focus-visible` on *any* focus, a tap included,
+	// so the ring is held to the desktop layout (`lg`, ADR 0018's one
+	// breakpoint), where a keyboard is what types into it; the phone keeps the
+	// border step alone. Keyed on `lg` rather than `(pointer: fine)`: the layout
+	// has one breakpoint, and a laptop with a touch screen still types with keys.
+	base: 'w-full min-w-0 rounded-md border border-line bg-panel-2 px-2 py-1.5 text-base text-ink tabular-nums outline-none transition-colors hover:border-line-soft focus:border-ink-faint lg:focus-visible:outline-2 lg:focus-visible:outline-offset-2 lg:focus-visible:outline-ring lg:focus-visible:outline-solid',
 	variants: {
 		align: { left: 'text-left', center: 'text-center' },
 	},
@@ -127,6 +156,15 @@ export const button = tv({
 			quiet:
 				'border-line bg-panel-2 text-ink-dim hover:bg-panel-3 hover:text-ink active:bg-panel-3 active:text-ink',
 			bare: 'border-transparent bg-transparent text-ink-faint hover:text-ink active:text-ink',
+			// A clock's start, pause and resume off the coloured field (#114, spec
+			// #113): large and outlined, never filled vermilion. The fill is rationed
+			// to the screen's one primary, and on Train that is "finish and log the
+			// session"; the clock is a tool on the screen, not what the screen is for.
+			// A 2px outline in dim ink (≥7:1 on the ground and on a panel, past the
+			// 3:1 a control's edge needs), bright ink inside. Hover takes the border
+			// to chalk and a press steps the surface, so no measured pair moves. Pair
+			// it with `touch` or larger: a clock is operated without looking.
+			clock: 'border-2 border-ink-dim bg-transparent text-ink hover:border-chalk active:bg-panel-2',
 		},
 		size: {
 			sm: 'min-h-8 px-2 py-1',
@@ -171,4 +209,26 @@ export const option = tv({
 		},
 	},
 	defaultVariants: { on: false, width: 'auto' },
+});
+
+/**
+ * A sheet's popup: on a phone it rises from the bottom edge, at most the
+ * window's width under 520px; from `lg` it is a 400px dialog centred in the
+ * window that fades, since there is no edge for it to come from.
+ *
+ * `height` is the one thing the two sheets differ in. `full` reaches up to just
+ * under the status bar and, from `lg`, holds one fixed height, so a stepped flow's
+ * controls do not move from one step to the next (the readiness check, #116).
+ * `content` is as tall as what it holds, up to the same limits (the self-check,
+ * #117). It was one class string pasted into both until #113's review.
+ */
+export const sheet = tv({
+	base: 'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[520px] flex-col rounded-t-xl border border-b-0 border-line bg-panel pb-[env(safe-area-inset-bottom)] transition-[translate,opacity] duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full lg:top-1/2 lg:right-auto lg:bottom-auto lg:left-1/2 lg:w-100 lg:max-w-none lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-xl lg:border-b lg:pb-0 lg:data-[ending-style]:-translate-y-1/2 lg:data-[ending-style]:opacity-0 lg:data-[starting-style]:-translate-y-1/2 lg:data-[starting-style]:opacity-0',
+	variants: {
+		height: {
+			full: 'top-[max(0.75rem,env(safe-area-inset-top))] lg:h-[min(42rem,calc(100dvh-4rem))]',
+			content:
+				'max-h-[calc(100dvh-max(0.75rem,env(safe-area-inset-top)))] lg:max-h-[min(42rem,calc(100dvh-4rem))]',
+		},
+	},
 });

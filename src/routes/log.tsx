@@ -1,35 +1,54 @@
 // LOG.
 //
-// Every readiness check and every session the account holds — five weeks of them
-// on a seeded store, and more every week after.
+// Every day the athlete checked in or trained, as one timeline (#120, spec #113
+// stories 60–64): five weeks of them on a seeded store, and more every week after.
 //
-// The screen that punishes low density, and the one where this direction has the
-// clearest answer: a history is a *list*, and a list earns its keep by having a
-// stable row shape you can run your eye down.
+// A history is a list, and a list earns its keep by having a stable row shape you
+// can run your eye down. Every row is the same line, when · the score · what was
+// trained · how much, set on a common grid so the dates align, the scores align,
+// and the eye only moves vertically. It was two lists, checks and sessions, and
+// reading a day meant matching them by date across the screen.
 //
-// Every row is the same three-part line — when · the number · what it concluded —
-// set on a common grid so the dates align, the scores align, and the eye only has
-// to move vertically. The detail underneath is what the row summarises, not more
-// of the same: a check opens to the answers that produced it, a session opens to
-// the sets that were actually logged.
+// Opening a row shows what it summarises: the check's answers and the verdict
+// they produced, and the session's sets. From `lg` the open day sits beside the
+// timeline instead of under its row, so the second column holds the detail rather
+// than a second list.
 //
 // Past sets are read-only here (see `components/SetRows.tsx`). Editing them is a
 // repair job, not the reason this screen exists, and 28 sessions of live inputs
 // would make the history feel like a spreadsheet that has to be finished.
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useMemo } from 'react';
+import { type ReactNode, useId, useMemo, useState } from 'react';
 import { getContent } from '$lib/content';
 import { OUTCOME_LABEL } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
-import { resolveLog } from '$lib/screens/log';
+import {
+	type LogDay,
+	type LoggedCheckRow,
+	type LoggedSessionRow,
+	resolveLog,
+} from '$lib/screens/log';
 import { useTrainingRecord } from '$lib/store/record';
+import { cn } from '$lib/utils';
 import { SetTable } from '../components/SetRows';
-import { Empty, Eyebrow, Panes, Section } from '../components/ui/primitives';
-import { Row, RowGroup } from '../components/ui/Rows';
-import { button, chip } from '../components/ui/variants';
+import { Empty, Pane, Panes, ScreenHeader } from '../components/ui/primitives';
+import { Row, RowGroup, RowsEnd, useRowsInPlace } from '../components/ui/Rows';
+import { button, card, chip, SEVERITY_CHIP, STATE_MARK } from '../components/ui/variants';
 
 export const Route = createFileRoute('/log')({ component: Log });
+
+/** A count with its noun, singular at one. The message format has no plurals. */
+function counted(
+	n: number,
+	one: (a: { n: number }) => string,
+	other: (a: { n: number }) => string,
+) {
+	return n === 1 ? one({ n }) : other({ n });
+}
+
+/** Chalk on every line of the selected row from `lg` (`Row`'s `aside`). */
+const PICKED = 'lg:group-data-[current]:text-chalk';
 
 function Log() {
 	// The history, live. `useTrainingRecord` subscribes to the collections, so a
@@ -37,169 +56,288 @@ function Log() {
 	// about how it got stored.
 	const record = useTrainingRecord();
 	const locale = getLocale();
-	const { checks, sessions } = useMemo(
+	const { days, counts } = useMemo(
 		() => resolveLog(getContent(locale), record, locale),
 		[record, locale],
 	);
 
-	return (
-		// The page's frame, not a `Column`: at `lg` this is two columns, so the frame
-		// is the full width the shell hands over and the header spans both.
-		<div className="flex flex-col gap-7">
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
-				<h1 className="h-screen-title">{m.sec_log()}</h1>
-				<span className="num shrink-0 text-[11px] text-ink-faint">
-					{sessions.length} · {checks.length}
-				</span>
-			</header>
+	// TWO THINGS, KEPT APART. Which row is open under itself (a phone), and
+	// which day the pane beside the timeline shows (from `lg`). A phone opens on
+	// the timeline with nothing open: the closed row already says what the day
+	// was (#120 critique). The pane shows the last day opened, the newest until
+	// one is, and closing a row leaves it there, so a wide screen never shows an
+	// empty second pane.
+	const [open, setOpen] = useState<string | null>(null);
+	const [picked, setPicked] = useState<string | null>(null);
+	const openRows = open ? [open] : [];
+	const day = days.find((d) => d.iso === picked) ?? days[0] ?? null;
+	const { end, hold } = useRowsInPlace();
+	const detailId = useId();
 
-			{/* THE CUT (#52).
-			    Log's two lists are genuinely independent — a check and a session are
-			    different things, and neither list's rows depend on the other's — so a
-			    wide screen puts them side by side and halves the page. Not two columns
-			    of *one* list: these are accordions, and opening a row in a column
-			    reflows only its own column, where opening one in a two-column flow of
-			    the same list would move the rows beside it.
-			    It is also the page with the most to gain from plain width. The summary
-			    line truncates first in pt-BR — "15 de ago." against "Aug 15" — and the
-			    column here is wider than the whole phone screen. */}
-			<Panes
-				primary={
-					<Section label={m.log_readiness()} meta={<span className="num">{checks.length}</span>}>
-						{/* An empty list is copy, not an empty box (#61). The count in the
-						    heading stays at zero, which is honest; the box under it would be
-						    furniture drawn around nothing. */}
-						{checks.length === 0 ? (
-							<Empty
-								value={m.log_no_checks()}
-								action={
-									<Link to="/" className={button({ size: 'md', class: 'min-h-11' })}>
-										{m.log_go_today()}
-									</Link>
-								}
-							/>
-						) : (
-							<RowGroup>
-								{checks.map((r) => (
-									<Row
-										key={r.iso}
-										value={r.iso}
-										summary={
-											<span className="flex items-baseline gap-2">
-												<span className="num w-[62px] shrink-0 text-[10px] whitespace-nowrap text-ink-faint">
-													{r.dateLabel}
-												</span>
-												<span
-													className="num w-[30px] shrink-0 rounded px-1 py-px text-center text-[11px] font-bold"
-													style={{
-														color: r.verdict.color,
-														background: `color-mix(in srgb, ${r.verdict.color} 14%, transparent)`,
-													}}
-												>
-													{r.score}
-												</span>
-												<span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">
-													{r.verdict.title}
-												</span>
-												{r.outcome != null ? (
-													<span className={chip({ tone: 'ghost' })}>
-														{OUTCOME_LABEL[r.outcome]()}
-													</span>
-												) : null}
-											</span>
-										}
-									>
-										<Eyebrow className="mb-1">
-											{m.log_rd_responses()} · {r.timeLabel}
-										</Eyebrow>
-										<dl className="flex flex-col gap-0.5">
-											{r.responses.map((row) => (
-												<div key={row.question} className="flex items-baseline gap-2">
-													<dt className="min-w-0 flex-1 truncate text-[12px] text-ink-faint">
-														{row.question}
-													</dt>
-													<dd className="shrink-0 text-[12px] font-semibold text-chalk">
-														{row.answer}
-													</dd>
-												</div>
-											))}
-										</dl>
-										<Eyebrow className="mt-2.5 mb-1">{m.log_rd_conclusion()}</Eyebrow>
-										<p className="text-[12.5px] text-ink-dim">
-											<b className="font-semibold text-chalk">{r.verdict.title}</b> ·{' '}
-											{r.verdict.tag}
-										</p>
-										{r.flagTitles.length ? (
-											<div className="mt-1.5 flex flex-wrap gap-1">
-												{r.flagTitles.map((titleText) => (
-													<span key={titleText} className={chip({ tone: 'warn' })}>
-														{titleText}
-													</span>
-												))}
-											</div>
-										) : null}
-									</Row>
-								))}
-							</RowGroup>
-						)}
-					</Section>
-				}
-				secondary={
-					<Section label={m.log_workouts()} meta={<span className="num">{sessions.length}</span>}>
-						{sessions.length === 0 ? (
-							<Empty
-								value={m.log_no_sessions()}
-								action={
-									<Link to="/train" className={button({ size: 'md', class: 'min-h-11' })}>
-										{m.log_go_train()}
-									</Link>
-								}
-							/>
-						) : (
-							<RowGroup>
-								{sessions.map((s) => (
-									<Row
-										key={s.iso}
-										value={s.iso}
-										summary={
-											<span className="flex items-baseline gap-2">
-												<span className="num w-[62px] shrink-0 text-[10px] whitespace-nowrap text-ink-faint">
-													{s.dateLabel}
-												</span>
-												<span className="num w-[30px] shrink-0 text-center text-[11px] text-chalk">
-													{s.setCount}
-												</span>
-												<span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">
-													{s.dayType}
-												</span>
-												<span className="num shrink-0 text-[11px] text-ink-faint">
-													{s.durationMin != null ? `${s.durationMin}′` : '—'}
-												</span>
-											</span>
-										}
-									>
-										<div className="flex flex-col gap-2.5">
-											{s.exercises.map((ex) => (
-												<div key={ex.exercise}>
-													<div className="mb-0.5 text-[12.5px] font-semibold text-chalk">
-														{ex.name}
-													</div>
-													<SetTable fields={ex.fields} sets={ex.sets} />
-												</div>
-											))}
-										</div>
-										{s.note ? (
-											<p className="mt-2 border-t border-line-soft pt-2 text-[12px] text-ink-dim italic">
-												“{s.note}”
-											</p>
-										) : null}
-									</Row>
-								))}
-							</RowGroup>
-						)}
-					</Section>
+	return (
+		// The page's frame, not a `Pane`: at `lg` this is two panes, so the frame is
+		// the full width the shell hands over and the header spans both.
+		<div className="flex flex-col gap-sections">
+			<ScreenHeader
+				title={m.sec_log()}
+				meta={
+					<>
+						{counted(counts.sessions, m.log_sessions_one, m.log_sessions_other)} ·{' '}
+						{counted(counts.checkedDays, m.log_checked_days_one, m.log_checked_days_other)}
+					</>
 				}
 			/>
+
+			{days.length === 0 ? (
+				// An empty timeline is copy, not an empty box (#61), and it names both
+				// things a day is made of. Zero stays in the header, which is honest.
+				<Pane>
+					<Empty
+						value={m.log_empty()}
+						action={
+							<Link to="/" className={button({ size: 'md', class: 'min-h-11' })}>
+								{m.log_go_today()}
+							</Link>
+						}
+					/>
+				</Pane>
+			) : (
+				// THE CUT (#52, #120). The timeline on the left, the open day on the
+				// right, held in view while the timeline scrolls. Contiguous in the
+				// phone order because the right pane is not on the phone at all: there
+				// the open day is its row's own panel.
+				<Panes
+					stickySecondary
+					primary={
+						// The rows are `h3`s (`Row`), so the list is headed for the
+						// outline a screen reader walks; the eye has the header above.
+						<section aria-labelledby={`${detailId}-days`}>
+							<h2 id={`${detailId}-days`} className="sr-only">
+								{m.log_timeline()}
+							</h2>
+							<RowGroup
+								value={openRows}
+								onValueChange={(next, event) => {
+									hold(openRows, next, event);
+									setOpen(next[0] ?? null);
+									if (next[0]) setPicked(next[0]);
+								}}
+							>
+								{days.map((d) => (
+									<Row
+										key={d.iso}
+										value={d.iso}
+										aside
+										current={d.iso === day?.iso}
+										summary={<DaySummary day={d} />}
+									>
+										<DayDetail day={d} level={4} />
+									</Row>
+								))}
+							</RowGroup>
+						</section>
+					}
+					secondary={
+						// A region named by its date, and a tab stop: it scrolls inside
+						// itself when the day is taller than the window, so a keyboard
+						// has to be able to reach it (`Panes`' `stickySecondary` caps it).
+						day ? (
+							<section
+								data-day-detail=""
+								aria-labelledby={`${detailId}-date`}
+								// biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container a keyboard must reach
+								tabIndex={0}
+								className={card({
+									pad: 'md',
+									class:
+										'hidden lg:flex lg:max-h-[calc(100dvh-116px)] lg:flex-col lg:gap-3 lg:overflow-y-auto lg:overscroll-contain',
+								})}
+							>
+								<h2
+									id={`${detailId}-date`}
+									className="text-[15px] leading-tight font-semibold text-ink"
+								>
+									{day.fullDate}
+								</h2>
+								<DayDetail day={day} level={3} />
+							</section>
+						) : null
+					}
+				/>
+			)}
+			<RowsEnd ref={end} />
 		</div>
+	);
+}
+
+/** A day's closed line: the date, the score, the session, how many sets. */
+function DaySummary({ day }: { day: LogDay }) {
+	const { check, session } = day;
+	return (
+		<span className="flex items-baseline gap-2.5">
+			<span
+				className={cn('num w-[68px] shrink-0 text-[11px] whitespace-nowrap text-ink-faint', PICKED)}
+			>
+				{day.dateLabel}
+			</span>
+			<span className="flex w-10 shrink-0 items-baseline gap-1.5">
+				{check ? (
+					<>
+						<span
+							data-score-tone=""
+							aria-hidden="true"
+							className={cn('size-2 shrink-0 self-center rounded-full', STATE_MARK[check.tone])}
+						/>
+						<span className={cn('num text-[13px] font-semibold text-ink', PICKED)}>
+							<span className="sr-only">{m.rd_score()} </span>
+							{check.score}
+							<span className="sr-only">, {check.verdict.title}.</span>
+						</span>
+					</>
+				) : (
+					<span className="num text-[13px] text-ink-faint">
+						<span aria-hidden="true">—</span>
+						<span className="sr-only">{m.log_no_check()}.</span>
+					</span>
+				)}
+			</span>
+			{/* The day type wraps at its spaces, never inside a word, and the set
+			    count drops under it when the two do not fit: pt-BR's "Limite /
+			    Potência" was cut to "Limite / Potên…" at 360px, and breaking
+			    anywhere split "Performance" at 320px (#120 critique). */}
+			<span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+				<span
+					className={cn(
+						'text-[13px] leading-snug',
+						session ? 'text-ink' : 'text-ink-faint',
+						PICKED,
+						'lg:group-data-[current]:font-semibold',
+					)}
+				>
+					{session ? session.dayType : m.log_no_session()}
+				</span>
+				{session ? (
+					<span className={cn('num ml-auto shrink-0 text-[11px] text-ink-faint', PICKED)}>
+						{counted(session.setCount, m.log_sets_one, m.log_sets_other)}
+					</span>
+				) : null}
+			</span>
+		</span>
+	);
+}
+
+/** What a day's row opens to, and what sits beside the timeline from `lg`. */
+function DayDetail({ day, level }: { day: LogDay; level: 3 | 4 }) {
+	return (
+		<div className="flex flex-col divide-y divide-line-soft">
+			{day.check ? <CheckDetail check={day.check} level={level} /> : null}
+			{day.session ? <SessionDetail session={day.session} level={level} /> : null}
+		</div>
+	);
+}
+
+/** One block of a day's detail: its heading, a reading on the right, its body. */
+function Block({
+	level,
+	title,
+	reading,
+	children,
+}: {
+	level: 3 | 4;
+	title: string;
+	reading?: string;
+	children: ReactNode;
+}) {
+	const Heading = level === 3 ? 'h3' : 'h4';
+	return (
+		<section className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
+			<header className="flex items-baseline justify-between gap-2">
+				<Heading className="h-section min-w-0">{title}</Heading>
+				{reading ? (
+					<span className="num shrink-0 text-[11px] text-ink-faint">{reading}</span>
+				) : null}
+			</header>
+			{children}
+		</section>
+	);
+}
+
+/** The check as it was answered: the verdict it produced, then the answers. */
+function CheckDetail({ check, level }: { check: LoggedCheckRow; level: 3 | 4 }) {
+	return (
+		<Block level={level} title={m.log_day_check()} reading={check.timeLabel}>
+			<div className="flex items-start gap-2">
+				<span
+					aria-hidden="true"
+					className={cn('mt-1.5 size-2 shrink-0 rounded-full', STATE_MARK[check.tone])}
+				/>
+				<p className="min-w-0 text-[13px] leading-snug">
+					<span className="num font-semibold text-ink">{check.score}</span>{' '}
+					<b className="font-semibold text-ink">{check.verdict.title}</b>
+					<span className="block text-ink-dim">{check.verdict.tag}</span>
+				</p>
+			</div>
+			{check.flags.length ? (
+				<div className="flex flex-wrap gap-1">
+					{check.flags.map((f) => (
+						<span key={f.title} className={chip({ tone: SEVERITY_CHIP[f.severity] })}>
+							{f.title}
+						</span>
+					))}
+				</div>
+			) : null}
+			<dl className="flex flex-col">
+				{check.responses.map((row) => (
+					<Answer key={row.question} question={row.question} answer={row.answer} />
+				))}
+				{check.outcome != null ? (
+					<Answer question={m.log_outcome()} answer={OUTCOME_LABEL[check.outcome]()} />
+				) : null}
+			</dl>
+		</Block>
+	);
+}
+
+function Answer({ question, answer }: { question: string; answer: string }) {
+	return (
+		<div className="flex items-baseline justify-between gap-3 border-t border-line-soft py-1.5">
+			<dt className="min-w-0 text-[13px] leading-snug text-ink-dim">{question}</dt>
+			<dd className="max-w-[50%] shrink-0 text-right text-[13px] leading-snug font-semibold text-ink">
+				{answer}
+			</dd>
+		</div>
+	);
+}
+
+/** The session as it was logged: each exercise's sets, then the note. */
+function SessionDetail({ session, level }: { session: LoggedSessionRow; level: 3 | 4 }) {
+	return (
+		<Block
+			level={level}
+			title={`${m.log_day_session()} · ${session.dayType}`}
+			reading={session.durationMin != null ? m.log_minutes({ n: session.durationMin }) : undefined}
+		>
+			<div className="flex flex-col gap-3">
+				{session.exercises.map((ex) => (
+					<div key={ex.exercise} data-exercise="">
+						<div className="mb-0.5 text-[13px] font-semibold text-ink">{ex.name}</div>
+						<SetTable
+							fields={ex.fields}
+							sets={ex.sets}
+							empty={
+								<p data-no-numbers="" className="text-[13px] leading-snug text-ink-faint">
+									{counted(ex.sets.length, m.log_no_numbers_one, m.log_no_numbers_other)}
+								</p>
+							}
+						/>
+					</div>
+				))}
+			</div>
+			{session.note ? (
+				<p className="border-t border-line-soft pt-2 text-[13px] leading-snug text-ink-dim italic">
+					“{session.note}”
+				</p>
+			) : null}
+		</Block>
 	);
 }

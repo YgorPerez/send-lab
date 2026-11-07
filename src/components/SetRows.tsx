@@ -22,6 +22,7 @@
 // is a record, not a form, and 28 sessions of editable inputs is the fastest way
 // to make a history screen feel like a spreadsheet that has to be finished.
 import { Check } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { type Range, RPE_SCALE } from '$lib/content/types';
 import { formatRange, GRIPS, gripLabel } from '$lib/format';
 import type { ExerciseId } from '$lib/ids';
@@ -43,18 +44,9 @@ const FIELD_LABEL: Record<SetField, () => string> = {
 	workSec: () => `${strip(m.field_time())} s`,
 	reps: m.field_reps,
 	grip: m.field_grip,
-	restSec: () => strip(m.field_rest()),
-	rpe: m.field_rpe,
-};
-
-/** Compact label for the read-only table: the unit is in the value there. */
-const FIELD_ABBR: Record<SetField, () => string> = {
-	loadKg: m.field_weight,
-	edgeMm: m.field_edge,
-	workSec: m.field_time,
-	reps: m.field_reps,
-	grip: m.field_grip,
-	restSec: m.field_rest,
+	// Its unit too since #125 (it was the one timed column without one): "DESCANSO
+	// S" fits the 73px column where "DESCANSO (S)" clipped.
+	restSec: () => `${strip(m.field_rest())} s`,
 	rpe: m.field_rpe,
 };
 
@@ -103,6 +95,7 @@ export function SetEditor({
 }) {
 	return (
 		<div
+			data-set-row=""
 			className={cn(
 				// A finished set is marked by colour, not by fading it out.
 				//
@@ -115,8 +108,11 @@ export function SetEditor({
 				//
 				// Direction B hit the same wall independently, which is why the rule is
 				// in the vocabulary (`ui/variants.ts`, `chip`) rather than only here.
-				'rounded-md border p-2 transition-colors',
-				set.done ? 'border-teal/30 bg-teal/[0.06]' : 'border-line-soft bg-panel-2/50',
+				//
+				// A row of the card since #125, under a hairline, not a box of its own
+				// inside the card: the done tint runs edge to edge.
+				'border-b border-line-soft px-3 py-2 transition-colors last:border-b-0',
+				set.done && 'bg-teal/[0.06]',
 			)}
 		>
 			<div className="grid grid-cols-4 gap-1.5">
@@ -143,7 +139,12 @@ export function SetEditor({
 									placeholder="—"
 									options={GRIPS.map((g) => ({ value: g, label: gripLabel(g) }))}
 									onChange={(v) => onChange({ ...set, grip: GRIPS.find((g) => g === v) ?? null })}
-									className={cn(CELL, 'px-1.5 text-[12px]')}
+									// Two lines and no chevron, so every grip reads whole in a 68px
+									// cell: "Crimp fechada" and "Half-crimp" were cut to "Half…"
+									// (#118). Not an input, so the 16px floor does not bind it.
+									wrap
+									chevron={false}
+									className={cn(CELL, 'justify-center px-1 text-center text-[11px]')}
 								/>
 							) : (
 								<input
@@ -200,13 +201,23 @@ export function SetEditor({
 }
 
 /** Past sets: one header row per exercise, then one line per set. */
-export function SetTable({ fields, sets }: { fields: SetField[]; sets: LoggedSet[] }) {
+export function SetTable({
+	fields,
+	sets,
+	empty = null,
+}: {
+	fields: SetField[];
+	sets: LoggedSet[];
+	/** What to say when no set recorded a number in any column: the sets were
+	 *  still done, and a count elsewhere includes them (Log's row, #120). */
+	empty?: ReactNode;
+}) {
 	// Only the columns this exercise actually recorded something in. A past
 	// session is fixed data, so an all-null column is pure noise.
 	const cols = fields.filter((f) =>
 		sets.some((s) => (f === 'grip' ? s.grip != null : s[f as keyof LoggedSet] != null)),
 	);
-	if (cols.length === 0) return null;
+	if (cols.length === 0) return empty;
 
 	return (
 		<div className="overflow-x-auto">
@@ -214,9 +225,19 @@ export function SetTable({ fields, sets }: { fields: SetField[]; sets: LoggedSet
 				<thead>
 					<tr>
 						<th className="eyebrow w-6 pb-1 font-normal">#</th>
+						{/* Numbers right-aligned so their digits line up; the grip is a
+						    word, left-aligned as words are (#120's critique, #125). */}
 						{cols.map((f) => (
-							<th key={f} className="eyebrow pb-1 pl-2 text-right font-normal">
-								{FIELD_ABBR[f]()}
+							<th
+								key={f}
+								className={cn(
+									'eyebrow pb-1 font-normal',
+									f === 'grip' ? 'pl-4 text-left' : 'pl-2 text-right',
+								)}
+							>
+								{/* The grid's labels, units and all: Log's table said "Weight" over
+								    a bare 38, and the unit was nowhere (#125's critique). */}
+								{FIELD_LABEL[f]()}
 							</th>
 						))}
 					</tr>
@@ -227,7 +248,13 @@ export function SetTable({ fields, sets }: { fields: SetField[]; sets: LoggedSet
 						<tr key={i} className="border-t border-line-soft">
 							<td className="num py-1 text-[11px] text-ink-faint">{i + 1}</td>
 							{cols.map((f) => (
-								<td key={f} className="num py-1 pl-2 text-right text-[12px] text-ink-dim">
+								<td
+									key={f}
+									className={cn(
+										'py-1 text-[11px] text-ink-dim',
+										f === 'grip' ? 'pl-4 text-left' : 'num pl-2 text-right',
+									)}
+								>
 									{f === 'grip'
 										? s.grip
 											? gripLabel(s.grip)

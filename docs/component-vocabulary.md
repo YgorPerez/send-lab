@@ -30,7 +30,7 @@ decision. Demotion is allowed and cheaper than it looks.
 
 ## The primitives
 
-Domain-blind, so any page can use them. Five are `tailwind-variants` recipes
+Domain-blind, so any page can use them. Six are `tailwind-variants` recipes
 rather than components, because the same button has to be able to be a `<label>`,
 an `<input>`, an `<a>` and a `<Dialog.Close>` — a component that owns its element
 cannot do that without an `asChild` hatch nobody remembers to reach for.
@@ -42,54 +42,62 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `card` | `pad` none/sm/md · `tone` plain/inset/ok/warn/stop | The one surface. It has to **earn itself**: it carries state colour, or it holds a list whose rows need a shared edge. Everything else uses `Bare`. |
 | `chip` | `tone` neutral/ok/warn/stop/ghost | Small state token. Colour always reports state, never decoration. |
 | `input` | `align` left/center | `text-base` is not a style choice — under 16px iOS zooms on focus, and it sets the floor for how narrow a set-row column can get. |
-| `button` | `kind` primary/quiet/bare · `size` sm/md/lg/touch | `quiet` is the default; `primary` is rationed to one per screen. `touch` is 48px. |
+| `button` | `kind` primary/quiet/bare/clock · `size` sm/md/lg/touch | `quiet` is the default; `primary` is rationed to one per screen. `touch` is 48px. `clock` is a clock's start, pause and resume off its field: a 2px dim-ink outline, no fill, never vermilion (#114); pair it with `touch` or larger |
 | `option` | `on` · `width` auto/full | A choice in a picker. `full` is Direction B's finding, kept though its direction lost. |
+| `sheet` | `height` full/content | A sheet's popup: from the bottom edge on a phone, a 400px dialog centred from `lg` that fades. `full` reaches to just under the status bar and holds one height from `lg`, so a stepped flow's controls stay put (the readiness check); `content` is as tall as what it holds (the self-check). One recipe since #113's review; it was one class string pasted into both. More's sheet is not on it: it has no `lg` form (the rail replaces it) |
 
 ### Components — `ui/`
 
 | Name | File | What it is |
 |---|---|---|
 | `Eyebrow` | `primitives.tsx` | The furniture rank of the type scale |
-| `Section` | `primitives.tsx` | Heading, optional right-hand meta, body |
+| `ScreenHeader` | `primitives.tsx` | How every screen opens (#114): the title in the top rank and the screen's only `<h1>`, an optional meta line, an optional lede, and one `reading` *or* one `action` on the right. Nothing the page draws comes before it. `titleRef` makes the title a focus target for a screen that arrives on a press (the intake's proposal, #123) |
+| `Section` | `primitives.tsx` | Heading in the section rank (`.h-section`, 14px semibold Inter), optional right-hand meta in the meta rank (11px faint Inter, or a chip), body. One face since #125: each screen ticket of #113 moved its own off the mono caps, and the sweep dropped the `face` prop and the mono rule. `labelId` names the heading, for a control in the section to be named by it (Week's grid) |
 | `Bare` | `primitives.tsx` | A group with a rule above it and no box |
 | `Empty` | `primitives.tsx` | What a group says when it has nothing to list: a `Bare`, one line of `Prose`, and the one affordance that fills it |
 | `Prose` | `primitives.tsx` | Training copy with its inline `<b>` rendered |
 | `Meter` | `primitives.tsx` | A 0–10 reading against a track |
 | `Stat` | `primitives.tsx` | One reading in a divider-separated strip |
-| `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure: `max-w-pane` (560px, `app.css`), the one width every surface in the page's column shares — the full-screen clock's rows, the editor, the mini bar |
-| `Panes` | `primitives.tsx` | A page's two panes from `lg`, stacked below it |
+| `Pane` | `primitives.tsx` | A page's single pane, capped near the phone measure: `max-w-pane` (560px, `app.css`), the one width every surface in the page's column shares — the full-screen clock's rows, the editor, the mini bar. From `lg` it starts on the measure's left edge rather than centring (#115) |
+| `Panes` | `primitives.tsx` | A page's two panes from `lg`, stacked below it. `stickySecondary` holds the second pane in view while the first scrolls, 16px under the strip, scrolling inside itself when taller than the window (Log's open day, #120) |
 | `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
-| `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. Capped at `max-w-pane`, as `Pane` is |
-| `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip |
-| `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
-| `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
+| `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. It sits on the navigation bar (`--nav-clear`, #115), and from `lg` right of the rail on the measure's left edge, capped at `max-w-pane` as `Pane` is |
+| `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip. `wrap` lets the label take a second line instead of truncating, and `chevron={false}` gives a set-grid cell its 18px back: the pt-BR grips clipped to "Slop…" and "Half…" in a 68px cell (#118) |
+| `RowGroup` / `Row` | `Rows.tsx` | The expanding row, in one card; Log's timeline and the Timer's preset groups. `multiple` lets several rows stay open; `value` / `onValueChange` hand the open rows to the caller (the change arrives before it renders, with the press that made it). `touch` gives a row a 48px head in the rows' 15px semibold, for a list worked through mid-set. `aside` is for a list whose detail the page shows beside it from `lg` (Log, #120): there the panel and chevron are hidden, and `current` marks the row being shown with the selection language. A head's focus ring is drawn inside, since the card's `overflow-hidden` cut the outside one to a line or two. The trailing chevron is the row icon (18px, stroke 2, faint). `useRowsInPlace` and `RowsEnd` keep the tapped head under the finger as rows close (below, *Log as one timeline*) |
+| `RowMenu` | `Menu.tsx` | A row's ⋯ (#119): Base UI's menu behind a separate, bordered, filled 44px square centred beside the row, Train's clock-button shape, never stretched to the row's height (or the 48px square in a dialog's header), labelled with what it acts on. A row with one action does not get one: put that action where the row leads. Takes `{ label, onSelect }` actions in order; nothing in it is coloured apart, and a destructive item's guard is the `AlertDialog` the caller opens next |
+| `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for. The current reading is a round 7px chalk mark over the drawing's right end, not an SVG circle (the stretched drawing made it an ellipse, half clipped at the edge), and the axis keeps a decimal when whole numbers would read the same ("72 / 72", #125) |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
-| `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
+| `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface. `held` says why a busy confirm waits, as a warn `Notice` under it (the Timer's delete offline, #125) |
 | `Segmented` | `Segmented.tsx` | A small closed set of choices, all on one line — short fixed tokens only (`kg`, `Yes`, `4`). Promoted out of Settings by #64 when a second screen needed it. A `fieldset`; `labelledBy` names the group after the row that asks it |
-| `ControlRow` | `primitives.tsx` | One control on its own 44px line: what it is on the left, the control on the right. Promoted out of Settings by #105 when the cue settings needed it on a second screen |
-| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes |
+| `ControlRow` | `primitives.tsx` | One control on its own line: what it is on the left, the control on the right. 56px whatever the control since #122 (it was 44px for a switch and 56px for a choice). Promoted out of Settings by #105 when the cue settings needed it on a second screen |
+| `ControlList` | `primitives.tsx` | A group's controls as one list: a card of `ControlRow`s divided by hairlines, one row or many (#122). `surface={false}` keeps the rows and drops the card, for a container that already is a surface (the cue popover) |
+| `ControlNote` | `primitives.tsx` | The 13px gold line under a `ControlRow` saying why its control did not do what was asked, or cannot on this device; inside the row's item, never under the card (#122) |
+| `Stepper` | `Stepper.tsx` | The stepper shell: a progress rail, one step's content, and the two controls. It owns where the screen's one `primary` goes. A step's rail label is optional (the readiness check's six to nine segments have no room for words at 360px), and in a container taller than it the controls settle at the bottom (#116). The rail is chalk to the current step, slate after it, never vermilion: the advance is the one vermilion fill (#123). The current step's label is chalk and semibold, so the last step still shows where the athlete is once every segment is filled; the labels are Inter at 11px since #125 (they were the intake's last letter-spaced mono). `className` can widen its gaps (the intake's `gap-sections`); the waiting line is a `Notice tone="warn"` the advance is described by (#125) |
+| `Notice` | `primitives.tsx` | Every line a screen says that is not under a control's row (#124): 13px, `text-pretty`, `data-notice` its tone. `warn` (gold) is something that has to change first: this device or the network, or an answer or tick still missing under a held control; `stop` (vermilion) refuses what was typed; `info` (dim ink) asks nothing. **A held control says why under it in one, described by it** (#125): the intake's and readiness sheet's advance, Train's finish and Set load (warn), Repeat last session (info), sign-in's button, an `AlertDialog`'s confirm (`held`) |
+| `Field` | `primitives.tsx` | A typed field: its label in words (13px ink) over the input, `hint` after the label in faint ink, `rank="question"` when the field heads itself in the section rank (#123, #124). The intake, sign-in and Train's session note use it; no field is labelled in the mono label rank since #125 |
 
 ## The domain pieces — `src/components/`
 
 | Name | Owns |
 |---|---|
-| `AppShell` | The chrome: top strip, locale switch, the menu, the view-transition names |
-| `Menu` | The app's whole navigation — every destination, behind one control in the strip |
+| `AppShell` | The chrome: the top strip (wordmark, sync state, one screen action), the frame `main` sits in, the view-transition names (#115) |
+| `Navigation` | Every destination: a bar on a phone's bottom edge (Today, Train, Timer, Log, More), the same `<nav>` as a 200px rail from `lg`, and More's sheet. Marks the current destination from the matched route, never from the router's own link state (#115) |
 | `SyncStatus` | Whether work is still on this device: nothing at all, `Offline`, `Sending…`, or the refused-work announcement |
 | `Timer` | The protocol clock: its tick, the cues it asks the planner for, its setup, and its two faces — the strip and its run in the full-screen clock. Which screen's draft it keeps is its `home` (`ClockHome`, `'train' \| 'timer'`), never a "slot"; where its strip goes is its `strip` — in the page on Train, the mini bar on the Timer screen's list |
 | `FullScreenClock` | The one full-screen dialog both clocks run in (spec #98: it "takes either a protocol run or a stopwatch run"): the header, the face as a tap target, the detail, the readout and the 56px control row, and the layout on a phone held sideways. Each clock hands in its status, reading and controls; `Face` draws the number for both, and sizes it by its glyph count against the one `--face` it sets from the screen. It also owns the two things both clocks draw with: `SEGMENT_COLOR`, the colour each segment runs in (the field, and the dot beside a segment in the ready state and in `ProtocolRows`), and `clockControl`, the control row's three shapes on a field and off one. Not `ui/variants.ts` recipes: both know the clock's field, which makes them this piece's decisions (ADR 0010) |
 | `ProtocolEditor` | How a saved protocol is typed in: an optional name (its placeholder the shape an unnamed one is listed under) over `ProtocolRows`, and when to say a field cannot run (`readProtocolForm` decides that it cannot). Its own screen since #112 — a full-viewport dialog with ✕ and Save at the top — not a sheet over a blacked-out list |
 | `ProtocolRows` | The seven numbers as rows in the order a run goes (prepare; rounds: work, rest, how many; sets: how many, rest between; cooldown — the first group headed **Rounds**, never "Block", which is the glossary's run of weeks), each a label, a value the numeric keyboard opens on, and 48px − / + (#112). The editor's body and `/train`'s Adjust. A time reads m:ss from a minute up and is typed in seconds; the step (`nudged`) and the reading (`shownOf`) are `screens/timer.ts`'s |
 | `Stopwatch` | The count-up's tick, its laps, and the same two faces — the mini bar and full-screen — in the clock's type and controls, through the same `FullScreenClock`, on a neutral field: running or paused is said in the word and the weight of ink, never a segment's colour (#110). Every lap is listed under its number |
-| `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
+| `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings (a `ControlList` card) and behind `CueSettingsShortcut`, the Timer's screen action in the top strip (#119), with `surface={false}`; the popover's title is the Inter section head Settings gives the same words (#122) |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
-| `TaskCard` | One task mid-session: header, prescription, sets |
-| `ReadinessCheck` | Nine questions, their rationale, and the study behind each |
-| `SelfCheckSheet` / `RehabStarter` | The injury self-check and the rehab switch |
-| `WorkingLoadAsk` | The ladder put at first contact with a weighted exercise, and what the athlete is told about the two numbers under its third rung |
+| `TaskCard` | One task mid-session: header, prescription, sets. Open or folded to its header (#118), which the page decides; held and done marks on the header; the sets counted against `setTarget` |
+| `ReadinessCheck` | The readiness check as a sheet, one question per step (#116): the step `lib/readinessFlow.ts` names, its rationale and study collapsed under it, its options with nothing preselected. Full height from a phone's bottom edge, a 400px dialog centred from `lg`. Today holds the answers; the sheet holds only which step is showing |
+| `SelfCheckSheet` / `RehabStarter` | The injury self-check and the rehab switch. The sheet has the readiness check sheet's shape since #117 (title row, 44px close, 200ms, a 400px dialog from `lg`), as tall as its content |
+| `WorkingLoadAsk` | The ladder put at first contact with a weighted exercise, and what the athlete is told about the two numbers under its third rung. One step since #118: four rungs, then what the chosen one needs, then one `quiet` Set load; folded to one line once the task has a set ticked |
 
 Supporting modules, all pure and all in `src/lib/`: `format.ts` (display strings),
-`ids.ts` (identity), `protocol.ts` (the timer's arithmetic, and which cue
+`ids.ts` (identity), `readinessFlow.ts` (which question the readiness check asks
+next, and where a reopened one resumes), `protocol.ts` (the timer's arithmetic, and which cue
 each transition fires), `stopwatch.ts` (the stopwatch's, and its laps), `cues.ts` (playing those cues: its beeps, haptics and voice), `timerSetup.ts` (the clock's draft: restored paused, one per screen, and on the Timer screen one per protocol), `stopwatchDraft.ts` (the stopwatch's draft, paused and unscoped), `recentProtocols.ts` (the Timer screen's Recent: the last protocols run, as keys, on this device), `wakeLock.ts` (keeping the screen on while either clock counts), `loggedSet.ts` (which of the seven per-set fields an
 exercise shows, and what a fresh row is prefilled with), `prescription.ts`
 (what a slot runs, and at what numbers), `workingLoad.ts` (which exercises carry
@@ -111,7 +119,8 @@ So: they are synonyms, the `*Screen` suffix is a convention for resolver output,
 and no rule is being broken by either word. The one genuinely different sense is
 `view-transition-name: 'screen'` on `<main>` — a CSS name for the region that
 gets replaced on a navigation, kept because #54 measured that transition on the
-device and `tests/motion.test.ts` asserts exactly three such names.
+device and `tests/motion.test.ts` asserts exactly three such names (`topbar`,
+`navigation`, `screen`).
 
 ## Where a screen's data comes from
 
@@ -219,12 +228,11 @@ at the root and Settings switches the locale from three routes down with no prop
 path between them, so `store/locale.ts` holds the current locale with
 subscribers (`currentLocale` / `subscribeLocale`) and the hook is
 `useSyncExternalStore` over them — the shape `record.ts` already uses for the
-active account. The strip's `EN` / `PT` switch and the page's full-name one are
-the same call.
+active account. The page's full-name switch is the only one since #115 took the
+strip's `EN` / `PT` switch out (spec story 12).
 
-**Settings is reached from the top strip, not from a tab.** A gear beside the
-locale switch: the two are the same kind of thing — about the app, not about a
-screen — and the rail still carries the same three destinations and no more.
+**Settings is reached from More** on a phone and from the rail at `lg` (#115). It
+was a gear in the strip, then a row in the menu.
 
 Two things the page deliberately does not do. **One switch, for two fields.**
 [#75](https://github.com/YgorPerez/send-lab/issues/75) split `notify` into
@@ -237,6 +245,42 @@ the dishonesty the split was made to end, so the second one waits for the
 machinery it needs. And the unit preferences are
 recorded but nothing yet converts for display: `format.ts` is the seam that
 grows the conversion back, and it says so.
+
+**One list (#122).** Every group is an Inter section head (`Section`) over
+one `ControlList`, and every control sits on a `ControlRow`: Units & display holds
+weight, length and the language; Timer cues the shared `CueSettings`; Notifications its
+one switch, in a card like the rest (as a `Bare` it was the one group that read as
+prose); Account the email beside Sign out. A row's caveat (a refused permission, the
+held sign-out, refused work) is a `ControlNote` under that row, in the same item. Two
+exceptions, both the group pattern's own: signed out, Account is an `Empty`, and AI
+access is a `Bare`, because it is prose, a config and three actions rather than controls
+on rows. The language reads "English" / "Português": "(BR)" wrapped the pt-BR option
+to two lines at 360px, and the app has one Portuguese. Offline, the line saying which
+controls need a connection is the first group under the header, gold as sign-in's
+offline notice is, where it used to be a dim line pulled into the header with `-mt-3`.
+**Offline, each disabled control also says why where it is** (#122's critique): at
+360px the page's line is two screens above Sign out. "Signing out needs a connection."
+is a `ControlNote` under the account row and Sign out's description; the token's line
+says it needs a connection, not that the server could not be reached, because offline
+nothing was asked. A note that answers a tap (the held sign-out, a refused
+permission) is `role="status"`. pt-BR says "Você entrou" / "Você não entrou" for
+signed in and out: "conectado" read as *online*, beside the offline line.
+`tests/settings.test.ts` asserts the order, the one heading face, every control on a
+row of one list per group, the offline line's place, Sign out and the token's controls
+disabled, and each one's reason beside it (the session and the token are mocked there;
+neither resolves in jsdom).
+
+**A first install no longer reloads the page (#122).** `sw.ts` calls `clientsClaim()`,
+so the first worker takes over the page that registered it and fires
+`controllerchange`, which `reloadWhenTakenOver` answered with a reload, half a second
+into every first visit. The gates saw it: `check:contrast --desktop` read `/settings` at
+7 elements against a floor of 12 about one run in six, because when the claim landed
+just before the reading it measured the baked shell. Holding `/sw.js` back so the claim
+lands ~40ms before the reading reproduced it three times in three; with the fix, the
+claim still lands and nothing reloads. The reload now happens only when a worker was
+already in charge (an update), and `scripts/browser.ts`'s `goto` measures a document
+only once that document has lived the settle time, so any other reload costs time
+rather than a wrong reading.
 
 ---
 
@@ -295,7 +339,35 @@ has hydrated, bounces a returning athlete *with* a baseline into an intake
 whole entry path is one line on Today under the plan it describes: an `Empty` — the
 one group on that page that genuinely has nothing in it — saying the week is the
 built-in one, or how far a half-finished baseline got, with the one affordance that
-fills it. `quiet`, because Today's one primary is the bodyweight nudge.
+fills it. `quiet`, because an intake is not what Today is opened for (its one
+primary is the readiness check's invitation since #116).
+
+**The way out is the strip's ✕, on every step** ([#123](https://github.com/YgorPerez/send-lab/issues/123)).
+With no bar on the intake (#115) the athlete has nothing else to tap, and the old
+"Not now" link under the stepper sat below the fold on the first step at 360px and
+was not on the proposal at all. So the route names a screen action, `IntakeExit`: a
+link to Today in the cue settings' 44px ghost square, named "Not now: back to
+Today". The strip is fixed, so no step scrolls it away, and it is there while the
+record arrives too. Leaving costs nothing (the draft stays, and Today offers to
+finish it), so it asks nothing. The worded link and its note stay at the end of the
+flow, where a step ends. `tests/intake.test.ts` walks every step and the proposal and
+asserts the exit, one primary, and a held advance with its line on each.
+
+**Aligned to the screens before it (#123).** Each question heads itself in the
+section rank (`.h-section` on the `legend`; the session length, a question
+beside the days and the equipment, on its label), questions a sections gap apart,
+options a row gap apart. A typed field under a question or a section that heads it
+(the grades under the level, the context under Optional) takes a 13px ink label,
+one rank below. A head says when its question takes several answers ("(all you
+have)") or may stay blank ("(optional)"), in faint ink after the words. The lede is
+on the first step only: on the others it cost 70px and put the advance under the
+fold at 360px in pt-BR. A step reached by Next or Back (or by Change your answers
+on the proposal) puts the page back at its top and focuses the step's first line,
+and the proposal focuses its title, the readiness sheet's answer to the same
+problem: the advance is at the end of a step that runs past the fold, so the next
+step otherwise opened scrolled to its end, and the proposal left focus on `body`.
+`ScreenHeader` takes `titleRef` for that. On the proposal, Start and Change your
+answers share a row from about 400px and stack below it, Start on top.
 
 The draft is the fourth ephemeral store (`lib/baselineDraft.ts`) and the first one
 **scoped to the account** rather than to something shorter-lived.
@@ -409,7 +481,678 @@ of life. And sign-up asks for no name: better-auth requires one, no screen shows
 display name, and a field with no reader is a question with no answer to give it,
 so the address stands in.
 
+**On the shared rhythm (#124).** The page now opens the way every screen does: the
+header, then what it has to say as the first group under it, a sections gap down,
+where it used to be a lede and the notices pulled up into the header with `-mt-4`.
+The lede went with it ("Sign in to your training console" under "Sign in" said the
+title twice). The fields are the intake's: a `Field`, its label in 13px ink words over
+the input, promoted out of `welcome.tsx`'s `TextField` (which now uses it) so the two
+forms cannot drift. The password minimum on sign-up sits beside its label in faint
+ink, the way the intake says "(optional)". Fields, then the actions, a sections gap
+apart, as an intake step's questions and its advance are.
+
+**Every line the page says is a `Notice`** (`ui/primitives.tsx`): one 13px family,
+`text-pretty`, whose tone is what the line asks of the athlete. `warn` (gold) is
+about this device or the network: offline, a server that could not be reached, a
+server that failed. `stop` (vermilion, as a refused value's rule) is about what was
+typed: wrong credentials, an email that has an account, the generic refusal. `info`
+(dim ink) changes nothing the athlete has to do: what the device holds, where
+sign-out lives. So "it isn't your details, try again" is never painted as a stop,
+which would contradict the sentence. A stop also marks both fields `aria-invalid`,
+described by the line. Settings' offline and token lines were the same thing under
+another name (`Caveat`) and are `Notice tone="warn"` now; `ControlNote` stays the
+line under a row.
+
+**The line about the primary has one place: under it** (#124's critique), where
+Stepper puts a held advance's reason and Settings a row's. Offline it says
+"Signing in needs a connection." and is the button's description: the keyboard
+scrolls the page's line away at 360px, and a keyboard cannot reach a disabled
+button. Otherwise it is the failure, `role="alert"`. The page's offline line says
+what the button's does not: every other screen keeps working. While the request is
+out the button reads "Signing in…" and the form is `aria-busy`: held and silent, it
+looked exactly like the offline button. Signed in, "Signed in" and the address in
+words in a `Bare` (a lone reading), not a mono EMAIL eyebrow.
+
+**Copy, in the glossary's words.** pt-BR's lapsed line said "Você está desconectado",
+which read as *offline* beside the offline line; it is "Você não entrou", as
+Settings has said since #122. `auth_error` dropped "login" and "authentication"
+(both on **Sign-in**'s _Avoid_ list). `tests/signin.test.ts` checks every line the
+page can show, in both locales, against that list, and asserts the order, the field
+labels, each line's tone and place, the busy label and the signed-in view;
+`tests/login.test.ts` is unchanged.
+
+**Text fields get the keyboard ring from `lg`** (#124's critique). `app.css`'s
+`:focus-visible` rule is in the base layer and the `input` recipe's `outline-none`
+is a utility, so the recipe won and a tabbed-to field showed only its 1px border
+step. A text field matches `:focus-visible` on any focus, a tap included, so the
+recipe puts the ring back at `lg` only: the phone keeps the border step. Not
+`(hover: hover)` or `(pointer: fine)`: the layout has one breakpoint, and a laptop
+with a touch screen still types with keys. (#124 also found the gates could not
+see a ring keyed on those: headless Chrome ignored the `hover`/`pointer`
+emulation. #125 fixed the harness; the ring stays on `lg`.) The Timer editor's
+typed numbers (`ProtocolRows`) carry their own `outline-none` and take the same
+ring since #125, and `tests/focusRing.test.ts` refuses any `outline-none` without
+it, except on an element focused only from script (`tabIndex={-1}`) or a menu
+item.
+
 ---
+
+## The overhaul's foundation
+
+Settled by [#114](https://github.com/YgorPerez/send-lab/issues/114), the first
+ticket of the UI/UX overhaul ([#113](https://github.com/YgorPerez/send-lab/issues/113)).
+`DESIGN.md` carries the full patterns (the grid, the header, the group pattern,
+icon sizes, the clock control); this is what landed in code and how a screen
+ticket uses it.
+
+**Spacing is named, not picked.** `app.css` adds five steps to Tailwind's
+spacing scale, so they work under every spacing prefix:
+
+| Token | Value | Use it for |
+|---|---|---|
+| `sections` | 28px | Between a screen's sections, and below its header (`gap-sections`) |
+| `group` | 10px | A section heading to its body; groups inside a section |
+| `row` | 6px | Rows of one list that are each their own surface |
+| `inset` | 12px | Inside a group's surface: under a `Bare` rule, a `card({ pad: 'sm' })` |
+| `gutter` | 12px, 20px from `lg` | The page's side margin and the gap between two panes; one variable, so `px-gutter` is right at both widths |
+
+`Pane`, `Panes`, `Section`, `Bare`, `Empty`, the small `card` and the shell use
+them already. Every screen ticket moves its own literal steps to them (Train in #118, the
+Timer in #119). The inside of a
+component keeps the plain 4px steps.
+
+**Every screen sets its title through `ScreenHeader`.** The right-hand side is a
+`reading` (a count or reading about the whole screen, baseline-aligned) or an
+`action` (one icon control, centred, because an icon has no baseline), never
+both, and the types refuse both. Neither sets the title's height: the slot
+overhangs the title's 24px line by up to 10px each way, so a 44px control beside
+it leaves the title where every other screen has it (before that, the title sat at
+61.5, 69 and 71.5px across the screens and jumped on navigation; #125 measured
+the h1 at y=58 on every route at 360px and y=66 at 1280px, both locales). Train's
+set count is a `reading`. A screen action goes in the top
+strip's slot since #115 (below), and the header keeps readings: the Timer's cue
+settings moved there in #119, so no screen uses the header's `action` today. `tests/screens.test.ts` asserts
+every screen opens with it.
+
+**Two decisions for later tickets, written in DESIGN.md.** From `lg`, every
+page starts on the measure's left edge: a one-pane page keeps its 560px cap but
+stops centring, so the wordmark and every title share one left edge (#115 does
+it with the rail). And off the coloured field, every control in the clock's row
+takes `kind: 'clock'`, the side ones included, so a paused row is one language
+(#118).
+
+## The navigation
+
+Built by [#115](https://github.com/YgorPerez/send-lab/issues/115) from spec #113's
+navigation decisions; [ADR 0018](adr/0018-the-desktop-layout-is-css-below-the-shell.md)'s
+2026-11-07 amendment carries why the bar came back.
+
+**One `<nav>`, two stylesheets.** `Navigation.tsx` is a bar fixed to a phone's
+bottom edge (Today, Train, Timer, Log, More) and, from `lg`, the same element as a
+200px rail under the strip listing every destination. Week and Settings are in the
+`<nav>` as `hidden lg:flex`; More is `lg:hidden`. A new page is a row in
+`DESTINATIONS` with `place: 'more'`: it lands in More's sheet and in the rail, and
+the bar stays four plus More.
+
+| | Bar (phone) | Rail (`lg`) | More's sheet |
+|---|---|---|---|
+| Height | 56px plus the home indicator; items ≥ 48px | rows 44px | rows 48px |
+| Item | 22px icon (stroke 1.75) over an 11px label that wraps | 22px icon beside a 13.5px label | 20px icon, 15px label, 18px chevron |
+| Current | chalk, semibold, a `panel-3` pill behind the icon | chalk, semibold, a `panel-3` row | chalk, semibold, a `panel-3` row |
+
+More is marked current (`aria-current="true"`, same look) on any destination it
+holds, so the bar never shows the athlete as nowhere. A destination can hold a
+route it has no row for: Settings holds `/login`, which is reached from it
+(`holds` in `DESTINATIONS`).
+
+**The bar's box is exactly what the page reserves.** `h-[var(--nav-clear)]`,
+border-box, so its border and the home indicator's padding are inside the 56px and
+the inset; the rail is `w-50`, border-box, so it is the 200px of `--nav-rail`. The
+first build had `box-content`: the rail measured 217px and its border sat 3px
+from every title between 1024px and about 1215px, where the centred measure has
+no margin to hide it. The screenshots at 1280px did not show it; the critique's
+box arithmetic and a measurement at 1024px did (#115).
+
+**The `<nav>` comes before `main` in the document**, though a phone draws it
+below: a keyboard reaches the rail without tabbing through the whole screen, and
+a screen reader meets the landmark first. **More's sheet is never hidden by
+width**, only its trigger: a sheet left open as the window crosses `lg` stays
+visible and closable instead of a hidden modal holding focus. **The update notice
+sits under the sheet** (`z-[35]`, below the backdrop), because the sheet opens over
+the place the notice sits and the notice on top hid its first row.
+
+**The current mark comes from `here`, never from the router's link state.** The
+shell is baked once, at `/`. With `Link`'s own active state the baked bar marked
+Today, a cold start on `/timer` hydrated over it, and React does not patch an
+attribute that differs on hydration: Today stayed marked on every screen. Every
+test passed and `check:hydration` stayed green (production React does not report
+an attribute mismatch); a screenshot found it. So each item is an `<a>` from
+`useLinkProps` with the router's `aria-current` and `data-status` dropped, marked
+from `here`, which `__root.tsx` hands down only once the app has hydrated.
+`tests/navigation.test.ts` renders the navigation with `here: null` on three URLs
+and asserts nothing is marked.
+
+**What the page clears is two CSS variables, not a height read in the shell.**
+`--nav-clear` (56px plus `env(safe-area-inset-bottom)` on a phone, 0 from `lg`)
+and `--nav-rail` (200px from `lg`, 0 below), both 0 on the intake through
+`:root:has([data-navigation='none'])`. `main` pads its bottom by `--nav-clear`;
+the update notice and the Timer's mini bar (`BottomBar`) sit on it; the frame and
+the strip pad left by `--nav-rail`. Anything else fixed to the bottom of a screen
+sits on `--nav-clear` too, and pads for the home indicator only by what the bar
+does not already cover (`max(0px, env(safe-area-inset-bottom) - var(--nav-clear))`).
+
+**The keyboard never sits the bar on a field.** The viewport meta says
+`interactive-widget=resizes-visual`, so where it is honoured the bar stays under
+the keyboard. Where a browser resizes the page instead, `app.css` hides the bar
+below `lg` while a field that opens the keyboard has focus (`html:has(…:focus)`).
+Measured on the built app: Train's RPE input focused, the bar is `display: none` at
+360px and the rail is unchanged at 1280px. `scroll-padding-bottom: var(--nav-clear)`
+keeps a control reached by Tab clear of the bar.
+
+**The route decides the rest, through `staticData`.** `lib/chrome.ts`'s `chromeFor`
+reads two keys: `navigation: false` (the intake: no bar, no rail, nothing reserved)
+and `screenAction`, a component the strip renders on its right as the screen's one
+action. Read in `__root.tsx` and held at the baked answer (navigation, no action)
+until the app has hydrated, the same deferral the locale gets. The Timer names one,
+its cue settings (#119), and the intake its way out (#123); the strip renders it in
+the strip's locale, so a screen action takes `locale` as a prop rather than reading
+the ambient one.
+
+**From `lg` a page starts on the measure's left edge.** `Pane` no longer centres
+in the 1000px measure, so a one-pane page's title, a two-pane page's title and the
+strip's wordmark share x=252.5 at 1280px (x=220 at 1024px, 20px right of the rail). The window reserves the scrollbar's gutter
+from `lg` (`scrollbar-gutter: stable` on `html`), so a long page and a short one
+are the same width and nothing moves sideways between them.
+
+**A new spacing token is two edits, and the second is easy to miss.** Add it to
+`app.css` and to `twMergeConfig` in `lib/utils.ts`; `tests/spacingTokens.test.ts`
+fails until both agree. The reasons are the next two rules.
+
+## The readiness check sheet
+
+Built by [#116](https://github.com/YgorPerez/send-lab/issues/116) from spec
+#113's readiness check decisions.
+
+**What comes next is a pure function, and it is "the next step", not "the next
+unanswered one".** `lib/readinessFlow.ts` takes the answers and nothing else:
+`checkSteps` (the six core questions, each follow-up straight after the question
+that revealed it), `openingStep` (the first unanswered step, or the first step
+when all are answered), `stepAfter` and `stepBefore`. The list is recomputed on
+every call, because a pick can add a follow-up (poor sleep adds stress and drive)
+or withdraw one. A pick moves to `stepAfter` the answers *with* the pick, so the
+follow-up it calls for comes next and the rail grows by a segment while the
+athlete watches. Moving to the next unanswered step instead would close a
+finished check on the first changed answer, so editing would cost a reopen per
+question.
+
+**Every pick advances except the last.** On the last step the pick stays on
+screen and the advance reads Done and closes the sheet. The advance is the
+`Stepper`'s, so it is the sheet's one `primary`, disabled with "Pick an answer to
+go on" until the step is answered (ADR 0021: nothing is preselected, and the
+advance does not skip). Closing with ✕ is always there and keeps every answer: the
+draft is still idiom 2's `readinessDraft`, written on each pick.
+
+**The step is the sheet's state, and it starts fresh on every open.** It lives in
+a component inside the popup, so the lazy `useState(() => openingStep(answers))`
+runs when the sheet opens and no effect keeps it in step. A step the answers have
+since withdrawn falls back to `openingStep`. Each step's question is an `h3`
+focused as it arrives, so a keyboard or a screen reader lands on the new question
+instead of on the option that just unmounted. When the sheet closes, focus goes to
+the verdict's heading (the invitation while there is no verdict) through the
+popup's `finalFocus`: the button that opened the sheet is usually gone by then,
+and the critique measured focus falling to `body`.
+
+**A pick that lands as a question arrives is not an answer.** The next question's
+options sit where the last one's were, so a double tap or a bounce answered a
+question the athlete never read, which is ADR 0021's fabrication by another
+route. A pointer pick within 350ms of the question's arrival is dropped; a
+keyboard press (`detail` 0) never is.
+
+**"Why we ask" is a `<details>` under the question**, closed. The old inline list
+clamped it to two 11px lines on every question; in a step it is one tap away and
+costs 44px. The study link is the in-text 12px icon beside its word. The only
+motion in the sheet is the sheet itself (200ms, Base UI's `data-starting-style`
+and `data-ending-style`) and the disclosure's chevron, both finished in one frame
+under reduced motion by `app.css`'s rule.
+
+**A follow-up says what it asks about, when it asks about one answer.** "How does
+it feel?" is about the answer one step back, which is off screen, so the step
+carries "Anything hurting today? · Elbow" in a faint line above its own.
+`followsFrom` in `readinessFlow.ts` names that answer, and only the severity
+question has one: stress and drive join on poor sleep *or* low recovery, skin on
+the whole wellness read. The first build took the question displayed above each
+follow-up, which is where it sits rather than why it is asked, and read "How
+recovered do you feel? · Fresh" over a stress question that poor sleep had called
+for.
+
+**Today has one way in for each state.** No wellness answer (`hasWellnessAnswer`,
+unchanged): the read's place holds the invitation, and it is Today's one
+`primary`, which is why the bodyweight nudge's Save dropped to `quiet`. With a
+read: the read's card ends in a summary row, "Readiness check" over "6 of 7
+answered". While a step the answers call for is open, the verdict above it is
+computed without that answer, so the row carries a gold mark and a bordered
+(`quiet`) Continue; once none is, a `bare` Edit. Continue opens on the first
+unanswered step and Edit on the first. The
+summary is inside the read's card rather than a row of its own, because a row one
+section gap (28px) below the read looked like a separate thing. #117 kept it there.
+
+**The sheet is More's sheet, taller.** Same backdrop, panel, title row and 44px
+close, same 520px cap and 200ms rise. It runs from the bottom edge to 12px under
+the status bar, so the controls sit at the thumb whatever the question's length.
+From `lg` it is a 400px dialog, 42rem tall or the window less 4rem, centred, and
+it fades instead of rising, since there is no edge for it to come from. The
+height is fixed so the controls do not move between steps.
+
+**Today got shorter, and its floor came down with a measurement.** Seeded, Today
+measured 4361px at 360px and 2476px at 1280px with the questions listed; with the
+sheet it is 2521px and 1776px. `check:contrast` counted 103 text elements seeded
+and 52 empty where it counted 154 and 99, so `scripts/floors.ts` holds `/` at 75,
+the same quarter under the measurement as before.
+
+## Today as a summary
+
+Built by [#117](https://github.com/YgorPerez/send-lab/issues/117) from spec #113's
+Today decisions.
+
+**The order is the decision, then what comes after it.** On a phone: the read (or
+the invitation), today's plan, the flags; then the outcome ask, the counters, the
+trend, bodyweight and the injury entry. The plan carries the held work on its tasks
+and the carry-forward inside its card, and the baseline line (#64) stays directly
+under it. Before #117 the counters and the trend sat between the plan and the flags,
+so the flags were the seventh thing down. The desktop cut is the same line: `Panes`
+takes everything up to the flags as the primary pane and everything from the
+outcome ask as the secondary, so the phone order is the reading order at both widths.
+`tests/today.test.ts` asserts the order as the order the text appears in `<main>`,
+seeded and empty, on a training day and the rest day, in both locales.
+
+**One primary in every state, and it moves with the check.** Unanswered, it is the
+invitation in the read's place (#116). Answered, it is "Go to Train", a full-width
+`lg` link after the watch-outs: the last thing the decision pane says, so a problem
+is read before the athlete starts (story 36). The first build put it at the foot of
+the plan, ahead of the flags; the critique caught it. It replaced two weaker ways in:
+the plan heading's "View today's session →" and a 44px "Train ›" link on every task
+row, which pointed at the same screen five times. A rest day with a read keeps it:
+Train is where an unplanned session is logged, and the spec's rule is one primary in
+every state. The rehab starter's "Switch to rehab program" was a second filled
+primary whenever it was opened on Today; it is `quiet` now.
+
+**The outcome ask waits for something to rate.** An **outcome** is how a session
+went, said afterwards (`CONTEXT.md`), and the ask used to sit under the verdict
+every morning, four buttons about a session that had not happened. It shows once
+today's session is trained (a set ticked in the record, which `resolveToday`
+returns as `sessionToRate`) and names it by the day type it recorded: "How did
+today's Pull session go?". A tick on Today does not count: ticks there are the
+page's own state, gone on reload, and a stray one summoned a question about a
+session the record never held. Its picks use `option`, the app's one selection
+language; selected was teal, the ok colour, which made a picked "Bailed" read as
+fine. Where the outcome is kept is not this ticket's: it is still the page's own
+state, as it was.
+
+**A flag says its severity twice, in colour and in the locale.** The card's tone
+and a dot beside the title carry the colour (a mark can carry a colour a label
+cannot); the chip carries the word. It printed the raw id, `stop` or `warn`, in both
+locales until #117.
+
+**The header's right side is a reading again.** "Week 5 / 8" was a link to Week
+while nothing else led there. The navigation carries Week since #115, and a faint
+11px link that looked exactly like the other screens' readings was a control
+nobody could see, so it is text. The date under the title is Inter: it has a month
+name in it, and DESIGN.md keeps mono for meta that is all digits. (#125 then moved
+the training week into that meta line, "Aug 13 · Training week 5 of 8", in the
+glossary's words, and Today's header has no reading.)
+
+**Colour on Today reports state only.** Three things wore an accent without one:
+the verdict's first focus chip was always `stop` (the recommended "repeaters" in the
+stop colour), the streak was vermilion (a red **0** on the rest day that reset it),
+and the bodyweight change was teal for a loss and gold for a gain, on a violet line.
+The chips are neutral, `Stat` lost its `accent` prop, and bodyweight is in ink.
+
+**The plan card leads with today.** Today's headline (13px ink) and the day's
+supporting work come first, and the block phase follows in one faint line. It was
+the other way round, the phase in chalk and today's headline in the faintest line,
+though the phase's banner is the same text for weeks.
+
+**Heights.** Seeded at 360px, Today measures 2487px in en-US and 2527px in pt-BR
+(4361px before #116, 2521px after it); at 1280px, 1490px and 1507px. The floor of 75
+elements still sits a quarter under the 104 `check:contrast` counts.
+
+## Train with one task open
+
+Built by [#118](https://github.com/YgorPerez/send-lab/issues/118) from spec #113's
+Train decisions.
+
+**One primary, and the clock is a tool.** "Finish and log the session" is the only
+`primary`. Every control in a clock's row off its field is `button({ kind: 'clock' })`,
+on Train's strip, on the Timer list's mini bar, in the full-screen clock's ready Start
+and its paused row (back, resume, reset), and on the stopwatch, so the Timer screen has
+no primary at all. The task card's clock button, which says which task the clock runs,
+takes the selection mark (chalk on `panel-3`); it was vermilion, a second one next to
+the primary.
+
+**One task open, chosen by the page.** `train.tsx` holds `chosen`: `null` means "the
+task being worked on", re-derived each render by `currentTask` (`lib/screens/train.ts`):
+the first with a set left that today's verdict did not hold, then held work. A tap pins
+another task or folds the open one. A tick that finishes the open task hands the choice
+back to the default, so the next opens without anything having to notice. Before this,
+every task drew everything and seeded Train ran to 3,909px; it is 1,614px now (360px,
+seeded), 1,796px empty.
+
+**Two departures from the spec's wording, on purpose.** The spec opens "the first task
+with an unticked set" (story 46, and *Implementation Decisions*). `currentTask` differs
+twice. It skips held work while any unheld task has sets left: held is a mark and not a
+lock, but the verdict held that task for today, so the screen does not lead with it,
+for the reason Today's "applies to" line skips it; held work still opens once it is all
+that is left. And "a set left" is measured against `setTarget`, the prescription's
+lower bound, not the rows: a task opens with one row, so "an unticked set" read
+literally folded a four-to-six-set task away after its first tick (next paragraph).
+Neither changes what the athlete can open; both change only which task opens unasked
+(#113's review).
+
+**A set left is counted against the prescription.** A task opens with one row, and the
+athlete adds the rest with Add set. Counting rows, ticking that one row finished a task
+prescribed four to six sets and folded it away from its own Add set. `setTarget` is the
+larger of the rows and the prescription's lower bound; the folded line, the header's
+reading and the advance all use it. Today's done (any set in the record) is a different
+rule and was left alone: changing it is domain behaviour.
+
+**A tick that moves on moves focus.** Folding the card unmounts the tick that did it, so
+focus fell to the page, and the next card could open under the sticky clock. The handler
+leaves a note in a ref, and an effect keyed on the open task scrolls the new card clear
+of the clock and focuses its header. Scroll the card, not the header: the card's
+`overflow-hidden` makes it a scroll container, and `scrollIntoView` on the header moved
+nothing (measured in the browser; jsdom has no `scrollIntoView` at all).
+
+**Held work is marked as Today marks it.** `heldToday` (`lib/screens/today.ts`) reads the
+same readiness draft Today writes, at mount, so a task does not become held mid-session.
+The warn chip sits at the end of the header line; pt-BR's reads "retido · prontidão" on
+both screens ("segurado" means insured).
+
+**The working-load ask is one step.** The ladder as one choice with nothing pressed (ADR
+0019), the chosen rung's field (labelled, not placeholdered: "Kg adici") or reason, one
+`quiet` Set load and the line saying what it waits for. It folds to "Not set yet" once a
+set is ticked on the task, since the athlete has trained past it.
+
+**Session tools after the tasks**, one `Section` in Inter: add exercise, repeat last
+session (its reason on the line, not in a `title`), the note with a visible label,
+minutes, the autosave line. Then the finish, disabled with its reason.
+
+**Not done here, and why.** Finish and Repeat last session have no handler; that predates
+#118, and wiring them is new behaviour (#126). The set rows were bordered boxes inside the
+card and the open card's band labels mono eyebrows; #125 made the sets rows of the card
+under hairlines and headed the bands in the section rank.
+
+## The Timer list
+
+Built by [#119](https://github.com/YgorPerez/send-lab/issues/119) from spec #113's
+Timer decisions.
+
+**Saved first.** Saved, then the stopwatch's row, Recent, Presets. The stopwatch
+stays one row with no heading of its own (a "Stopwatch" head over a "Stopwatch" row
+says it twice); its leading icon is what sets it apart from the protocol rows above.
+The sections sit `gap-sections` apart and their heads are `Section`s.
+
+**Presets are one `RowGroup`**, a `touch` row per exercise (its name and a count),
+`multiple`. Today's groups lead it, open, each head saying "Today": `todaysPresetGroups`
+(`lib/screens/timer.ts`) reads the plan's exercises for today and keeps those with
+presets, in list order, read once at mount. Seeded Thursday leads with Sloper Density
+and Abrahangs; a rest day opens none and keeps the library's order. Inside a group the
+presets are lines in the card, not surfaces of their own (a card is never inside a
+card), their names in the head's 15px so a child does not outrank its head.
+
+**Only a saved protocol has a ⋯ on the list** (Edit, Duplicate, Delete, Edit first).
+A preset's one action is a copy, and it is in the preset's ready state: on the list it
+was a menu of one item beside every preset, the loudest outline in the card, and it
+took 50px off every name (the critique's finding).
+
+**Each open group ends on its study**, through `StudyLink` (`Timer.tsx`): "Study:
+<title>" and the 12px external mark, on the rows' left edge, the same component the
+clock's ready state uses, so every citation on the Timer is one sentence shape. An
+exercise with no study (Wrist / Sloper Strength) has no line.
+
+**The selection is the bar's, plus Train's edge.** The protocol the clock is on (the
+row last opened, or the one the clock was left in) carries `aria-current="true"`, a
+`panel-3` surface, a `chalk/60` border and chalk on every line, with its shape line in
+semibold, since the name is semibold on every row. The border is not in the bar's mark
+and is needed here: the bar starts from faint ink on the ground, a row from ink on a
+panel, and the surface step (1.27:1) and chalk against ink (1.11:1) alone did not show
+which protocol the mini bar runs. Train's clock button and a picked option carry the
+same edge. A fresh visit marks nothing rather than whatever is listed first. The same
+protocol listed twice (Recent and its group) is marked twice.
+
+**Closing a group keeps the page as long as it was.** Presets is the end of the page,
+so a close near the end would clamp the scroll and slide the list under the finger.
+The page measures at the press, before the change renders (the panel takes 190ms to
+close, so nothing has moved when the render lands), and holds back at its end what
+the closing panel takes that the room below the screen cannot absorb; an open hands
+it back. The #111 version scrolled by what the head moved after the render, which
+reads zero once the panel animates.
+
+**The cue settings are the strip's screen action**, a 44px ghost square (no border:
+alone on the strip's right it is attached to nothing larger, and a border would sit
+on the strip's edges), its icon 20px at stroke 1.75. Its focus ring is drawn inside
+(`-outline-offset-2`): the control is the strip's full height and the global ring, 2px
+outside, fell off the top of the window.
+
+**Heights.** Seeded `/timer` at 360px: 1,747px (en-US), 1,807px (pt-BR), with
+today's two groups open; 1,685px at 1280px. Empty (the built-in week, same two groups):
+1,698px at 360px as `check:contrast` prints it. The spec's starting point was 2,192px.
+
+## Log as one timeline
+
+Built by [#120](https://github.com/YgorPerez/send-lab/issues/120) from spec #113's
+Log decisions.
+
+**One row per date.** `resolveLog` returns `days`, newest first, each a date with
+an optional `check` and an optional `session`, and `counts`. Reading a day used to
+mean matching two lists by date. A date with two checks keeps the later one (the
+athlete can re-check within a day, and the later answer set that day's verdict),
+so `counts.checkedDays` counts what the timeline shows, and the header says so: "15 days
+with a readiness check", not "15 readiness checks", which a re-checked day made untrue
+(#113's review). The closed row is one line on a
+common grid: the date (11px mono), the score, the day type the session recorded
+(13px; "No session" in faint ink when there is none), and its sets, counted
+("5 sets", never a bare number). The day type wraps at its spaces and the count
+drops under it when the two do not fit: pt-BR's "Limite / Potência" was cut at
+360px, and wrapping anywhere split "Performance" at 320px. An exercise logged
+with no numbers says "1 set, no numbers recorded" (`SetTable`'s `empty`), so the
+row's count matches what it opens to.
+
+**The score's colour is its verdict's state, on a mark.** `VERDICT_TONE` in
+`screens/log.ts`: `green` and `short` are ok, `moderate` and `tissue` warn, `rest`
+stop. The library paints `green` and `short` in vermilion, so a good day's score
+was red (spec story 61). The tone is an 8px dot beside the number, which stays
+ink: a dot needs 3:1 on whatever surface the row takes (the selected row is
+`panel-3`), where the accents as 11px text do not clear 4.5:1 there. Today's
+verdict dot reads the same map since #125 (`verdictTone` in `format.ts`, the dot's
+class from `STATE_MARK` in `variants.ts`).
+
+**The header says what it counts.** "28 sessions · 15 readiness checks" is the
+meta line, Inter, singular at one (the message format has no plurals, so each
+count has a `_one` and an `_other` key). The title is the bar's word, "Log" /
+"Registro", as Train's is.
+
+**A phone opens on the timeline; the pane beside it always shows a day.** The
+open row (`open`, a phone's accordion) and the day the pane shows (`picked`, from
+`lg`) are two pieces of state. Nothing is open on arrival: the first build opened
+the newest day, about 650px of detail repeating what its row already said, and
+the critique found the phone's first screen spent on it. The pane shows the last
+day opened, the newest until one is, and closing a row leaves it there, so a wide
+screen never shows an empty second pane. A day opens to its check (the score
+and verdict, its flags in their severity's tone as on Today, each question against its answer, the outcome) and its
+session (each exercise's sets, the note), each under an Inter head with its time
+or length on the right. "Conclusion" and "Your responses" are gone: the glossary
+rules out *conclusion* for the verdict, and the answers need no label under the
+check's head.
+
+**From `lg` the open day sits beside the timeline**, in `Panes`' second pane, held
+in view (`stickySecondary`). The pane is a `section` named by its date and a tab
+stop, capped at the window less 116px and scrolling inside itself: any taller and
+at the page's end the grid's bottom pushed it under the strip. The rows are
+`aside`: from `lg` their panels and chevrons are hidden and the `current` row is
+marked with the selection language plus the chalk edge (`panel-3`, a `chalk/60`
+inset ring, chalk on every line). The timeline is headed by a visually hidden h2,
+because each row is an `h3`. The detail is rendered twice, once in the row's panel and once in
+the pane, and CSS shows one: the pane is not on a phone at all, so the split stays
+contiguous in the phone order. Nothing reads the viewport (ADR 0018).
+
+**The tapped head stays under the finger** (`useRowsInPlace`, promoted from the
+Timer's preset groups now a second list needs it). Two things move it. A list at
+the page's end that closes a row shortens the page under the scroll position:
+`RowsEnd`, put last on the page, takes what the room below the screen cannot
+absorb. And with one row open at a time, opening a row below the open one closes
+the one above, so the head rises by that row's height: the page follows it,
+scrolling by what it moved each frame for as long as the panel takes to close.
+Measured in Chrome at 360px: a head at y=500 stays at 500 on every frame while a
+632px day above it closes, animated and under reduced motion; closing the last
+open day at the page's end holds 375px and hands it back on the next open. A
+closed panel has no `aria-controls` in Base UI, so the head is found by
+`aria-expanded`.
+
+**Heights.** Seeded `/log` at 360px: 1,713px (2,235px before #120); at 1280px,
+1,636px. Empty: the viewport at both widths.
+
+## Week: the training week and the day under it
+
+Built by [#121](https://github.com/YgorPerez/send-lab/issues/121) from spec #113's
+Week decisions (stories 65–68).
+
+**The grid is headed in the glossary's words.** The section head is "Training week
+5 of 8" / "Semana de treino 5 de 8" (`wk_training_week`, the total from
+`record.program.weeks` through `WeekScreen.weekCount`), in Inter, with the
+adherence on the right as a phrase ("1 of 6 trained"). "Microcycle" is gone, and so
+is the header's "Week 5 / 8" reading, which said "Week" a second time beside the
+title. The title stays the bar's word, "Week" / "Semana", as on every screen: it is
+the page's name (spec story 3), and every place the page names the thing it shows
+says *training week*. `tests/week.test.ts` asserts no other bare "week" in either
+locale, aria-labels included.
+
+**A slot's state is a shape and a colour** (`SLOT_MARK` in `routes/week.tsx`), 12px:
+trained a filled teal disc, missed a vermilion cross, today a gold ring with a
+centre, to come an empty faint ring, rest a faint dash. #63's 6px dots were told
+apart by hue alone, and teal and gold have the same luminance (1.00:1 against
+each other), so for the athlete they differed only in hue; rest was a `--line` ring
+at 1.56:1 on the cell. Every mark now clears 3:1 on both cell surfaces, the lowest
+being vermilion on the selected `panel-3` at 3.86:1; the test reads the tokens from
+`app.css` and measures it. One cell still carries one colour system: the marks are
+the cell's only colour, and the day type's accent stays on the day below.
+
+**A legend over the grid, not under it,** so nothing sits between the grid and the
+day it selects. It draws the same marks, in the order trained, missed, today, to
+come, rest, as a list a screen reader can read (named "Key"), so `check:contrast`
+measures its words. Its items sit 10px apart: pt-BR's five measure 288px, so at
+14px "Descanso" wrapped alone at 360px, and at 10px they fit in 328px. At 320px it
+wraps to two lines.
+
+**The selected day sits directly under the grid** on a phone, and beside it from
+`lg` (`Panes`, as before; `lg:grid-cols-7` kept). Its head names the weekday and
+the day type ("Thu · Pull"), so it says which cell it answers; the state is on the
+right as the legend draws it, then the load as a neutral chip. #63 tinted the load
+chip by the slot's state, which painted a missed day's "HIGH" vermilion as if the
+load were the alarm. A rest day's head already says rest, so its state word and
+its load chip are left out there: the library's load for rest is "OFF", and the
+glossary rules out *off day* (#121's critique). The headline and subhead take
+Today's plan-card recipe (13px medium ink over 11px dim), so the same day reads at
+one rank on both screens. Every cell `aria-controls` the day. A done task says so to a
+screen reader (its ✓ is hidden).
+
+**The selected cell** is the selection language with the chalk edge: `panel-3`, a
+`chalk/60` border, the weekday chalk and semibold. A rest cell has no count (its
+mark says rest; #63's faint "—" measured 4.27:1 on the selected surface), and the
+other counts went from 10px to the ramp's 11px. A count is teal once any of the
+slot's work is ticked, chalk until then: today's slot keeps its today mark when it
+is trained, so its count is where the head's "1 of 6 trained" finds its slot. A rest cell's name says rest once
+("Sun · Rest", not "Sun · Rest · Rest · Rest").
+
+**Ready to fold into Program (#65).** The grid section names its own week, so the
+header carries nothing a second week would contradict: Program can stack one such
+section per training week, each with its own head, legend and grid, and keep the
+day panel as the one place a slot is read in full. Nothing in it reads the page.
+`Row`'s `aside`/`current` and `Panes`' `stickySecondary` (#120) were not needed: the
+day is short enough that the window shows both panes whole at 1280px.
+
+**Heights.** `/week` is the viewport at 360px and 1280px, seeded and empty, as it
+was. `check:contrast` 38 elements seeded / 37 empty at 360px (39 / 38 at 1280px).
+
+## The consistency sweep
+
+Done by [#125](https://github.com/YgorPerez/send-lab/issues/125), the last ticket
+of the overhaul ([#113](https://github.com/YgorPerez/send-lab/issues/113)): all
+eight screens reviewed together from a contact sheet (360px and 1280px, both
+locales, seeded and empty), with a cross-screen critique over it. What the
+screens now share, and the two gates that keep it.
+
+**One of each.** One section rank, `.h-section`, Inter (the mono caps rule and
+`Section`'s `face` are gone). One meta rank for everything on a header's or a
+section's right that is words. One state mark (`STATE_MARK` in `variants.ts`):
+Today's verdict, Log's score and a flag's title draw the same dot from the same
+map, and the verdict's state is `verdictTone` (`format.ts`), never the library's
+colour. One way a day is drawn: the day type heads it with its load as a neutral
+chip (none on a rest day), the headline sits beside the day type's accent, and
+each task line leads with a mark that clears 3:1 and ends in the held chip when
+this morning's check took it off the plan, on Today, Train and Week alike. One way
+a held control says why: a `Notice` under it, described by it (warn when
+something has to change first, info when nothing can). One label for a set's
+column on Train and Log, units included.
+
+**The training week is said in the glossary's words wherever it appears.** Today's
+meta reads "Aug 13 · Training week 5 of 8", as Week heads its grid. The bare "Week
+5 / 8", with the 8 written into the message, is gone.
+
+**A language switch keeps the athlete where they were.** The root re-keys the
+tree on a switch, so the pressed button went with the old language and focus fell
+to `body`; the press leaves a note outside the tree, and the new language's row
+focuses its pressed choice. And `<html lang>` follows the live locale once the app
+has hydrated (the baked shell keeps "en", ADR 0006).
+
+**Week's grid is one radio group.** Seven `aria-pressed` toggles were seven tab
+stops for one answer. It is the APG radio group on buttons (a cell holds more than
+a native radio can): one stop, arrows move through the week and the day follows.
+
+**Two gates in `pnpm verify`, each with its own control.**
+
+- `tests/typeRamp.test.ts`: every `text-[Npx]` and CSS `font-size` in `src/` is a
+  step of DESIGN.md's ramp (9, 10, 11, 13, 14, 15, 16, 17, 21, 22, 30), the
+  clock's own sizes only in the clock's five files, and DESIGN.md names every
+  step the test allows. The sweep moved 19 off-ramp literals (10.5, 11.5, 12,
+  12.5, 13.5px) to the nearest step. A new size is a line in DESIGN.md › Hierarchy
+  and an entry in the test, on purpose: that is two places to argue it.
+- `tests/focusRing.test.ts`: an `outline-none` sits beside the ring that replaces
+  it, on an element only script focuses (`tabIndex={-1}`), or on a menu item. It
+  found the Timer editor's typed numbers, which #124 had named.
+
+Both controls are the same shape as the hover gate's: the scan must find what the
+app has (a scanner that stops matching reports a clean tree), and a planted
+offender must be caught.
+
+**And the harness tells the truth about the device.** `--desktop` now really
+hovers (*Measuring it*, below): the gates that ran "with hover" since #52 never
+had.
+
+**Heights after the sweep** (`check:contrast`'s summary, seeded at 360px): `/`
+2,577px, `/train` 1,618, `/timer` 1,807, `/log` 1,713, `/settings` 975, `/welcome` 969,
+`/week` and `/login` the viewport. At 1280px: `/` 1,516, `/train` 1,521, `/timer` 1,685,
+`/log` 1,636, `/settings` 909, `/welcome` 941. Element counts moved by at most two;
+floors unchanged.
+
+## The one primary
+
+The spec's rule is one `primary` per screen (spec #113, Testing Decisions), and
+`tests/primaries.test.ts` counts it on all eight screens, seeded and empty, in both
+locales, and on every intake step. The primary marks the action a screen exists
+for, so four screens have one and four have none, on purpose:
+
+| Screen | Primaries | The one, or why none |
+|---|---|---|
+| Today | 1 | Answer the check while it is unanswered; Go to Train once it is (#117) |
+| Train | 1 | Finish and log the session, disabled with its reason until a set is ticked (#118) |
+| The intake | 1 per step | The step's advance; Start training on the proposal (#123) |
+| Sign-in | 1 | The submit (#124) |
+| Timer | 0 | The list is picked from, not finished, and every clock control is `kind: 'clock'`, a tool on the screen (#118, answered on #119) |
+| Settings | 0 | A list of controls has none: no control is what the athlete came to do. The primary is the `AlertDialog`'s confirm, the only action on its surface (since #62) |
+| Log | 0 | Read-only: there is no action the screen exists for. Its rows open a day; the empty timeline's Go to Today is `quiet`, a way out rather than the screen's purpose |
+| Week | 0 | Read-only the same way: its only controls pick which day the page shows, and nothing on it is finished |
+
+A dialog is its own surface and is not counted on the screen under it.
 
 ## The idiom
 
@@ -495,12 +1238,11 @@ remembered.
 - **Three ranks of type, differing on size, weight *and* colour at once.**
   `.h-screen-title` / `.h-section` / `.eyebrow`, with `.microlabel` below them for
   a four-column grid. One rank doing two jobs is what made Today read as one long
-  list. **The Timer screens set the section rank in Inter** (`.h-section-sans`,
-  14px semibold `--ink-dim`): #110 decided that Roboto Mono leaves their headings
-  and labels, so the list's group heads, the editor's group heads and its name
-  label, and the clock's Adjust share that one class rather than a size each. Same
-  rank and job as `.h-section`; the other screens keep the mono one until a ticket
-  moves them. A preset group's head is not a rank but a row: a disclosure as
+  list. **The section rank is Inter** (`.h-section`, 14px semibold `--ink-dim`):
+  #110 took Roboto Mono out of the Timer screens' headings, every screen of #113
+  followed, and #125 dropped the mono caps rule. The list's group heads, the
+  editor's group heads and its name label, the clock's Adjust, Log's day detail and
+  Train's open card all share that one class rather than a size each. A preset group's head is not a rank but a row: a disclosure as
   tall as the rows it opens, set in the row's 15px.
 - **44px for anything touched mid-set, 48px for the timer.** The timer is
   operated without looking at it; the set grid cannot afford 48px without pushing
@@ -529,6 +1271,18 @@ remembered.
   — the week could not tell "still to come" from "you missed it". State won,
   because it is the question the page is opened for; the accent moved to the panel
   below, attached to the day type's own name.
+- **tailwind-merge only drops a class it knows conflicts.** With the spacing
+  tokens unknown to it, `cn('gap-sections', 'gap-6')` kept both, the
+  stylesheet's order picked the winner, and Train and the Timer each grew 28px.
+  `cn` and the `ui/variants.ts` recipes merge with `twMergeConfig`, which names
+  the tokens. Found by screenshotting all eight routes against the base build
+  (#114).
+- **A spacing token's name becomes a utility under every spacing prefix.** The
+  section token was first called `section`, which made `h-section` a 28px
+  height on top of the type rank of the same name and doubled every section
+  heading's box on five screens. It is `sections`, and
+  `tests/spacingTokens.test.ts` refuses a token name that turns a class
+  `app.css` defines into a spacing utility (#114).
 - **`aria-label` replaces a control's content, it does not add to it.** A grid
   cell reading `Thu 1/4` labelled `"Thu · Pinch / Wrist · Today"` says *less* to a
   screen reader than the unlabelled button did — the count is gone. Whatever the
@@ -662,8 +1416,8 @@ announcement it is asking for.
 **Beside the wordmark, not beside the controls.** The strip is
 `justify-between`, so the left group is anchored left and the right group right. A
 token that appears and disappears on the left moves nothing; the same token on the
-right would slide the locale switch and the menu sideways every time a task is
-ticked. `tests/desktop.test.ts` holds the order.
+right would slide the screen action sideways every time a task is ticked.
+`tests/desktop.test.ts` holds the order.
 
 **Nothing on screen is the normal state, and it is the part that is easy to
 lose.** The ADR is explicit that the old app's always-on saved/saving status is
@@ -722,12 +1476,15 @@ gets the phone layout at a comfortable width. The number is derived rather than
 picked — a rail (200px) beside two columns of the 360px measure these screens were
 designed against, plus gutters, first fits at ≈992px, and `lg` is the next stop up.
 
-**The chrome.** `main` goes from `max-w-[520px]` to `max-w-[1000px]`, centred at
-both widths, and that is now the whole of it — see the ADR for why keeping the
-difference in CSS is a constraint rather than a style, and `tests/desktop.test.ts`
-for what enforces it.
+**The chrome.** `main` goes from `max-w-[520px]` to `max-w-[1000px]`, and the bar
+on the bottom edge becomes a 200px rail down the left (#115). From `lg` the measure
+is centred in what the rail leaves, and the strip's content sits in the same
+measure, so the wordmark and every title share a left edge. See the ADR for why
+keeping the difference in CSS is a constraint rather than a style, and
+`tests/desktop.test.ts` for what enforces it.
 
-> **Amended 2026-09-08.** This paragraph used to read "the three tabs move from the
+> **Superseded 2026-11-07 by #115, which brought the bar back with More; kept as
+> the record of why it went.** Amended 2026-09-08. This paragraph used to read "the three tabs move from the
 > bottom edge to a 200px left rail". **There is no tab bar and no rail.** #52's
 > claim that the app has exactly three destinations held while it had three pages
 > and produced one-offs as the rest arrived — a lone Settings gear in the strip, a
@@ -766,8 +1523,8 @@ does not get two columns.**
 
 | Page | Desktop | Why |
 |---|---|---|
-| `/` Today | **two columns** | Cut at the screen's own ordering rule: *decision + evidence* left, *input* right. Measured 3222 → 2019px (en-US), 3367 → 2035px (pt-BR) |
-| `log` | **two columns** | Two independent lists. Side by side the page is as tall as the longer one instead of their sum, and the summary line — which truncates first in pt-BR — gets a column wider than the whole phone |
+| `/` Today | **two columns** | Cut at the screen's own ordering rule: *decision + evidence* left (the read, the plan, the flags), *input + secondary* right (the outcome ask, counters, trend, bodyweight, injury; #117). Measured 3222 → 2019px (en-US), 3367 → 2035px (pt-BR) before the check sheet; 1452 / 1500px since #117 |
+| `log` | **two columns** | One timeline and the open day's detail beside it (#120). Until #120 the two columns were two independent lists, checks and sessions; the spec made them one list, and the second column holds what a row opens to. Seeded, 1,636px at 1280px against 1,459px as two lists, with the detail held in view; 1,713px at 360px against 2,235px |
 | `week` | **two columns** | Built ([#63](https://github.com/YgorPerez/send-lab/issues/63)) through `Panes` as expected: the slot grid and the day it selects are two halves, and the cut is already the phone order. The grid also goes `grid-cols-4` → `lg:grid-cols-7` — four columns is what 360px forces, seven is the shape |
 | `program` | **two columns, expected** | Unbuilt ([#65](https://github.com/YgorPerez/send-lab/issues/65)). A phase editor is the other shape that obviously wants a second column beside it |
 | `train` | **capped** | Defined by the posture it is used in. Seven loggable fields laid out against 360px, stretched to twice that, put the number being typed an inch from its label. Measured: the wide layout saves it 128px, which is the bottom bar |
@@ -801,7 +1558,7 @@ Both are answered once, and both are free on touch.
   four columns has the caret. `app.css` puts a 2px `--ring` outline back, offset so
   it survives on `bg-panel-2`. `:focus-visible` and not `:focus`, so a control the
   athlete just tapped does not keep a ring around it.
-- **Hit areas do not shrink.** 48px in the tab bar, 44px in the rail, 44px
+- **Hit areas do not shrink.** 48px in the bar, 44px in the rail, 44px
   everywhere touched mid-set. A pointer is precise enough for less; a second set of
   sizes is a second thing to keep in step, and the athlete gains nothing from it.
 - **The hover rule is a gate, not a convention.** `tests/desktop.test.ts` scans
@@ -814,8 +1571,15 @@ Both are answered once, and both are free on touch.
 ### Measuring it
 
 The **four** browser checks take `--desktop`, which picks a 1280×900 viewport
-*and* emulates `hover`/`pointer` — width alone is not enough, because under mobile
-emulation Chrome reports `hover: none` and every hover rule is inert.
+*and* a mouse: `hover: hover` and `pointer: fine` — width alone is not enough,
+because under mobile emulation Chrome reports `hover: none` and every hover rule is
+inert. **Until #125 it only asked for the mouse.** CDP's `setEmulatedMedia`
+accepts `hover` and `pointer` and headless Chrome ignores both, so every desktop
+run measured `hover: none` and `pointer: none` (#124 found it). The device is a
+launch flag now (`--blink-settings` pointer and hover types, `inputDevice` in
+`scripts/browser.ts`), and every session reads the media back before it measures
+and stops if it is not the device it asked for: a phone session must read `hover:
+none, pointer: coarse`, a desktop one `hover: hover, pointer: fine`.
 
 ```
 pnpm build

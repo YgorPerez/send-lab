@@ -147,6 +147,43 @@
 	--border: var(--line);
 	--input: var(--line);
 	--ring: var(--flag);
+
+	/* ---- the page gutter (#114) ----
+	   The one horizontal measure that changes at `lg`: 12px on a phone, where
+	   360px leaves 336px for the page, and 20px from `lg`, where the same value
+	   is also the space between two panes. A variable rather than two utilities,
+	   so `px-gutter` is right at both widths and nothing reads the viewport. */
+	--gutter: 0.75rem;
+
+	/* ---- the navigation (#115) ----
+	   What the rest of the page has to clear, as two variables rather than a
+	   height read in the shell (ADR 0006, ADR 0018).
+	     --nav-clear — how far the bar's top edge sits above the window's bottom:
+	                   its 56px and the home indicator on a phone, nothing from
+	                   `lg` (it is a rail there) or on the intake (there is none).
+	                   `main` pads by it; the update notice and the Timer's mini
+	                   bar sit on it.
+	     --nav-rail  — the rail's width: 200px from `lg`, nothing below it or on
+	                   the intake. The frame and the strip pad by it, so `main`'s
+	                   measure centres in what the rail leaves. */
+	--nav-clear: calc(3.5rem + env(safe-area-inset-bottom));
+	--nav-rail: 0px;
+}
+
+@media (width >= 64rem) {
+	:root {
+		--gutter: 1.25rem;
+		--nav-clear: 0px;
+		--nav-rail: 12.5rem;
+	}
+}
+
+/* The intake has no navigation (spec story 72), so nothing reserves room for it.
+   Decided from the matched route (`data-navigation` on the frame), never from the
+   viewport. */
+:root:has([data-navigation='none']) {
+	--nav-clear: 0px;
+	--nav-rail: 0px;
 }
 
 @theme inline {
@@ -159,6 +196,23 @@
 	   surface that sits in the page's column — `Pane`, the full-screen clock's
 	   rows, the editor, the mini bar — so they line up rather than nearly. */
 	--container-pane: 560px;
+
+	/* THE SPACING SCALE (#114, spec #113). Four steps and the gutter, each named
+	   for the job it does, so a screen says `gap-sections` and not a number it
+	   picked. The values are the ones the screens already used most; the space
+	   between things is always larger than the space inside them.
+	     sections — between the sections of a screen (and below its header): 28px
+	     group    — a heading to its body, and groups inside a section: 10px
+	     row      — rows in one list: 6px
+	     inset    — padding inside a group's surface (`Bare`'s rule, a small card): 12px
+	     gutter   — the page's side margin, and the gap between two panes: 12px, 20px from `lg`
+	   Every other Tailwind step stays available for the inside of a component; these
+	   are for the space *between* things on a page. DESIGN.md has the full rule. */
+	--spacing-sections: 1.75rem;
+	--spacing-group: 0.625rem;
+	--spacing-row: 0.375rem;
+	--spacing-inset: 0.75rem;
+	--spacing-gutter: var(--gutter);
 
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -224,6 +278,19 @@
 	   the unsynced work that queue exists to protect. */
 	html {
 		overscroll-behavior-y: contain;
+		/* A field or control reached by Tab, or scrolled to on focus, stops short
+		   of the bar instead of landing under it (#115). */
+		scroll-padding-bottom: var(--nav-clear);
+	}
+	/* From `lg`, a page that scrolls and one that does not are the same width
+	   (#115, DESIGN.md › The grid). Without it the scrollbar took 15px from a long
+	   page only, and its centred measure sat 7.5px left of a short one's, so the
+	   title moved sideways between screens. The full-screen clock turns this off
+	   while it is open (`html.clock-field` below). */
+	@media (width >= 64rem) {
+		html {
+			scrollbar-gutter: stable;
+		}
 	}
 	body {
 		@apply bg-background text-foreground font-sans;
@@ -290,7 +357,7 @@
 	   of them alone is too quiet to register.
 
 	   h1  — the screen. 21px, sans, one per screen.
-	   h2  — a section. 11.5px mono caps, semibold, `--ink-dim`.
+	   h2  — a section. 14px sans, semibold, `--ink-dim`.
 	   eyebrow — furniture: a field label, a unit, a meta reading. 10px, faint.
 
 	   They are classes rather than variants because they are typography, not
@@ -303,21 +370,11 @@
 		letter-spacing: -0.01em;
 		color: var(--ink);
 	}
+	/* The section rank, in Inter (#110 for the Timer screens, every screen by
+	   #123, the only section rank since #125). Sentence case: a section head is
+	   words, not furniture. It was 11.5px Roboto Mono caps at 0.12em, which made
+	   the first thing under every header read as a label. */
 	.h-section {
-		font-family: var(--font-mono);
-		font-size: 11.5px;
-		line-height: 1.2;
-		font-weight: 600;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--ink-dim);
-	}
-	/* The section rank, in Inter: the Timer screens' (#110 took Roboto Mono out
-	   of their headings and labels, so their section heads are words, not
-	   furniture). Same job and colour as `.h-section`, a step up in size because
-	   sentence case at 11.5px reads smaller than mono caps at it. The other
-	   screens keep `.h-section` until a ticket moves them. */
-	.h-section-sans {
 		font-size: 14px;
 		line-height: 1.2;
 		font-weight: 600;
@@ -359,6 +416,25 @@
 html.clock-field {
 	scrollbar-gutter: auto !important;
 	overflow: hidden !important;
+}
+
+/* The bar stands down while a field that opens the soft keyboard has focus
+   (#115, spec story 9). The viewport meta keeps the bar under the keyboard where
+   the browser honours `interactive-widget`; this covers the rest, where the
+   keyboard resizes the page and a bar fixed to its bottom would ride up over the
+   field being typed in. Below `lg` only: the rail covers nothing. CSS, so the
+   shell still reads nothing about the window. */
+@media (width < 64rem) {
+	html:has(
+			:is(
+				input:not([type='checkbox'], [type='radio'], [type='range'], [type='button'], [type='submit'], [type='reset']),
+				textarea,
+				[contenteditable='true']
+			):focus
+		)
+		[data-navigation-bar] {
+		display: none;
+	}
 }
 
 /* =========================================================================
@@ -420,18 +496,20 @@ html.clock-field {
 
    `defaultViewTransition: true` animates every navigation (#46). The chrome
    must not move: measured on the device (#54), a fixed bar survives a view
-   transition intact, so the top strip and the tab bar are lifted out of the
+   transition intact, so the top strip and the navigation are lifted out of the
    root snapshot by name and told to hold still. Only the screen crossfades and
    rises 6px — small on purpose. A dense screen sliding a long way reads as a
-   page turn; this wants the tab bar to feel like it stayed put and the content
+   page turn; this wants the bar to feel like it stayed put and the content
    under it to have been replaced.
 
    The corner flicker on the transitioning panel is a known device artefact,
    not something to design around.
    ------------------------------------------------------------------------- */
-/* `tabbar` left with the tab bar. The strip is the only chrome that has to hold
-   still now, so this is one name where it was two. */
-::view-transition-group(topbar) {
+/* The strip and the navigation (the bar on a phone, the rail from `lg`). The
+   menu's 2026-09-08 removal of the bar took this to one name; the bar's return
+   (#115) brings the second back under its own name. */
+::view-transition-group(topbar),
+::view-transition-group(navigation) {
 	animation: none;
 }
 

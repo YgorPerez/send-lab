@@ -31,8 +31,8 @@
 // for the machinery it needs. The permission prompt is asked for at the moment
 // the switch is turned on, not before.
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Check, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { Check, ChevronDown, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
 import { readToken, regenerateToken } from '$lib/apiTokenClient';
 import { useOnline } from '$lib/online';
 import * as m from '$lib/paraglide/messages';
@@ -47,7 +47,17 @@ import {
 } from '$lib/store/record';
 import { CueSettings } from '../components/CueSettings';
 import { AlertDialog } from '../components/ui/AlertDialog';
-import { Bare, ControlRow, Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
+import {
+	Bare,
+	ControlList,
+	ControlNote,
+	ControlRow,
+	Empty,
+	Notice,
+	Pane,
+	ScreenHeader,
+	Section,
+} from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { Switch } from '../components/ui/Switch';
 import { button, card } from '../components/ui/variants';
@@ -70,32 +80,27 @@ function Settings() {
 			    to need it. What stays is the line below it, which is this page's own
 			    half of the answer: not *that* the device is offline, but which of
 			    these controls that stops working. */}
-			<header className="pt-1.5">
-				<h1 className="h-screen-title">{m.sec_settings()}</h1>
-			</header>
+			<ScreenHeader title={m.sec_settings()} />
 
-			{online ? null : (
-				<p className="-mt-3 text-[12.5px] leading-snug text-ink-dim">{m.set_offline_note()}</p>
-			)}
+			{/* A notice about the whole page is the first group under the header,
+			    a sections gap below it (#122), not a second meta line pulled up
+			    into the header. Gold, as sign-in says offline: a warning about
+			    this device. */}
+			{online ? null : <Notice tone="warn">{m.set_offline_note()}</Notice>}
 
-			<Units prefs={prefs} />
-			<Language />
-			{/* The same rows the Timer screen opens from its header (#105). Two
-			    rows sharing an edge, so a card, as the units are. */}
+			{/* Every group below is the same thing (#122, spec story 69): an Inter
+			    section head over one `ControlList`, a card of 56px `ControlRow`s,
+			    whether it holds one row or four. The API token is the exception the
+			    group pattern names: prose, a config and actions, so a `Bare`. */}
+			<Display prefs={prefs} />
+			{/* The same rows the Timer screen opens from the strip (#105, #119). */}
 			<Section label={m.cues_title()}>
-				<CueSettings className={card({ pad: 'none', class: '[&>*]:px-3' })} />
+				<CueSettings />
 			</Section>
 			<Notifications cueNotices={prefs.cueNotices} />
 			<Account online={online} />
 		</Pane>
 	);
-}
-
-/** One line saying why a control did not do what was asked — a refused
- *  permission, a held sign-out, a token the server could not be reached for.
- *  Gold, because it is a warning about this device rather than a stop. */
-function Caveat({ children }: { children: ReactNode }) {
-	return <p className="text-[12.5px] leading-snug text-gold">{children}</p>;
 }
 
 const WEIGHT = [
@@ -107,31 +112,40 @@ const LENGTH = [
 	{ id: 'in', label: 'in' },
 ] as const;
 
-/** Display units. Storage is canonical — kilograms and millimetres, always —
- *  and these choose what the athlete reads. The unit codes are shown as-is in
- *  both locales: `kg` is `kg` in Portuguese, and it is an identifier rather than
- *  copy. Two rows sharing an edge, which is what earns the `card`. */
-function Units({ prefs }: { prefs: Prefs }) {
+/** What the athlete reads things in: the units and the language, one group
+ *  (#122, spec story 70: display choices live together).
+ *
+ *  Storage is canonical — kilograms and millimetres, always — and the units
+ *  choose what the athlete reads. The unit codes are shown as-is in both
+ *  locales: `kg` is `kg` in Portuguese, and it is an identifier rather than copy.
+ *  Set in Inter since #122, like every other choice on the page: mono is for
+ *  readings that are all digits, and `kg` is a word. */
+function Display({ prefs }: { prefs: Prefs }) {
+	const weightId = useId();
+	const lengthId = useId();
 	return (
 		<Section label={m.set_units()}>
-			<div className={card({ pad: 'none', class: 'divide-y divide-line-soft [&>*]:px-3' })}>
-				<ControlRow label={m.field_weight()}>
+			<ControlList>
+				<ControlRow id={weightId} label={m.field_weight()}>
 					<Segmented
 						value={prefs.weight}
 						options={WEIGHT}
 						onChange={(weight) => void writePrefs({ weight })}
-						className="num flex w-[132px] gap-1.5"
+						labelledBy={weightId}
+						className="flex w-[132px] shrink-0 gap-1.5"
 					/>
 				</ControlRow>
-				<ControlRow label={m.set_length()}>
+				<ControlRow id={lengthId} label={m.set_length()}>
 					<Segmented
 						value={prefs.length}
 						options={LENGTH}
 						onChange={(length) => void writePrefs({ length })}
-						className="num flex w-[132px] gap-1.5"
+						labelledBy={lengthId}
+						className="flex w-[132px] shrink-0 gap-1.5"
 					/>
 				</ControlRow>
-			</div>
+				<Language />
+			</ControlList>
 		</Section>
 	);
 }
@@ -151,16 +165,41 @@ const LANGUAGE_LABEL: Record<AppLocale, () => string> = { 'en-US': m.lang_en, 'p
  */
 function Language() {
 	const locale = currentLocale();
+	const id = useId();
 	return (
-		<Section label={m.lang_label()}>
-			<Segmented
-				value={locale}
-				options={APP_LOCALES.map((id) => ({ id, label: LANGUAGE_LABEL[id]() }))}
-				onChange={chooseLocale}
-				className="flex gap-1.5"
-			/>
-		</Section>
+		<ControlRow id={id} label={m.lang_label()}>
+			{/* `contents`: a box for the ref only, so the row lays out as before. */}
+			<div ref={refocusLanguage} className="contents">
+				<Segmented
+					value={locale}
+					options={APP_LOCALES.map((id) => ({ id, label: LANGUAGE_LABEL[id]() }))}
+					onChange={(next) => {
+						languageSwitched = true;
+						chooseLocale(next);
+					}}
+					labelledBy={id}
+					className="flex w-[184px] shrink-0 gap-1.5"
+				/>
+			</div>
+		</ControlRow>
 	);
+}
+
+/**
+ * Focus across a language switch (#125). The switch re-keys the whole tree
+ * (`__root.tsx`), so the button the athlete pressed is unmounted with the old
+ * language and focus fell to `body`: a keyboard started again from the top of
+ * the page. The press leaves a note here, outside the tree that is about to go,
+ * and the new language's row takes focus back on its pressed choice as it
+ * mounts. Module state, not React state: nothing in the old tree survives to
+ * hold it.
+ */
+let languageSwitched = false;
+
+function refocusLanguage(el: HTMLDivElement | null) {
+	if (!el || !languageSwitched) return;
+	languageSwitched = false;
+	el.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')?.focus();
 }
 
 /** Whether the browser can be asked at all, and what it has already said. Read
@@ -172,6 +211,7 @@ function notificationPermission(): NotificationPermission | 'unsupported' {
 function Notifications({ cueNotices }: { cueNotices: boolean }) {
 	const [refused, setRefused] = useState<'denied' | 'unsupported' | null>(null);
 	const labelId = useId();
+	const noteId = useId();
 	// The stored boolean is the switch — `cueNotices` as it exists (#62, point 4).
 	// Reconciling it against the browser's permission, so a revoked permission
 	// shows as off, is #81's "a switch that lies" and lands with the daily-notice
@@ -200,22 +240,26 @@ function Notifications({ cueNotices }: { cueNotices: boolean }) {
 
 	return (
 		<Section label={m.notifications_title()}>
-			{/* One row, so no `card`: a box around a single line is the furniture
-			    `Bare` exists to replace. */}
-			<Bare>
-				<ControlRow id={labelId} label={m.set_cue_notices_desc()}>
-					<Switch
-						checked={cueNotices}
-						onCheckedChange={(on) => void toggle(on)}
-						labelledBy={labelId}
-					/>
-				</ControlRow>
-			</Bare>
-			{refused ? (
-				<Caveat>
-					{refused === 'denied' ? m.notifications_denied() : m.notifications_unsupported()}
-				</Caveat>
-			) : null}
+			{/* One row, and still a card: a list of controls is a card of rows, one
+			    row or many (#122). As a `Bare` it was the one group on the page that
+			    looked like prose. */}
+			<ControlList>
+				<div>
+					<ControlRow id={labelId} label={m.set_cue_notices_desc()}>
+						<Switch
+							checked={cueNotices}
+							onCheckedChange={(on) => void toggle(on)}
+							labelledBy={labelId}
+							describedBy={refused ? noteId : undefined}
+						/>
+					</ControlRow>
+					{refused ? (
+						<ControlNote id={noteId} role="status">
+							{refused === 'denied' ? m.notifications_denied() : m.notifications_unsupported()}
+						</ControlNote>
+					) : null}
+				</div>
+			</ControlList>
 		</Section>
 	);
 }
@@ -274,6 +318,12 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 	// this screen's doing — the debounce fires after any write, including the units
 	// and language switches above, and the reconnect fires on its own.
 	const refusedWork = useRefusedWork();
+	const offlineId = useId();
+	const heldId = useId();
+	const refusedId = useId();
+	const described = [!online && offlineId, held && heldId, refusedWork && refusedId]
+		.filter(Boolean)
+		.join(' ');
 
 	// Sign-out only after the unsynced work has gone (#24, #58) — the half of it
 	// that can still go. Flushing first is the attempt; if anything is still
@@ -306,24 +356,41 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 
 	return (
 		<Section label={m.set_account()}>
-			<Bare className="flex flex-wrap items-center justify-between gap-3">
-				{/* The email is the session's answer, so offline on a cold load there
-				    is none: the eyebrow stands alone rather than showing a guess. */}
-				<div className="min-w-0">
-					<Eyebrow>{m.field_email()}</Eyebrow>
-					{email ? <p className="truncate text-[13px] text-ink">{email}</p> : null}
+			<ControlList>
+				<div>
+					{/* The email is the session's answer, so offline on a cold load
+					    there is none: the row says who is signed in only once it is
+					    known, and that someone is, which the store already knows. */}
+					<ControlRow
+						label={
+							<span className="block truncate" title={email ?? undefined}>
+								{email ?? m.set_signed_in()}
+							</span>
+						}
+					>
+						<button
+							type="button"
+							disabled={!online || busy}
+							onClick={() => void leave()}
+							aria-describedby={described || undefined}
+							className={button({ size: 'md', class: 'min-h-11 shrink-0' })}
+						>
+							{m.btn_sign_out()}
+						</button>
+					</ControlRow>
+					{/* Why Sign out is off or waiting, under it (#122's critique): at
+					    360px the page's offline line is two screens up. Each line is
+					    the button's description; the held one is a status, because
+					    it answers a tap. */}
+					{online ? null : <ControlNote id={offlineId}>{m.set_signout_offline()}</ControlNote>}
+					{held ? (
+						<ControlNote id={heldId} role="status">
+							{m.set_unsynced_holds_signout()}
+						</ControlNote>
+					) : null}
+					{refusedWork ? <ControlNote id={refusedId}>{m.set_refused_note()}</ControlNote> : null}
 				</div>
-				<button
-					type="button"
-					disabled={!online || busy}
-					onClick={() => void leave()}
-					className={button({ size: 'md', class: 'min-h-11' })}
-				>
-					{m.btn_sign_out()}
-				</button>
-			</Bare>
-			{held ? <Caveat>{m.set_unsynced_holds_signout()}</Caveat> : null}
-			{refusedWork ? <Caveat>{m.set_refused_note()}</Caveat> : null}
+			</ControlList>
 		</Section>
 	);
 }
@@ -364,6 +431,7 @@ function ApiToken({ online }: { online: boolean }) {
 	const [token, setToken] = useState<string | null>(null);
 	const [unreachable, setUnreachable] = useState(false);
 	const [revealed, setRevealed] = useState(false);
+	const [configOpen, setConfigOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [confirming, setConfirming] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -416,6 +484,7 @@ function ApiToken({ online }: { online: boolean }) {
 			setToken(fresh);
 			// Shown, so it can be copied into the client that just lost the old one.
 			setRevealed(true);
+			setConfigOpen(true);
 		} catch {
 			setUnreachable(true);
 		} finally {
@@ -430,58 +499,98 @@ function ApiToken({ online }: { online: boolean }) {
 
 	return (
 		<Section label={m.mcp_title()}>
-			<p className="text-[12.5px] leading-snug text-ink-dim">{m.mcp_desc()}</p>
-			<p className="text-[12px] leading-snug text-ink-faint">{m.mcp_agnostic_note()}</p>
+			{/* Not a list of controls but prose, a config and the actions on it, so
+			    the group pattern's other body: a `Bare` (DESIGN.md › The group
+			    pattern). */}
+			<Bare className="flex flex-col gap-group">
+				<p className="text-[13px] leading-snug text-ink-dim">{m.mcp_desc()}</p>
+				<p className="text-[13px] leading-snug text-pretty text-ink-faint">
+					{m.mcp_agnostic_note()}
+				</p>
 
-			<div>
-				<Eyebrow className="mb-1">{m.mcp_config_note()}</Eyebrow>
-				<pre
-					className={card({
-						pad: 'sm',
-						tone: 'inset',
-						class: 'num overflow-x-auto text-[11px] leading-relaxed text-ink-dim',
-					})}
+				{/* The config is for clients that take a file, and it was the tallest
+				    thing on the page, always open (#122's critique). A disclosure,
+				    closed, as the readiness sheet's "Why we ask" is (#125); the toggle
+				    that reveals the token in it is inside with it. Regenerating opens
+				    it, so the fresh token is on screen to be copied. */}
+				<details
+					open={configOpen}
+					onToggle={(e) => setConfigOpen(e.currentTarget.open)}
+					className="group"
 				>
-					{configFor(endpoint, revealed && token ? token : MASKED)}
-				</pre>
-			</div>
+					<summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-1 text-[13px] text-ink-dim transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+						{m.mcp_config_note()}
+						<ChevronDown
+							size={16}
+							strokeWidth={2}
+							aria-hidden="true"
+							className="transition-transform duration-200 group-open:rotate-180"
+						/>
+					</summary>
+					<div className="flex flex-col items-start gap-2 pb-1">
+						<pre
+							className={card({
+								pad: 'sm',
+								tone: 'inset',
+								class: 'num w-full overflow-x-auto text-[11px] leading-relaxed text-ink-dim',
+							})}
+						>
+							{configFor(endpoint, revealed && token ? token : MASKED)}
+						</pre>
+						<button
+							type="button"
+							disabled={!available}
+							aria-pressed={revealed}
+							onClick={() => setRevealed((r) => !r)}
+							className={button({ size: 'md', class: 'min-h-11' })}
+						>
+							{revealed ? (
+								<EyeOff size={16} aria-hidden="true" />
+							) : (
+								<Eye size={16} aria-hidden="true" />
+							)}
+							{revealed ? m.mcp_hide() : m.mcp_reveal()}
+						</button>
+					</div>
+				</details>
 
-			{!online || unreachable ? <Caveat>{m.set_token_unavailable()}</Caveat> : null}
+				{/* Offline nothing was asked, so the line says what the token waits for;
+				    online, a request that failed says the server could not be reached. */}
+				{!online ? (
+					<Notice tone="warn">{m.set_token_offline()}</Notice>
+				) : unreachable ? (
+					<Notice tone="warn">{m.set_token_unavailable()}</Notice>
+				) : null}
 
-			<div className="flex flex-wrap gap-2">
-				<button
-					type="button"
-					disabled={!available}
-					onClick={() => void copy()}
-					className={button({ size: 'md', class: 'min-h-11' })}
-				>
-					{copied ? <Check size={14} /> : <Copy size={14} />}
-					{copied ? m.mcp_copied() : m.mcp_copy()}
-				</button>
-				<button
-					type="button"
-					disabled={!available}
-					aria-pressed={revealed}
-					onClick={() => setRevealed((r) => !r)}
-					className={button({ size: 'md', class: 'min-h-11' })}
-				>
-					{revealed ? <EyeOff size={14} /> : <Eye size={14} />}
-					{revealed ? m.mcp_hide() : m.mcp_reveal()}
-				</button>
-				<button
-					type="button"
-					disabled={!online}
-					onClick={() => setConfirming(true)}
-					className={button({ size: 'md', class: 'min-h-11' })}
-				>
-					<RefreshCw size={14} />
-					{m.mcp_regenerate()}
-				</button>
-			</div>
+				<div className="flex flex-wrap gap-2">
+					<button
+						type="button"
+						disabled={!available}
+						onClick={() => void copy()}
+						className={button({ size: 'md', class: 'min-h-11' })}
+					>
+						{copied ? (
+							<Check size={16} aria-hidden="true" />
+						) : (
+							<Copy size={16} aria-hidden="true" />
+						)}
+						{copied ? m.mcp_copied() : m.mcp_copy()}
+					</button>
+					<button
+						type="button"
+						disabled={!online}
+						onClick={() => setConfirming(true)}
+						className={button({ size: 'md', class: 'min-h-11' })}
+					>
+						<RefreshCw size={16} aria-hidden="true" />
+						{m.mcp_regenerate()}
+					</button>
+				</div>
 
-			<p className="text-[12px] leading-snug text-ink-faint">
-				{m.mcp_connector_note({ url: endpoint })}
-			</p>
+				<p className="text-[13px] leading-snug text-pretty text-ink-faint">
+					{m.mcp_connector_note({ url: endpoint })}
+				</p>
+			</Bare>
 
 			{/* Regeneration is the alert-dialog case: it invalidates a token the
 			    athlete has configured in another client, and nothing here can undo it. */}

@@ -159,7 +159,7 @@ function EditorForm({
 			<div className="flex-1 overflow-y-auto">
 				<div className="mx-auto flex w-full max-w-pane flex-col gap-4 px-5 pt-2 pb-6">
 					<div className="flex flex-col gap-1.5">
-						<label htmlFor={`${id}-name`} className="h-section-sans">
+						<label htmlFor={`${id}-name`} className="h-section">
 							{m.timer_name()}
 						</label>
 						<input

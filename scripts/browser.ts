@@ -24,6 +24,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { landedOn } from './landed.ts';
 import { clientOutputDir } from './output-dir.ts';
 import { LOCALE_KEY } from './paraglide-strategy.ts';
 import { discoverRoutesIn } from './routes.ts';
@@ -286,6 +287,41 @@ async function connect(port: number): Promise<Cdp> {
 	};
 }
 
+// -------------------------------------------------------- the input device
+
+/**
+ * What the page is told it is driven by: a mouse that hovers (`--desktop`) or a
+ * finger that does not (the phone).
+ *
+ * A launch flag, not `Emulation.setEmulatedMedia`. Headless Chrome accepts
+ * `hover` and `pointer` there and ignores them: with no real device it reports
+ * `hover: none` and `pointer: none` whatever it is asked, so until #125 no
+ * `hover:` utility (Tailwind puts every one inside `@media (hover: hover)`) was in
+ * force in any desktop run, contrary to what this file said. Blink's own
+ * settings set the device the media queries read: pointer 4 is fine and 2
+ * coarse, hover 2 is hover and 1 none.
+ *
+ * `expect` is what `INPUT_DEVICE_CHECK` must read back in the page.
+ */
+export function inputDevice(desktop: boolean): { flag: string; expect: string } {
+	return desktop
+		? {
+				flag: '--blink-settings=primaryPointerType=4,availablePointerTypes=4,primaryHoverType=2,availableHoverTypes=2',
+				expect: 'hover: hover, pointer: fine',
+			}
+		: {
+				flag: '--blink-settings=primaryPointerType=2,availablePointerTypes=2,primaryHoverType=1,availableHoverTypes=1',
+				expect: 'hover: none, pointer: coarse',
+			};
+}
+
+/** Read back in the page: the device its media queries see. */
+export const INPUT_DEVICE_CHECK = `(() => {
+	const hover = matchMedia('(hover: hover)').matches ? 'hover' : matchMedia('(hover: none)').matches ? 'none' : '?';
+	const pointer = ['fine', 'coarse', 'none'].find((p) => matchMedia('(pointer: ' + p + ')').matches) ?? '?';
+	return 'hover: ' + hover + ', pointer: ' + pointer;
+})()`;
+
 // -------------------------------------------------------------- the session
 
 export interface Session {
@@ -343,9 +379,11 @@ export interface OpenOptions {
 	 * emulation. So a desktop run at `--width=1280` without this measures the wide
 	 * layout with every hover state switched off, which is not what a laptop gets.
 	 *
-	 * Emulated at the browser, like `prefers-reduced-motion` above and for the same
+	 * Set at the browser, like `prefers-reduced-motion` above and for the same
 	 * reason: a stylesheet cannot be tricked into matching a media query from
-	 * inside the page.
+	 * inside the page. Through a launch flag (`inputDevice`), because the CDP
+	 * emulation of `hover` is ignored headless, and checked in every session
+	 * before anything is measured (#125).
 	 */
 	desktop?: boolean;
 	/** Serve this origin instead of the built output (`--url=…`). */
@@ -396,6 +434,7 @@ export async function open(options: OpenOptions): Promise<Session> {
 		'--no-default-browser-check',
 		`--user-data-dir=${profile}`,
 		`--window-size=${width},${height}`,
+		inputDevice(options.desktop ?? false).flag,
 		'about:blank',
 	]);
 	chrome.on('error', () => fail(`could not start Chrome at ${chromePath}`));
@@ -452,14 +491,10 @@ export async function open(options: OpenOptions): Promise<Session> {
 					name: 'prefers-reduced-motion',
 					value: options.reducedMotion ? 'reduce' : 'no-preference',
 				},
-				// Set on both runs rather than only the desktop one, so a phone
-				// measurement asserts `hover: none` instead of inheriting whatever the
-				// headless default happens to be — the same trap the note above records
-				// for `prefers-reduced-motion`, which defaults to `reduce` here.
-				{ name: 'hover', value: options.desktop ? 'hover' : 'none' },
-				{ name: 'any-hover', value: options.desktop ? 'hover' : 'none' },
-				{ name: 'pointer', value: options.desktop ? 'fine' : 'coarse' },
-				{ name: 'any-pointer', value: options.desktop ? 'fine' : 'coarse' },
+				// Not `hover` or `pointer`: headless Chrome accepts them here and
+				// ignores them (#124 measured `(hover: hover)` false under `--desktop`,
+				// so no hover rule was ever in force in a desktop run). The input
+				// device is a launch flag instead; see `inputDevice` above.
 			],
 		});
 
@@ -471,9 +506,68 @@ export async function open(options: OpenOptions): Promise<Session> {
 			})) as { result?: { value?: T } };
 			return r.result?.value as T;
 		};
+		// THE INPUT-DEVICE CONTROL. Every session asks the page which device it
+		// is on before anything is measured, and stops if the answer is not the
+		// one it asked for. Without it a Chrome that stops honouring the flag
+		// turns every desktop run back into a run with no hover rule in force,
+		// and every measurement still passes.
+		const device = inputDevice(options.desktop ?? false);
+		const reported = await evaluate<string>(INPUT_DEVICE_CHECK);
+		if (reported !== device.expect) {
+			fail(
+				`the browser reports ${reported ?? 'nothing'} where this session asked for ${device.expect}.\n` +
+					'  Hover and pointer rules would be measured on the wrong device: nothing\n' +
+					'  this run reports would describe the machine it claims to.',
+			);
+		}
+
+		/**
+		 * Navigate, and come back once the document on screen is at `url` and has
+		 * lived `settleMs`.
+		 *
+		 * The age is the document's, not the wait's (#122). A page that is
+		 * replaced after the navigation (a reload) is younger than the wait, and
+		 * reading it then reads whatever it has drawn so far: the baked shell,
+		 * before the app hydrates. That is how `check:contrast --desktop` came to
+		 * read `/settings` at 7 elements against a floor of 12, about one run in
+		 * six: the service worker's first install claimed the page and the app
+		 * reloaded it, and when the claim landed just before the reading, the gate
+		 * measured the shell. The app no longer reloads on a first install
+		 * (`lib/appUpdate.ts`), and this keeps any other reload from turning into a
+		 * reading of a page that never got its time.
+		 *
+		 * And the document must be at the URL asked for (#113's review). Age
+		 * alone accepted any old-enough document, wherever it was: a page that
+		 * ended up on another route (a redirect, a `history.replaceState`) was
+		 * measured and reported as the route asked for. `landedOn`
+		 * (`scripts/landed.ts`) is the comparison. Control, run on the review:
+		 * a page that replaces `/train` with `/log` on load fails here, and the
+		 * age-only `goto` read it as `/train`. (A request held back never gets
+		 * this far: `Page.navigate` waits for the commit. A navigation blocked
+		 * outright leaves an empty page at the target URL, which no URL check
+		 * sees; each gate's element floor does.)
+		 */
 		const goto = async (url: string) => {
 			await cdp.send('Page.navigate', { url });
-			await new Promise((r) => setTimeout(r, settleMs));
+			let wait = settleMs;
+			let seen: { age: number; href: string } | undefined;
+			for (let tries = 0; tries < 5; tries++) {
+				await new Promise((r) => setTimeout(r, wait));
+				// `performance.now()` counts from this document's navigation. A reload
+				// in progress destroys the context mid-read; that is a young document.
+				seen = await evaluate<{ age: number; href: string }>(
+					'({ age: performance.now(), href: location.href })',
+				).catch(() => undefined);
+				const age = seen?.age ?? 0;
+				if (landedOn(url, seen?.href) && age >= settleMs) return;
+				wait = Math.max(50, landedOn(url, seen?.href) ? settleMs - age : settleMs);
+			}
+			fail(
+				landedOn(url, seen?.href)
+					? `${url}: the page kept reloading; no document lived ${settleMs}ms to be read`
+					: `${url}: the page on screen is ${seen?.href ?? 'unreadable'}, not the one asked for.\n` +
+							'  Whatever this run measured there would be reported as this route.',
+			);
 		};
 
 		// The boot state, installed as a script that runs before the page's own on

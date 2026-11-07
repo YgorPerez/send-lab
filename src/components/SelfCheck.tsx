@@ -16,14 +16,14 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { ExternalLink, X } from 'lucide-react';
 import { useState } from 'react';
-import { type BodyArea, type SelfCheckBand, scoreSelfCheck } from '$lib/content';
+import { type SelfCheckBand, scoreSelfCheck } from '$lib/content';
 import type { SelfCheckInstrument } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
 import * as m from '$lib/paraglide/messages';
 import type { SelfCheck } from '$lib/types';
 import { Eyebrow, Prose } from './ui/primitives';
-import { button, card, option } from './ui/variants';
+import { button, card, option, sheet } from './ui/variants';
 
 const BAND_LABEL: Record<SelfCheckBand, () => string> = {
 	manageable: m.deep_band_manageable,
@@ -59,13 +59,11 @@ const STAGE_DESC: Record<string, () => string> = {
 };
 
 export function SelfCheckSheet({
-	area,
 	instrument,
 	last,
 	open,
 	onOpenChange,
 }: {
-	area: BodyArea;
 	instrument: SelfCheckInstrument;
 	last: SelfCheck | null;
 	open: boolean;
@@ -79,40 +77,47 @@ export function SelfCheckSheet({
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-				<Dialog.Popup className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] max-w-[520px] flex-col rounded-t-xl border border-line bg-panel transition-transform duration-250 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full">
-					<div className="flex items-start gap-2 border-b border-line px-3 py-2.5">
+				{/* THE SHEET DIALECT (#117). It had its own: a rule under the header, a
+				    bordered close, 250ms and nothing at `lg`, one tap away from the
+				    readiness check's sheet on the same screen. Now it is that sheet's
+				    shape: the title and a 44px close on one line, 200ms from the bottom
+				    edge, and from `lg` a 400px dialog centred in the window that fades
+				    in. It is as tall as its content, up to just under the status bar. */}
+				<Dialog.Popup className={sheet({ height: 'content' })}>
+					<div className="flex items-center gap-2 py-1 pr-1 pl-4">
 						<div className="min-w-0 flex-1">
-							<Dialog.Title className="text-[15px] font-semibold text-ink">
+							<Dialog.Title className="text-[15px] leading-tight font-semibold text-ink">
 								{instrument.title}
 							</Dialog.Title>
-							<Eyebrow className="mt-0.5">{AREA_LABEL[area]?.() ?? area}</Eyebrow>
+							{/* The faint line under the title, where the readiness check keeps
+							    its progress: the last result, which is what the athlete compares
+							    a new one against. It named the body area until #117's critique,
+							    which the title already says. */}
+							{last ? (
+								<p className="mt-0.5 text-[11px] leading-tight text-ink-faint">
+									{m.deep_last({ score: last.score, date: displayDate(isoDayOf(last.at)) })}
+								</p>
+							) : null}
 						</div>
 						<Dialog.Close
 							aria-label={m.btn_close()}
-							className={button({ kind: 'quiet', class: 'size-11 shrink-0 px-0' })}
+							className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-dim transition-colors hover:bg-panel-2 hover:text-ink"
 						>
-							<X size={17} />
+							<X size={20} strokeWidth={1.75} aria-hidden="true" />
 						</Dialog.Close>
 					</div>
 
-					<div className="flex-1 overflow-y-auto px-3 py-3">
-						<p className="text-[12.5px] leading-snug text-ink-dim">{instrument.intro}</p>
-						{last ? (
-							<p className="num mt-1.5 text-[11px] text-ink-faint">
-								{m.deep_last({ score: last.score, date: displayDate(isoDayOf(last.at)) })}
-							</p>
-						) : null}
+					<div className="flex-1 overflow-y-auto px-4 pt-2 pb-4">
+						<p className="text-[13px] leading-snug text-ink-dim">{instrument.intro}</p>
 
-						<div className="mt-3.5 flex flex-col gap-3.5">
-							{instrument.questions.map((q, i) => (
-								<div key={q.id}>
-									<div className="flex gap-1.5 text-[13.5px] leading-snug font-medium text-ink">
-										<span className="num shrink-0 pt-px text-[11px] text-ink-faint">
-											{String(i + 1).padStart(2, '0')}
-										</span>
-										<span className="min-w-0">{q.q}</span>
-									</div>
-									<div className="mt-1.5 flex flex-col gap-1 pl-[22px]">
+						{/* Each question over full-width 48px lines in the 15px a thumb lands
+						    on, the readiness check's options (#117). They were 44px lines at
+						    13px, indented under a mono "01". */}
+						<div className="mt-sections flex flex-col gap-sections">
+							{instrument.questions.map((q) => (
+								<fieldset key={q.id} className="flex min-w-0 flex-col gap-group">
+									<legend className="text-[15px] leading-snug font-medium text-ink">{q.q}</legend>
+									<div className="flex flex-col gap-1.5">
 										{q.a.map((a) => (
 											<button
 												key={a.t}
@@ -122,14 +127,14 @@ export function SelfCheckSheet({
 												className={option({
 													on: answers[q.id] === a.v,
 													width: 'full',
-													class: 'min-h-11',
+													class: 'min-h-12 px-3 text-[15px]',
 												})}
 											>
 												{a.t}
 											</button>
 										))}
 									</div>
-								</div>
+								</fieldset>
 							))}
 						</div>
 
@@ -138,11 +143,11 @@ export function SelfCheckSheet({
 								<div className="flex items-baseline gap-2">
 									<Eyebrow>{m.deep_result()}</Eyebrow>
 									<span
-										className="num text-[20px] leading-none font-bold"
+										className="num text-[22px] leading-none font-bold"
 										style={{ color: BAND_COLOR[result.band] }}
 									>
 										{result.score}
-										<span className="text-[12px] text-ink-faint">/100</span>
+										<span className="text-[11px] text-ink-faint">/100</span>
 									</span>
 									<span
 										className="text-[13px] font-semibold"
@@ -151,7 +156,7 @@ export function SelfCheckSheet({
 										{BAND_LABEL[result.band]()}
 									</span>
 								</div>
-								<p className="mt-1.5 text-[12.5px] leading-snug text-ink-dim">
+								<p className="mt-1.5 text-[13px] leading-snug text-ink-dim">
 									{BAND_REC[result.band]()}
 								</p>
 								<div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -174,7 +179,7 @@ export function SelfCheckSheet({
 								className="inline-flex items-center gap-0.5 whitespace-nowrap text-ink-dim underline decoration-line underline-offset-2"
 							>
 								{m.deep_source_link()}
-								<ExternalLink size={9} />
+								<ExternalLink size={12} strokeWidth={2} aria-hidden="true" />
 							</a>
 						</p>
 					</div>
@@ -191,8 +196,13 @@ export function RehabStarter() {
 
 	if (!open) {
 		return (
-			<div className="flex items-center gap-2">
-				<p className="min-w-0 flex-1 text-[12px] leading-snug text-ink-dim">{m.rehab_desc()}</p>
+			// Wraps rather than squeezing: pt-BR's "Iniciar plano de reabilitação"
+			// left the sentence beside it a 130px column of seven lines at 360px
+			// (#117). Under 12rem of text, the button drops under it.
+			<div className="flex flex-wrap items-center gap-2">
+				<p className="min-w-48 flex-1 text-[13px] leading-snug text-pretty text-ink-dim">
+					{m.rehab_desc()}
+				</p>
 				<button
 					type="button"
 					onClick={() => setOpen(true)}
@@ -207,7 +217,9 @@ export function RehabStarter() {
 	return (
 		<div className="flex flex-col gap-2.5">
 			<div className="flex flex-col gap-1.5">
-				<Eyebrow>{m.rehab_area()}</Eyebrow>
+				{/* Each a question of its own, headed in the section rank as the
+				    intake's questions are, not the mono label rank (#125). */}
+				<p className="h-section">{m.rehab_area()}</p>
 				<div className="grid grid-cols-2 gap-1.5">
 					{['fingers', 'elbow', 'shoulder', 'wrist'].map((a) => (
 						<button
@@ -223,7 +235,7 @@ export function RehabStarter() {
 				</div>
 			</div>
 			<div className="flex flex-col gap-1.5">
-				<Eyebrow>{m.rehab_stage()}</Eyebrow>
+				<p className="h-section">{m.rehab_stage()}</p>
 				<div className="flex flex-col gap-1.5">
 					{['acute', 'subacute', 'returning'].map((s) => (
 						<button
@@ -244,7 +256,9 @@ export function RehabStarter() {
 			<div className="flex gap-1.5">
 				<button
 					type="button"
-					className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
+					// `quiet`: opened on Today, a filled one here was the screen's second
+					// primary (#117). The rationed fill is Today's own.
+					className={button({ size: 'md', class: 'min-h-11' })}
 				>
 					{m.rehab_apply()}
 				</button>

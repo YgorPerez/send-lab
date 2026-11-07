@@ -12,8 +12,8 @@
 // The rest is the same dense-but-ruled treatment as Today: one card per task,
 // three ruled bands inside it, no gaps to hunt across.
 import { createFileRoute } from '@tanstack/react-router';
-import { Plus, Repeat } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Check, Repeat } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { getContent } from '$lib/content';
 import {
 	asExerciseId,
@@ -27,21 +27,34 @@ import { nextSet, prefilledSet } from '$lib/loggedSet';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { protocolOf } from '$lib/protocol';
+import { useReadinessDraft } from '$lib/readinessDraft';
+import { heldToday, resolveToday } from '$lib/screens/today';
 import {
 	atVariant,
+	currentTask,
 	libraryTask,
 	type PrescribedTask,
 	resolveTrain,
+	setsDone,
+	setTarget,
 	withWorkingLoad,
 } from '$lib/screens/train';
 import { restoredSession, useSessionDraft } from '$lib/sessionDraft';
 import { useTrainingRecord } from '$lib/store/record';
 import { writeWorkingLoad } from '$lib/store/workingLoad';
-import type { WorkingLoad, WorkingLoadSource } from '$lib/types';
+import type { LoggedSet, WorkingLoad, WorkingLoadSource } from '$lib/types';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
-import { Empty, Eyebrow, Pane, Section, StickyStrip } from '../components/ui/primitives';
+import {
+	Empty,
+	Field,
+	Notice,
+	Pane,
+	ScreenHeader,
+	Section,
+	StickyStrip,
+} from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -94,7 +107,47 @@ function Train() {
 	// picks up the new protocol.
 	const [clockOpen, setClockOpen] = useState(false);
 
+	// HELD WORK, MARKED WHERE TODAY MARKS IT (#118, story 35). This morning's
+	// check is read from the same draft Today writes, and resolved against the
+	// same day, at mount, as the prescription is: a task does not become held
+	// under the athlete mid-session. Nothing is held until the check has a
+	// wellness answer (#61).
+	const [today] = useState(() => resolveToday(content, record, Date.now()));
+	const [answers] = useReadinessDraft(today.answers);
+	const held = useMemo(() => heldToday(today, answers), [today, answers]);
+
+	// WHICH TASK IS OPEN (#118, spec stories 46–48). Page state, and mostly not
+	// stored at all: `null` means "the task being worked on", which is
+	// `currentTask` — the first with a set left, held work last — re-derived
+	// every render, so
+	// ticking the open task's last set moves the screen on to the next without
+	// anything here having to notice. A tap on another task's header pins that
+	// one instead, and a tap on the open one folds it (`'none'`). Ticking the last
+	// set of a pinned task hands the choice back to the default, which is "moves
+	// the default on" for a task opened out of order too.
+	const [chosen, setChosen] = useState<TaskKey | 'none' | null>(null);
+	const openKey = chosen === 'none' ? null : (chosen ?? currentTask(tasks, held));
+
+	// WHERE THE SESSION MOVED ON TO. A tick that finishes the open task folds its
+	// card, which unmounts the tick and drops focus to the page, and the task
+	// that opens can land under the sticky clock. So a tick that moves the
+	// session on leaves a note here (in the handler, never in render), and once
+	// the next task is open its header is scrolled clear of the clock and takes
+	// focus, which also reads its name, count and state out. A tap that opens a
+	// task leaves no note: the athlete is already looking where they tapped.
+	const opened = useRef<HTMLButtonElement>(null);
+	const movedOn = useRef(false);
+	useEffect(() => {
+		if (!movedOn.current || openKey === null) return;
+		movedOn.current = false;
+		const header = opened.current;
+		header?.closest('[data-task-card]')?.scrollIntoView?.({ block: 'start' });
+		header?.focus({ preventScroll: true });
+	}, [openKey]);
+
 	const [note, setNote] = useState(initial.note);
+	const noPrevId = useId();
+	const finishHeldId = useId();
 	const [duration, setDuration] = useState(initial.duration);
 
 	useEffect(() => {
@@ -143,7 +196,26 @@ function Train() {
 			exercise,
 			taskKey(screen.week, screen.weekday, exercise),
 		);
-		if (next) setTasks((prev) => [...prev, next]);
+		if (next) {
+			setTasks((prev) => [...prev, next]);
+			// An exercise added mid-session is the one the athlete is about to do.
+			setChosen(next.key);
+		}
+	};
+
+	/** A set changed. Ticking the open task's last prescribed set hands the
+	 *  choice back to the default, which is the next task with a set left. */
+	const changeSet = (task: PrescribedTask, index: number, next: LoggedSet) => {
+		const sets = task.sets.map((s, j) => (j === index ? next : s));
+		update(task.key, (x) => ({ ...x, sets }));
+		const finishes =
+			task.key === openKey &&
+			setsDone(task) < setTarget(task) &&
+			setsDone({ sets }) >= setTarget({ ...task, sets });
+		if (finishes) {
+			movedOn.current = true;
+			setChosen(null);
+		}
 	};
 
 	const available = useMemo(
@@ -166,8 +238,9 @@ function Train() {
 		? protocolKeyOf(timerTask.key, timerTask.variantIndex)
 		: NO_PROTOCOL;
 
-	const totalSets = tasks.reduce((n, t) => n + t.sets.length, 0);
-	const doneSets = tasks.reduce((n, t) => n + t.sets.filter((s) => s.done).length, 0);
+	// The prescribed sets, as each folded task counts them (`setTarget`).
+	const totalSets = tasks.reduce((n, t) => n + setTarget(t), 0);
+	const doneSets = tasks.reduce((n, t) => n + setsDone(t), 0);
 
 	return (
 		// NO SECOND COLUMN, DELIBERATELY (#52). Train is the one screen defined by
@@ -177,15 +250,19 @@ function Train() {
 		// column twice that, put the number the athlete is typing an inch from its
 		// own label. So the page keeps the phone layout and caps itself, and the
 		// desktop width is spent on nothing.
-		<Pane className="gap-6">
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
-				<h1 className="h-screen-title min-w-0">
-					{m.sec_train()} · {screen.weekdayLabel}
-				</h1>
-				<span className="num shrink-0 text-[11px] text-ink-faint">
-					{doneSets}/{totalSets} {m.timer_sets().toLowerCase()}
-				</span>
-			</header>
+		<Pane className="gap-sections">
+			<ScreenHeader
+				title={
+					<>
+						{m.sec_train()} · {screen.weekdayLabel}
+					</>
+				}
+				reading={
+					<>
+						{doneSets}/{totalSets} {m.timer_sets().toLowerCase()}
+					</>
+				}
+			/>
 
 			{/* Sticky under the 44px app bar. The clock is the one element that has to
 			    survive scrolling to a set row three cards down. */}
@@ -209,20 +286,19 @@ function Train() {
 			{tasks.length === 0 ? (
 				<Empty value={m.train_no_work()} />
 			) : (
-				<div className="flex flex-col gap-2.5">
+				<div className="flex flex-col gap-row">
 					{tasks.map((t) => (
 						<TaskCard
 							key={t.key}
 							task={t}
+							open={t.key === openKey}
+							headerRef={t.key === openKey ? opened : undefined}
+							held={held.has(t.exercise)}
 							active={timerTask?.key === t.key}
+							onToggle={() => setChosen(t.key === openKey ? 'none' : t.key)}
 							onSelectVariant={(i) => selectVariant(t.key, i)}
 							onUseTimer={() => setPinnedKey(t.key)}
-							onChangeSet={(i, next) =>
-								update(t.key, (x) => ({
-									...x,
-									sets: x.sets.map((s, j) => (j === i ? next : s)),
-								}))
-							}
+							onChangeSet={(i, next) => changeSet(t, i, next)}
 							onAnswerLoad={(kg, source) => answerLoad(t, kg, source)}
 							onAddSet={() =>
 								update(t.key, (x) => ({
@@ -243,43 +319,57 @@ function Train() {
 				</div>
 			)}
 
-			<div className="flex flex-col gap-2">
-				<Picker
-					ariaLabel={m.wk_add_ex()}
-					value={null}
-					placeholder={m.wk_add_ex()}
-					options={available}
-					onChange={addExercise}
-					className="min-h-11 border-dashed"
-				/>
-				<button
-					type="button"
-					disabled={!screen.canRepeatLast}
-					title={screen.canRepeatLast ? undefined : m.train_no_prev()}
-					className={button({ size: 'md', class: 'min-h-11 self-start' })}
-				>
-					<Repeat size={14} />
-					{m.train_repeat()}
-				</button>
-			</div>
-
-			{/* The autosave line lives here rather than under the timer. It reports
-			    that the *session* is saved as it is typed, so it belongs with the
-			    session's own fields — under the timer it read as though it described
-			    the interval configuration, and it was one of the things making the
-			    sticky block taller than the thing it sits above. */}
-			<Section label={m.train_note()}>
-				<div className="flex flex-col gap-2">
-					<input
-						id="session-note"
-						className={input({ align: 'left', class: 'min-h-11 text-[14px]' })}
-						value={note}
-						placeholder={m.train_note()}
-						onChange={(e) => setNote(e.currentTarget.value)}
+			{/* SESSION TOOLS, AFTER THE TASKS (#118, spec story 52). What belongs to
+			    the session rather than to one task — another exercise, last session
+			    repeated, the note, the minutes — is one group under one heading, so
+			    none of it competes with the tasks above it. The autosave line ends
+			    it: it reports that the *session* is saved as it is typed, so it
+			    belongs with the session's own fields — under the timer it read as
+			    though it described the interval configuration. */}
+			<Section label={m.train_tools()}>
+				<div className="flex flex-col gap-group">
+					<Picker
+						ariaLabel={m.wk_add_ex()}
+						value={null}
+						placeholder={m.wk_add_ex()}
+						options={available}
+						onChange={addExercise}
+						className="min-h-11"
 					/>
+					{/* Disabled with its reason on the line, not in a `title` a phone
+					    never shows (#118's critique). */}
+					{/* A held control says why under it, as a `Notice` it is described by
+					    (#124): `info` here, since nothing the athlete does today changes
+					    it. */}
+					<div className="flex flex-col gap-1.5">
+						<button
+							type="button"
+							disabled={!screen.canRepeatLast}
+							aria-describedby={screen.canRepeatLast ? undefined : noPrevId}
+							className={button({ size: 'md', class: 'min-h-11 self-start' })}
+						>
+							<Repeat size={16} aria-hidden="true" />
+							{m.train_repeat()}
+						</button>
+						{screen.canRepeatLast ? null : (
+							<Notice tone="info" id={noPrevId}>
+								{m.train_no_prev()}
+							</Notice>
+						)}
+					</div>
+					{/* Labelled in words over the field, as the intake and sign-in label
+					    theirs (`Field`), not in the mono label rank (#125). */}
+					<Field id="session-note" label={m.train_note()}>
+						<input
+							id="session-note"
+							className={input({ align: 'left', class: 'min-h-11' })}
+							value={note}
+							onChange={(e) => setNote(e.currentTarget.value)}
+						/>
+					</Field>
 					<div className="flex items-center gap-2">
-						<label className="shrink-0" htmlFor="session-min">
-							<span className="eyebrow">{m.train_duration()}</span>
+						<label className="shrink-0 text-[13px] leading-snug text-ink" htmlFor="session-min">
+							{m.train_duration()}
 						</label>
 						<input
 							id="session-min"
@@ -294,7 +384,7 @@ function Train() {
 							{m.train_duration_hint()}
 						</span>
 					</div>
-					<Eyebrow>{m.train_autosave()}</Eyebrow>
+					<Notice tone="info">{m.train_autosave()}</Notice>
 				</div>
 			</Section>
 
@@ -307,15 +397,18 @@ function Train() {
 				<button
 					type="button"
 					disabled={doneSets === 0}
+					aria-describedby={doneSets === 0 ? finishHeldId : undefined}
 					className={button({ kind: 'primary', size: 'touch' })}
 				>
-					<Plus size={16} />
+					<Check size={16} aria-hidden="true" />
 					{m.train_finish()}
 				</button>
+				{/* The held primary's line, as the intake's advance and sign-in's
+				    button carry theirs: under it, 13px, gold (#125). */}
 				{doneSets === 0 ? (
-					<p className="text-center text-[11px] leading-snug text-ink-faint">
+					<Notice tone="warn" id={finishHeldId}>
 						{m.train_no_set_done()}
-					</p>
+					</Notice>
 				) : null}
 			</div>
 		</Pane>

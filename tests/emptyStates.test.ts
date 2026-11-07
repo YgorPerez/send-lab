@@ -75,13 +75,18 @@ const COPY = {
 		noTrend: 'The trend draws itself',
 		noWork: 'No scheduled work today',
 		noSetDone: 'Tick off at least one set',
-		noChecks: 'No readiness check recorded yet',
-		noSessions: 'No session recorded yet',
+		logEmpty: 'Nothing logged yet',
+		logWaits: ['readiness check', 'session'],
+		logCounts: '0 sessions · 0 days with a readiness check',
 		usual: 'about your usual',
 		held: 'held · readiness',
 		question: 'How did you sleep?',
+		answerCheck: '>Answer the check<',
+		outcome: 'session go?',
+		goTrain: '>Go to Train<',
 		finish: 'Finish &amp; log session',
-		microcycle: 'Microcycle',
+		trainingWeek: 'Training week 1 of 8',
+		adherence: '0 of 6 trained',
 		thursday: 'Thu',
 		noSaved: 'No saved protocols yet.',
 		newProtocol: '>New protocol<',
@@ -94,13 +99,18 @@ const COPY = {
 		noTrend: 'A tendência se desenha',
 		noWork: 'Nenhum trabalho programado hoje',
 		noSetDone: 'Marque ao menos uma série',
-		noChecks: 'Nenhum check de prontidão registrado ainda',
-		noSessions: 'Nenhuma sessão registrada ainda',
+		logEmpty: 'Nada registrado ainda',
+		logWaits: ['check de prontidão', 'sessão'],
+		logCounts: '0 sessões · 0 dias com check de prontidão',
 		usual: 'perto do seu normal',
-		held: 'segurado · prontidão',
+		held: 'retido · prontidão',
 		question: 'Como foi seu sono?',
+		answerCheck: '>Responder o check<',
+		outcome: 'Como foi a sessão',
+		goTrain: '>Ir para o treino<',
 		finish: 'Concluir e registrar treino',
-		microcycle: 'Microciclo',
+		trainingWeek: 'Semana de treino 1 de 8',
+		adherence: '0 de 6 treinados',
 		thursday: 'Qui',
 		noSaved: 'Nenhum protocolo salvo ainda.',
 		newProtocol: '>Novo protocolo<',
@@ -121,15 +131,12 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		// fire (`wk_nothing_scheduled`) needs an athlete who rests every day.
 		test('Week shows the built-in week rather than an empty box', async () => {
 			const week = await render('/week', THURSDAY, locale);
-			expect(week).toContain(copy.microcycle);
+			expect(week).toContain(copy.trainingWeek);
 			expect(week).toContain(copy.thursday);
 			// Scheduled, and none of it trained: six of seven days carry work in the
 			// built-in week, and a fresh account has ticked nothing.
 			//
-			// Comments stripped first: React puts `<!-- -->` between adjacent text
-			// nodes in a string render, so the reading is `0<!-- -->/<!-- -->6` in the
-			// markup and `0/6` on the screen.
-			expect(week.replaceAll('<!-- -->', '')).toContain('0/6');
+			expect(week).toContain(copy.adherence);
 			// Every slot names its state AND its count, so neither the dot's colour
 			// nor the visible reading is lost to a screen reader — `aria-label`
 			// replaces a button's content rather than adding to it.
@@ -159,10 +166,17 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(today).not.toContain(copy.usual);
 			// No verdict, so no work is held from it.
 			expect(today).not.toContain(copy.held);
-			// The check itself is still there to be answered — it is the way out.
-			expect(today).toContain(copy.question);
+			// The check is still there to be answered — it is the way out. Since #116
+			// that is the invitation into its sheet, not the questions on the page.
+			expect(today).toContain(copy.answerCheck);
+			expect(today).not.toContain(copy.question);
 			// The trend has nothing to draw.
 			expect(today).toContain(copy.noTrend);
+			// Nothing trained today, so nothing to rate: the outcome ask waits for a
+			// session (#117). And with no read, the way into Train is not the
+			// screen's primary; the invitation is.
+			expect(today).not.toContain(copy.outcome);
+			expect(today).not.toContain(copy.goTrain);
 		});
 
 		test('Train with a slot but no set ticked off holds the finish button', async () => {
@@ -178,17 +192,21 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(train).toContain(copy.noWork);
 		});
 
-		test('Log names what each list is waiting for', async () => {
+		// One timeline since #120, so one empty state: it names both things a day
+		// is made of, and the counts stay at zero, which is honest.
+		test('Log says what its timeline is waiting for', async () => {
 			const log = await render('/log', SUNDAY, locale);
-			expect(log).toContain(copy.noChecks);
-			expect(log).toContain(copy.noSessions);
-			// No rows, so no accordion: the empty list is copy, not an empty box.
+			const screen = screenOf(log);
+			expect(screen).toContain(copy.logEmpty);
+			for (const word of copy.logWaits)
+				expect(screen).toContain(`<b class="font-semibold text-chalk">${word}</b>`);
+			expect(screen.replaceAll('<!-- -->', '')).toContain(copy.logCounts);
+			// No rows, so no accordion, and no pane waiting for a day to be picked:
+			// the empty list is copy, not an empty box.
 			//
-			// Scoped to `<main>`, not the whole document. The assertion is about the
-			// *screen*, and the shell is not the screen — the menu's trigger carries
-			// `aria-expanded` on every page, which would fail a test whose subject is
-			// the Log list.
-			expect(screenOf(log)).not.toContain('aria-expanded');
+			// Scoped to `<main>`, not the whole document: the shell is not the screen.
+			expect(screen).not.toContain('aria-expanded');
+			expect(screen).not.toContain('data-day-detail');
 		});
 
 		// Timer (#103): the saved list is empty, and says how to fill it, under its

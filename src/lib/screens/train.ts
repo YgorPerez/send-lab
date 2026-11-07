@@ -109,6 +109,41 @@ export interface TrainScreen {
 	canRepeatLast: boolean;
 }
 
+/**
+ * How many sets a task asks for on Train: the prescription's sets, or the rows
+ * on its grid where the athlete has added more. A task opens with one row
+ * (`prefilledSet`), and the athlete adds the rest as they go; counting the rows
+ * alone told them one ticked set finished a task prescribed four to six, and
+ * folded it away from its own Add set (#118's critique). The lower end of a
+ * range, because past it the task is done by the prescription's own terms.
+ */
+export function setTarget(task: Pick<PrescribedTask, 'sets' | 'prescription'>): number {
+	return Math.max(task.sets.length, task.prescription.sets?.min ?? 0);
+}
+
+/** The sets ticked on a task's grid. */
+export function setsDone(task: Pick<PrescribedTask, 'sets'>): number {
+	return task.sets.filter((s) => s.done).length;
+}
+
+/**
+ * The task Train opens on (#118, spec story 46): the first with a set left to
+ * tick (fewer ticked than its `setTarget`) that this morning's verdict did not
+ * hold back, or, once only held work has sets left, the first of that. Held is
+ * a mark and not a lock, so held work still opens when it is all that is left;
+ * it is just not what the screen leads with, for the reason Today's "applies
+ * to" line skips it. None once every task has its sets. The athlete can open
+ * another with a tap; this is what the screen falls back to, so ticking the
+ * open task's last set moves it on.
+ */
+export function currentTask(
+	tasks: readonly PrescribedTask[],
+	held: ReadonlySet<ExerciseId>,
+): PrescribedTask['key'] | null {
+	const left = tasks.filter((t) => setsDone(t) < setTarget(t));
+	return (left.find((t) => !held.has(t.exercise)) ?? left[0])?.key ?? null;
+}
+
 /** Everything Train reads, resolved against the record. */
 export function resolveTrain(content: Content, record: TrainingRecord, now: number): TrainScreen {
 	const at = isoDayOf(now);

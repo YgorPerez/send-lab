@@ -92,12 +92,16 @@ export interface RouteFloor {
  * design, because "sparse" is a claim worth writing down rather than a gap.
  *
  *   `/`          Today: the verdict, the plan, the held work, the watch-outs, the
- *                open readiness check, the counters, the trend and the
- *                carry-forward. 154 seeded, 99 empty.
+ *                counters, the trend, the carry-forward and the readiness check
+ *                as one summary line. 103 seeded, 52 empty (#116; it was 154 and
+ *                99 while the check's six to nine questions were listed on the
+ *                page, and they are in a sheet now, which the gate does not open).
  *   `/log`       five weeks of sessions and fourteen readiness checks. 170
  *                seeded, 13 empty — the screen #73 was written about.
  *   `/login`     the sign-in form. 10 either way.
- *   `/settings`  the preferences that work offline. 19 either way.
+ *   `/settings`  the preferences that work offline: one list of groups (#122).
+ *                30 at 360px and 31 at 1280px, either way; the floor is far
+ *                under that because the account half gates on a session.
  *   `/timer`     the list only, since #111: the Stopwatch row, Saved, Recent and
  *                the preset groups, every group closed, and no clock strip — a
  *                clock is a dialog, opened from a row, which the gate does not
@@ -109,15 +113,20 @@ export interface RouteFloor {
  *                `<b>`). Recent and the presets are the same either way: Recent
  *                is a draft on the device, not the record, and the presets are
  *                the library's.
- *   `/train`     the slot: the set grid, the prescriptions and the timer. 201
- *                seeded, 176 empty — the grid is prescribed from the program
- *                before any of it has been trained.
+ *   `/train`     the slot: the timer, the open task's prescription and set
+ *                grid, its working-load ask, and every other task as one folded
+ *                line. 75 seeded, 73 empty (#118; it was 201 and 176 while every
+ *                task drew its grid at once). Seeded opens Sloper Density, two
+ *                sets, its ask folded because a set is ticked; empty opens Pull
+ *                Strength, one set, its ask open. The two counts are close by
+ *                coincidence of those two shapes, and the seeded one is still the
+ *                larger: the held marks and the ticked set are the record's.
  *   `/week`      seven slots and the microcycle's own reading. 30 either way.
  *   `/welcome`   the baseline questionnaire, one question at a time. 22 seeded,
  *                23 empty.
  */
 export const SEEDED_FLOORS: Record<string, RouteFloor> = {
-	'/': { floor: 110, readsRecord: true },
+	'/': { floor: 75, readsRecord: true },
 	'/log': { floor: 125, readsRecord: true },
 	'/login': { floor: 6, readsRecord: false },
 	'/settings': { floor: 12, readsRecord: false },
@@ -129,7 +138,7 @@ export const SEEDED_FLOORS: Record<string, RouteFloor> = {
 	// copy edit. What closes it is the seeded rows not being listed, which is
 	// what the control is for.
 	'/timer': { floor: 30, readsRecord: true },
-	'/train': { floor: 140, readsRecord: true },
+	'/train': { floor: 55, readsRecord: true },
 	'/week': { floor: 20, readsRecord: false },
 	'/welcome': { floor: 15, readsRecord: false },
 };

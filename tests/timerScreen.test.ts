@@ -136,7 +136,11 @@ describe('making a saved protocol on the Timer screen', () => {
 				},
 			});
 			expect(host.textContent).toContain('8 × 20s/10s · 2:00 cooldown');
-			// Listed at the end of Saved, a row like the others, with its own ⋯.
+			// Listed at the end of Saved, which leads the list (#119): above the
+			// stopwatch's row, a row like the others, with its own ⋯.
+			const main = host.querySelector('main')?.textContent ?? '';
+			expect(main.indexOf('Hangboard finisher')).toBeGreaterThan(main.indexOf('Saved'));
+			expect(main.indexOf('Hangboard finisher')).toBeLessThan(main.indexOf('Stopwatch'));
 			expect(
 				host.querySelector('main button[aria-label="Actions for Hangboard finisher"]'),
 			).toBeTruthy();

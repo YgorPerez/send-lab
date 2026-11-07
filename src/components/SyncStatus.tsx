@@ -186,7 +186,7 @@ function RefusedWork({ locale }: { locale: AppLocale }) {
 			// at 360px this has ~214px and both locales run to two lines, which the
 			// 44px strip has room for. `text-bg` is the measured pair, not a
 			// stylistic choice.
-			className="block rounded-md border border-flag bg-flag px-2 py-0.5 text-[11.5px] leading-[1.25] font-semibold text-bg"
+			className="block rounded-md border border-flag bg-flag px-2 py-0.5 text-[11px] leading-[1.25] font-semibold text-bg"
 		>
 			{m.sync_refused_work({}, { locale })}
 		</span>

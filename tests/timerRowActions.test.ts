@@ -71,7 +71,9 @@ afterEach(() => {
 });
 
 describe('a row’s ⋯ on the Timer screen', () => {
-	test('a preset offers a copy, and the copy is the athlete’s, at the end of Saved', async () => {
+	// A preset's one action is a copy, offered from its ready state only (#119): a
+	// menu of one item beside every preset was the loudest thing in the card.
+	test('a preset offers a copy from its ready state, and the copy is the athlete’s, at the end of Saved', async () => {
 		const before = saved().length;
 		await press(
 			[...document.querySelectorAll('main h3 > button')].find((b) =>
@@ -79,7 +81,15 @@ describe('a row’s ⋯ on the Timer screen', () => {
 			),
 		);
 		const preset = '7/3 · 20mm half-crimp + open hand';
-		await press(more(preset));
+		expect(more(preset)).toBeNull();
+		await press(
+			[...document.querySelectorAll('main button[aria-haspopup="dialog"]')].find((b) =>
+				b.textContent?.includes(preset),
+			),
+		);
+		await press(
+			document.querySelector(`[role="dialog"] button[aria-label="Actions for ${preset}"]`),
+		);
 		// The library's: nothing to edit and nothing to delete.
 		expect(offered()).toEqual(['Duplicate']);
 		await press(item('Duplicate'));
@@ -95,7 +105,8 @@ describe('a row’s ⋯ on the Timer screen', () => {
 	test('a saved protocol offers duplicate, edit and delete, and delete asks first', async () => {
 		const name = 'Warm-up hangs';
 		await press(more(name));
-		expect(offered()).toEqual(['Duplicate', 'Edit', 'Delete']);
+		// Edit first: it is the common thing done to one's own protocol.
+		expect(offered()).toEqual(['Edit', 'Duplicate', 'Delete']);
 		await press(item('Delete'));
 
 		const question = document.querySelector<HTMLElement>('[role="alertdialog"]');
@@ -132,7 +143,7 @@ describe('a row’s ⋯ on the Timer screen', () => {
 		const clock = document.querySelector<HTMLElement>('[role="dialog"]');
 		expect(clock?.getAttribute('aria-label')).toBe('Tabata finisher');
 		await press(clock?.querySelector('button[aria-label="Actions for Tabata finisher"]'));
-		expect(offered()).toEqual(['Duplicate', 'Edit', 'Delete']);
+		expect(offered()).toEqual(['Edit', 'Duplicate', 'Delete']);
 		await press(item('Edit'));
 		const dialogs = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')];
 		expect(dialogs.map((d) => d.textContent ?? '').some((t) => t.includes('Edit protocol'))).toBe(

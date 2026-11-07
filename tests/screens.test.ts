@@ -112,13 +112,24 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				expect(html.length).toBeGreaterThan(2000);
 			}
 
-			// Today: verdict, plan, held work, watch-outs, check, bodyweight.
+			// Today: verdict, plan, held work, watch-outs, the check's summary (its
+			// questions are in a sheet since #116), bodyweight.
 			expect(today).toContain(locale === 'en-US' ? 'Moderate' : 'Moderado');
 			expect(today).toContain(locale === 'en-US' ? 'Pull Strength' : 'Puxada');
 			expect(today).toContain(locale === 'en-US' ? 'Antagonists' : 'Antagonistas');
 			expect(today).toContain(locale === 'en-US' ? 'Tender finger' : 'Dedo sensível');
-			expect(today).toContain(locale === 'en-US' ? 'How did you sleep?' : 'Como foi seu sono?');
-			expect(today).toContain('71.9');
+			expect(today).toContain(locale === 'en-US' ? 'Readiness check' : 'Check de prontidão');
+			// The latest bodyweight, with the locale's decimal mark (#113's review, S4).
+			expect(today).toContain(locale === 'en-US' ? '71.9' : '71,9');
+			// The way into Train is Today's one primary once there is a read, and
+			// today's trained session is asked about by name (#117; the order and
+			// the ration across states are `tests/today.test.ts`'s).
+			expect(today).toContain(locale === 'en-US' ? '>Go to Train<' : '>Ir para o treino<');
+			expect(today.replaceAll('&#x27;', "'")).toContain(
+				locale === 'en-US'
+					? "How did today's Pull session go?"
+					: 'Como foi a sessão de Puxada hoje?',
+			);
 
 			// Train: the timer, the exercises, the prescriptions.
 			expect(train).toContain(locale === 'en-US' ? 'Sloper Density' : 'Density em Sloper');
@@ -172,9 +183,11 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// The selected slot is Thursday's, and its day type is resolved rather
 			// than named by the weekday (ADR-0002).
 			expect(week).toContain(locale === 'en-US' ? 'Pull' : 'Puxada');
-			// The heading rank, and the week's own reading.
-			expect(week).toContain(locale === 'en-US' ? 'Microcycle' : 'Microciclo');
-			expect(week).toContain(locale === 'en-US' ? 'Week 5' : 'Semana 5');
+			// The grid's head, in the glossary's words (#121; the rest is
+			// `tests/week.test.ts`'s).
+			expect(week).toContain(
+				locale === 'en-US' ? 'Training week 5 of 8' : 'Semana de treino 5 de 8',
+			);
 		});
 
 		// `/` is Today now, so sign-in has its own route.
@@ -188,11 +201,8 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		test('resolves the sign-in route inside the shell', async () => {
 			const login = await render('/login');
 			expect(login).toContain('view-transition-name:screen');
-			// The shell is around it. Proved by the menu rather than by a tab label:
-			// the tab bar is gone, and the menu's rows live in a closed popover that
-			// renders nothing until it is opened, so the trigger is the part of the
-			// navigation a string render can see.
-			expect(login).toContain('aria-label="Menu"');
+			// The shell is around it: the navigation renders on sign-in too.
+			expect(login).toContain('view-transition-name:navigation');
 		});
 
 		// Settings (#62). Only the half that works offline is asserted here: the
@@ -203,7 +213,14 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		test('renders the preferences out of the store', async () => {
 			const settings = await render('/settings');
 			expect(settings).toContain(locale === 'en-US' ? 'Units &amp; display' : 'Unidades e exibi');
-			expect(settings).toContain(locale === 'en-US' ? 'Language' : 'Idioma');
+			// The language is a row of the units' group since #122, not a group of
+			// its own: display choices live together (spec #113 story 70).
+			const units = settings.slice(
+				settings.indexOf(locale === 'en-US' ? 'Units &amp; display' : 'Unidades e exibi'),
+				settings.indexOf(locale === 'en-US' ? 'Timer cues' : 'Sinais do timer'),
+			);
+			expect(units).toContain(locale === 'en-US' ? '>Language<' : '>Idioma<');
+			expect(units).toContain('>Português<');
 			expect(settings).toContain(locale === 'en-US' ? 'Notifications' : 'Notifica');
 			// The units are identifiers shown as-is in both locales, and the switch
 			// is a real switch rather than a styled button.
@@ -267,12 +284,12 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(settings).not.toContain(locale === 'en-US' ? 'no voice' : 'não tem voz');
 		});
 
-		// Timer (#111). The screen is only the list: no clock strip above it and no
-		// Protocols | Stopwatch tabs. Top to bottom, the stopwatch's own row, the
-		// athlete's saved protocols, what they ran recently, then the presets,
-		// grouped by exercise and closed. A clock opens from a row and is a dialog,
+		// Timer (#111, #119). The screen is only the list: no clock strip above it
+		// and no Protocols | Stopwatch tabs. The athlete's saved protocols first
+		// (#119), then the stopwatch's own row, what they ran recently, and the
+		// presets, grouped by exercise. A clock opens from a row and is a dialog,
 		// which a string render leaves out.
-		test('renders the Timer screen as the list: Stopwatch, Saved, Recent, Presets', async () => {
+		test('renders the Timer screen as the list: Saved, Stopwatch, Recent, Presets', async () => {
 			const timer = await render('/timer');
 			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
 			expect(screen.length).toBeGreaterThan(2000);
@@ -289,13 +306,14 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				expect(i, text).toBeGreaterThan(-1);
 				return i;
 			};
-			const stopwatch = at(locale === 'en-US' ? '>Stopwatch<' : '>Cronômetro<');
 			const saved = at(locale === 'en-US' ? '>Saved<' : '>Salvos<');
+			const stopwatch = at(locale === 'en-US' ? '>Stopwatch<' : '>Cronômetro<');
 			const recent = at(locale === 'en-US' ? '>Recent<' : '>Recentes<');
 			const presets = at(locale === 'en-US' ? '>Presets<' : '>Predefinidos<');
-			// Stopwatch is the first row, above everything the screen lists.
-			expect(stopwatch).toBeLessThan(saved);
-			expect(saved).toBeLessThan(recent);
+			// Saved is the first thing the screen lists, its rows above the stopwatch.
+			expect(saved).toBeLessThan(at('Warm-up hangs'));
+			expect(at('Tabata finisher')).toBeLessThan(stopwatch);
+			expect(stopwatch).toBeLessThan(recent);
 			expect(recent).toBeLessThan(presets);
 			// Nothing has been run in a fresh render, and Recent says so.
 			expect(screen.slice(recent, presets)).toContain(
@@ -327,8 +345,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			const more = locale === 'en-US' ? `Actions for ${name}` : `Ações de ${name}`;
 			const trigger = screen.slice(screen.lastIndexOf('<button', screen.indexOf(more)));
 			const tag = trigger.slice(0, trigger.indexOf('>'));
-			expect(tag).toContain('w-11');
-			expect(tag).toContain('min-h-11');
+			expect(tag).toContain('size-11');
 			expect(tag).toContain('border');
 			expect(tag).toContain('aria-haspopup="menu"');
 			// The actions are in its menu, not right-floating under a row.
@@ -366,44 +383,79 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			}
 		});
 
-		// The presets: grouped by exercise, every group closed until it is opened,
-		// and no study links — those moved to the clock's ready state (#110).
-		test('closes every preset group, and links no study from the list', async () => {
+		// The presets: grouped by exercise, closed until opened, except today's
+		// (#119). Seeded Thursday schedules sloper density and abrahangs, so those
+		// two are open and every other group is a closed line with a count. Each
+		// open group ends on its study, labelled the way the clock's ready state
+		// labels it.
+		test('opens today’s preset groups, closes the rest, and cites each open one’s study', async () => {
 			const timer = await render('/timer');
 			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
 			const presets = screen.slice(
 				screen.indexOf(locale === 'en-US' ? '>Presets<' : '>Predefinidos<'),
 			);
-			// The exercise heads are there, as closed disclosures with a count.
-			expect(presets).toContain('>Max Hangs<');
-			const groups = presets.match(/aria-expanded="(true|false)"/g) ?? [];
-			expect(groups.length).toBeGreaterThan(5);
-			expect(groups.every((g) => g === 'aria-expanded="false"')).toBe(true);
+			const heads = [
+				...presets.matchAll(
+					/<h3[^>]*><button[^>]*aria-expanded="(true|false)"[^>]*>([\s\S]*?)<\/button>/g,
+				),
+			];
+			expect(heads.length).toBe(8);
+			const open = heads.filter((h) => h[1] === 'true').map((h) => h[2]);
+			expect(open).toHaveLength(2);
+			// Today's lead the list and say so; the rest follow in the library's order.
+			expect(heads.slice(0, 2).map((h) => h[1])).toEqual(['true', 'true']);
+			expect(open[0]).toContain(locale === 'en-US' ? 'Sloper Density' : 'Density em Sloper');
+			expect(open[1]).toContain('Abrahangs');
+			for (const head of open) expect(head).toContain(locale === 'en-US' ? 'Today' : 'Hoje');
+			expect(heads[2][2]).toContain('Recruitment Pulls');
+			expect(heads[2][2]).not.toContain(locale === 'en-US' ? 'Today' : 'Hoje');
+			// A preset's one action, a copy, is in its ready state: no ⋯ on its row.
+			expect(presets).not.toContain(locale === 'en-US' ? 'Actions for' : 'Ações de');
 			expect(presets).toContain(locale === 'en-US' ? '2 presets' : '2 predefinidos');
-			// Their rows wait behind the tap.
+			// Today's rows are listed; a closed group's wait behind the tap.
+			expect(presets).toContain(
+				locale === 'en-US' ? 'Sloper bottom-edge hangs' : 'Parte de baixo de um sloper',
+			);
+			expect(presets).toContain(
+				locale === 'en-US' ? 'Block · 1 hand · fast' : 'Block · 1 mão · rápido',
+			);
 			expect(presets).not.toContain(
 				locale === 'en-US'
 					? '7/3 · 20mm half-crimp + open hand'
 					: '7/3 · 20mm half-crimp + mão aberta',
 			);
-			expect(screen).not.toContain('pubmed.ncbi.nlm.nih.gov');
+			// One study per open group, each a link worded one way.
+			const studies = [...presets.matchAll(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
+			expect(studies.map((a) => a[2].replace(/<[^>]+>/g, ''))).toEqual(
+				locale === 'en-US'
+					? [
+							'Study: Sloper &amp; open-hand activation',
+							'Study: Collagen loading &amp; tendon adaptation',
+						]
+					: [
+							'Estudo: Ativação em sloper e mão aberta',
+							'Estudo: Carga de colágeno e adaptação do tendão',
+						],
+			);
 		});
 
-		// The cue settings' shortcut (#105): one discreet control in the header,
-		// beside the title, opening the same component Settings shows. A closed
-		// popover renders nothing in a string render, so what is asserted is the
-		// control and what it says it opens.
-		test('puts the cue settings behind a control in the Timer header', async () => {
+		// The cue settings' shortcut (#105) is the screen's one action, so it sits in
+		// the top strip's slot (#119), as DESIGN.md's header pattern has it: the
+		// header keeps readings. A closed popover renders nothing in a string
+		// render, so what is asserted is the control and what it says it opens.
+		test('puts the cue settings in the top strip, not in the Timer header', async () => {
 			const timer = await render('/timer');
-			const header = timer.slice(
-				timer.indexOf('<h1'),
-				timer.indexOf('</header>', timer.indexOf('<h1')),
-			);
-			expect(header).toContain(
-				locale === 'en-US' ? 'aria-label="Timer cues"' : 'aria-label="Sinais do timer"',
-			);
-			expect(header).toContain('aria-haspopup="dialog"');
-			expect(header).toContain('min-h-11');
+			const label = locale === 'en-US' ? 'aria-label="Timer cues"' : 'aria-label="Sinais do timer"';
+			const strip = timer.slice(timer.indexOf('<header'), timer.indexOf('</header>'));
+			expect(strip).toContain('Send Lab');
+			expect(strip).toContain(label);
+			const control = strip.slice(strip.lastIndexOf('<button', strip.indexOf(label)));
+			expect(control.slice(0, control.indexOf('>'))).toContain('aria-haspopup="dialog"');
+			expect(control.slice(0, control.indexOf('>'))).toContain('size-11');
+			const main = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+			expect(main).not.toContain(label);
+			// And no other screen carries it.
+			expect(await render('/train')).not.toContain(label);
 		});
 
 		// The editor's rows (#112), which `/train`'s Adjust uses too: in the order a
@@ -494,15 +546,11 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				const html = await render(path);
 				// The navigation, and the view-transition names the `app.css` rules
 				// pair with. A renamed name silently re-animates the chrome, which is
-				// invisible in review and obvious on the device.
-				//
-				// The three tab labels used to stand in for the navigation here. They
-				// are gone with the bar: the menu's rows are inside a closed popover
-				// that renders nothing until opened, so what a string render can see
-				// is the trigger. `nav_menu` is "Menu" in both locales, which is why
-				// this assertion does not branch.
-				expect(html).toContain('aria-label="Menu"');
+				// invisible in review and obvious on the device. What the bar holds
+				// is `tests/navigation.test.ts`'s.
+				expect(html.match(/<nav[\s>]/g) ?? [], path).toHaveLength(1);
 				expect(html).toContain('view-transition-name:topbar');
+				expect(html).toContain('view-transition-name:navigation');
 				expect(html).not.toContain('view-transition-name:tabbar');
 				expect(html).toContain('view-transition-name:screen');
 			}
@@ -753,7 +801,7 @@ function listRow(text: string): HTMLButtonElement | null {
 /** The Timer screen's mini bar: the way back into a clock, held at the bottom of
  *  the list while it runs (#111). */
 function miniBar(): HTMLElement | null {
-	return document.querySelector<HTMLElement>('main .fixed.bottom-0');
+	return document.querySelector<HTMLElement>('main [data-bottom-bar]');
 }
 
 // Only one of the Timer screen's two clocks runs at a time (#108): the press
@@ -1261,17 +1309,28 @@ describe('Recent on the Timer screen', () => {
 	});
 });
 
-// The tapped group head stays under the finger as its group opens or closes
-// (#111). jsdom lays nothing out, so where the head is is told to it: the page
-// is expected to scroll by exactly what the head moved.
-describe('opening a preset group on the Timer screen', () => {
+// The protocol the clock is on is marked on the list as the navigation marks the
+// current destination (#119): `aria-current`, and the bar's look. A tap on a row
+// moves it there; the clock opening and closing does not move it back.
+describe('the selected protocol on the Timer screen', () => {
 	beforeAll(() => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 	});
 	beforeEach(() => overwriteGetLocale(() => 'en-US'));
-	afterEach(() => vi.restoreAllMocks());
 
-	test('scrolls the page by what the tapped head moved', async () => {
+	const marked = () =>
+		[...document.querySelectorAll<HTMLButtonElement>('main button[aria-current]')].map((b) => ({
+			current: b.getAttribute('aria-current'),
+			text: b.textContent ?? '',
+		}));
+	const close = () =>
+		act(() =>
+			document
+				.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')
+				?.click(),
+		);
+
+	test('marks the row last opened, and only that protocol', async () => {
 		const router = createRouter({
 			routeTree,
 			history: createMemoryHistory({ initialEntries: ['/timer'] }),
@@ -1280,22 +1339,75 @@ describe('opening a preset group on the Timer screen', () => {
 		const root = createRoot(document);
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
-			const heads = [
-				...document.querySelectorAll<HTMLButtonElement>('main h3 > button[aria-expanded]'),
-			];
-			const head = heads[1];
-			if (!head) throw new Error('no second preset group');
-			// Read once at the tap, and once after the group above it changed.
-			const tops = [400, 340];
-			vi.spyOn(head, 'getBoundingClientRect').mockImplementation(
-				() => ({ top: tops.shift() ?? 340 }) as DOMRect,
-			);
-			const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
-			act(() => head.click());
-			expect(head.getAttribute('aria-expanded')).toBe('true');
-			expect(scrollBy).toHaveBeenCalledWith(0, -60);
+			act(() => listRow('Tabata finisher')?.click());
+			close();
+			expect(marked()).toEqual([
+				{ current: 'true', text: expect.stringContaining('Tabata finisher') },
+			]);
+			// A preset in today's open group takes the mark from it.
+			act(() => listRow('Sloper bottom-edge hangs')?.click());
+			close();
+			const now = marked();
+			expect(now.length).toBeGreaterThan(0);
+			expect(now.every((r) => r.text.includes('Sloper bottom-edge hangs'))).toBe(true);
 		} finally {
 			act(() => root.unmount());
+		}
+	});
+});
+
+// The tapped group head stays under the finger as its group closes (#111, #119).
+// Presets is the end of the page, so closing a group there would shorten the
+// page under the scroll position and the browser would clamp it, sliding
+// everything down. jsdom lays nothing out, so the geometry is told to it: the
+// page keeps, at its end, what the closing panel takes that the room below the
+// screen cannot absorb, and an open hands it back once there is room.
+describe('closing a preset group on the Timer screen', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+	afterEach(() => vi.restoreAllMocks());
+
+	test('keeps the page as long as it was, so nothing moves under the finger', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		const page = document.documentElement;
+		const geometry = (scrollHeight: number, scrollY: number) => {
+			Object.defineProperty(page, 'scrollHeight', { configurable: true, value: scrollHeight });
+			Object.defineProperty(window, 'scrollY', { configurable: true, value: scrollY });
+			Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
+		};
+		try {
+			const head = [
+				...document.querySelectorAll<HTMLButtonElement>('main h3 > button[aria-expanded="true"]'),
+			].find((b) => b.textContent?.includes('Sloper Density'));
+			if (!head) throw new Error('today’s group is not open');
+			const panel = document.getElementById(head.getAttribute('aria-controls') ?? '');
+			if (!panel) throw new Error('no panel under the open head');
+			vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ height: 400 } as DOMRect);
+			const tail = () => document.querySelector<HTMLElement>('main [data-tail]');
+
+			// 100px of page left below the screen, a 400px panel closing: 300px kept.
+			geometry(2000, 1100);
+			act(() => head.click());
+			expect(head.getAttribute('aria-expanded')).toBe('false');
+			expect(tail()?.style.height).toBe('300px');
+
+			// Scrolled up, with room to spare: opening a group gives it back.
+			geometry(1700, 200);
+			act(() => head.click());
+			expect(head.getAttribute('aria-expanded')).toBe('true');
+			expect(tail()?.style.height).toBe('');
+		} finally {
+			act(() => root.unmount());
+			Reflect.deleteProperty(page, 'scrollHeight');
+			Reflect.deleteProperty(window, 'scrollY');
 		}
 	});
 });
@@ -1492,9 +1604,30 @@ describe('the vocabulary holds across the screens', () => {
 	// on one page is how that unravels. `/login` is excluded: its body does not
 	// render without a session (see above).
 	test('every screen sets exactly one screen title, in the top rank', async () => {
-		for (const path of ['/', '/train', '/timer', '/log', '/settings']) {
+		for (const path of ['/', '/train', '/timer', '/log', '/settings', '/week', '/welcome']) {
 			const html = await render(path);
 			expect(html.match(/h-screen-title/g) ?? [], path).toHaveLength(1);
+		}
+	});
+
+	// Spec #113, story 78: every screen opens the same way. The title is the
+	// first thing in the page, inside the screen header (`ScreenHeader`), and
+	// nothing the page draws comes before it. `/login` is left out for the reason
+	// above; it goes through the same primitive.
+	test('every screen opens with the screen header, holding its one title', async () => {
+		for (const path of ['/', '/train', '/timer', '/log', '/settings', '/week', '/welcome']) {
+			const doc = new DOMParser().parseFromString(await render(path), 'text/html');
+			const main = doc.querySelector('main');
+			const titles = main?.querySelectorAll('h1') ?? [];
+			expect(titles, path).toHaveLength(1);
+			const header = titles[0]?.closest('header');
+			expect(header?.dataset.screenHeader, path).toBe('');
+			// The first element in the page that is not one of its frames is the
+			// header itself: nothing sits above the title.
+			const first = [...(main?.querySelectorAll('*') ?? [])].find(
+				(el) => el === header || !el.contains(header ?? null),
+			);
+			expect(first, path).toBe(header);
 		}
 	});
 

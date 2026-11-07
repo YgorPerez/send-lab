@@ -1,7 +1,10 @@
 // What Log reads.
 //
-// The history, as rows: every readiness check with the answers that produced it,
-// and every session with the sets that were actually logged.
+// The history, as one timeline of dated days (#120, spec #113 story 60): each
+// date the athlete checked in or trained, holding that day's readiness check
+// (the answers that produced it) and that day's session (the sets that were
+// actually logged), either of which may be missing. It was two lists, checks and
+// sessions, and reading a day meant matching them by date across the screen.
 //
 // Every localized string here is produced *now*, from what was stored then. A
 // session holds an exercise id and a variant index, and both the name and which
@@ -12,12 +15,19 @@
 import type { Content, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
-import { exerciseLabel, weekdayLabel } from '$lib/format';
+import { exerciseLabel, type StateTone, verdictTone, weekdayLabel } from '$lib/format';
 import { asExerciseId, type ExerciseId, type WeekdayKey } from '$lib/ids';
 import { fieldsFor, type SetField } from '$lib/loggedSet';
 import { dayTemplate, variantOf } from '$lib/prescription';
 import type { TrainingRecord } from '$lib/store/record';
 import type { LoggedSet } from '$lib/types';
+
+export type FlagSeverity = 'stop' | 'warn' | 'info';
+
+/** A stored severity, as one of the three; the store types it as a string. */
+function severityOf(stored: string): FlagSeverity {
+	return stored === 'stop' || stored === 'warn' ? stored : 'info';
+}
 
 export interface LoggedCheckRow {
 	/** ISO calendar date. The row's identity; the labels are for display. */
@@ -27,9 +37,11 @@ export interface LoggedCheckRow {
 	score: number;
 	verdictId: VerdictId;
 	verdict: Content['verdicts'][VerdictId];
+	tone: StateTone;
 	/** The check as answered — question text against the chosen answer. */
 	responses: { question: string; answer: string }[];
-	flagTitles: string[];
+	/** The flags it raised, each with the severity it was raised at. */
+	flags: { title: string; severity: FlagSeverity }[];
 	/** 0 bailed · 1 flat · 2 as expected · 3 strong. */
 	outcome: number | null;
 }
@@ -46,9 +58,25 @@ export interface LoggedSessionRow {
 	setCount: number;
 }
 
+/** One date on the timeline: what was checked and what was trained that day. */
+export interface LogDay {
+	/** ISO calendar date. The row's identity; the labels are for display. */
+	iso: string;
+	/** The row's date, short: "Aug 13". */
+	dateLabel: string;
+	/** The date in full, heading the day beside the timeline from `lg`. */
+	fullDate: string;
+	/** The day's last check: a re-check replaces the morning's verdict. */
+	check: LoggedCheckRow | null;
+	session: LoggedSessionRow | null;
+}
+
 export interface LogScreen {
-	checks: LoggedCheckRow[];
-	sessions: LoggedSessionRow[];
+	/** Newest first, one per date. */
+	days: LogDay[];
+	/** What the timeline holds, counted as the rows show it: a date checked
+	 *  twice is one row, so checks are counted as the days that have one. */
+	counts: { sessions: number; checkedDays: number };
 }
 
 /** Time of day, in the athlete's locale. A readiness check is identified by its
@@ -61,15 +89,42 @@ function timeLabel(at: number, locale: string): string {
 	return new Date(at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 }
 
+/** A calendar date in full, in the athlete's locale: "Thursday, August 13". It
+ *  heads a pane, so it starts with a capital in pt-BR too, where the weekday is
+ *  written in lower case ("quinta-feira"). */
+function fullDate(iso: string, locale: string): string {
+	const [y, m, d] = iso.split('-').map(Number);
+	const date = new Date(y, m - 1, d).toLocaleDateString(locale, {
+		weekday: 'long',
+		month: 'long',
+		day: 'numeric',
+	});
+	return date.charAt(0).toLocaleUpperCase(locale) + date.slice(1);
+}
+
 /** Everything Log reads, resolved against the record. */
 export function resolveLog(content: Content, record: TrainingRecord, locale: string): LogScreen {
+	// One check per date: the record hands readiness back oldest first (how the
+	// trend, the baseline and the calibration read it), so a later check of the
+	// same day overwrites the earlier one here. The athlete can re-check within a
+	// day, and the later answer is the one that set the day's verdict.
+	const checks = new Map<string, LoggedCheckRow>();
+	for (const r of record.readinessLog) {
+		const row = checkRow(content, r, locale);
+		checks.set(row.iso, row);
+	}
+	// A session is keyed by its date already (`store/collections.ts`).
+	const sessions = new Map(record.sessions.map((s) => [s.at, sessionRow(content, s)]));
+	const dates = [...new Set([...checks.keys(), ...sessions.keys()])].sort().reverse();
 	return {
-		// The record hands readiness back oldest first, because that is how the
-		// trend, the baseline and the calibration read it. A history reads the
-		// other way.
-		checks: [...record.readinessLog].reverse().map((r) => checkRow(content, r, locale)),
-		// Already newest first (`store/record.ts`).
-		sessions: record.sessions.map((s) => sessionRow(content, s)),
+		days: dates.map((iso) => ({
+			iso,
+			dateLabel: displayDate(iso),
+			fullDate: fullDate(iso, locale),
+			check: checks.get(iso) ?? null,
+			session: sessions.get(iso) ?? null,
+		})),
+		counts: { sessions: sessions.size, checkedDays: checks.size },
 	};
 }
 
@@ -87,12 +142,16 @@ function checkRow(
 		score: r.score,
 		verdictId,
 		verdict: content.verdicts[verdictId],
+		tone: verdictTone(verdictId),
 		responses: content.quiz.flatMap((q) => {
 			const v = r.answers?.[q.id];
 			if (v == null) return [];
 			return [{ question: q.q, answer: q.a.find((o) => o.v === v)?.t ?? String(v) }];
 		}),
-		flagTitles: (r.flags ?? []).map((f) => content.flags[f.id]?.title ?? f.id),
+		flags: (r.flags ?? []).map((f) => ({
+			title: content.flags[f.id]?.title ?? f.id,
+			severity: severityOf(f.severity),
+		})),
 		outcome: r.outcome ?? null,
 	};
 }

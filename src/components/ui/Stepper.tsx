@@ -1,10 +1,11 @@
 // The stepper shell: a progress rail, one step's worth of content, and the two
 // controls that move between them.
 //
-// A primitive rather than page composition, though the intake is the only screen
-// that uses it, because it owns a decision rather than an arrangement (ADR 0010):
-// it owns the one `primary` on the screen. That is the rule's hardest case and
-// the reason this file exists at all.
+// A primitive rather than page composition because it owns a decision rather
+// than an arrangement (ADR 0010): it owns the one `primary` on the screen. That
+// is the rule's hardest case and the reason this file exists at all. The intake
+// was its only user until the readiness check became a sheet (#116), which is
+// the second.
 //
 // WHERE THE ONE `primary` GOES, DECIDED ONCE
 // ------------------------------------------
@@ -28,14 +29,18 @@
 // looking for it" — and a stepper is where an athlete most needs it, because the
 // missing answer is somewhere above the fold. The disabled button drops its fill
 // rather than its opacity, which the `button` recipe already handles.
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { cn } from '$lib/utils';
+import { Notice } from './primitives';
 import { button } from './variants';
 
-/** One step of the flow. Domain-blind: an id to key on and a label to show. */
+/** One step of the flow. Domain-blind: an id to key on and a label to show.
+ *  The label is optional: a flow of six to nine steps (the readiness check) has
+ *  no room for a word under each segment at 360px, and says where the athlete is
+ *  in a line of its own instead. */
 export interface Step {
 	id: string;
-	label: string;
+	label?: string;
 }
 
 export function Stepper({
@@ -44,6 +49,7 @@ export function Stepper({
 	railLabel,
 	back,
 	next,
+	className,
 	children,
 }: {
 	steps: readonly Step[];
@@ -65,10 +71,14 @@ export function Stepper({
 		 *  `disabled`, so a held button and its reason cannot come apart. */
 		waitingFor?: string;
 	};
+	/** For the container it sits in: in a full-height sheet it takes the
+	 *  sheet's height, and the controls settle at the bottom, by the thumb. */
+	className?: string;
 	children: ReactNode;
 }) {
+	const waitingId = useId();
 	return (
-		<div className="flex flex-col gap-5">
+		<div className={cn('flex flex-col gap-5', className)}>
 			{/* The rail. One segment per step, and the labels under them — pt-BR runs
 			    1.4–2× longer, so they wrap rather than truncate and the segments stay
 			    equal. `flex-1` and not a grid: four equal segments are what a flex row
@@ -82,18 +92,32 @@ export function Stepper({
 							className="min-w-0 flex-1"
 							{...(index === at ? { 'aria-current': 'step' as const } : {})}
 						>
-							{/* The progress bar carries no text, so an accent fill on it is free
-							    — the contrast rule that keeps white off `--flag` is about a
-							    text/background pair, and there is none here. */}
-							<div className={cn('h-1.5 rounded-full', reached ? 'bg-flag' : 'bg-line')} />
-							<div
-								className={cn(
-									'eyebrow mt-1.5 normal-case',
-									reached ? 'text-ink-dim' : 'text-ink-faint',
-								)}
-							>
-								{step.label}
-							</div>
+							{/* Chalk, not vermilion (#123). Vermilion fills once per screen,
+							    and that is the advance below (DESIGN.md › The Rationed Fill
+							    Rule); a vermilion rail made two on every step, and it said
+							    "limit" about progress. Chalk is what the app already fills a
+							    chosen thing with (the switch, the selected option's edge). One
+							    decision for both users, the intake and the readiness sheet. */}
+							<div className={cn('h-1.5 rounded-full', reached ? 'bg-chalk' : 'bg-line')} />
+							{/* Inter at the meta size: the rail's words were the last
+							    letter-spaced mono on the intake (#125). */}
+							{step.label ? (
+								<div
+									className={cn(
+										'mt-1.5 text-[11px] leading-snug',
+										// The current step in the selection mark's chalk and weight:
+										// on the last step every segment is filled, and the label is
+										// what still says where the athlete is (#123 critique).
+										index === at
+											? 'font-semibold text-chalk'
+											: reached
+												? 'text-ink-dim'
+												: 'text-ink-faint',
+									)}
+								>
+									{step.label}
+								</div>
+							) : null}
 						</li>
 					);
 				})}
@@ -101,7 +125,9 @@ export function Stepper({
 
 			{children}
 
-			<div className="flex flex-col gap-2">
+			{/* `mt-auto` does nothing where the stepper is as tall as its content (the
+			    intake) and puts the controls at the bottom where it is not (a sheet). */}
+			<div className="mt-auto flex flex-col gap-2">
 				<div className="flex gap-2.5">
 					{back ? (
 						<button
@@ -115,6 +141,7 @@ export function Stepper({
 					<button
 						type="button"
 						disabled={next.disabled}
+						aria-describedby={next.disabled && next.waitingFor ? waitingId : undefined}
 						onClick={next.onClick}
 						className={button({ kind: 'primary', size: 'touch', class: 'flex-1' })}
 					>
@@ -122,7 +149,9 @@ export function Stepper({
 					</button>
 				</div>
 				{next.disabled && next.waitingFor ? (
-					<p className="text-[12.5px] leading-snug text-gold">{next.waitingFor}</p>
+					<Notice tone="warn" id={waitingId}>
+						{next.waitingFor}
+					</Notice>
 				) : null}
 			</div>
 		</div>

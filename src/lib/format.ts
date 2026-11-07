@@ -17,7 +17,17 @@
 //
 // ADR-0003 applies: these produce *display strings*. Nothing here is ever
 // matched on, stored, or used as a key.
-import type { Content, Cost, Exercise, Grip, Quality, Range, Region } from '$lib/content/types';
+import type {
+	Content,
+	Cost,
+	Exercise,
+	Grip,
+	Quality,
+	Range,
+	Region,
+	Variant,
+	VerdictId,
+} from '$lib/content/types';
 import type { WeekdayKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { variantOf } from '$lib/prescription';
@@ -53,6 +63,34 @@ export function formatLoad(r: Range): string {
 /** Edge depth: "18–22mm". */
 export function formatEdge(r: Range): string {
 	return `${formatRange(r)}mm`;
+}
+
+/**
+ * A prescription in one line, for a task folded on Train (#118): how much, then
+ * how hard. "4–6 × 3–5 · +32–48kg", "3 × 30–45s", "1 × 20 × 10s · 18–22mm".
+ *
+ * The volume is sets, then rounds, then reps or the work interval; the
+ * intensity is the load, or the edge, or the share of max. Rests are left out:
+ * they are what the clock runs, not what tells one task from another. A
+ * prescription with none of that says its effort, and one with nothing at all
+ * says nothing rather than a dash that looks like a value.
+ */
+export function shortPrescription(p: Variant): string {
+	const volume = [
+		p.sets ? formatRange(p.sets) : null,
+		p.rounds ? formatRange(p.rounds) : null,
+		p.reps ? formatRange(p.reps) : p.workSec ? formatSecondsRange(p.workSec) : null,
+	].filter((x): x is string => x != null);
+	const intensity = p.loadKg
+		? formatLoad(p.loadKg)
+		: p.edgeMm
+			? formatEdge(p.edgeMm)
+			: p.intensityPct
+				? `${formatRange(p.intensityPct)}%`
+				: null;
+	const parts = [volume.join(' × '), intensity].filter((x): x is string => !!x);
+	if (parts.length > 0) return parts.join(' · ');
+	return p.rpe ? `${m.presc_rpe()} ${formatRange(p.rpe)}` : '';
 }
 
 /**
@@ -249,6 +287,17 @@ export function stopwatchClock(ms: number, locale: AppLocale): { whole: string; 
 
 const DECIMAL_MARK: Record<AppLocale, string> = { 'en-US': '.', 'pt-BR': ',' };
 
+/**
+ * A number with the locale's decimal mark: `72,4` in pt-BR, `72.4` in en-US.
+ * `digits` fixes the places; without it the number keeps the ones it has.
+ * Every decimal the athlete reads goes through here or `stopwatchClock`, so the
+ * mark is decided in one table.
+ */
+export function decimal(value: number, locale: AppLocale, digits?: number): string {
+	const text = digits == null ? String(value) : value.toFixed(digits);
+	return text.replace('.', DECIMAL_MARK[locale]);
+}
+
 /** The five wellness dimensions, in the order the readiness score reads them. */
 export const WELLNESS_LABEL: Record<string, () => string> = {
 	sleep: m.rd_sleep,
@@ -265,3 +314,27 @@ export const OUTCOME_LABEL = [
 	m.rd_outcome_ok,
 	m.rd_outcome_strong,
 ];
+
+/** How a verdict reads at a glance: its state, in the three state tones. */
+export type StateTone = 'ok' | 'warn' | 'stop';
+
+/**
+ * The verdict's state, not the library's colour for it (#120, shared since #125).
+ *
+ * The library paints `green` and `short` vermilion (`var(--flag)`), the colour
+ * that means at the limit or stop everywhere else, so Log showed a good day's
+ * score in the stop colour (spec #113 story 61), and Today its verdict. Both are
+ * a session trained as planned, one of them shorter; `moderate` and `tissue` cap
+ * it; `rest` stops it. Today's read and Log's score dot both draw this.
+ */
+const VERDICT_TONE: Record<VerdictId, StateTone> = {
+	green: 'ok',
+	short: 'ok',
+	moderate: 'warn',
+	tissue: 'warn',
+	rest: 'stop',
+};
+
+export function verdictTone(verdict: VerdictId): StateTone {
+	return VERDICT_TONE[verdict];
+}

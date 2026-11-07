@@ -22,6 +22,7 @@ import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/rea
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { WorkingLoadAsk } from '../src/components/WorkingLoadAsk.tsx';
 import { getContent } from '../src/lib/content/index.ts';
 import {
 	asAthleteId,
@@ -39,6 +40,8 @@ import { effectiveVariant, variantOf } from '../src/lib/prescription.ts';
 import { libraryTask, loadAsk, resolveTrain, withWorkingLoad } from '../src/lib/screens/train.ts';
 import { createRecordStore } from '../src/lib/store/collections.ts';
 import {
+	recordStore as moduleStore,
+	readTrainingRecord as readRecord,
 	readTrainingRecord,
 	recordStore,
 	resetRecordStore,
@@ -491,8 +494,27 @@ describe('Train asks it, in both locales', () => {
 		return renderToString(createElement(RouterProvider, { router }));
 	}
 
-	it.each(['en-US', 'pt-BR'] as const)('puts the question and both numbers — %s', async (as) => {
-		const html = await train(as);
+	/** The ask as Train opens it on a task nothing has been ticked on, for the
+	 *  first weighted task of the seeded slot. Since #118 the open task on the
+	 *  seeded Thursday has a set ticked, so the route opens its ask folded; the
+	 *  question itself is rendered here, from the screen's own suggestion. */
+	function ask(as: 'en-US' | 'pt-BR'): string {
+		locale = as;
+		const screen = resolveTrain(getContent(as), readRecord(moduleStore()), NOW);
+		const task = screen.tasks.find((t) => t.ask);
+		if (!task?.ask) throw new Error('the seeded slot has no working-load ask');
+		return renderToString(
+			createElement(WorkingLoadAsk, {
+				exercise: task.exercise,
+				prescribesLoad: task.prescription.loadKg != null,
+				suggestion: task.ask,
+				onAnswer: () => {},
+			}),
+		);
+	}
+
+	it.each(['en-US', 'pt-BR'] as const)('puts the question and both numbers — %s', (as) => {
+		const html = ask(as);
 
 		expect(html).toContain(m.wl_first());
 		// Both rungs of the third tier, each labelled for what it is. One without
@@ -504,14 +526,28 @@ describe('Train asks it, in both locales', () => {
 		expect(html).toContain(m.wl_judgment());
 	});
 
+	// Folded, the ask still says the load is not set, so a question the athlete
+	// trained past is not one that vanished (#118).
+	it.each([
+		'en-US',
+		'pt-BR',
+	] as const)('folds on a task with a set ticked, still saying so — %s', async (as) => {
+		const html = await train(as);
+		expect(html).toContain(m.wl_unset());
+		expect(html).toMatch(
+			/aria-expanded="false"[^>]*>(?:(?!<\/button>).)*(?:Working load|Carga de trabalho)/,
+		);
+	});
+
 	// ADR 0019's rule, applied one screen over from where it was paid for: no
-	// question opens with an answer in it. Neither typed rung comes up pressed, so
-	// an athlete who ignores this has not silently agreed to a load.
-	it('opens with nothing answered', async () => {
-		const html = await train('en-US');
+	// question opens with an answer in it. No rung comes up pressed, so an
+	// athlete who ignores this has not silently agreed to a load.
+	it('opens with nothing answered', () => {
+		const html = ask('en-US');
 		for (const rung of [m.wl_tested(), m.wl_usual()]) {
 			expect(html).toMatch(new RegExp(`<button[^>]*aria-pressed="false"[^>]*>${rung}</button>`));
 			expect(html).not.toContain(`aria-pressed="true">${rung}`);
 		}
+		expect(html).not.toContain('aria-pressed="true"');
 	});
 });

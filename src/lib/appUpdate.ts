@@ -108,19 +108,44 @@ export function activateUpdate(registration: RegistrationLike): void {
 }
 
 /**
- * Reload once the new worker is in charge.
+ * Reload once a new worker has taken over from the one running the page.
  *
  * Guarded, because `controllerchange` can fire more than once and a reload that
  * re-arms itself is a reload loop — the failure mode of every naive version of
  * this, and one that would present as an app that will not open.
+ *
+ * **Not on a first install** (#122). `sw.ts` calls `clientsClaim()`, so the
+ * first worker takes over the page that registered it, and that fires
+ * `controllerchange` exactly as an update does. Nothing changed under the page:
+ * it is the bundle the worker just cached. Reloading anyway reloaded every first
+ * visit half a second in, under whatever the athlete was typing, and under the
+ * gates — `check:contrast --desktop` measured the baked shell on `/settings`
+ * whenever the claim landed just before its reading. So a change counts only when
+ * a worker was already in charge, read at each change rather than at mount: in a
+ * tab opened uncontrolled, the first install's claim does not reload it, and a
+ * later swap (another tab's notice tapped) does.
+ *
+ * That tab is never offered the swap itself. `watchForUpdate` reads `controlled`
+ * once, when `UpdateAnnouncement` mounts, so a tab that did the first install
+ * shows no notice for an update that arrives while it stays open; the next tab
+ * opened, or this one reloaded, shows it.
+ *
+ * `reload` is a parameter for the tests: jsdom cannot reload.
  */
-export function reloadWhenTakenOver(container: {
-	addEventListener(type: 'controllerchange', listener: () => void): void;
-}): void {
+export function reloadWhenTakenOver(
+	container: {
+		readonly controller: unknown;
+		addEventListener(type: 'controllerchange', listener: () => void): void;
+	},
+	reload: () => void = () => window.location.reload(),
+): void {
 	let reloading = false;
+	let previous = container.controller;
 	container.addEventListener('controllerchange', () => {
-		if (reloading) return;
+		const wasControlled = previous != null;
+		previous = container.controller;
+		if (!wasControlled || reloading) return;
 		reloading = true;
-		window.location.reload();
+		reload();
 	});
 }

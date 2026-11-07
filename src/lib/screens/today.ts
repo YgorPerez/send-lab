@@ -18,7 +18,13 @@
 // hand-written snapshot. The shape it hands over is much smaller now: the fixture
 // served four prototype branches that each rendered a different subset, and this
 // serves one screen.
-import { type Answers, phaseId, visibleQuestionsOrdered } from '$lib/content';
+import {
+	type Answers,
+	computeReadiness,
+	hasWellnessAnswer,
+	phaseId,
+	visibleQuestionsOrdered,
+} from '$lib/content';
 import type { LoadSignals } from '$lib/content/logic';
 import type {
 	BodyArea,
@@ -33,7 +39,12 @@ import { displayDate } from '$lib/displayDate';
 import { weekdayLabel } from '$lib/format';
 import type { ExerciseId, TaskKey, WeekdayKey, WeekId } from '$lib/ids';
 import { taskKey, weekdayKeyOf, weekNumberOf } from '$lib/ids';
-import { carryForwardFromYesterday, resolveDayType, trainableExerciseIds } from '$lib/prescription';
+import {
+	carryForwardFromYesterday,
+	dayTemplate,
+	resolveDayType,
+	trainableExerciseIds,
+} from '$lib/prescription';
 import { capByVerdict } from '$lib/readinessPlan';
 import {
 	acwr,
@@ -105,6 +116,9 @@ export interface TodayScreen {
 	weekdayLabel: string;
 	week: WeekId;
 	weekNumber: number;
+	/** How many training weeks the program runs: the "of 8" in "Training week
+	 *  5 of 8", as Week says it. */
+	weekCount: number;
 	/** The block phase this week falls in, localized. */
 	phase: Content['phases'][PhaseId];
 	/** Today's day type — category, headline, subhead, load label. */
@@ -136,6 +150,12 @@ export interface TodayScreen {
 	 *  **trained** and still fills this in, so `missed` was a claim the value
 	 *  does not make (ADR 0014). */
 	carryForward: CarryForward | null;
+	/** Today's session, when there is one to rate: it is **trained** (a set of it
+	 *  is ticked off, `CONTEXT.md`), so the athlete can say how it went. Named by
+	 *  the day type it ran (ADR 0017), which is what the outcome ask calls it.
+	 *  Null with nothing trained today: an **outcome** is reported afterwards, and
+	 *  asking for one before there is a session is asking about nothing (#117). */
+	sessionToRate: { dayType: string } | null;
 	/** The injury self-check reachable from a body-area flag, and its last result.
 	 *
 	 *  Null when the library has no instrument to offer. `content.selfChecks` is
@@ -191,6 +211,7 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 		done: record.taskDone[taskKey(week, weekday, exercise)] ?? doneExercises.has(exercise),
 	}));
 
+	const day = resolveDayType(content, record, week, weekday);
 	const carried = carryForwardFromYesterday(content, record, now);
 	const latestBodyweight = record.bodyweight[record.bodyweight.length - 1] ?? null;
 
@@ -201,8 +222,9 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 		weekdayLabel: weekdayLabel(content, weekday),
 		week,
 		weekNumber,
+		weekCount: record.program.weeks,
 		phase: content.phases[phaseId(weekNumber, record.program.weeks)],
-		day: resolveDayType(content, record, week, weekday),
+		day,
 		tasks,
 		isRestDay: tasks.length === 0,
 		answers: todayCheck?.answers ?? {},
@@ -234,6 +256,17 @@ export function resolveToday(content: Content, record: TrainingRecord, now: numb
 					labels: carried.exerciseIds.map((id) => content.exercises[id]?.name ?? id),
 				}
 			: null,
+		sessionToRate:
+			todaySession && doneExercises.size > 0
+				? {
+						// The day type the session recorded, under the name the plan shows
+						// for it when they are the same one (a program may rename it).
+						dayType:
+							todaySession.dayType === day.id
+								? day.type
+								: dayTemplate(content, todaySession.dayType).type,
+					}
+				: null,
 		selfCheck: selfCheckEntry(content, record),
 	};
 }
@@ -284,4 +317,15 @@ export function heldExercises(tasks: readonly Task[], verdict: VerdictId): Reado
 			verdict,
 		).held,
 	);
+}
+
+/**
+ * Which of today's tasks this morning's check holds back, as Today shows it:
+ * nothing while the check has no wellness answer (#61), otherwise what the
+ * verdict caps. Train marks the same tasks (#118), from the same draft, so the
+ * two screens cannot disagree about what was taken off the plan.
+ */
+export function heldToday(today: TodayScreen, answers: Answers): ReadonlySet<ExerciseId> {
+	if (!hasWellnessAnswer(answers)) return new Set();
+	return heldExercises(today.tasks, computeReadiness(answers, today.load, today.insights).verdict);
 }

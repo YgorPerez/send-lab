@@ -42,13 +42,18 @@ const root = process.cwd();
  *  hydrated. It was two files until #83 put the sync state in the strip: that one
  *  is empty in the baked artefact, but it is a real element in the strip a moment
  *  later, and a `lg:`-versus-JS decision inside it would bake the same wrong
- *  answer as one in `AppShell` itself. `Menu.tsx` and `UpdateAnnouncement.tsx` are
- *  scanned by the assertions further down instead, which are about what they
- *  render rather than what they measure. */
+ *  answer as one in `AppShell` itself. #115 added the navigation, which is baked
+ *  into the shell as the bar and becomes the rail from `lg`, and `lib/chrome.ts`,
+ *  which decides from the matched route what the chrome shows: that is where a
+ *  viewport read would be most tempting. `UpdateAnnouncement.tsx` is scanned by
+ *  the assertions further down instead, which are about where it sits rather
+ *  than what it measures. */
 const SHELL = [
 	'src/routes/__root.tsx',
 	'src/components/AppShell.tsx',
 	'src/components/SyncStatus.tsx',
+	'src/components/Navigation.tsx',
+	'src/lib/chrome.ts',
 ];
 
 /**
@@ -148,28 +153,30 @@ describe('the shell does not read the viewport', () => {
 describe('the chrome is one nav and one main, below the shell', () => {
 	const shell = code('src/components/AppShell.tsx');
 
-	const menu = code('src/components/Menu.tsx');
+	const nav = code('src/components/Navigation.tsx');
+	const css = readFileSync(join(root, 'src', 'app.css'), 'utf8');
 
-	// One of each, still — the navigation moved into `Menu.tsx`, it did not
-	// multiply. Two navs behind a media query would also work as CSS and is still
-	// wrong, for reasons that outlive any layout: assistive technology sees both,
-	// the second one's links are duplicate landmarks, and a duplicated
-	// `view-transition-name` is one of the three ways a transition silently skips
-	// (#43). What changed is only which file each lives in.
+	// One of each. Two navs behind a media query (a bar for the phone, a rail for
+	// the desk) would also work as CSS and is still wrong, for reasons that
+	// outlive any layout: assistive technology sees both, the second one's links
+	// are duplicate landmarks, and a duplicated `view-transition-name` is one of
+	// the three ways a transition silently skips (#43). The bar and the rail are
+	// one element under two stylesheets (ADR 0018), and More's sheet is a dialog,
+	// not a second navigation.
 	test('there is exactly one <nav> and one <main> across the chrome', () => {
 		expect(shell.match(/<main[\s>]/g) ?? [], 'the shell should own the one <main>').toHaveLength(1);
 		expect(
 			shell.match(/<nav[\s>]/g) ?? [],
-			'the shell should own no <nav>: the tab bar is gone and the menu holds the navigation',
+			'the shell should own no <nav>: the navigation is its own component',
 		).toHaveLength(0);
-		expect(menu.match(/<nav[\s>]/g) ?? [], 'the menu should own the one <nav>').toHaveLength(1);
+		expect(nav.match(/<nav[\s>]/g) ?? [], 'Navigation should own the one <nav>').toHaveLength(1);
+		expect(shell, 'the shell no longer renders the navigation').toContain('<Navigation');
 	});
 
 	// The positive half. Without it, a shell that had quietly lost its desktop
-	// layout altogether would pass every assertion above. The rail's half of this
-	// went with the rail; `main`'s two measures are what is left, and they are
-	// asserted as *plausible* numbers rather than exact ones — the point is that a
-	// phone measure and a widened one both exist, not that they are 520 and 1000
+	// layout altogether would pass every assertion above. They are asserted as
+	// *plausible* numbers rather than exact ones — the point is that a phone
+	// measure and a widened one both exist, not that they are 520 and 1000
 	// forever.
 	test('main still carries both measures, at usable sizes', () => {
 		const main = /<main[\s>][\s\S]*?>/.exec(shell)?.[0] ?? '';
@@ -180,20 +187,93 @@ describe('the chrome is one nav and one main, below the shell', () => {
 		);
 	});
 
-	// The navigation is reachable and big enough to be. This replaces the rail
-	// assertion, and it guards the thing that actually broke when the bar was
-	// removed: the app's only nav control shrinking into the corner. The trigger
-	// fills the strip's height and the rows are the mid-set size, because `train`
-	// is reached from this menu during a session now.
-	test('the menu is the navigation, at the mid-set size', () => {
-		expect(shell, 'the shell no longer renders the menu').toContain('<Menu locale={locale} />');
-		// To the closing tag, not to the first `>`: the trigger's `render` prop
-		// contains a self-closing `<button />`, so a lazy match to `>` stops before
-		// the className this is about.
-		const trigger = /<Popover\.Trigger[\s\S]*?<\/Popover\.Trigger>/.exec(menu)?.[0] ?? '';
-		expect(trigger, 'the menu trigger was not found at all').toContain('Popover.Trigger');
-		expect(trigger, 'the menu trigger is smaller than the strip it sits in').toContain('h-11');
-		expect(menu, 'the menu rows are under the 44px mid-set floor').toContain('min-h-11');
+	// The bar on a phone and the rail from `lg`, as one element. What a string
+	// render cannot see is which classes apply at which width, so the deciding
+	// utilities are asserted where they are written; the four browser gates
+	// measure the result with and without `--desktop`.
+	test('the bar is the bottom edge on a phone and the rail from lg', () => {
+		const element = /<nav[\s\S]*?>\s*\{DESTINATIONS/.exec(nav)?.[0] ?? '';
+		expect(element, 'the <nav> element was not found').not.toBe('');
+		expect(element, 'the bar is not fixed to the bottom edge').toMatch(/fixed inset-x-0 bottom-0/);
+		expect(element, 'the bar does not clear the home indicator').toContain(
+			'pb-[env(safe-area-inset-bottom)]',
+		);
+		expect(element, 'the bar does not become a rail at lg').toMatch(/lg:top-11/);
+		expect(element, 'the rail is not 200px').toContain('lg:w-50');
+		expect(nav, 'More is not hidden at lg, where the rail lists everything').toMatch(
+			/className=\{cn\(ITEM, 'lg:hidden'\)\}/,
+		);
+		// The box is what the page reserves, border and padding included: 56px plus
+		// the home indicator is `--nav-clear`, and the rail is the 200px of
+		// `--nav-rail`. With `box-content` the rail measured 217px and sat its
+		// border 3px from every title between 1024px and ~1215px (#115's critique).
+		expect(element, 'the bar adds padding or a border outside what it reserves').not.toContain(
+			'box-content',
+		);
+		expect(element, 'the bar is not as tall as what the page reserves').toContain(
+			'h-[var(--nav-clear)]',
+		);
+	});
+
+	// More's sheet stays visible at every width. Hidden from `lg` while still
+	// open (a phone rotated past 1024px, a window widened), it was a modal nobody
+	// could see, holding focus and the page's scroll.
+	test('More hides its trigger at lg, never its open sheet', () => {
+		const sheet = /<Dialog\.Portal>[\s\S]*?<\/Dialog\.Portal>/.exec(nav)?.[0] ?? '';
+		expect(sheet, 'the sheet was not found').not.toBe('');
+		expect(sheet).not.toContain('lg:hidden');
+	});
+
+	// The navigation is read before the page: a keyboard reaches the rail (drawn
+	// first at lg) without tabbing through the whole screen, and a screen reader
+	// meets the landmark first. Both are fixed, so nothing moves on screen.
+	test('the navigation comes before main in the document', () => {
+		expect(shell.indexOf('<Navigation')).toBeGreaterThan(-1);
+		expect(shell.indexOf('<Navigation')).toBeLessThan(shell.indexOf('<main'));
+	});
+
+	// What the rest of the page clears is one variable that changes at `lg` and
+	// on the intake, never a height read in the shell. `main` reserves it, and the
+	// update notice sits on it rather than under the bar (story 14).
+	test('main reserves the bar, and the update notice sits above it', () => {
+		expect(css, '--nav-clear does not include the home indicator').toMatch(
+			/--nav-clear:\s*calc\(3\.5rem \+ env\(safe-area-inset-bottom\)\)/,
+		);
+		const main = /<main[\s>][\s\S]*?>/.exec(shell)?.[0] ?? '';
+		expect(main, 'main does not reserve the bar').toContain('var(--nav-clear)');
+		const notice = code('src/components/UpdateAnnouncement.tsx');
+		expect(notice, 'the update notice is not placed on the bar').toContain(
+			'bottom-[var(--nav-clear)]',
+		);
+	});
+
+	// Story 9: the bar never covers the field being typed in. Where a browser
+	// resizes the page for the keyboard, a bar fixed to its bottom rides up over
+	// the field, so below `lg` the bar stands down while a field that opens the
+	// keyboard has focus. CSS, so the shell reads nothing. Measured on the built
+	// app with focus on Train's RPE input: `display: none` at 360px, the rail
+	// unchanged at 1280px (#115).
+	test('the bar stands down while a typed field has focus, below lg only', () => {
+		const rule =
+			/@media \(width < 64rem\)\s*\{\s*html:has\([\s\S]*?input:not\([\s\S]*?textarea[\s\S]*?\):focus\s*\)\s*\[data-navigation-bar\]\s*\{\s*display: none;/;
+		expect(css, 'app.css lost the rule that keeps the bar off a focused field').toMatch(rule);
+		expect(nav, 'the bar lost the attribute the rule selects').toContain('data-navigation-bar');
+		expect(
+			code('src/routes/__root.tsx'),
+			'the viewport meta no longer keeps the bar under the keyboard',
+		).toContain('interactive-widget=resizes-visual');
+	});
+
+	// Story 12: a control touched once does not take the strip on every screen.
+	// Settings carries the switch, through the same `chooseLocale`.
+	test('the strip carries no locale switch', () => {
+		expect(shell).not.toContain('LocaleSwitch');
+		expect(shell).not.toContain('chooseLocale');
+		// Through a handler since #125, which notes the press so focus can come
+		// back to the language after the tree re-keys.
+		expect(code('src/routes/settings.tsx'), 'Settings lost the language choice').toMatch(
+			/onChange=\{\(next\) => \{[^}]*chooseLocale\(next\);/,
+		);
 	});
 
 	// ADR 0008's states have to be readable from every screen, and the strip is
@@ -215,8 +295,8 @@ describe('the chrome is one nav and one main, below the shell', () => {
 		expect(header, 'the sync state left the strip').toContain('<SyncStatus');
 		expect(
 			header.indexOf('<SyncStatus'),
-			'the sync state is on the right, where its appearing moves the controls',
-		).toBeLessThan(header.indexOf('<LocaleSwitch'));
+			'the sync state is on the right, where its appearing moves the screen action',
+		).toBeLessThan(header.indexOf('<ScreenAction'));
 
 		for (const page of ['src/routes/settings.tsx', 'src/routes/login.tsx']) {
 			expect(code(page), `${page} says the sync state a second time`).not.toContain(
@@ -255,17 +335,22 @@ describe('the chrome is one nav and one main, below the shell', () => {
 		).toContain("state === 'refused-work'");
 	});
 
-	// `topbar` is lifted out of the root snapshot by name so the strip holds still
-	// while the screen under it is replaced (#54). `tabbar` was the second name
-	// until the tab bar was removed. `tests/motion.test.ts` asserts the other side
-	// of this pairing: that `app.css` declares exactly these names and no other.
+	// `topbar` and `navigation` are lifted out of the root snapshot by name so the
+	// strip and the bar hold still while the screen between them is replaced
+	// (#54). `tests/motion.test.ts` asserts the other side of this pairing: that
+	// `app.css` declares exactly these names and no other.
 	test('the chrome still carries its view-transition names', () => {
 		for (const name of ['topbar', 'screen']) {
 			expect(shell, `viewTransitionName: '${name}' is gone from the shell`).toContain(
 				`viewTransitionName: '${name}'`,
 			);
 		}
-		expect(shell, "'tabbar' outlived the tab bar").not.toContain("viewTransitionName: 'tabbar'");
+		expect(nav, "viewTransitionName: 'navigation' is gone from the bar").toContain(
+			"viewTransitionName: 'navigation'",
+		);
+		expect(shell + nav, "'tabbar' is the old bar's name").not.toContain(
+			"viewTransitionName: 'tabbar'",
+		);
 	});
 });
 

@@ -14,7 +14,8 @@
 // has. The confirm is the dialog's one `primary`; the page under it carries
 // none, which is how a settings screen keeps the one-per-screen ration.
 import { AlertDialog as Base } from '@base-ui/react/alert-dialog';
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
+import { Notice } from './primitives';
 import { button } from './variants';
 
 export function AlertDialog({
@@ -26,6 +27,7 @@ export function AlertDialog({
 	confirm,
 	onConfirm,
 	busy,
+	held,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -37,7 +39,11 @@ export function AlertDialog({
 	/** The action is under way: the confirm drops its fill and cannot be pressed
 	 *  twice. */
 	busy?: boolean;
+	/** Why the confirm is held, under it, as every held control says (#125):
+	 *  a delete that waits offline for the account to answer. */
+	held?: ReactNode;
 }) {
+	const heldId = useId();
 	return (
 		<Base.Root open={open} onOpenChange={onOpenChange}>
 			<Base.Portal>
@@ -56,12 +62,20 @@ export function AlertDialog({
 						<button
 							type="button"
 							disabled={busy}
+							aria-describedby={held ? heldId : undefined}
 							onClick={onConfirm}
 							className={button({ kind: 'primary', size: 'md', class: 'min-h-11' })}
 						>
 							{confirm}
 						</button>
 					</div>
+					{held ? (
+						<div className="mt-3">
+							<Notice tone="warn" id={heldId}>
+								{held}
+							</Notice>
+						</div>
+					) : null}
 				</Base.Popup>
 			</Base.Portal>
 		</Base.Root>

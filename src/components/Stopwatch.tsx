@@ -225,15 +225,13 @@ export function Stopwatch({
 						<button
 							type="button"
 							onClick={toggle}
-							className={
-								watch.running
-									? button({ size: 'touch', class: 'size-[52px] shrink-0 rounded-[14px] px-0' })
-									: button({
-											kind: 'primary',
-											size: 'touch',
-											class: 'size-[52px] shrink-0 rounded-[14px] px-0',
-										})
-							}
+							// The clock control running and paused alike: the stopwatch has no
+							// field, so its bar is always off one (#118).
+							className={button({
+								kind: 'clock',
+								size: 'touch',
+								class: 'size-[52px] shrink-0 rounded-[14px] px-0',
+							})}
 						>
 							{watch.running ? (
 								<Pause size={22} fill="currentColor" strokeWidth={0} aria-hidden="true" />
@@ -348,11 +346,7 @@ function FullScreenStopwatch({
 					>
 						<Flag size={24} />
 					</button>
-					<button
-						type="button"
-						onClick={onToggle}
-						className={clockControl('main', false, watch.running ? 'quiet' : 'primary')}
-					>
+					<button type="button" onClick={onToggle} className={clockControl('main', false)}>
 						{watch.running ? (
 							<Pause size={28} fill="currentColor" strokeWidth={0} />
 						) : (

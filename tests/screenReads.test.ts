@@ -15,6 +15,7 @@
 import type { StorageApi } from '@tanstack/db';
 import { describe, expect, it } from 'vitest';
 import { computeReadiness, getContent } from '../src/lib/content/index.ts';
+import type { VerdictId } from '../src/lib/content/types.ts';
 import {
 	asAthleteId,
 	asExerciseId,
@@ -36,6 +37,7 @@ import {
 	readProtocolForm,
 	resolveTimer,
 	shownOf,
+	todaysPresetGroups,
 } from '../src/lib/screens/timer.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
@@ -178,25 +180,98 @@ describe('Train', () => {
 });
 
 describe('Log', () => {
+	/** The seeded sessions and checks, as the days they fall on. */
+	const sessionDays = new Set(REC.sessions.map((s) => s.at));
+	const checkDays = new Set(LOG.days.filter((d) => d.check).map((d) => d.iso));
+	const sessionOf = (log: typeof LOG, iso: string) => log.days.find((d) => d.iso === iso)?.session;
+
 	it('is the densest screen — many sessions, many rows inside each', () => {
-		expect(LOG.sessions.length).toBeGreaterThanOrEqual(20);
-		expect(LOG.sessions.reduce((n, s) => n + s.setCount, 0)).toBeGreaterThan(100);
+		const sessions = LOG.days.flatMap((d) => (d.session ? [d.session] : []));
+		expect(sessions.length).toBeGreaterThanOrEqual(20);
+		expect(sessions.reduce((n, s) => n + s.setCount, 0)).toBeGreaterThan(100);
 		// Fourteen checks behind today, plus this morning's.
-		expect(LOG.checks).toHaveLength(15);
+		expect(LOG.counts).toEqual({ sessions: sessions.length, checkedDays: 15 });
+	});
+
+	// Spec #113 story 60: a day is read as one thing, not matched across two lists.
+	it('is one dated day per date, newest first', () => {
+		const dates = LOG.days.map((d) => d.iso);
+		expect(new Set(dates).size).toBe(dates.length);
+		expect([...dates].sort().reverse()).toEqual(dates);
+		// Every date that holds either is in the timeline, and nothing else is.
+		expect(new Set(dates)).toEqual(new Set([...sessionDays, ...checkDays]));
+		expect(LOG.days.every((d) => d.check || d.session)).toBe(true);
+	});
+
+	it('holds days with a check only, a session only, and both', () => {
+		// The seeded record has all three: a rest day is checked and not trained,
+		// the older weeks were trained before checks were kept, and the last two
+		// weeks have both.
+		expect(LOG.days.some((d) => d.check && !d.session)).toBe(true);
+		expect(LOG.days.some((d) => !d.check && d.session)).toBe(true);
+		const both = LOG.days.find((d) => d.check && d.session);
+		expect(both?.check?.iso).toBe(both?.iso);
+		expect(both?.session?.iso).toBe(both?.iso);
+		// Today is the newest day, and it has both.
+		expect(LOG.days[0].iso).toBe('2026-08-13');
+		expect(LOG.days[0].check).not.toBeNull();
+		expect(LOG.days[0].session).not.toBeNull();
+	});
+
+	it('names each day in full for the detail beside the timeline', () => {
+		expect(LOG.days[0].dateLabel).toBe('Aug 13');
+		expect(LOG.days[0].fullDate).toBe('Thursday, August 13');
+		const pt = resolveLog(getContent('pt-BR'), REC, 'pt-BR');
+		// A heading, so it starts with a capital in pt-BR too, where the weekday does not.
+		expect(pt.days[0].fullDate).toBe('Quinta-feira, 13 de agosto');
+	});
+
+	it('keeps the last check of a day that was checked twice', () => {
+		// The athlete can re-check within a day (`store/collections.ts`), and the
+		// later answer is the one that set the day's verdict.
+		const morning = REC.readinessLog[REC.readinessLog.length - 1];
+		const evening = { ...morning, at: morning.at + 6 * 3_600_000, score: morning.score - 20 };
+		const log = resolveLog(
+			content,
+			{ ...REC, readinessLog: [...REC.readinessLog, evening] },
+			'en-US',
+		);
+		expect(log.days.filter((d) => d.iso === LOG.days[0].iso)).toHaveLength(1);
+		expect(log.days[0].check?.score).toBe(evening.score);
+		expect(log.counts.checkedDays).toBe(15);
+	});
+
+	// Spec #113 story 61. The library paints `green` and `short` in vermilion,
+	// which means *at the limit / stop* everywhere else on the app.
+	it('tones the score by its verdict, never the stop colour for a good one', () => {
+		const tone = (verdict: VerdictId) => {
+			const morning = REC.readinessLog[REC.readinessLog.length - 1];
+			const log = resolveLog(content, { ...REC, readinessLog: [{ ...morning, verdict }] }, 'en-US');
+			return log.days.find((d) => d.check)?.check?.tone;
+		};
+		expect(tone('green')).toBe('ok');
+		expect(tone('short')).toBe('ok');
+		expect(tone('moderate')).toBe('warn');
+		expect(tone('tissue')).toBe('warn');
+		expect(tone('rest')).toBe('stop');
 	});
 
 	it('shows a past readiness check as it was answered, not as a bare score', () => {
-		const withResponses = LOG.checks.find((r) => r.responses.length > 0);
+		const checks = LOG.days.flatMap((d) => (d.check ? [d.check] : []));
+		const withResponses = checks.find((r) => r.responses.length > 0);
 		expect(withResponses).toBeDefined();
 		expect(withResponses?.verdict.title.length).toBeGreaterThan(0);
-		expect(LOG.checks.some((r) => r.outcome != null)).toBe(true);
+		expect(checks.some((r) => r.outcome != null)).toBe(true);
 	});
 
-	it('is newest first, in both halves', () => {
-		const sessions = LOG.sessions.map((s) => s.iso);
-		expect([...sessions].sort().reverse()).toEqual(sessions);
-		const checks = LOG.checks.map((r) => r.iso);
-		expect([...checks].sort().reverse()).toEqual(checks);
+	// A flag keeps the severity it was raised with, as Today shows it: a stop flag
+	// painted the warn colour says less than it did on the morning it was raised.
+	it('keeps each flag’s severity', () => {
+		const flags = LOG.days.flatMap((d) => d.check?.flags ?? []);
+		expect(flags.length).toBeGreaterThan(0);
+		for (const f of flags) expect(['stop', 'warn', 'info']).toContain(f.severity);
+		const raw = REC.readinessLog.flatMap((r) => r.flags ?? []);
+		expect(new Set(flags.map((f) => f.severity))).toEqual(new Set(raw.map((f) => f.severity)));
 	});
 
 	it('drops an exercise the library no longer has, and keeps the session', () => {
@@ -219,25 +294,25 @@ describe('Log', () => {
 		};
 
 		const log = resolveLog(content, withGhost, 'en-US');
-		expect(log.sessions).toHaveLength(REC.sessions.length);
-		expect(log.sessions[0].exercises).toHaveLength(first.exercises.length);
+		expect(log.counts.sessions).toBe(REC.sessions.length);
+		const session = sessionOf(log, first.at);
+		expect(session?.exercises).toHaveLength(first.exercises.length);
 		// The note, the duration and the day type are all still true of the session.
-		expect(log.sessions[0].note).toBe(first.note);
-		expect(log.sessions[0].durationMin).toBe(first.durationMin ?? null);
+		expect(session?.note).toBe(first.note);
+		expect(session?.durationMin).toBe(first.durationMin ?? null);
 		// And the count on the closed row matches what opens inside it.
-		expect(log.sessions[0].setCount).toBe(
-			log.sessions[0].exercises.reduce((n, e) => n + e.sets.length, 0),
-		);
+		expect(session?.setCount).toBe(session?.exercises.reduce((n, e) => n + e.sets.length, 0));
 	});
 
 	it('names a logged exercise in the language it is read in, not the one it was written in', () => {
 		// ADR 0012. The session stores an id and a variant index; both the label and
 		// the columns come from them at render.
-		const en = resolveLog(getContent('en-US'), REC, 'en-US').sessions[0].exercises[0];
-		const pt = resolveLog(getContent('pt-BR'), REC, 'pt-BR').sessions[0].exercises[0];
-		expect(en.exercise).toBe(pt.exercise);
-		expect(en.fields).toEqual(pt.fields);
-		expect(en.name).not.toBe(pt.name);
+		const iso = REC.sessions[0].at;
+		const en = sessionOf(resolveLog(getContent('en-US'), REC, 'en-US'), iso)?.exercises[0];
+		const pt = sessionOf(resolveLog(getContent('pt-BR'), REC, 'pt-BR'), iso)?.exercises[0];
+		expect(en?.exercise).toBe(pt?.exercise);
+		expect(en?.fields).toEqual(pt?.fields);
+		expect(en?.name).not.toBe(pt?.name);
 	});
 });
 
@@ -676,6 +751,26 @@ describe('Timer', () => {
 		const seeded = resolveTimer(getContent('en-US'), readTrainingRecord(seededWith(NOW)), 'en-US');
 		expect(seeded.saved[0].named).toBe(true);
 		expect(seeded.presets[0].presets[0].named).toBe(true);
+	});
+
+	// #119. The preset groups open by default are today's: the exercises the plan
+	// schedules today that the library has a protocol for. Thursday in the seeded
+	// week is pull-ups, sloper density, abrahangs and antagonists; two of those
+	// carry presets. A rest day opens none.
+	it('opens today’s exercises’ groups, and none on a rest day', () => {
+		const seeded = readTrainingRecord(seededWith(NOW));
+		const thursday = resolveTimer(getContent('en-US'), seeded, 'en-US');
+		expect(todaysPresetGroups(thursday, getContent('en-US'), seeded, NOW)).toEqual([
+			'slopdens',
+			'abra',
+		]);
+		const friday = new Date('2026-08-14T09:30:00').getTime();
+		expect(todaysPresetGroups(thursday, getContent('en-US'), seeded, friday)).toEqual([
+			'maxhang',
+			'density',
+		]);
+		const sunday = new Date('2026-08-16T09:30:00').getTime();
+		expect(todaysPresetGroups(thursday, getContent('en-US'), seeded, sunday)).toEqual([]);
 	});
 
 	it('has nothing saved on an account that has kept nothing', () => {

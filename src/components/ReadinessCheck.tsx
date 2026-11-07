@@ -1,116 +1,290 @@
-// The readiness check — the daily questionnaire, in `CONTEXT.md`'s words, and
+// The readiness check: the daily questionnaire, in `CONTEXT.md`'s words, and
 // never "the quiz".
 //
-// Nine questions — five core, four revealed — each with four options and a
-// one-line rationale. It is by a wide margin the tallest thing on `/`, and the
-// place where "dense and calm" is hardest to hold: the questions are prose, the
-// options are prose, and none of it compresses into a number.
+// A full-height sheet that asks one question at a time (#116, spec #113). It was
+// a block of six to nine stacked option lists near the foot of Today, each with a
+// paragraph of rationale, and the athlete scrolled past the input the verdict
+// needs to reach everything else. Now Today shows an invitation or a one-line
+// summary, and the questions live here.
 //
-// Two decisions carry it:
+// What it decides, and where:
 //
-//   1. It sits *below* the verdict, not above it. The check produces the read,
-//      but the athlete opens the app to see the read, not to answer questions —
-//      and once it is answered (which, most mornings, it is) it is a record.
-//      Above the fold it is a one-line receipt; the form is underneath.
-//   2. "Why we ask" is never hidden. It is set at 11px in faint ink and clamped
-//      to two lines. Hiding it behind a disclosure would buy ~90px on this
-//      screen and cost the one thing that makes the check feel like a coach
-//      rather than a form.
+//   1. Which question comes next is `lib/readinessFlow.ts`, a pure function of
+//      the answers. A follow-up joins the check as its own step only while an
+//      answer calls for it, so the rail can grow by a segment mid-check: that
+//      is the check staying as short as the glossary promises, said honestly.
+//   2. Picking an answer moves on. On the last step it does not: the pick stays
+//      on screen, and the advance ("Done") closes the sheet, so the verdict the
+//      athlete sees next is one they watched themselves finish.
+//   3. Nothing is preselected (ADR 0021): the body is the only instrument for a
+//      reading, so each step opens with no option pressed and its advance waits
+//      for one, saying so. Closing the sheet is always there instead, and keeps
+//      what was answered.
+//   4. "Why we ask" is collapsed under the question. Shown in full it lengthened
+//      every step; hidden behind a page it would cost the thing that makes the
+//      check read as a coach rather than a form. A disclosure under the question
+//      keeps it one tap away and out of the way.
 //
-// Answers are held by the screen and reported up: `/` re-runs the *real*
-// `computeReadiness` against them, so changing an answer moves the score, the
-// verdict, the flags and which work the plan holds back — exactly as the app
-// does.
-import { ExternalLink } from 'lucide-react';
+// The answers are not held here. Today holds them (`readinessDraft`, idiom 2)
+// and re-runs `computeReadiness` against them, so the verdict behind the sheet
+// moves with every pick and is already there when the sheet closes. Which step
+// is showing is the sheet's own state, and it starts fresh on every open, at
+// `openingStep`: the first unanswered question, or the first question when the
+// check is finished and being edited.
+import { Dialog } from '@base-ui/react/dialog';
+import { ChevronDown, ExternalLink, X } from 'lucide-react';
+import { type RefObject, useId, useRef, useState } from 'react';
 import type { Answers } from '$lib/content';
 import * as m from '$lib/paraglide/messages';
+import { checkSteps, followsFrom, openingStep, stepAfter, stepBefore } from '$lib/readinessFlow';
 import type { Question } from '$lib/screens/today';
 import { STUDIES } from '$lib/studies';
-import { cn } from '$lib/utils';
-import { option } from './ui/variants';
+import { Stepper } from './ui/Stepper';
+import { option, sheet } from './ui/variants';
 
 const studyUrl = (id?: string) => (id ? STUDIES.find((s) => s.id === id)?.url : undefined);
 
-function QuestionRow({
+/** How long after a question arrives a tap on it is taken as the tail of the
+ *  tap that brought it. The next question's options sit where the last one's
+ *  were, so a chalky double tap or a bounce would otherwise answer a question
+ *  the athlete never read (ADR 0021). A keyboard press is never held back. */
+const SETTLE_MS = 350;
+
+/**
+ * The sheet. Open and closed by Today, which also holds the answers.
+ *
+ * On a phone it rises from the bottom edge and takes the height of the screen,
+ * like More's sheet; from `lg` it is a dialog of phone width centred in the
+ * window (story 32), so a question is still one column and the options are still
+ * thumb-sized lines rather than 900px bars.
+ */
+export function ReadinessCheck({
+	open,
+	onOpenChange,
+	questions,
+	answers,
+	onPick,
+	returnFocus,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	/** The check as it renders for these answers: `resolveQuestions`. */
+	questions: readonly Question[];
+	answers: Answers;
+	onPick: (id: string, value: number) => void;
+	/** Where focus goes when the sheet closes. Not its trigger: the invitation
+	 *  that opened it is gone once the first wellness answer lands, so Today
+	 *  hands in the verdict's heading, which is what the athlete should hear. */
+	returnFocus: RefObject<HTMLElement | null>;
+}) {
+	return (
+		<Dialog.Root open={open} onOpenChange={onOpenChange}>
+			<Dialog.Portal>
+				<Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70 transition-opacity duration-200 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+				<Dialog.Popup finalFocus={returnFocus} className={sheet({ height: 'full' })}>
+					<Steps
+						questions={questions}
+						answers={answers}
+						onPick={onPick}
+						onDone={() => onOpenChange(false)}
+					/>
+				</Dialog.Popup>
+			</Dialog.Portal>
+		</Dialog.Root>
+	);
+}
+
+/**
+ * The inside of the sheet. Its own component so the step is initialised when the
+ * sheet opens (the popup's content mounts then) and not before: a lazy
+ * `useState`, no effect to keep it in step with the answers.
+ */
+function Steps({
+	questions,
+	answers,
+	onPick,
+	onDone,
+}: {
+	questions: readonly Question[];
+	answers: Answers;
+	onPick: (id: string, value: number) => void;
+	onDone: () => void;
+}) {
+	const [at, setAt] = useState(() => openingStep(answers));
+	const steps = checkSteps(answers);
+	// A step the answers have since withdrawn (a follow-up whose reason changed)
+	// is not a step any more; the sheet goes where it would have opened.
+	const current = steps.includes(at) ? at : openingStep(answers);
+	const index = steps.indexOf(current);
+	const q = questions.find((x) => x.id === current);
+	const before = stepBefore(answers, current);
+	const after = stepAfter(answers, current);
+	const answered = answers[current] != null;
+	const progress = m.rd_check_progress({ n: index + 1, total: steps.length });
+
+	const pick = (value: number) => {
+		onPick(current, value);
+		// The pick decides what comes next (it may call for a follow-up), so the
+		// next step is read off the answers *with* it.
+		const next = stepAfter({ ...answers, [current]: value }, current);
+		if (next) setAt(next);
+	};
+
+	return (
+		<>
+			{/* The title and the close on one line, as on More's sheet. */}
+			<div className="flex items-center gap-2 py-1 pr-1 pl-4">
+				<div className="min-w-0 flex-1">
+					<Dialog.Title className="text-[15px] leading-tight font-semibold text-ink">
+						{m.rd_check_title()}
+					</Dialog.Title>
+					{/* The rail says this to a screen reader already, as its name. */}
+					<p aria-hidden="true" className="mt-0.5 text-[11px] leading-tight text-ink-faint">
+						{progress}
+					</p>
+				</div>
+				<Dialog.Close
+					aria-label={m.btn_close()}
+					className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-dim transition-colors hover:bg-panel-2 hover:text-ink"
+				>
+					<X size={20} strokeWidth={1.75} aria-hidden="true" />
+				</Dialog.Close>
+			</div>
+
+			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-2 pb-4">
+				<Stepper
+					className="flex-1"
+					steps={steps.map((id) => ({ id }))}
+					at={index}
+					railLabel={progress}
+					{...(before ? { back: { label: m.btn_back(), onClick: () => setAt(before) } } : {})}
+					next={{
+						label: after ? m.btn_next() : m.btn_done(),
+						onClick: () => (after ? setAt(after) : onDone()),
+						disabled: !answered,
+						waitingFor: m.rd_check_need(),
+					}}
+				>
+					{q ? (
+						<Ask
+							key={q.id}
+							q={q}
+							parent={parentOf(questions, q)}
+							answer={answers[q.id]}
+							onPick={pick}
+						/>
+					) : null}
+				</Stepper>
+			</div>
+		</>
+	);
+}
+
+/** The question a follow-up asks about, with its answer, when it asks about
+ *  one (`followsFrom`). */
+function parentOf(questions: readonly Question[], q: Question): Question | undefined {
+	const parent = followsFrom(q.id);
+	return parent ? questions.find((x) => x.id === parent) : undefined;
+}
+
+/** One step: the question, why it is asked, and its options as full-width lines. */
+function Ask({
 	q,
-	n,
+	parent,
+	answer,
 	onPick,
 }: {
 	q: Question;
-	n: number | null;
-	onPick: (id: string, v: number) => void;
+	parent: Question | undefined;
+	answer: number | undefined;
+	onPick: (value: number) => void;
 }) {
+	const id = useId();
+	// When the question arrived, written as its heading mounts (a ref callback,
+	// so nothing impure runs during render).
+	const arrivedAt = useRef(0);
+	const arrive = (el: HTMLElement | null) => {
+		if (!el) return;
+		arrivedAt.current = performance.now();
+		// Focus the new question, so a keyboard or a screen reader is taken to it
+		// rather than left on the option that just went.
+		el.focus({ preventScroll: true });
+	};
 	const url = studyUrl(q.study);
+	const parentAnswer = parent?.options.find((o) => o.value === parent.answer)?.label;
 	return (
-		<div className={cn(q.sub && 'border-l border-line pl-2.5')}>
-			<div className="flex gap-1.5 text-[13.5px] leading-snug font-medium text-ink">
-				<span className="num shrink-0 pt-px text-[11px] text-ink-faint">
-					{q.sub ? '↳' : String(n).padStart(2, '0')}
-				</span>
-				<span className="min-w-0">{q.question}</span>
+		<fieldset aria-labelledby={id} className="flex min-w-0 flex-col gap-group">
+			<div>
+				{/* A follow-up says what it follows. "How does it feel?" is a question
+				    about the answer one step back, and the step back is off screen. */}
+				{parent && parentAnswer ? (
+					<p className="mb-1 text-[13px] leading-snug text-ink-faint">
+						{parent.question} · <span className="text-ink-dim">{parentAnswer}</span>
+					</p>
+				) : null}
+				<h3
+					id={id}
+					ref={arrive}
+					tabIndex={-1}
+					className="text-[21px] leading-tight font-semibold tracking-[-0.01em] text-ink outline-none"
+				>
+					{q.question}
+				</h3>
 			</div>
+
 			{q.why ? (
-				<p className="mt-0.5 line-clamp-2 pl-[22px] text-[11px] leading-snug text-ink-faint">
-					{q.why}
-					{url ? (
-						<a
-							href={url}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="ml-1 inline-flex items-center gap-0.5 whitespace-nowrap text-ink-dim underline decoration-line underline-offset-2"
-						>
-							{m.rd_evidence()}
-							<ExternalLink size={9} />
-						</a>
-					) : null}
-				</p>
+				<details className="group">
+					<summary className="flex min-h-11 w-fit cursor-pointer list-none items-center gap-1 text-[13px] text-ink-dim transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+						{m.rd_why()}
+						<ChevronDown
+							size={16}
+							strokeWidth={2}
+							aria-hidden="true"
+							className="transition-transform duration-200 group-open:rotate-180"
+						/>
+					</summary>
+					<p className="pb-1 text-[13px] leading-snug text-ink-dim">
+						{q.why}
+						{url ? (
+							<a
+								href={url}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="ml-1 inline-flex items-center gap-0.5 whitespace-nowrap text-ink underline decoration-line underline-offset-2"
+							>
+								{m.rd_evidence()}
+								<ExternalLink size={12} strokeWidth={2} aria-hidden="true" />
+							</a>
+						) : null}
+					</p>
+				</details>
 			) : null}
-			{/* Full-width rules, not a chip grid. Direction B's finding, kept even
-			    though its direction lost: every answer costs the same in both
-			    languages, where a two-column grid reflows into ragged rows the moment
-			    pt-BR runs long — and here it always does ("Como esperado", "Melhor que
-			    o normal"). It costs two rows of height per question and buys a column
-			    the eye can run straight down. */}
-			<div className="mt-1.5 flex flex-col gap-1 pl-[22px]">
+
+			{/* Full-width lines, not a chip grid: every answer costs the same in both
+			    languages, where a grid reflows into ragged rows the moment pt-BR runs
+			    long ("Melhor que o normal"). 48px and the 15px a thumb lands on: the
+			    sheet has the height to spend, and this is the whole of the step. */}
+			<div className="flex flex-col gap-1.5">
 				{q.options.map((o) => (
 					<button
 						key={o.label}
 						type="button"
-						aria-pressed={q.answer === o.value}
-						onClick={() => onPick(q.id, o.value)}
-						className={option({ on: q.answer === o.value, width: 'full', class: 'min-h-11' })}
+						aria-pressed={answer === o.value}
+						onClick={(e) => {
+							// `detail` is 0 for a keyboard press, and counts clicks for a pointer.
+							if (e.detail > 0 && performance.now() - arrivedAt.current < SETTLE_MS) return;
+							onPick(o.value);
+						}}
+						className={option({
+							on: answer === o.value,
+							width: 'full',
+							class: 'min-h-12 px-3 text-[15px]',
+						})}
 					>
 						{o.label}
 					</button>
 				))}
 			</div>
-		</div>
-	);
-}
-
-export function ReadinessCheck({
-	questions,
-	answers,
-	onPick,
-}: {
-	questions: Question[];
-	answers: Answers;
-	onPick: (id: string, v: number) => void;
-}) {
-	let n = 0;
-	return (
-		<div className="flex flex-col gap-3.5">
-			{questions.map((q) => {
-				if (!q.sub) n += 1;
-				return (
-					<QuestionRow
-						key={q.id}
-						q={{ ...q, answer: answers[q.id] ?? null }}
-						n={q.sub ? null : n}
-						onPick={onPick}
-					/>
-				);
-			})}
-		</div>
+		</fieldset>
 	);
 }

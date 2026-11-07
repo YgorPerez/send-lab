@@ -263,17 +263,7 @@ function Summary({
 				) : null}
 				{config.cooldown > 0 ? <SummaryRow segment="cooldown" seconds={config.cooldown} /> : null}
 			</ol>
-			{study ? (
-				<a
-					href={study.url}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="mt-4 self-start py-2 text-[14px] font-medium text-ink-dim underline decoration-line underline-offset-[3px] hover:text-ink"
-				>
-					{m.timer_study({ title: study.title })}
-					<ExternalLink size={13} aria-hidden="true" className="ml-1.5 inline align-[-1px]" />
-				</a>
-			) : null}
+			{study ? <StudyLink study={study} className="mt-4" /> : null}
 			{setup}
 		</div>
 	);
@@ -305,6 +295,37 @@ function SummaryRow({
 			{SEGMENT_LABEL[segment]()}
 			<span className="display ml-auto text-[24px] font-semibold">{shortTime(seconds)}</span>
 		</li>
+	);
+}
+
+/**
+ * A study a protocol cites: "Study: <title>" and the external-link mark, one way
+ * wherever it is linked — the clock's ready state, and the end of each preset
+ * group on the Timer list (#119), so the citations read as one system. The
+ * mark is the in-text icon (DESIGN.md › Icons: 12px, stroke 2), beside its
+ * words, never alone.
+ */
+export function StudyLink({ study, className }: { study: Study; className?: string }) {
+	return (
+		<a
+			href={study.url}
+			target="_blank"
+			rel="noopener noreferrer"
+			className={cn(
+				'flex min-h-11 w-fit items-center self-start py-2 text-[14px] font-medium text-ink-dim hover:text-ink',
+				className,
+			)}
+		>
+			<span className="underline decoration-line underline-offset-[3px]">
+				{m.timer_study({ title: study.title })}
+				<ExternalLink
+					size={12}
+					strokeWidth={2}
+					aria-hidden="true"
+					className="ml-1.5 inline align-[-1px]"
+				/>
+			</span>
+		</a>
 	);
 }
 
@@ -434,7 +455,7 @@ function ProtocolFullScreen({
 						type="button"
 						onClick={onToggle}
 						className={button({
-							kind: 'primary',
+							kind: 'clock',
 							size: 'touch',
 							class: 'min-h-[60px] w-full rounded-2xl text-[18px] font-semibold',
 						})}
@@ -455,7 +476,7 @@ function ProtocolFullScreen({
 						<button
 							type="button"
 							onClick={onToggle}
-							className={clockControl('main', onField, 'primary')}
+							className={clockControl('main', onField)}
 							style={onField ? { color: field } : undefined}
 						>
 							{running ? (
@@ -752,7 +773,7 @@ export function Timer({
 	const adjustId = useId();
 	const setup = editable ? (
 		<section aria-labelledby={`${adjustId}-heading`} className="mt-6 flex flex-col gap-1 pb-2">
-			<h2 id={`${adjustId}-heading`} className="h-section-sans">
+			<h2 id={`${adjustId}-heading`} className="h-section">
 				{m.timer_setup()}
 			</h2>
 			<ProtocolRows
@@ -865,14 +886,15 @@ export function Timer({
 				type="button"
 				onClick={toggle}
 				// Underway, the toggle is a 52px square either way — Pause on the
-				// field, Resume in vermilion — so pausing never moves the number
-				// beside it. Only before the start, when there is no number, does it
+				// field, Resume as the outlined clock control (#118), never filled:
+				// on Train the one primary is finish-and-log — so pausing never moves
+				// the number beside it. Only before the start, when there is no number, does it
 				// carry its word.
 				className={
 					running
 						? 'flex size-[52px] shrink-0 items-center justify-center rounded-[14px] bg-bg'
 						: button({
-								kind: 'primary',
+								kind: 'clock',
 								size: 'touch',
 								class: cn(
 									'min-h-[52px] shrink-0 rounded-[14px]',
