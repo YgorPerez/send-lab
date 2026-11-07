@@ -42,7 +42,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `card` | `pad` none/sm/md · `tone` plain/inset/ok/warn/stop | The one surface. It has to **earn itself**: it carries state colour, or it holds a list whose rows need a shared edge. Everything else uses `Bare`. |
 | `chip` | `tone` neutral/ok/warn/stop/ghost | Small state token. Colour always reports state, never decoration. |
 | `input` | `align` left/center | `text-base` is not a style choice — under 16px iOS zooms on focus, and it sets the floor for how narrow a set-row column can get. |
-| `button` | `kind` primary/quiet/bare · `size` sm/md/lg/touch | `quiet` is the default; `primary` is rationed to one per screen. `touch` is 48px. |
+| `button` | `kind` primary/quiet/bare/clock · `size` sm/md/lg/touch | `quiet` is the default; `primary` is rationed to one per screen. `touch` is 48px. `clock` is a clock's start, pause and resume off its field: a 2px dim-ink outline, no fill, never vermilion (#114); pair it with `touch` or larger |
 | `option` | `on` · `width` auto/full | A choice in a picker. `full` is Direction B's finding, kept though its direction lost. |
 
 ### Components — `ui/`
@@ -50,6 +50,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | Name | File | What it is |
 |---|---|---|
 | `Eyebrow` | `primitives.tsx` | The furniture rank of the type scale |
+| `ScreenHeader` | `primitives.tsx` | How every screen opens (#114): the title in the top rank and the screen's only `<h1>`, an optional meta line, an optional lede, and one `reading` *or* one `action` on the right. Nothing the page draws comes before it |
 | `Section` | `primitives.tsx` | Heading, optional right-hand meta, body |
 | `Bare` | `primitives.tsx` | A group with a rule above it and no box |
 | `Empty` | `primitives.tsx` | What a group says when it has nothing to list: a `Bare`, one line of `Prose`, and the one affordance that fills it |
@@ -411,6 +412,42 @@ so the address stands in.
 
 ---
 
+## The overhaul's foundation
+
+Settled by [#114](https://github.com/YgorPerez/send-lab/issues/114), the first
+ticket of the UI/UX overhaul ([#113](https://github.com/YgorPerez/send-lab/issues/113)).
+`DESIGN.md` carries the full patterns (the grid, the header, the group pattern,
+icon sizes, the clock control); this is what landed in code and how a screen
+ticket uses it.
+
+**Spacing is named, not picked.** `app.css` adds five steps to Tailwind's
+spacing scale, so they work under every spacing prefix:
+
+| Token | Value | Use it for |
+|---|---|---|
+| `sections` | 28px | Between a screen's sections, and below its header (`gap-sections`) |
+| `group` | 10px | A section heading to its body; groups inside a section |
+| `row` | 6px | Rows of one list that are each their own surface |
+| `inset` | 12px | Inside a group's surface: under a `Bare` rule, a `card({ pad: 'sm' })` |
+| `gutter` | 12px, 20px from `lg` | The page's side margin and the gap between two panes; one variable, so `px-gutter` is right at both widths |
+
+`Pane`, `Panes`, `Section`, `Bare`, `Empty`, the small `card` and the shell use
+them already. Screens still carry literal steps (`gap-6` on Train and the Timer is
+drift, 24px against 28px); each screen ticket moves its own. The inside of a
+component keeps the plain 4px steps.
+
+**Every screen sets its title through `ScreenHeader`.** The right-hand side is a
+`reading` (a count or reading about the whole screen, baseline-aligned) or an
+`action` (one icon control, centred, because an icon has no baseline), never
+both. Today's week reading is a link and goes in `reading`. A screen action is
+the top strip's business once #115 gives the strip a slot; until then the
+Timer's cue settings are the header's `action`. `tests/screens.test.ts` asserts
+every screen opens with it.
+
+**A new spacing token is two edits, and the second is easy to miss.** Add it to
+`app.css` and to `twMergeConfig` in `lib/utils.ts`; `tests/spacingTokens.test.ts`
+fails until both agree. The reasons are the next two rules.
+
 ## The idiom
 
 Svelte 5 runes have no direct React equivalent and naive translation produces bad
@@ -529,6 +566,18 @@ remembered.
   — the week could not tell "still to come" from "you missed it". State won,
   because it is the question the page is opened for; the accent moved to the panel
   below, attached to the day type's own name.
+- **tailwind-merge only drops a class it knows conflicts.** With the spacing
+  tokens unknown to it, `cn('gap-sections', 'gap-6')` kept both, the
+  stylesheet's order picked the winner, and Train and the Timer each grew 28px.
+  `cn` and the `ui/variants.ts` recipes merge with `twMergeConfig`, which names
+  the tokens. Found by screenshotting all eight routes against the base build
+  (#114).
+- **A spacing token's name becomes a utility under every spacing prefix.** The
+  section token was first called `section`, which made `h-section` a 28px
+  height on top of the type rank of the same name and doubled every section
+  heading's box on five screens. It is `sections`, and
+  `tests/spacingTokens.test.ts` refuses a token name that turns a class
+  `app.css` defines into a spacing utility (#114).
 - **`aria-label` replaces a control's content, it does not add to it.** A grid
   cell reading `Thu 1/4` labelled `"Thu · Pinch / Wrist · Today"` says *less* to a
   screen reader than the unlabelled button did — the count is gone. Whatever the

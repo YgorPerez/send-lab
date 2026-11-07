@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-06T23:30:00Z",
+  "generatedAt": "2026-11-07T12:00:00Z",
   "title": "Design System: Send Lab",
   "extensions": {
     "colorMeta": {
@@ -294,6 +294,10 @@
       "microlabel": {
         "displayName": "Microlabel",
         "purpose": "Column labels in a four-column grid at 360px; the measured 9px floor."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "The one line under a screen's title: the date, the phase. Truncated, mono when a number."
       }
     },
     "shadows": [
@@ -377,6 +381,22 @@
       "description": "The default button; hover raises the panel a step and lightens the text.",
       "html": "<button class=\"ds-btn-quiet\">Duplicate</button>",
       "css": ".ds-btn-quiet{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:4px 8px;border:1px solid var(--line,#474c51);border-radius:8px;background:var(--panel-2,#2b2f32);color:var(--ink-dim,#b6bbc0);font:500 13px/1.25 'Inter Variable',Inter,sans-serif;transition:background-color .15s,color .15s;cursor:pointer}.ds-btn-quiet:hover,.ds-btn-quiet:active{background:var(--panel-3,#33373b);color:var(--ink,#f1f2f2)}.ds-btn-quiet:focus-visible{outline:2px solid var(--flag,#ff5a2c);outline-offset:2px}"
+    },
+    {
+      "name": "Clock Control",
+      "kind": "button",
+      "refersTo": "button-clock",
+      "description": "A clock's start, pause and resume off its coloured field: outlined, never filled vermilion, at least 48px.",
+      "html": "<button class=\"ds-btn-clock\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><path d=\"M6 3l14 9-14 9z\"/></svg>Start</button>",
+      "css": ".ds-btn-clock { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 52px; padding: 8px 16px; border: 2px solid var(--ink-dim); border-radius: 14px; background: transparent; color: var(--ink); font: 600 15px/1.2 'Inter Variable', Inter, sans-serif; transition: border-color .15s, background-color .15s; } .ds-btn-clock:hover { border-color: var(--chalk); } .ds-btn-clock:active { background: var(--panel-2); } .ds-btn-clock:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Screen Header",
+      "kind": "custom",
+      "refersTo": "screen-header",
+      "description": "How every screen opens: the title, one line of meta, and one reading on the right, baseline-aligned.",
+      "html": "<header class=\"ds-screen-header\"><div><h1>Train · Thu</h1><p>Aug 13 · week 5</p></div><span>3/12 sets</span></header>",
+      "css": ".ds-screen-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding-top: 6px; } .ds-screen-header h1 { margin: 0; font: 600 21px/1.15 'Inter Variable', Inter, sans-serif; letter-spacing: -0.01em; color: var(--ink); } .ds-screen-header p { margin: 4px 0 0; font: 400 11px/1.5 'Inter Variable', Inter, sans-serif; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-screen-header span { flex-shrink: 0; font: 400 11px 'Roboto Mono Variable', monospace; font-variant-numeric: tabular-nums; color: var(--ink-faint); }"
     },
     {
       "name": "Input",
@@ -498,13 +518,20 @@
         "name": "The Float-Only Shadow Rule",
         "body": "A shadow means \"this is over the page\". Nothing that sits in the page's flow has one.",
         "section": "elevation"
+      },
+      {
+        "name": "The Inside-Smaller Rule",
+        "body": "Each step is larger than the one inside it: sections (28) > group (10) > row (6). A screen whose section gap equals its row gap reads as one long list.",
+        "section": "layout"
       }
     ],
     "dos": [
       "**Do** use the four accents only to report state, and the semantic names (`--ok`, `--warn`, `--stop`, `--cooldown`) to reach them.",
       "**Do** set text on any accent fill in the ground colour.",
       "**Do** mark state with colour or with a mark beside the text; re-measure any colour moved onto a new surface.",
-      "**Do** group with space and a `line-soft` hairline (`Bare`) first, and reach for a card only when it carries state or a shared list edge.",
+      "**Do** group with space and a `line-soft` hairline (`Bare`) first, and reach for a card only when it carries state or a shared list edge. A list of controls is a card of rows, one row or many.",
+      "**Do** open every screen with `ScreenHeader`, and space a page with the named steps (`gap-sections`, `gap-group`, `gap-row`, `p-inset`, `px-gutter`) rather than a number picked for one screen.",
+      "**Do** size icons by context: 22px in the bar, 20px in a row or alone in a control, 16px beside a label, 12px in text.",
       "**Do** keep one `primary` per screen, and give a disabled control the line that says what it is waiting for.",
       "**Do** set numbers that change in a tabular face: Barlow Condensed on the clock and its strip, Roboto Mono for data elsewhere.",
       "**Do** size touch targets at 44px for anything touched mid-set and 48px or more on the clock (64px side and 84px main controls on its row).",
@@ -520,6 +547,8 @@
       "**Don't** set a word in Barlow Condensed, or stack readouts under a ring timer; the clock is a field.",
       "**Don't** draw paused digits as transparent outlined text; it measures 1:1 in `check:contrast`.",
       "**Don't** add a shadow to anything that sits in the page's flow.",
+      "**Don't** fill a clock's start or pause with vermilion; it is a clock control, and the screen's one primary is elsewhere.",
+      "**Don't** put a card inside a card, or a single sentence in a card.",
       "**Don't** call a clock segment a \"phase\"; a phase spans weeks (`CONTEXT.md`).",
       "**Don't** animate anything that outlives one frame under `prefers-reduced-motion`, and don't enter Motion without a `reducedMotion=\"user\"` provider."
     ]
