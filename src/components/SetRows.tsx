@@ -22,6 +22,7 @@
 // is a record, not a form, and 28 sessions of editable inputs is the fastest way
 // to make a history screen feel like a spreadsheet that has to be finished.
 import { Check } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { type Range, RPE_SCALE } from '$lib/content/types';
 import { formatRange, GRIPS, gripLabel } from '$lib/format';
 import type { ExerciseId } from '$lib/ids';
@@ -205,13 +206,23 @@ export function SetEditor({
 }
 
 /** Past sets: one header row per exercise, then one line per set. */
-export function SetTable({ fields, sets }: { fields: SetField[]; sets: LoggedSet[] }) {
+export function SetTable({
+	fields,
+	sets,
+	empty = null,
+}: {
+	fields: SetField[];
+	sets: LoggedSet[];
+	/** What to say when no set recorded a number in any column: the sets were
+	 *  still done, and a count elsewhere includes them (Log's row, #120). */
+	empty?: ReactNode;
+}) {
 	// Only the columns this exercise actually recorded something in. A past
 	// session is fixed data, so an all-null column is pure noise.
 	const cols = fields.filter((f) =>
 		sets.some((s) => (f === 'grip' ? s.grip != null : s[f as keyof LoggedSet] != null)),
 	);
-	if (cols.length === 0) return null;
+	if (cols.length === 0) return empty;
 
 	return (
 		<div className="overflow-x-auto">

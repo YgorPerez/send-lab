@@ -42,6 +42,13 @@ const VERDICT_TONE: Record<VerdictId, ScoreTone> = {
 	rest: 'stop',
 };
 
+export type FlagSeverity = 'stop' | 'warn' | 'info';
+
+/** A stored severity, as one of the three; the store types it as a string. */
+function severityOf(stored: string): FlagSeverity {
+	return stored === 'stop' || stored === 'warn' ? stored : 'info';
+}
+
 export interface LoggedCheckRow {
 	/** ISO calendar date. The row's identity; the labels are for display. */
 	iso: string;
@@ -53,7 +60,8 @@ export interface LoggedCheckRow {
 	tone: ScoreTone;
 	/** The check as answered — question text against the chosen answer. */
 	responses: { question: string; answer: string }[];
-	flagTitles: string[];
+	/** The flags it raised, each with the severity it was raised at. */
+	flags: { title: string; severity: FlagSeverity }[];
 	/** 0 bailed · 1 flat · 2 as expected · 3 strong. */
 	outcome: number | null;
 }
@@ -159,7 +167,10 @@ function checkRow(
 			if (v == null) return [];
 			return [{ question: q.q, answer: q.a.find((o) => o.v === v)?.t ?? String(v) }];
 		}),
-		flagTitles: (r.flags ?? []).map((f) => content.flags[f.id]?.title ?? f.id),
+		flags: (r.flags ?? []).map((f) => ({
+			title: content.flags[f.id]?.title ?? f.id,
+			severity: severityOf(f.severity),
+		})),
 		outcome: r.outcome ?? null,
 	};
 }

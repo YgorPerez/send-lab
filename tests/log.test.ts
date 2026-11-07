@@ -77,8 +77,8 @@ const COPY = {
 		check: 'Readiness check',
 		session: 'Session',
 		noSession: 'No session',
+		noNumbers: '1 set, no numbers recorded',
 		sleep: 'How did you sleep?',
-		pick: 'Pick a day',
 	},
 	'pt-BR': {
 		title: 'Registro',
@@ -87,8 +87,8 @@ const COPY = {
 		check: 'Check de prontidão',
 		session: 'Sessão',
 		noSession: 'Sem sessão',
+		noNumbers: '1 série, sem números registrados',
 		sleep: 'Como foi seu sono?',
-		pick: 'Escolha um dia',
 	},
 } as const;
 
@@ -147,16 +147,32 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(scored).toBe(log.counts.checks);
 		});
 
-		test('opens the newest day on its check’s answers and its session’s sets', async () => {
+		// The closed row already says what the day was; a phone opens on the
+		// timeline, not on 650px of one day (#120 critique).
+		test('opens on the timeline: no day is open on arrival', async () => {
 			const main = await screen(locale);
-			const rows = rowsOf(main);
-			expect(rows.filter((r) => r.getAttribute('aria-expanded') === 'true')).toEqual([rows[0]]);
-			const panel = main.querySelector(`[id="${rows[0].getAttribute('aria-controls')}"]`);
-			const detail = text(panel);
-			expect(detail).toContain(copy.check);
-			expect(detail).toContain(copy.sleep);
-			expect(detail).toContain(copy.session);
-			expect(panel?.querySelector('table')).not.toBeNull();
+			expect(rowsOf(main).every((r) => r.getAttribute('aria-expanded') === 'false')).toBe(true);
+		});
+
+		test('heads the timeline, so the page’s headings descend one rank at a time', async () => {
+			const main = await screen(locale);
+			const ranks = [...main.querySelectorAll('h1, h2, h3, h4')].map((h) => Number(h.tagName[1]));
+			ranks.forEach((rank, i) => {
+				if (i > 0) expect(rank, `heading ${i}`).toBeLessThanOrEqual(ranks[i - 1] + 1);
+			});
+		});
+
+		// The closed row says "5 sets"; what it opens to accounts for all five, so
+		// an exercise logged without numbers says so instead of a bare name.
+		test('accounts for every set it counts, numbers or not', async () => {
+			const main = await screen(locale);
+			const exercises = [...main.querySelectorAll('[data-day-detail] [data-exercise]')];
+			expect(exercises.length).toBeGreaterThan(0);
+			for (const ex of exercises) {
+				const told = ex.querySelector('table') ?? ex.querySelector('[data-no-numbers]');
+				expect(told, text(ex)).not.toBeNull();
+			}
+			expect(text(main.querySelector('[data-day-detail] [data-no-numbers]'))).toBe(copy.noNumbers);
 		});
 
 		test('puts the open day beside the timeline from lg, headed by its date', async () => {
@@ -168,6 +184,12 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(beside?.getAttribute('class')).toMatch(/(^|\s)hidden(\s|$)/);
 			expect(text(beside?.querySelector('h2'))).toBe(log.days[0].fullDate);
 			expect(beside?.querySelector('table')).not.toBeNull();
+			// A section named by its date (a region), reachable by keyboard: it scrolls inside
+			// itself when the day is taller than the window.
+			expect(beside?.tagName).toBe('SECTION');
+			const named = main.querySelector(`[id="${beside?.getAttribute('aria-labelledby')}"]`);
+			expect(text(named)).toBe(log.days[0].fullDate);
+			expect(beside?.getAttribute('tabindex')).toBe('0');
 		});
 	});
 }
@@ -193,7 +215,7 @@ describe('Log, mounted', () => {
 	const main = () => document.querySelector('main') as HTMLElement;
 	const besideHeading = () => text(main().querySelector('[data-day-detail] h2'));
 
-	test('a tap opens another day, closes the open one, and the pane beside follows', async () => {
+	test('a tap opens a day, the next closes it, and the pane beside keeps the last one', async () => {
 		await mount();
 		const log = logIn('en-US');
 		const [first, second] = rowsOf(main());
@@ -201,13 +223,20 @@ describe('Log, mounted', () => {
 
 		act(() => second.click());
 		expect(second.getAttribute('aria-expanded')).toBe('true');
-		expect(first.getAttribute('aria-expanded')).toBe('false');
 		expect(besideHeading()).toBe(log.days[1].fullDate);
+		const panel = main().querySelector(`[id="${second.getAttribute('aria-controls')}"]`);
+		expect(text(panel)).toContain('Readiness check');
 
-		// Closing the open day leaves nothing open, and the pane says how to fill it.
-		act(() => second.click());
+		act(() => first.click());
+		expect(first.getAttribute('aria-expanded')).toBe('true');
+		expect(second.getAttribute('aria-expanded')).toBe('false');
+		expect(besideHeading()).toBe(log.days[0].fullDate);
+
+		// Closing the open day leaves the pane on it: a wide screen never shows
+		// an empty second pane.
+		act(() => first.click());
 		expect(rowsOf(main()).every((r) => r.getAttribute('aria-expanded') === 'false')).toBe(true);
-		expect(text(main().querySelector('[data-day-detail]'))).toContain(COPY['en-US'].pick);
+		expect(besideHeading()).toBe(log.days[0].fullDate);
 	});
 
 	// The timeline is the end of the page on a phone, so closing a day there
@@ -222,6 +251,7 @@ describe('Log, mounted', () => {
 		Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
 		try {
 			const [first] = rowsOf(main());
+			act(() => first.click());
 			const panel = document.getElementById(first.getAttribute('aria-controls') ?? '');
 			if (!panel) throw new Error('the newest day is not open');
 			vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ height: 500, top: 0 } as DOMRect);
@@ -240,7 +270,8 @@ describe('Log, mounted', () => {
 	// closed day's height: the page scrolls with it so the head stays put.
 	test('opening a day below the open one keeps the tapped head under the finger', async () => {
 		await mount();
-		const [, second] = rowsOf(main());
+		const [first, second] = rowsOf(main());
+		act(() => first.click());
 		let top = 400;
 		vi.spyOn(second, 'getBoundingClientRect').mockImplementation(() => ({ top }) as DOMRect);
 		const scrolled = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});

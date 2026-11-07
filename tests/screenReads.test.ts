@@ -264,6 +264,16 @@ describe('Log', () => {
 		expect(checks.some((r) => r.outcome != null)).toBe(true);
 	});
 
+	// A flag keeps the severity it was raised with, as Today shows it: a stop flag
+	// painted the warn colour says less than it did on the morning it was raised.
+	it('keeps each flag’s severity', () => {
+		const flags = LOG.days.flatMap((d) => d.check?.flags ?? []);
+		expect(flags.length).toBeGreaterThan(0);
+		for (const f of flags) expect(['stop', 'warn', 'info']).toContain(f.severity);
+		const raw = REC.readinessLog.flatMap((r) => r.flags ?? []);
+		expect(new Set(flags.map((f) => f.severity))).toEqual(new Set(raw.map((f) => f.severity)));
+	});
+
 	it('drops an exercise the library no longer has, and keeps the session', () => {
 		// The library closed when #12 dropped athlete-authored exercises, so a
 		// stored id can outlive its exercise. This used to throw, which on a screen

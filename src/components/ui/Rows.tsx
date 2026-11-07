@@ -58,6 +58,7 @@ export function Row({
 	summary,
 	touch,
 	aside,
+	current,
 	children,
 }: {
 	/** A stable id for this row — never a display label (ADR-0003). */
@@ -66,13 +67,16 @@ export function Row({
 	/** A 48px head in the rows' 15px, for a list worked through mid-set (the
 	 *  Timer's preset groups); 44px otherwise. */
 	touch?: boolean;
-	/** From `lg` the caller shows the open row's detail beside the list (Log's
-	 *  second pane, #120), so there the row does not open under itself: its panel
-	 *  and chevron are hidden, and the open row is the selected one, marked as
-	 *  the bar marks the current destination plus the chalk edge a row needs
-	 *  (DESIGN.md › Navigation › One selection language). The summary takes
-	 *  chalk on its own lines through `group-data-[panel-open]`. */
+	/** From `lg` the caller shows a row's detail beside the list (Log's second
+	 *  pane, #120), so there the row does not open under itself: its panel and
+	 *  chevron are hidden. */
 	aside?: boolean;
+	/** The row whose detail is beside the list from `lg` (with `aside`), marked
+	 *  there as the bar marks the current destination, plus the chalk edge a row
+	 *  needs (DESIGN.md › Navigation › One selection language). Kept apart from
+	 *  open: below `lg` nothing need be open, and from `lg` the pane always
+	 *  shows a day. The summary takes chalk through `group-data-[current]`. */
+	current?: boolean;
 	children: ReactNode;
 }) {
 	return (
@@ -83,11 +87,16 @@ export function Row({
 		>
 			<Accordion.Header>
 				<Accordion.Trigger
+					data-current={aside && current ? '' : undefined}
 					className={cn(
-						'group flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-panel-2 active:bg-panel-2',
+						// The ring is drawn inside: the group's `overflow-hidden` (its
+						// rounded corners) cut the global 2px-outside ring to its top and
+						// bottom lines, or to one line on the first and last rows (#120).
+						'group flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-panel-2 focus-visible:-outline-offset-2 active:bg-panel-2',
 						touch ? 'min-h-12 text-[15px] font-semibold text-ink' : 'min-h-11',
 						aside &&
-							'lg:data-[panel-open]:bg-panel-3 lg:data-[panel-open]:ring-1 lg:data-[panel-open]:ring-chalk/60 lg:data-[panel-open]:ring-inset lg:data-[panel-open]:hover:bg-panel-3',
+							current &&
+							'lg:bg-panel-3 lg:ring-1 lg:ring-chalk/60 lg:ring-inset lg:hover:bg-panel-3',
 					)}
 				>
 					<span className="min-w-0 flex-1">{summary}</span>

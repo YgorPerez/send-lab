@@ -315,9 +315,11 @@ export function Panes({
 	primary: ReactNode;
 	secondary: ReactNode;
 	/** Hold the second pane in view while the first scrolls (Log's selected day
-	 *  beside its timeline, #120): stuck 16px under the strip, and scrolling
-	 *  inside itself when it is taller than the window. A grid item can stick
-	 *  because the grid is as tall as the longer pane. */
+	 *  beside its timeline, #120): stuck 16px under the strip. A grid item can
+	 *  stick because the grid is as tall as the longer pane. A pane that can be
+	 *  taller than the window caps and scrolls itself (Log's does), at most the
+	 *  window less the strip, `main`'s 16px above and its 56px below: any taller
+	 *  and at the page's end the grid's bottom pushes it up under the strip. */
 	stickySecondary?: boolean;
 	className?: string;
 }) {
@@ -335,8 +337,7 @@ export function Panes({
 			<div
 				className={cn(
 					'contents lg:flex lg:flex-col lg:gap-[inherit]',
-					stickySecondary &&
-						'lg:sticky lg:top-[60px] lg:max-h-[calc(100dvh-76px)] lg:overflow-y-auto lg:overscroll-contain',
+					stickySecondary && 'lg:sticky lg:top-[60px]',
 				)}
 			>
 				{secondary}

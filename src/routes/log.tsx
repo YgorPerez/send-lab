@@ -18,12 +18,13 @@
 // repair job, not the reason this screen exists, and 28 sessions of live inputs
 // would make the history feel like a spreadsheet that has to be finished.
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useId, useMemo, useState } from 'react';
 import { getContent } from '$lib/content';
 import { OUTCOME_LABEL } from '$lib/format';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import {
+	type FlagSeverity,
 	type LogDay,
 	type LoggedCheckRow,
 	type LoggedSessionRow,
@@ -59,7 +60,14 @@ const TONE_MARK: Record<ScoreTone, string> = {
 };
 
 /** Chalk on every line of the selected row from `lg` (`Row`'s `aside`). */
-const PICKED = 'lg:group-data-[panel-open]:text-chalk';
+const PICKED = 'lg:group-data-[current]:text-chalk';
+
+/** A flag's severity as its chip's tone, as Today draws it. */
+const FLAG_CHIP: Record<FlagSeverity, 'stop' | 'warn' | 'neutral'> = {
+	stop: 'stop',
+	warn: 'warn',
+	info: 'neutral',
+};
 
 function Log() {
 	// The history, live. `useTrainingRecord` subscribes to the collections, so a
@@ -72,14 +80,18 @@ function Log() {
 		[record, locale],
 	);
 
-	// THE OPEN DAY. `undefined` until the athlete picks: the newest day, so the
-	// second pane on a wide screen is never empty on arrival and the phone opens
-	// on what was done last. `null` is a choice too: everything closed.
-	const [chosen, setChosen] = useState<string | null | undefined>(undefined);
-	const open = chosen === undefined ? (days[0]?.iso ?? null) : chosen;
+	// TWO THINGS, KEPT APART. Which row is open under itself (a phone), and
+	// which day the pane beside the timeline shows (from `lg`). A phone opens on
+	// the timeline with nothing open: the closed row already says what the day
+	// was (#120 critique). The pane shows the last day opened, the newest until
+	// one is, and closing a row leaves it there, so a wide screen never shows an
+	// empty second pane.
+	const [open, setOpen] = useState<string | null>(null);
+	const [picked, setPicked] = useState<string | null>(null);
 	const openRows = open ? [open] : [];
-	const day = days.find((d) => d.iso === open) ?? null;
+	const day = days.find((d) => d.iso === picked) ?? days[0] ?? null;
 	const { end, hold } = useRowsInPlace();
+	const detailId = useId();
 
 	return (
 		// The page's frame, not a `Pane`: at `lg` this is two panes, so the frame is
@@ -116,33 +128,59 @@ function Log() {
 				<Panes
 					stickySecondary
 					primary={
-						<RowGroup
-							value={openRows}
-							onValueChange={(next, event) => {
-								hold(openRows, next, event);
-								setChosen(next[0] ?? null);
-							}}
-						>
-							{days.map((d) => (
-								<Row key={d.iso} value={d.iso} aside summary={<DaySummary day={d} />}>
-									<DayDetail day={d} level={4} />
-								</Row>
-							))}
-						</RowGroup>
+						// The rows are `h3`s (`Row`), so the list is headed for the
+						// outline a screen reader walks; the eye has the header above.
+						<section aria-labelledby={`${detailId}-days`}>
+							<h2 id={`${detailId}-days`} className="sr-only">
+								{m.log_timeline()}
+							</h2>
+							<RowGroup
+								value={openRows}
+								onValueChange={(next, event) => {
+									hold(openRows, next, event);
+									setOpen(next[0] ?? null);
+									if (next[0]) setPicked(next[0]);
+								}}
+							>
+								{days.map((d) => (
+									<Row
+										key={d.iso}
+										value={d.iso}
+										aside
+										current={d.iso === day?.iso}
+										summary={<DaySummary day={d} />}
+									>
+										<DayDetail day={d} level={4} />
+									</Row>
+								))}
+							</RowGroup>
+						</section>
 					}
 					secondary={
-						<div data-day-detail="" className="hidden lg:flex lg:flex-col">
-							{day ? (
-								<div className={card({ pad: 'md', class: 'flex flex-col gap-3' })}>
-									<h2 className="text-[15px] leading-tight font-semibold text-ink">
-										{day.fullDate}
-									</h2>
-									<DayDetail day={day} level={3} />
-								</div>
-							) : (
-								<Empty value={m.log_pick_day()} />
-							)}
-						</div>
+						// A region named by its date, and a tab stop: it scrolls inside
+						// itself when the day is taller than the window, so a keyboard
+						// has to be able to reach it (`Panes`' `stickySecondary` caps it).
+						day ? (
+							<section
+								data-day-detail=""
+								aria-labelledby={`${detailId}-date`}
+								// biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container a keyboard must reach
+								tabIndex={0}
+								className={card({
+									pad: 'md',
+									class:
+										'hidden lg:flex lg:max-h-[calc(100dvh-116px)] lg:flex-col lg:gap-3 lg:overflow-y-auto lg:overscroll-contain',
+								})}
+							>
+								<h2
+									id={`${detailId}-date`}
+									className="text-[15px] leading-tight font-semibold text-ink"
+								>
+									{day.fullDate}
+								</h2>
+								<DayDetail day={day} level={3} />
+							</section>
+						) : null
 					}
 				/>
 			)}
@@ -182,21 +220,27 @@ function DaySummary({ day }: { day: LogDay }) {
 					</span>
 				)}
 			</span>
-			<span
-				className={cn(
-					'min-w-0 flex-1 truncate text-[13px]',
-					session ? 'text-ink' : 'text-ink-faint',
-					PICKED,
-					'lg:group-data-[panel-open]:font-semibold',
-				)}
-			>
-				{session ? session.dayType : m.log_no_session()}
-			</span>
-			{session ? (
-				<span className={cn('num shrink-0 text-[11px] text-ink-faint', PICKED)}>
-					{counted(session.setCount, m.log_sets_one, m.log_sets_other)}
+			{/* The day type wraps at its spaces, never inside a word, and the set
+			    count drops under it when the two do not fit: pt-BR's "Limite /
+			    Potência" was cut to "Limite / Potên…" at 360px, and breaking
+			    anywhere split "Performance" at 320px (#120 critique). */}
+			<span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+				<span
+					className={cn(
+						'text-[13px] leading-snug',
+						session ? 'text-ink' : 'text-ink-faint',
+						PICKED,
+						'lg:group-data-[current]:font-semibold',
+					)}
+				>
+					{session ? session.dayType : m.log_no_session()}
 				</span>
-			) : null}
+				{session ? (
+					<span className={cn('num ml-auto shrink-0 text-[11px] text-ink-faint', PICKED)}>
+						{counted(session.setCount, m.log_sets_one, m.log_sets_other)}
+					</span>
+				) : null}
+			</span>
 		</span>
 	);
 }
@@ -252,11 +296,11 @@ function CheckDetail({ check, level }: { check: LoggedCheckRow; level: 3 | 4 }) 
 					<span className="block text-ink-dim">{check.verdict.tag}</span>
 				</p>
 			</div>
-			{check.flagTitles.length ? (
+			{check.flags.length ? (
 				<div className="flex flex-wrap gap-1">
-					{check.flagTitles.map((title) => (
-						<span key={title} className={chip({ tone: 'warn' })}>
-							{title}
+					{check.flags.map((f) => (
+						<span key={f.title} className={chip({ tone: FLAG_CHIP[f.severity] })}>
+							{f.title}
 						</span>
 					))}
 				</div>
@@ -294,9 +338,17 @@ function SessionDetail({ session, level }: { session: LoggedSessionRow; level: 3
 		>
 			<div className="flex flex-col gap-3">
 				{session.exercises.map((ex) => (
-					<div key={ex.exercise}>
+					<div key={ex.exercise} data-exercise="">
 						<div className="mb-0.5 text-[13px] font-semibold text-ink">{ex.name}</div>
-						<SetTable fields={ex.fields} sets={ex.sets} />
+						<SetTable
+							fields={ex.fields}
+							sets={ex.sets}
+							empty={
+								<p data-no-numbers="" className="text-[13px] leading-snug text-ink-faint">
+									{counted(ex.sets.length, m.log_no_numbers_one, m.log_no_numbers_other)}
+								</p>
+							}
+						/>
 					</div>
 				))}
 			</div>

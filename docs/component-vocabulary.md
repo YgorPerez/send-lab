@@ -62,7 +62,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
 | `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. It sits on the navigation bar (`--nav-clear`, #115), and from `lg` right of the rail on the measure's left edge, capped at `max-w-pane` as `Pane` is |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip. `wrap` lets the label take a second line instead of truncating, and `chevron={false}` gives a set-grid cell its 18px back: the pt-BR grips clipped to "Slop…" and "Half…" in a 68px cell (#118) |
-| `RowGroup` / `Row` | `Rows.tsx` | The expanding row, in one card; Log's timeline and the Timer's preset groups. `multiple` lets several rows stay open; `value` / `onValueChange` hand the open rows to the caller (the change arrives before it renders, with the press that made it). `touch` gives a row a 48px head in the rows' 15px semibold, for a list worked through mid-set. `aside` is for a list whose open row's detail the page shows beside it from `lg` (Log, #120): there the panel and chevron are hidden and the open row takes the selection mark. The trailing chevron is the row icon (18px, stroke 2, faint). `useRowsInPlace` and `RowsEnd` keep the tapped head under the finger as rows close (below, *Log as one timeline*) |
+| `RowGroup` / `Row` | `Rows.tsx` | The expanding row, in one card; Log's timeline and the Timer's preset groups. `multiple` lets several rows stay open; `value` / `onValueChange` hand the open rows to the caller (the change arrives before it renders, with the press that made it). `touch` gives a row a 48px head in the rows' 15px semibold, for a list worked through mid-set. `aside` is for a list whose detail the page shows beside it from `lg` (Log, #120): there the panel and chevron are hidden, and `current` marks the row being shown with the selection language. A head's focus ring is drawn inside, since the card's `overflow-hidden` cut the outside one to a line or two. The trailing chevron is the row icon (18px, stroke 2, faint). `useRowsInPlace` and `RowsEnd` keep the tapped head under the finger as rows close (below, *Log as one timeline*) |
 | `RowMenu` | `Menu.tsx` | A row's ⋯ (#119): Base UI's menu behind a separate, bordered, filled 44px square centred beside the row, Train's clock-button shape, never stretched to the row's height (or the 48px square in a dialog's header), labelled with what it acts on. A row with one action does not get one: put that action where the row leads. Takes `{ label, onSelect }` actions in order; nothing in it is coloured apart, and a destructive item's guard is the `AlertDialog` the caller opens next |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
@@ -811,7 +811,11 @@ athlete can re-check within a day, and the later answer set that day's verdict),
 so `counts.checks` counts what the timeline shows. The closed row is one line on a
 common grid: the date (11px mono), the score, the day type the session recorded
 (13px; "No session" in faint ink when there is none), and its sets, counted
-("5 sets", never a bare number).
+("5 sets", never a bare number). The day type wraps at its spaces and the count
+drops under it when the two do not fit: pt-BR's "Limite / Potência" was cut at
+360px, and wrapping anywhere split "Performance" at 320px. An exercise logged
+with no numbers says "1 set, no numbers recorded" (`SetTable`'s `empty`), so the
+row's count matches what it opens to.
 
 **The score's colour is its verdict's state, on a mark.** `VERDICT_TONE` in
 `screens/log.ts`: `green` and `short` are ok, `moderate` and `tissue` warn, `rest`
@@ -826,21 +830,27 @@ meta line, Inter, singular at one (the message format has no plurals, so each
 count has a `_one` and an `_other` key). The title is the bar's word, "Log" /
 "Registro", as Train's is.
 
-**The newest day is open on arrival.** `chosen` is `undefined` until the athlete
-taps; until then the open day is the newest, so the second pane is never empty on
-arrival and the phone opens on what was done last. Closing it is a choice
-(`null`): the pane then says how to fill it. A day opens to its check (the score
-and verdict, its flags, each question against its answer, the outcome) and its
+**A phone opens on the timeline; the pane beside it always shows a day.** The
+open row (`open`, a phone's accordion) and the day the pane shows (`picked`, from
+`lg`) are two pieces of state. Nothing is open on arrival: the first build opened
+the newest day, about 650px of detail repeating what its row already said, and
+the critique found the phone's first screen spent on it. The pane shows the last
+day opened, the newest until one is, and closing a row leaves it there, so a wide
+screen never shows an empty second pane. A day opens to its check (the score
+and verdict, its flags in their severity's tone as on Today, each question against its answer, the outcome) and its
 session (each exercise's sets, the note), each under an Inter head with its time
 or length on the right. "Conclusion" and "Your responses" are gone: the glossary
 rules out *conclusion* for the verdict, and the answers need no label under the
 check's head.
 
 **From `lg` the open day sits beside the timeline**, in `Panes`' second pane, held
-in view (`stickySecondary`). The rows are `aside`: from `lg` their panels and
-chevrons are hidden and the open row is the selected one, marked with the
-selection language plus the chalk edge (`panel-3`, a `chalk/60` inset ring, chalk
-on every line). The detail is rendered twice, once in the row's panel and once in
+in view (`stickySecondary`). The pane is a `section` named by its date and a tab
+stop, capped at the window less 116px and scrolling inside itself: any taller and
+at the page's end the grid's bottom pushed it under the strip. The rows are
+`aside`: from `lg` their panels and chevrons are hidden and the `current` row is
+marked with the selection language plus the chalk edge (`panel-3`, a `chalk/60`
+inset ring, chalk on every line). The timeline is headed by a visually hidden h2,
+because each row is an `h3`. The detail is rendered twice, once in the row's panel and once in
 the pane, and CSS shows one: the pane is not on a phone at all, so the split stays
 contiguous in the phone order. Nothing reads the viewport (ADR 0018).
 
@@ -857,8 +867,8 @@ open day at the page's end holds 375px and hands it back on the next open. A
 closed panel has no `aria-controls` in Base UI, so the head is found by
 `aria-expanded`.
 
-**Heights.** Seeded `/log` at 360px: 2,346px (the newest day open), 2,235px
-before; at 1280px, 1,636px. Empty: the viewport at both widths.
+**Heights.** Seeded `/log` at 360px: 1,713px (2,235px before #120); at 1280px,
+1,636px. Empty: the viewport at both widths.
 
 ## The idiom
 
@@ -1231,7 +1241,7 @@ does not get two columns.**
 | Page | Desktop | Why |
 |---|---|---|
 | `/` Today | **two columns** | Cut at the screen's own ordering rule: *decision + evidence* left (the read, the plan, the flags), *input + secondary* right (the outcome ask, counters, trend, bodyweight, injury; #117). Measured 3222 → 2019px (en-US), 3367 → 2035px (pt-BR) before the check sheet; 1452 / 1500px since #117 |
-| `log` | **two columns** | One timeline and the open day's detail beside it (#120). Until #120 the two columns were two independent lists, checks and sessions; the spec made them one list, and the second column holds what a row opens to. Seeded, 1,636px at 1280px against 1,459px as two lists, with the detail held in view |
+| `log` | **two columns** | One timeline and the open day's detail beside it (#120). Until #120 the two columns were two independent lists, checks and sessions; the spec made them one list, and the second column holds what a row opens to. Seeded, 1,636px at 1280px against 1,459px as two lists, with the detail held in view; 1,713px at 360px against 2,235px |
 | `week` | **two columns** | Built ([#63](https://github.com/YgorPerez/send-lab/issues/63)) through `Panes` as expected: the slot grid and the day it selects are two halves, and the cut is already the phone order. The grid also goes `grid-cols-4` → `lg:grid-cols-7` — four columns is what 360px forces, seven is the shape |
 | `program` | **two columns, expected** | Unbuilt ([#65](https://github.com/YgorPerez/send-lab/issues/65)). A phase editor is the other shape that obviously wants a second column beside it |
 | `train` | **capped** | Defined by the posture it is used in. Seven loggable fields laid out against 360px, stretched to twice that, put the number being typed an inch from its label. Measured: the wide layout saves it 128px, which is the bottom bar |
