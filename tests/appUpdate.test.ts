@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
 	activateUpdate,
 	type RegistrationLike,
+	reloadWhenTakenOver,
 	type WorkerLike,
 	watchForUpdate,
 } from '../src/lib/appUpdate.ts';
@@ -126,5 +127,53 @@ describe('activateUpdate', () => {
 
 	it('does nothing when there is no worker waiting', () => {
 		expect(() => activateUpdate(registration({}))).not.toThrow();
+	});
+});
+
+// The reload half (#122). `sw.ts` calls `clientsClaim()`, so a first install
+// takes over the page it was registered from, and that fires `controllerchange`
+// as an update does. Reloading on it reloaded every first visit a moment after
+// it opened, under whatever the athlete was doing, and under the gates:
+// `check:contrast --desktop` read the baked shell (7 elements against a floor of
+// 12) whenever the claim landed just before it measured `/settings`.
+describe('reloadWhenTakenOver', () => {
+	function container(controller: unknown) {
+		const listeners: (() => void)[] = [];
+		const c = {
+			controller,
+			addEventListener: (_type: 'controllerchange', listener: () => void) =>
+				void listeners.push(listener),
+			takeOver(next: unknown) {
+				c.controller = next;
+				for (const l of listeners) l();
+			},
+		};
+		return c;
+	}
+
+	it('does not reload a page that no worker controlled: that is a first install', () => {
+		const sw = container(null);
+		const reload = vi.fn();
+		reloadWhenTakenOver(sw, reload);
+		sw.takeOver({});
+		expect(reload).not.toHaveBeenCalled();
+	});
+
+	it('reloads once when a new worker takes over from the one running the page', () => {
+		const sw = container({ version: 1 });
+		const reload = vi.fn();
+		reloadWhenTakenOver(sw, reload);
+		sw.takeOver({ version: 2 });
+		sw.takeOver({ version: 3 });
+		expect(reload).toHaveBeenCalledTimes(1);
+	});
+
+	it('reloads on an update that arrives after a first install in the same tab', () => {
+		const sw = container(null);
+		const reload = vi.fn();
+		reloadWhenTakenOver(sw, reload);
+		sw.takeOver({ version: 1 });
+		sw.takeOver({ version: 2 });
+		expect(reload).toHaveBeenCalledTimes(1);
 	});
 });

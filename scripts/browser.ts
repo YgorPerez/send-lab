@@ -471,9 +471,32 @@ export async function open(options: OpenOptions): Promise<Session> {
 			})) as { result?: { value?: T } };
 			return r.result?.value as T;
 		};
+		/**
+		 * Navigate, and come back once the document on screen has lived `settleMs`.
+		 *
+		 * The age is the document's, not the wait's (#122). A page that is
+		 * replaced after the navigation (a reload) is younger than the wait, and
+		 * reading it then reads whatever it has drawn so far: the baked shell,
+		 * before the app hydrates. That is how `check:contrast --desktop` came to
+		 * read `/settings` at 7 elements against a floor of 12, about one run in
+		 * six: the service worker's first install claimed the page and the app
+		 * reloaded it, and when the claim landed just before the reading, the gate
+		 * measured the shell. The app no longer reloads on a first install
+		 * (`lib/appUpdate.ts`), and this keeps any other reload from turning into a
+		 * reading of a page that never got its time.
+		 */
 		const goto = async (url: string) => {
 			await cdp.send('Page.navigate', { url });
-			await new Promise((r) => setTimeout(r, settleMs));
+			let wait = settleMs;
+			for (let tries = 0; tries < 5; tries++) {
+				await new Promise((r) => setTimeout(r, wait));
+				// `performance.now()` counts from this document's navigation. A reload
+				// in progress destroys the context mid-read; that is a young document.
+				const age = await evaluate<number>('performance.now()').catch(() => 0);
+				if (age >= settleMs) return;
+				wait = Math.max(50, settleMs - (age ?? 0));
+			}
+			fail(`${url}: the page kept reloading; no document lived ${settleMs}ms to be read`);
 		};
 
 		// The boot state, installed as a script that runs before the page's own on
