@@ -14,7 +14,11 @@ const pts = (values: number[]) => values.map((value, i) => ({ value, label: `d${
 
 describe('Sparkline', () => {
 	test('labels a narrow series with a top and a bottom that differ', () => {
-		const page = doc(renderToString(createElement(Sparkline, { points: pts([71.6, 72.1, 72.4]) })));
+		const page = doc(
+			renderToString(
+				createElement(Sparkline, { points: pts([71.6, 72.1, 72.4]), locale: 'en-US' }),
+			),
+		);
 		const axis = [...page.querySelectorAll('[data-axis] span')].map((s) => s.textContent);
 		expect(axis).toHaveLength(2);
 		expect(axis[0]).not.toBe(axis[1]);
@@ -22,14 +26,18 @@ describe('Sparkline', () => {
 	});
 
 	test('keeps whole numbers for a series that spans them', () => {
-		const page = doc(renderToString(createElement(Sparkline, { points: pts([58, 71, 79]) })));
+		const page = doc(
+			renderToString(createElement(Sparkline, { points: pts([58, 71, 79]), locale: 'en-US' })),
+		);
 		const axis = [...page.querySelectorAll('[data-axis] span')].map((s) => s.textContent);
 		expect(axis).toEqual(['79', '58']);
 	});
 
 	test('draws the current reading as a round mark outside the stretched drawing', () => {
 		const page = doc(
-			renderToString(createElement(Sparkline, { points: pts([60, 70, 65]), current: 72 })),
+			renderToString(
+				createElement(Sparkline, { points: pts([60, 70, 65]), current: 72, locale: 'en-US' }),
+			),
 		);
 		// Not an SVG circle: under preserveAspectRatio="none" it is an ellipse,
 		// and centred on the edge it is half clipped.
@@ -37,5 +45,29 @@ describe('Sparkline', () => {
 		const mark = page.querySelector('[data-current]');
 		expect(mark).not.toBeNull();
 		expect(mark?.getAttribute('style')).toMatch(/top:\s*\d/);
+	});
+});
+
+// "The decimal mark is the locale's" (`lib/format.ts`). The axis printed
+// `toFixed`, so a Brazilian athlete read 72.4 where every other number says 72,4
+// (#113's review, S4).
+describe('Sparkline in pt-BR', () => {
+	test('writes the axis and the spoken series with a decimal comma', () => {
+		const page = doc(
+			renderToString(
+				createElement(Sparkline, { points: pts([71.6, 72.1, 72.4]), locale: 'pt-BR' }),
+			),
+		);
+		const axis = [...page.querySelectorAll('[data-axis] span')].map((s) => s.textContent);
+		expect(axis).toEqual(['72,4', '71,6']);
+		expect(page.querySelector('svg')?.getAttribute('aria-label')).toBe('d0 71,6, d1 72,1, d2 72,4');
+	});
+
+	test('keeps whole numbers whole', () => {
+		const page = doc(
+			renderToString(createElement(Sparkline, { points: pts([58, 71, 79]), locale: 'pt-BR' })),
+		);
+		const axis = [...page.querySelectorAll('[data-axis] span')].map((s) => s.textContent);
+		expect(axis).toEqual(['79', '58']);
 	});
 });

@@ -12,6 +12,8 @@
 // What it does show is the one comparison that changes a decision: the latest
 // reading against the athlete's own rolling baseline.
 import { useId } from 'react';
+import { decimal } from '$lib/format';
+import type { AppLocale } from '$lib/store/locale';
 
 interface Props {
 	points: { value: number; label: string }[];
@@ -21,6 +23,8 @@ interface Props {
 	current?: number;
 	color?: string;
 	height?: number;
+	/** For the decimal mark: the axis and the spoken series read `72,4` in pt-BR. */
+	locale: AppLocale;
 }
 
 export function Sparkline({
@@ -29,6 +33,7 @@ export function Sparkline({
 	current,
 	color = 'var(--teal)',
 	height = 44,
+	locale,
 }: Props) {
 	const id = useId();
 	if (points.length < 2) return null;
@@ -58,8 +63,8 @@ export function Sparkline({
 				data-axis=""
 				className="num flex w-[22px] shrink-0 flex-col justify-between py-px text-right text-[9px] text-ink-faint"
 			>
-				<span>{hi.toFixed(digits)}</span>
-				<span>{lo.toFixed(digits)}</span>
+				<span>{decimal(hi, locale, digits)}</span>
+				<span>{decimal(lo, locale, digits)}</span>
 			</div>
 			{/* The drawing stretches to the width (`preserveAspectRatio="none"`), so
 			    the current reading is not drawn in it: an SVG circle came out an
@@ -75,7 +80,7 @@ export function Sparkline({
 					role="img"
 					// The chart is the only place these numbers appear in order, so the
 					// series is the accessible name rather than a summary of it.
-					aria-label={points.map((p) => `${p.label} ${p.value}`).join(', ')}
+					aria-label={points.map((p) => `${p.label} ${decimal(p.value, locale)}`).join(', ')}
 				>
 					<defs>
 						<linearGradient id={`g${id}`} x1="0" y1="0" x2="0" y2="1">

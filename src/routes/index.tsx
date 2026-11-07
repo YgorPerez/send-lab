@@ -38,7 +38,7 @@ import { type BodyArea, computeReadiness, getContent, hasWellnessAnswer } from '
 import type { Content, VerdictId } from '$lib/content/types';
 import { isoDayOf } from '$lib/dates';
 import { displayDate } from '$lib/displayDate';
-import { OUTCOME_LABEL, type StateTone, verdictTone, WELLNESS_LABEL } from '$lib/format';
+import { decimal, OUTCOME_LABEL, type StateTone, verdictTone, WELLNESS_LABEL } from '$lib/format';
 import type { ExerciseId, TaskKey } from '$lib/ids';
 import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
@@ -52,6 +52,7 @@ import {
 	type TodayScreen,
 } from '$lib/screens/today';
 import { STEP_ANSWERS, stepsAnswered } from '$lib/screens/welcome';
+import type { AppLocale } from '$lib/store/locale';
 import { useRecordSettled, useTrainingRecord } from '$lib/store/record';
 import { cn } from '$lib/utils';
 import { ReadinessCheck } from '../components/ReadinessCheck';
@@ -392,6 +393,7 @@ function Today() {
 									{/* Today's mark is drawn only once there is a score to mark. The
 									    fourteen points behind it are history and stand either way. */}
 									<Sparkline
+										locale={locale}
 										points={t.trendPoints}
 										baseline={insights.baseline}
 										{...(checked ? { current: readiness.score } : {})}
@@ -410,6 +412,7 @@ function Today() {
 							onDraftChange={setBodyweight}
 							logged={bodyweightLogged}
 							onLog={() => setBodyweightLogged(true)}
+							locale={locale}
 						/>
 
 						{/* The library has an instrument for three of the four body areas and none
@@ -850,12 +853,14 @@ function BodyweightNudge({
 	onDraftChange,
 	logged,
 	onLog,
+	locale,
 }: {
 	bodyweight: TodayScreen['bodyweight'];
 	draft: string;
 	onDraftChange: (v: string) => void;
 	logged: boolean;
 	onLog: () => void;
+	locale: AppLocale;
 }) {
 	const series = bodyweight.series;
 	// Nothing weighed yet. The nudge has no series to sit above and no number to
@@ -867,7 +872,7 @@ function BodyweightNudge({
 			<div>
 				<div className="min-w-0">
 					<div className="num text-[22px] leading-none font-bold text-chalk">
-						{bodyweight.latestKg}
+						{decimal(bodyweight.latestKg, locale)}
 						<span className="text-[11px] font-normal text-ink-faint"> kg</span>
 						<span
 							className={cn(
@@ -877,11 +882,12 @@ function BodyweightNudge({
 							)}
 						>
 							{delta > 0 ? '+' : ''}
-							{Math.round(delta * 10) / 10}
+							{decimal(Math.round(delta * 10) / 10, locale)}
 						</span>
 					</div>
 					<div className="mt-1 w-full">
 						<Sparkline
+							locale={locale}
 							points={series.map((s) => ({ value: s.kg, label: displayDate(isoDayOf(s.at)) }))}
 							color="var(--ink-dim)"
 							height={20}

@@ -119,7 +119,8 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(today).toContain(locale === 'en-US' ? 'Antagonists' : 'Antagonistas');
 			expect(today).toContain(locale === 'en-US' ? 'Tender finger' : 'Dedo sensível');
 			expect(today).toContain(locale === 'en-US' ? 'Readiness check' : 'Check de prontidão');
-			expect(today).toContain('71.9');
+			// The latest bodyweight, with the locale's decimal mark (#113's review, S4).
+			expect(today).toContain(locale === 'en-US' ? '71.9' : '71,9');
 			// The way into Train is Today's one primary once there is a read, and
 			// today's trained session is asked about by name (#117; the order and
 			// the ration across states are `tests/today.test.ts`'s).

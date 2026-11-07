@@ -287,6 +287,17 @@ export function stopwatchClock(ms: number, locale: AppLocale): { whole: string; 
 
 const DECIMAL_MARK: Record<AppLocale, string> = { 'en-US': '.', 'pt-BR': ',' };
 
+/**
+ * A number with the locale's decimal mark: `72,4` in pt-BR, `72.4` in en-US.
+ * `digits` fixes the places; without it the number keeps the ones it has.
+ * Every decimal the athlete reads goes through here or `stopwatchClock`, so the
+ * mark is decided in one table.
+ */
+export function decimal(value: number, locale: AppLocale, digits?: number): string {
+	const text = digits == null ? String(value) : value.toFixed(digits);
+	return text.replace('.', DECIMAL_MARK[locale]);
+}
+
 /** The five wellness dimensions, in the order the readiness score reads them. */
 export const WELLNESS_LABEL: Record<string, () => string> = {
 	sleep: m.rd_sleep,
