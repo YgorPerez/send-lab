@@ -85,7 +85,8 @@ const COPY = {
 		outcome: 'session go?',
 		goTrain: '>Go to Train<',
 		finish: 'Finish &amp; log session',
-		microcycle: 'Microcycle',
+		trainingWeek: 'Training week 1 of 8',
+		adherence: '0 of 6 trained',
 		thursday: 'Thu',
 		noSaved: 'No saved protocols yet.',
 		newProtocol: '>New protocol<',
@@ -108,7 +109,8 @@ const COPY = {
 		outcome: 'Como foi a sessão',
 		goTrain: '>Ir para o treino<',
 		finish: 'Concluir e registrar treino',
-		microcycle: 'Microciclo',
+		trainingWeek: 'Semana de treino 1 de 8',
+		adherence: '0 de 6 treinados',
 		thursday: 'Qui',
 		noSaved: 'Nenhum protocolo salvo ainda.',
 		newProtocol: '>Novo protocolo<',
@@ -129,15 +131,12 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		// fire (`wk_nothing_scheduled`) needs an athlete who rests every day.
 		test('Week shows the built-in week rather than an empty box', async () => {
 			const week = await render('/week', THURSDAY, locale);
-			expect(week).toContain(copy.microcycle);
+			expect(week).toContain(copy.trainingWeek);
 			expect(week).toContain(copy.thursday);
 			// Scheduled, and none of it trained: six of seven days carry work in the
 			// built-in week, and a fresh account has ticked nothing.
 			//
-			// Comments stripped first: React puts `<!-- -->` between adjacent text
-			// nodes in a string render, so the reading is `0<!-- -->/<!-- -->6` in the
-			// markup and `0/6` on the screen.
-			expect(week.replaceAll('<!-- -->', '')).toContain('0/6');
+			expect(week).toContain(copy.adherence);
 			// Every slot names its state AND its count, so neither the dot's colour
 			// nor the visible reading is lost to a screen reader — `aria-label`
 			// replaces a button's content rather than adding to it.

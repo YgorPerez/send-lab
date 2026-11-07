@@ -82,6 +82,9 @@ export interface WeekSlot {
 export interface WeekScreen {
 	week: WeekId;
 	weekNumber: number;
+	/** How many training weeks the block has, so the week can say where it sits
+	 *  in it ("Training week 5 of 8"). The program's, not a literal 8. */
+	weekCount: number;
 	/** The block phase this week falls in, localized. */
 	phase: Content['phases'][PhaseId];
 	/** The calendar weekday the athlete is standing in, so the page can say which
@@ -174,6 +177,7 @@ export function resolveWeek(content: Content, record: TrainingRecord, now: numbe
 	return {
 		week,
 		weekNumber,
+		weekCount: record.program.weeks,
 		phase: content.phases[phaseId(weekNumber, record.program.weeks)],
 		today,
 		slots,

@@ -182,9 +182,11 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			// The selected slot is Thursday's, and its day type is resolved rather
 			// than named by the weekday (ADR-0002).
 			expect(week).toContain(locale === 'en-US' ? 'Pull' : 'Puxada');
-			// The heading rank, and the week's own reading.
-			expect(week).toContain(locale === 'en-US' ? 'Microcycle' : 'Microciclo');
-			expect(week).toContain(locale === 'en-US' ? 'Week 5' : 'Semana 5');
+			// The grid's head, in the glossary's words (#121; the rest is
+			// `tests/week.test.ts`'s).
+			expect(week).toContain(
+				locale === 'en-US' ? 'Training week 5 of 8' : 'Semana de treino 5 de 8',
+			);
 		});
 
 		// `/` is Today now, so sign-in has its own route.

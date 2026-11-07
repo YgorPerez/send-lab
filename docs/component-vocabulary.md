@@ -870,6 +870,61 @@ closed panel has no `aria-controls` in Base UI, so the head is found by
 **Heights.** Seeded `/log` at 360px: 1,713px (2,235px before #120); at 1280px,
 1,636px. Empty: the viewport at both widths.
 
+## Week: the training week and the day under it
+
+Built by [#121](https://github.com/YgorPerez/send-lab/issues/121) from spec #113's
+Week decisions (stories 65–68).
+
+**The grid is headed in the glossary's words.** The section head is "Training week
+5 of 8" / "Semana de treino 5 de 8" (`wk_training_week`, the total from
+`record.program.weeks` through `WeekScreen.weekCount`), in Inter, with the
+adherence on the right as a phrase ("1 of 6 trained"). "Microcycle" is gone, and so
+is the header's "Week 5 / 8" reading, which said "Week" a second time beside the
+title. The title stays the bar's word, "Week" / "Semana", as on every screen: it is
+the page's name (spec story 3), and every place the page names the thing it shows
+says *training week*. `tests/week.test.ts` asserts no other bare "week" in either
+locale, aria-labels included.
+
+**A slot's state is a shape and a colour** (`SLOT_MARK` in `routes/week.tsx`), 12px:
+trained a filled teal disc, missed a vermilion cross, today a gold ring with a
+centre, to come an empty faint ring, rest a faint dash. #63's 6px dots were told
+apart by hue alone, and teal and gold have the same luminance (1.00:1 against
+each other), so for the athlete they differed only in hue; rest was a `--line` ring
+at 1.56:1 on the cell. Every mark now clears 3:1 on both cell surfaces, the lowest
+being vermilion on the selected `panel-3` at 3.86:1; the test reads the tokens from
+`app.css` and measures it. One cell still carries one colour system: the marks are
+the cell's only colour, and the day type's accent stays on the day below.
+
+**A legend over the grid, not under it,** so nothing sits between the grid and the
+day it selects. It draws the same marks, in the order trained, missed, today, to
+come, rest, as a list a screen reader can read (named "Key"), so `check:contrast`
+measures its words. It wraps to two lines in pt-BR at 360px.
+
+**The selected day sits directly under the grid** on a phone, and beside it from
+`lg` (`Panes`, as before; `lg:grid-cols-7` kept). Its head names the weekday and
+the day type ("Thu · Pull"), so it says which cell it answers; the state is on the
+right as the legend draws it, then the load as a neutral chip. #63 tinted the load
+chip by the slot's state, which painted a missed day's "HIGH" vermilion as if the
+load were the alarm. A rest day's head already says rest, so its state word is
+left out there. Every cell `aria-controls` the day. A done task says so to a
+screen reader (its ✓ is hidden).
+
+**The selected cell** is the selection language with the chalk edge: `panel-3`, a
+`chalk/60` border, the weekday chalk and semibold. A rest cell has no count (its
+mark says rest; #63's faint "—" measured 4.27:1 on the selected surface), and the
+other counts went from 10px to the ramp's 11px. A rest cell's name says rest once
+("Sun · Rest", not "Sun · Rest · Rest · Rest").
+
+**Ready to fold into Program (#65).** The grid section names its own week, so the
+header carries nothing a second week would contradict: Program can stack one such
+section per training week, each with its own head, legend and grid, and keep the
+day panel as the one place a slot is read in full. Nothing in it reads the page.
+`Row`'s `aside`/`current` and `Panes`' `stickySecondary` (#120) were not needed: the
+day is short enough that the window shows both panes whole at 1280px.
+
+**Heights.** `/week` is the viewport at 360px and 1280px, seeded and empty, as it
+was. `check:contrast` 38 elements seeded / 37 empty at 360px (39 / 38 at 1280px).
+
 ## The idiom
 
 Svelte 5 runes have no direct React equivalent and naive translation produces bad
