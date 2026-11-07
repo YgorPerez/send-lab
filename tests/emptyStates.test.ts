@@ -75,8 +75,9 @@ const COPY = {
 		noTrend: 'The trend draws itself',
 		noWork: 'No scheduled work today',
 		noSetDone: 'Tick off at least one set',
-		noChecks: 'No readiness check recorded yet',
-		noSessions: 'No session recorded yet',
+		logEmpty: 'Nothing logged yet',
+		logWaits: ['readiness check', 'session'],
+		logCounts: '0 sessions · 0 readiness checks',
 		usual: 'about your usual',
 		held: 'held · readiness',
 		question: 'How did you sleep?',
@@ -97,8 +98,9 @@ const COPY = {
 		noTrend: 'A tendência se desenha',
 		noWork: 'Nenhum trabalho programado hoje',
 		noSetDone: 'Marque ao menos uma série',
-		noChecks: 'Nenhum check de prontidão registrado ainda',
-		noSessions: 'Nenhuma sessão registrada ainda',
+		logEmpty: 'Nada registrado ainda',
+		logWaits: ['check de prontidão', 'sessão'],
+		logCounts: '0 sessões · 0 checks de prontidão',
 		usual: 'perto do seu normal',
 		held: 'retido · prontidão',
 		question: 'Como foi seu sono?',
@@ -191,17 +193,21 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(train).toContain(copy.noWork);
 		});
 
-		test('Log names what each list is waiting for', async () => {
+		// One timeline since #120, so one empty state: it names both things a day
+		// is made of, and the counts stay at zero, which is honest.
+		test('Log says what its timeline is waiting for', async () => {
 			const log = await render('/log', SUNDAY, locale);
-			expect(log).toContain(copy.noChecks);
-			expect(log).toContain(copy.noSessions);
-			// No rows, so no accordion: the empty list is copy, not an empty box.
+			const screen = screenOf(log);
+			expect(screen).toContain(copy.logEmpty);
+			for (const word of copy.logWaits)
+				expect(screen).toContain(`<b class="font-semibold text-chalk">${word}</b>`);
+			expect(screen.replaceAll('<!-- -->', '')).toContain(copy.logCounts);
+			// No rows, so no accordion, and no pane waiting for a day to be picked:
+			// the empty list is copy, not an empty box.
 			//
-			// Scoped to `<main>`, not the whole document. The assertion is about the
-			// *screen*, and the shell is not the screen — the menu's trigger carries
-			// `aria-expanded` on every page, which would fail a test whose subject is
-			// the Log list.
-			expect(screenOf(log)).not.toContain('aria-expanded');
+			// Scoped to `<main>`, not the whole document: the shell is not the screen.
+			expect(screen).not.toContain('aria-expanded');
+			expect(screen).not.toContain('data-day-detail');
 		});
 
 		// Timer (#103): the saved list is empty, and says how to fill it, under its

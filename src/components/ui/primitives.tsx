@@ -309,10 +309,16 @@ export function Pane({ children, className }: { children: ReactNode; className?:
 export function Panes({
 	primary,
 	secondary,
+	stickySecondary,
 	className,
 }: {
 	primary: ReactNode;
 	secondary: ReactNode;
+	/** Hold the second pane in view while the first scrolls (Log's selected day
+	 *  beside its timeline, #120): stuck 16px under the strip, and scrolling
+	 *  inside itself when it is taller than the window. A grid item can stick
+	 *  because the grid is as tall as the longer pane. */
+	stickySecondary?: boolean;
 	className?: string;
 }) {
 	return (
@@ -326,7 +332,15 @@ export function Panes({
 			    wrappers are not boxes at all and the outer gap is what separates every
 			    child, so the vertical rhythm has one definition either way. */}
 			<div className="contents lg:flex lg:flex-col lg:gap-[inherit]">{primary}</div>
-			<div className="contents lg:flex lg:flex-col lg:gap-[inherit]">{secondary}</div>
+			<div
+				className={cn(
+					'contents lg:flex lg:flex-col lg:gap-[inherit]',
+					stickySecondary &&
+						'lg:sticky lg:top-[60px] lg:max-h-[calc(100dvh-76px)] lg:overflow-y-auto lg:overscroll-contain',
+				)}
+			>
+				{secondary}
+			</div>
 		</div>
 	);
 }

@@ -82,7 +82,7 @@ import { type ClockHandle, StudyLink, Timer } from '../components/Timer';
 import { AlertDialog } from '../components/ui/AlertDialog';
 import { type MenuAction, RowMenu } from '../components/ui/Menu';
 import { Empty, Pane, ScreenHeader, Section } from '../components/ui/primitives';
-import { Row, RowGroup } from '../components/ui/Rows';
+import { Row, RowGroup, RowsEnd, useRowsInPlace } from '../components/ui/Rows';
 import { button } from '../components/ui/variants';
 
 export const Route = createFileRoute('/timer')({
@@ -169,32 +169,12 @@ function TimerScreen() {
 		[screen.presets, todays],
 	);
 
-	// THE TAPPED HEAD STAYS UNDER THE FINGER.
-	//
-	// Presets is the last thing on the page, so closing a group near the end
-	// shortens the page under a scroll position that may no longer exist: the
-	// browser clamps it, everything slides down, and a quick second tap, chalky
-	// and one-handed, lands on a neighbour. So before the change renders, the
-	// page is given back at its end whatever the closing panel takes that the
-	// room below the screen cannot absorb, and an open hands back what is no
-	// longer needed. Measured at the press rather than after it, because the
-	// panel closes over 190ms (`.a-panel`) and nothing has moved yet when the
-	// render lands.
-	const tail = useRef<HTMLDivElement>(null);
+	// The tapped head stays under the finger (`useRowsInPlace`): Presets is the
+	// last thing on the page, so closing a group near the end would shorten the
+	// page under the scroll position.
+	const { end, hold } = useRowsInPlace();
 	const toggleGroups = (next: string[], event: Event) => {
-		const end = tail.current;
-		if (end) {
-			const head = event.target instanceof Element ? event.target.closest('[aria-controls]') : null;
-			const stays = new Set(next);
-			const closing = openGroups.some((g) => !stays.has(g));
-			const panelId = closing ? head?.getAttribute('aria-controls') : null;
-			const panel = panelId ? document.getElementById(panelId) : null;
-			const shrink = panel?.getBoundingClientRect().height ?? 0;
-			const room = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
-			const held = Number.parseFloat(end.style.height) || 0;
-			const keep = Math.max(0, held + shrink - room);
-			end.style.height = keep ? `${keep}px` : '';
-		}
+		hold(openGroups, next, event);
 		setOpenGroups(next);
 	};
 
@@ -391,7 +371,7 @@ function TimerScreen() {
 					))}
 				</RowGroup>
 			</Section>
-			<div ref={tail} aria-hidden="true" data-tail="" className="-mt-sections" />
+			<RowsEnd ref={end} />
 
 			{[behind, current].map((p) => {
 				if (!p) return null;
