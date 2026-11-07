@@ -795,8 +795,9 @@ on the strip's edges), its icon 20px at stroke 1.75. Its focus ring is drawn ins
 (`-outline-offset-2`): the control is the strip's full height and the global ring, 2px
 outside, fell off the top of the window.
 
-**Heights.** Seeded `/timer` at 360px: 1,783px (en-US), 1,799px (pt-BR), with two
-groups open; 1,641px at 1280px. Empty: 1,728 / 1,706px at 360px.
+**Heights.** Seeded `/timer` at 360px: 1,747px (en-US), 1,807px (pt-BR), with
+today's two groups open; 1,685px at 1280px. Empty (the built-in week, same two groups):
+1,698px at 360px as `check:contrast` prints it. The spec's starting point was 2,192px.
 
 ## The idiom
 
