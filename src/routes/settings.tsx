@@ -108,7 +108,7 @@ function Settings() {
  *  warning about this device rather than a stop; `ControlNote` is the same line
  *  under a row. */
 function Caveat({ children }: { children: ReactNode }) {
-	return <p className="text-[13px] leading-snug text-gold">{children}</p>;
+	return <p className="text-[13px] leading-snug text-pretty text-gold">{children}</p>;
 }
 
 const WEIGHT = [
@@ -239,7 +239,7 @@ function Notifications({ cueNotices }: { cueNotices: boolean }) {
 						/>
 					</ControlRow>
 					{refused ? (
-						<ControlNote id={noteId}>
+						<ControlNote id={noteId} role="status">
 							{refused === 'denied' ? m.notifications_denied() : m.notifications_unsupported()}
 						</ControlNote>
 					) : null}
@@ -303,6 +303,12 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 	// this screen's doing — the debounce fires after any write, including the units
 	// and language switches above, and the reconnect fires on its own.
 	const refusedWork = useRefusedWork();
+	const offlineId = useId();
+	const heldId = useId();
+	const refusedId = useId();
+	const described = [!online && offlineId, held && heldId, refusedWork && refusedId]
+		.filter(Boolean)
+		.join(' ');
 
 	// Sign-out only after the unsynced work has gone (#24, #58) — the half of it
 	// that can still go. Flushing first is the attempt; if anything is still
@@ -340,18 +346,34 @@ function SignedIn({ email, online }: { email: string | null; online: boolean }) 
 					{/* The email is the session's answer, so offline on a cold load
 					    there is none: the row says who is signed in only once it is
 					    known, and that someone is, which the store already knows. */}
-					<ControlRow label={<span className="block truncate">{email ?? m.set_signed_in()}</span>}>
+					<ControlRow
+						label={
+							<span className="block truncate" title={email ?? undefined}>
+								{email ?? m.set_signed_in()}
+							</span>
+						}
+					>
 						<button
 							type="button"
 							disabled={!online || busy}
 							onClick={() => void leave()}
+							aria-describedby={described || undefined}
 							className={button({ size: 'md', class: 'min-h-11 shrink-0' })}
 						>
 							{m.btn_sign_out()}
 						</button>
 					</ControlRow>
-					{held ? <ControlNote>{m.set_unsynced_holds_signout()}</ControlNote> : null}
-					{refusedWork ? <ControlNote>{m.set_refused_note()}</ControlNote> : null}
+					{/* Why Sign out is off or waiting, under it (#122's critique): at
+					    360px the page's offline line is two screens up. Each line is
+					    the button's description; the held one is a status, because
+					    it answers a tap. */}
+					{online ? null : <ControlNote id={offlineId}>{m.set_signout_offline()}</ControlNote>}
+					{held ? (
+						<ControlNote id={heldId} role="status">
+							{m.set_unsynced_holds_signout()}
+						</ControlNote>
+					) : null}
+					{refusedWork ? <ControlNote id={refusedId}>{m.set_refused_note()}</ControlNote> : null}
 				</div>
 			</ControlList>
 		</Section>
@@ -465,7 +487,9 @@ function ApiToken({ online }: { online: boolean }) {
 			    pattern). */}
 			<Bare className="flex flex-col gap-group">
 				<p className="text-[13px] leading-snug text-ink-dim">{m.mcp_desc()}</p>
-				<p className="text-[11px] leading-snug text-ink-faint">{m.mcp_agnostic_note()}</p>
+				<p className="text-[13px] leading-snug text-pretty text-ink-faint">
+					{m.mcp_agnostic_note()}
+				</p>
 
 				<div>
 					<Eyebrow className="mb-1">{m.mcp_config_note()}</Eyebrow>
@@ -480,7 +504,13 @@ function ApiToken({ online }: { online: boolean }) {
 					</pre>
 				</div>
 
-				{!online || unreachable ? <Caveat>{m.set_token_unavailable()}</Caveat> : null}
+				{/* Offline nothing was asked, so the line says what the token waits for;
+				    online, a request that failed says the server could not be reached. */}
+				{!online ? (
+					<Caveat>{m.set_token_offline()}</Caveat>
+				) : unreachable ? (
+					<Caveat>{m.set_token_unavailable()}</Caveat>
+				) : null}
 
 				<div className="flex flex-wrap gap-2">
 					<button
@@ -489,7 +519,11 @@ function ApiToken({ online }: { online: boolean }) {
 						onClick={() => void copy()}
 						className={button({ size: 'md', class: 'min-h-11' })}
 					>
-						{copied ? <Check size={14} /> : <Copy size={14} />}
+						{copied ? (
+							<Check size={16} aria-hidden="true" />
+						) : (
+							<Copy size={16} aria-hidden="true" />
+						)}
 						{copied ? m.mcp_copied() : m.mcp_copy()}
 					</button>
 					<button
@@ -499,7 +533,11 @@ function ApiToken({ online }: { online: boolean }) {
 						onClick={() => setRevealed((r) => !r)}
 						className={button({ size: 'md', class: 'min-h-11' })}
 					>
-						{revealed ? <EyeOff size={14} /> : <Eye size={14} />}
+						{revealed ? (
+							<EyeOff size={16} aria-hidden="true" />
+						) : (
+							<Eye size={16} aria-hidden="true" />
+						)}
 						{revealed ? m.mcp_hide() : m.mcp_reveal()}
 					</button>
 					<button
@@ -508,12 +546,12 @@ function ApiToken({ online }: { online: boolean }) {
 						onClick={() => setConfirming(true)}
 						className={button({ size: 'md', class: 'min-h-11' })}
 					>
-						<RefreshCw size={14} />
+						<RefreshCw size={16} aria-hidden="true" />
 						{m.mcp_regenerate()}
 					</button>
 				</div>
 
-				<p className="text-[11px] leading-snug text-ink-faint">
+				<p className="text-[13px] leading-snug text-pretty text-ink-faint">
 					{m.mcp_connector_note({ url: endpoint })}
 				</p>
 			</Bare>

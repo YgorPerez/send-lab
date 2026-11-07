@@ -255,10 +255,17 @@ on rows. The language reads "English" / "Português": "(BR)" wrapped the pt-BR o
 to two lines at 360px, and the app has one Portuguese. Offline, the line saying which
 controls need a connection is the first group under the header, gold as sign-in's
 offline notice is, where it used to be a dim line pulled into the header with `-mt-3`.
+**Offline, each disabled control also says why where it is** (#122's critique): at
+360px the page's line is two screens above Sign out. "Signing out needs a connection."
+is a `ControlNote` under the account row and Sign out's description; the token's line
+says it needs a connection, not that the server could not be reached, because offline
+nothing was asked. A note that answers a tap (the held sign-out, a refused
+permission) is `role="status"`. pt-BR says "Você entrou" / "Você não entrou" for
+signed in and out: "conectado" read as *online*, beside the offline line.
 `tests/settings.test.ts` asserts the order, the one heading face, every control on a
-row of one list per group, and the offline line's place with Sign out and the token's
-controls disabled (the session and the token are mocked there; neither resolves in
-jsdom).
+row of one list per group, the offline line's place, Sign out and the token's controls
+disabled, and each one's reason beside it (the session and the token are mocked there;
+neither resolves in jsdom).
 
 **A first install no longer reloads the page (#122).** `sw.ts` calls `clientsClaim()`,
 so the first worker takes over the page that registered it and fires

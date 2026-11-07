@@ -255,9 +255,18 @@ export function ControlList({
 /** The line under a `ControlRow` that says why its control did not do what was
  *  asked, or cannot here: a refused permission, a held sign-out, a device with no
  *  voice. Gold, because it is a warning about this device rather than a stop. */
-export function ControlNote({ id, children }: { id?: string; children: ReactNode }) {
+export function ControlNote({
+	id,
+	role,
+	children,
+}: {
+	id?: string;
+	/** `status` for a line that answers a tap, so a screen reader hears it. */
+	role?: 'status';
+	children: ReactNode;
+}) {
 	return (
-		<p id={id} className="-mt-1 pb-3 text-[13px] leading-snug text-gold">
+		<p id={id} role={role} className="-mt-1 pb-3 text-[13px] leading-snug text-pretty text-gold">
 			{children}
 		</p>
 	);

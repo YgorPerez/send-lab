@@ -152,9 +152,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 		test('says the account is signed out, with the way to sign in', async () => {
 			const main = await screen(locale);
 			const account = sectionNamed(main, copy.groups[3]);
-			expect(text(account)).toContain(
-				locale === 'en-US' ? 'Not signed in' : 'Você não está conectado',
-			);
+			expect(text(account)).toContain(locale === 'en-US' ? 'Not signed in' : 'Você não entrou');
 			expect(account?.querySelector('a[href="/login"]')).not.toBeNull();
 		});
 	});
@@ -219,5 +217,23 @@ describe('en-US, Settings signed in', () => {
 		for (const name of ['Copy', 'Reveal token', 'Regenerate']) {
 			expect(button(main, name)?.disabled, name).toBe(true);
 		}
+	});
+
+	// #122's critique: at 360px the page's line is two screens above Sign out, so
+	// each disabled control says why where it is, and names the reason to a
+	// screen reader as its description. The token's line says offline, not that
+	// a server could not be reached: offline, nothing was asked.
+	test('offline, each disabled control says why beside it', async () => {
+		const main = await mount();
+		act(() => setOnline(false));
+
+		const signOut = button(sectionNamed(main, 'Account') as Element, 'Sign out');
+		const described = signOut?.getAttribute('aria-describedby');
+		expect(described && text(document.getElementById(described))).toBe(
+			'Signing out needs a connection.',
+		);
+		const token = sectionNamed(main, 'AI access (MCP)');
+		expect(text(token)).toContain('The token needs a connection.');
+		expect(text(token)).not.toContain("Couldn't reach the server");
 	});
 });
