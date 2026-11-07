@@ -934,7 +934,9 @@ Log decisions.
 an optional `check` and an optional `session`, and `counts`. Reading a day used to
 mean matching two lists by date. A date with two checks keeps the later one (the
 athlete can re-check within a day, and the later answer set that day's verdict),
-so `counts.checks` counts what the timeline shows. The closed row is one line on a
+so `counts.checkedDays` counts what the timeline shows, and the header says so: "15 days
+with a readiness check", not "15 readiness checks", which a re-checked day made untrue
+(#113's review). The closed row is one line on a
 common grid: the date (11px mono), the score, the day type the session recorded
 (13px; "No session" in faint ink when there is none), and its sets, counted
 ("5 sets", never a bare number). The day type wraps at its spaces and the count

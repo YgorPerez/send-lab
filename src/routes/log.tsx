@@ -83,7 +83,7 @@ function Log() {
 				meta={
 					<>
 						{counted(counts.sessions, m.log_sessions_one, m.log_sessions_other)} ·{' '}
-						{counted(counts.checks, m.log_checks_one, m.log_checks_other)}
+						{counted(counts.checkedDays, m.log_checked_days_one, m.log_checked_days_other)}
 					</>
 				}
 			/>

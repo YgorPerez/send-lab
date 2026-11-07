@@ -74,8 +74,9 @@ export interface LogDay {
 export interface LogScreen {
 	/** Newest first, one per date. */
 	days: LogDay[];
-	/** What the timeline holds, counted as the rows show it. */
-	counts: { sessions: number; checks: number };
+	/** What the timeline holds, counted as the rows show it: a date checked
+	 *  twice is one row, so checks are counted as the days that have one. */
+	counts: { sessions: number; checkedDays: number };
 }
 
 /** Time of day, in the athlete's locale. A readiness check is identified by its
@@ -123,7 +124,7 @@ export function resolveLog(content: Content, record: TrainingRecord, locale: str
 			check: checks.get(iso) ?? null,
 			session: sessions.get(iso) ?? null,
 		})),
-		counts: { sessions: sessions.size, checks: checks.size },
+		counts: { sessions: sessions.size, checkedDays: checks.size },
 	};
 }
 

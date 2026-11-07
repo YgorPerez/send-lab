@@ -190,7 +190,7 @@ describe('Log', () => {
 		expect(sessions.length).toBeGreaterThanOrEqual(20);
 		expect(sessions.reduce((n, s) => n + s.setCount, 0)).toBeGreaterThan(100);
 		// Fourteen checks behind today, plus this morning's.
-		expect(LOG.counts).toEqual({ sessions: sessions.length, checks: 15 });
+		expect(LOG.counts).toEqual({ sessions: sessions.length, checkedDays: 15 });
 	});
 
 	// Spec #113 story 60: a day is read as one thing, not matched across two lists.
@@ -238,7 +238,7 @@ describe('Log', () => {
 		);
 		expect(log.days.filter((d) => d.iso === LOG.days[0].iso)).toHaveLength(1);
 		expect(log.days[0].check?.score).toBe(evening.score);
-		expect(log.counts.checks).toBe(15);
+		expect(log.counts.checkedDays).toBe(15);
 	});
 
 	// Spec #113 story 61. The library paints `green` and `short` in vermilion,

@@ -15,6 +15,7 @@ import { renderToString } from 'react-dom/server';
 import { afterAll, afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { PINNED_NOW } from '../scripts/seeded-record.ts';
 import { getContent } from '../src/lib/content/index.ts';
+import * as m from '../src/lib/paraglide/messages.js';
 import { overwriteGetLocale } from '../src/lib/paraglide/runtime.js';
 import { resolveLog } from '../src/lib/screens/log.ts';
 import { readTrainingRecord, recordStore, resetRecordStore } from '../src/lib/store/record.ts';
@@ -72,7 +73,8 @@ const text = (el: Element | null | undefined) =>
 const COPY = {
 	'en-US': {
 		title: 'Log',
-		counts: (s: number, c: number) => `${s} sessions · ${c} readiness checks`,
+		counts: (s: number, c: number) => `${s} sessions · ${c} days with a readiness check`,
+		checkedDay: '1 day with a readiness check',
 		sets: 'sets',
 		check: 'Readiness check',
 		session: 'Session',
@@ -82,7 +84,8 @@ const COPY = {
 	},
 	'pt-BR': {
 		title: 'Registro',
-		counts: (s: number, c: number) => `${s} sessões · ${c} checks de prontidão`,
+		counts: (s: number, c: number) => `${s} sessões · ${c} dias com check de prontidão`,
+		checkedDay: '1 dia com check de prontidão',
 		sets: 'séries',
 		check: 'Check de prontidão',
 		session: 'Sessão',
@@ -102,8 +105,16 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(text(main.querySelector('h1'))).toBe(copy.title);
 			// "28 · 15" said nothing about what was counted (spec #113 story 62).
 			expect(text(main.querySelector('[data-screen-header]'))).toContain(
-				copy.counts(log.counts.sessions, log.counts.checks),
+				copy.counts(log.counts.sessions, log.counts.checkedDays),
 			);
+		});
+
+		// A date checked twice is one row and counts once, so the count is of days
+		// with a check, and says so (#113's review, P4). One of them is singular.
+		test('counts days with a readiness check, one or many', () => {
+			overwriteGetLocale(() => locale);
+			expect(m.log_checked_days_one({ n: 1 })).toBe(copy.checkedDay);
+			expect(m.log_checked_days_other({ n: 3 })).toBe(copy.counts(0, 3).split(' · ')[1]);
 		});
 
 		test('is one row per date, newest first, each with its score and its session', async () => {
@@ -144,7 +155,7 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 					expect(mark?.getAttribute('class')).not.toContain('flag');
 				}
 			});
-			expect(scored).toBe(log.counts.checks);
+			expect(scored).toBe(log.counts.checkedDays);
 		});
 
 		// The closed row already says what the day was; a phone opens on the
