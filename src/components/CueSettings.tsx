@@ -23,6 +23,7 @@ import { useId, useSyncExternalStore } from 'react';
 import { canSpeak, subscribeVoices } from '$lib/cues';
 import * as m from '$lib/paraglide/messages';
 import { COUNTDOWN_LENGTHS, type CuePrefs } from '$lib/protocol';
+import type { AppLocale } from '$lib/store/locale';
 import { writePrefs } from '$lib/store/prefs';
 import { usePrefs } from '$lib/store/record';
 import { cn } from '$lib/utils';
@@ -121,33 +122,39 @@ export function CueSettings({ className }: { className?: string }) {
 }
 
 /**
- * The Timer screen's way in: one control at the right of its header, opening the
- * same rows over the page.
+ * The Timer screen's way in: the screen's one action, at the right of the top
+ * strip (#119, the strip's slot from #115), opening the same rows over the page.
  *
- * Discreet on purpose. The screen is the clock and the list; this is reached
+ * Discreet on purpose. The screen is the list and the clock; this is reached
  * for before Start, or with the full-screen clock closed between sets — never
- * mid-hang — so it is an icon in the header rather than a section in the flow.
- * It still carries its own border and its 44px (an icon without them does not
- * read as a control, the vocabulary's measured rule), and it is a popover, as
- * the menu is, so the page stays in view around it.
+ * mid-hang — so it is an icon rather than a section in the flow. In the strip
+ * it is the 44px ghost square the More sheet's close is: alone on the strip's
+ * right it is attached to nothing larger, which is what the vocabulary's
+ * bordered-icon rule is about, and a border would sit on the strip's own
+ * edges. It is a popover, so the page stays in view around it.
+ *
+ * `locale` is the strip's, passed rather than read, for the reason the strip
+ * gives: the shell re-keys its subtree on the locale, and a label read from the
+ * ambient value would keep the old language until something else re-rendered.
  *
  * Its title is an eyebrow where Settings gives the same words a section
  * heading: the popover sits under the page in rank, and the title is there to
  * name the dialog for a screen reader more than to head it.
  */
-export function CueSettingsShortcut() {
+export function CueSettingsShortcut({ locale }: { locale: AppLocale }) {
+	const title = m.cues_title({}, { locale });
 	return (
 		<Popover.Root>
 			<Popover.Trigger
-				render={<button type="button" aria-label={m.cues_title()} />}
-				className="flex min-h-11 min-w-11 shrink-0 items-center justify-center self-center rounded-md border border-line text-ink-faint transition-colors hover:text-ink data-[popup-open]:bg-panel-3 data-[popup-open]:text-chalk"
+				render={<button type="button" aria-label={title} />}
+				className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-dim transition-colors hover:bg-panel-2 hover:text-ink data-[popup-open]:bg-panel-3 data-[popup-open]:text-chalk"
 			>
-				<SlidersHorizontal size={16} strokeWidth={1.8} />
+				<SlidersHorizontal size={20} strokeWidth={1.75} aria-hidden="true" />
 			</Popover.Trigger>
 			<Popover.Portal>
 				<Popover.Positioner sideOffset={6} align="end" collisionPadding={16} className="z-50">
 					<Popover.Popup className="w-[min(320px,calc(100vw-32px))] rounded-lg border border-line bg-panel px-3 pt-2.5 pb-1 shadow-lg transition-[opacity,transform] duration-150 data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0">
-						<Popover.Title className="eyebrow pb-1">{m.cues_title()}</Popover.Title>
+						<Popover.Title className="eyebrow pb-1">{title}</Popover.Title>
 						<CueSettings />
 					</Popover.Popup>
 				</Popover.Positioner>

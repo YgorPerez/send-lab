@@ -36,6 +36,7 @@ import {
 	readProtocolForm,
 	resolveTimer,
 	shownOf,
+	todaysPresetGroups,
 } from '../src/lib/screens/timer.ts';
 import { heldExercises, resolveQuestions, resolveToday } from '../src/lib/screens/today.ts';
 import { resolveTrain } from '../src/lib/screens/train.ts';
@@ -676,6 +677,26 @@ describe('Timer', () => {
 		const seeded = resolveTimer(getContent('en-US'), readTrainingRecord(seededWith(NOW)), 'en-US');
 		expect(seeded.saved[0].named).toBe(true);
 		expect(seeded.presets[0].presets[0].named).toBe(true);
+	});
+
+	// #119. The preset groups open by default are today's: the exercises the plan
+	// schedules today that the library has a protocol for. Thursday in the seeded
+	// week is pull-ups, sloper density, abrahangs and antagonists; two of those
+	// carry presets. A rest day opens none.
+	it('opens today’s exercises’ groups, and none on a rest day', () => {
+		const seeded = readTrainingRecord(seededWith(NOW));
+		const thursday = resolveTimer(getContent('en-US'), seeded, 'en-US');
+		expect(todaysPresetGroups(thursday, getContent('en-US'), seeded, NOW)).toEqual([
+			'slopdens',
+			'abra',
+		]);
+		const friday = new Date('2026-08-14T09:30:00').getTime();
+		expect(todaysPresetGroups(thursday, getContent('en-US'), seeded, friday)).toEqual([
+			'maxhang',
+			'density',
+		]);
+		const sunday = new Date('2026-08-16T09:30:00').getTime();
+		expect(todaysPresetGroups(thursday, getContent('en-US'), seeded, sunday)).toEqual([]);
 	});
 
 	it('has nothing saved on an account that has kept nothing', () => {

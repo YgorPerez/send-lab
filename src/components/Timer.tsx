@@ -263,17 +263,7 @@ function Summary({
 				) : null}
 				{config.cooldown > 0 ? <SummaryRow segment="cooldown" seconds={config.cooldown} /> : null}
 			</ol>
-			{study ? (
-				<a
-					href={study.url}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="mt-4 self-start py-2 text-[14px] font-medium text-ink-dim underline decoration-line underline-offset-[3px] hover:text-ink"
-				>
-					{m.timer_study({ title: study.title })}
-					<ExternalLink size={13} aria-hidden="true" className="ml-1.5 inline align-[-1px]" />
-				</a>
-			) : null}
+			{study ? <StudyLink study={study} className="mt-4" /> : null}
 			{setup}
 		</div>
 	);
@@ -305,6 +295,37 @@ function SummaryRow({
 			{SEGMENT_LABEL[segment]()}
 			<span className="display ml-auto text-[24px] font-semibold">{shortTime(seconds)}</span>
 		</li>
+	);
+}
+
+/**
+ * A study a protocol cites: "Study: <title>" and the external-link mark, one way
+ * wherever it is linked — the clock's ready state, and the end of each preset
+ * group on the Timer list (#119), so the citations read as one system. The
+ * mark is the in-text icon (DESIGN.md › Icons: 12px, stroke 2), beside its
+ * words, never alone.
+ */
+export function StudyLink({ study, className }: { study: Study; className?: string }) {
+	return (
+		<a
+			href={study.url}
+			target="_blank"
+			rel="noopener noreferrer"
+			className={cn(
+				'flex min-h-11 items-center self-start py-2 text-[14px] font-medium text-ink-dim hover:text-ink',
+				className,
+			)}
+		>
+			<span className="underline decoration-line underline-offset-[3px]">
+				{m.timer_study({ title: study.title })}
+				<ExternalLink
+					size={12}
+					strokeWidth={2}
+					aria-hidden="true"
+					className="ml-1.5 inline align-[-1px]"
+				/>
+			</span>
+		</a>
 	);
 }
 

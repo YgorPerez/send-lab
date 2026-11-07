@@ -317,8 +317,6 @@ Five named steps, as tokens in `app.css` and Tailwind utilities (`gap-sections`,
 
 **The Inside-Smaller Rule.** Each gap between siblings is larger than the gap between the siblings inside them: sections (28) > group (10) > row (6). A screen whose section gap equals its row gap reads as one long list. `inset` (12) is not on this ladder: it is padding between a surface's edge and its content, not a gap between siblings.
 
-The Timer list still sits its sections 24px apart; that is drift, and #119 moves it to `sections`, as #118 moved Train.
-
 ### The screen header
 
 Every screen opens with `ScreenHeader`, and nothing the page draws comes before it.
@@ -326,7 +324,7 @@ Every screen opens with `ScreenHeader`, and nothing the page draws comes before 
 - **Title:** the headline rank (21px, 600), the only `<h1>` on the screen. A screen's name, or the name and the day ("Train · Thu").
 - **Meta:** at most one line under the title, 4px below it, in the meta rank: the date, the phase. It truncates; a second line of meta is a section.
 - **Lede:** a sentence under the title, 6px below, in 13px dim ink, only for a screen that has to explain itself before it asks (the intake).
-- **Right side, one thing or nothing:** a short reading about the whole screen (`3/12 sets`, `Week 5 / 8`), 11px mono faint and baseline-aligned with the title; or one icon control, centred on the title row. The top strip has a slot for one screen action since #115 (a route's `staticData.screenAction`); moving a screen's action there is that screen's ticket (the Timer's cue settings, #119). The header keeps readings.
+- **Right side, one thing or nothing:** a short reading about the whole screen (`3/12 sets`, `Week 5 / 8`), 11px mono faint and baseline-aligned with the title; or one icon control, centred on the title row. The top strip has a slot for one screen action since #115 (a route's `staticData.screenAction`); the Timer's cue settings moved there in #119, and the header keeps readings.
 - **Space:** the title's line starts 14px under the 44px strip on a phone (`main`'s 8px plus the header's 6px) and 22px under it from `lg` (16px plus 6px), and the sections gap follows the header. #115 left both numbers where they were.
 - **Height:** the title sets the header's height and nothing on the right does. A 44px control in the right-hand slot overhangs the title's 24px line by 10px each way, so the title sits at the same height on every screen.
 - **What is not the header:** a notice about the whole screen (Settings' offline line, sign-in's notices) is the first group after the header, a sections gap below it, never a second meta line pulled up with a negative margin.
@@ -433,7 +431,7 @@ One 72px line. Running, it is the segment's colour, as the full-screen clock is,
 One card per task, its category as a 2px left edge and nowhere else. One is open at a time: the first with a set left that today's verdict did not hold back. Every other task is its header alone: the name in 16px semibold, the short prescription under it in 12px mono (`4–6 × 3–5 · +32–48kg`), the sets ticked against the prescription's (`0/4`, never the rows on the grid), a chevron, and the clock's 44px button. Held work carries Today's warn chip at the end of that line, a task with its sets ticked carries Today's ok chip, done. The whole header is the disclosure. The clock's button marks the task the clock runs in the selection mark (chalk on raised graphite), never vermilion. Open, the card adds its bands under hairlines: swap, target, the working-load ask (only at first contact, folded to one line once a set is ticked), the set grid and Add set. A tick that finishes the open task folds it, opens the next, scrolls that card clear of the sticky clock and moves focus to its header.
 
 ### Protocol rows
-A list row is a 56px panel at 14px corners: the name in 16px semibold, the shape under it in 13px dim ink, the length in a 22px Barlow count on the right. Its ⋯ is a separate 44px bordered control beside it, never inside it. A tap opens the ready state, so a stray tap never starts anything. A preset group's head is a 48px disclosure row in the rows' 15px, not a heading rank.
+A list row is a 56px panel at 14px corners: the name in 16px semibold, the shape under it in 13px dim ink, the length in a 22px Barlow count on the right. Its ⋯ is a separate 44px bordered control beside it, never inside it (`RowMenu`). A tap opens the ready state, so a stray tap never starts anything. The list runs Saved, the stopwatch's row, Recent, Presets (#119). The presets are one accordion card: each exercise a 48px head in the rows' 15px with its count, today's exercises open, the rest closed; inside a group the presets are lines in the card with no surface of their own, and the group ends on its study, "Study: <title>" with the 12px external mark, worded and drawn as the ready state's. The protocol the clock is on is marked with the navigation's selection: a raised panel, chalk on every line, the shape line in semibold.
 
 ## Do's and Don'ts
 

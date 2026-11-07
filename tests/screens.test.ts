@@ -274,12 +274,12 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			expect(settings).not.toContain(locale === 'en-US' ? 'no voice' : 'não tem voz');
 		});
 
-		// Timer (#111). The screen is only the list: no clock strip above it and no
-		// Protocols | Stopwatch tabs. Top to bottom, the stopwatch's own row, the
-		// athlete's saved protocols, what they ran recently, then the presets,
-		// grouped by exercise and closed. A clock opens from a row and is a dialog,
+		// Timer (#111, #119). The screen is only the list: no clock strip above it
+		// and no Protocols | Stopwatch tabs. The athlete's saved protocols first
+		// (#119), then the stopwatch's own row, what they ran recently, and the
+		// presets, grouped by exercise. A clock opens from a row and is a dialog,
 		// which a string render leaves out.
-		test('renders the Timer screen as the list: Stopwatch, Saved, Recent, Presets', async () => {
+		test('renders the Timer screen as the list: Saved, Stopwatch, Recent, Presets', async () => {
 			const timer = await render('/timer');
 			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
 			expect(screen.length).toBeGreaterThan(2000);
@@ -296,13 +296,14 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 				expect(i, text).toBeGreaterThan(-1);
 				return i;
 			};
-			const stopwatch = at(locale === 'en-US' ? '>Stopwatch<' : '>Cronômetro<');
 			const saved = at(locale === 'en-US' ? '>Saved<' : '>Salvos<');
+			const stopwatch = at(locale === 'en-US' ? '>Stopwatch<' : '>Cronômetro<');
 			const recent = at(locale === 'en-US' ? '>Recent<' : '>Recentes<');
 			const presets = at(locale === 'en-US' ? '>Presets<' : '>Predefinidos<');
-			// Stopwatch is the first row, above everything the screen lists.
-			expect(stopwatch).toBeLessThan(saved);
-			expect(saved).toBeLessThan(recent);
+			// Saved is the first thing the screen lists, its rows above the stopwatch.
+			expect(saved).toBeLessThan(at('Warm-up hangs'));
+			expect(at('Tabata finisher')).toBeLessThan(stopwatch);
+			expect(stopwatch).toBeLessThan(recent);
 			expect(recent).toBeLessThan(presets);
 			// Nothing has been run in a fresh render, and Recent says so.
 			expect(screen.slice(recent, presets)).toContain(
@@ -373,44 +374,72 @@ for (const locale of ['en-US', 'pt-BR'] as const) {
 			}
 		});
 
-		// The presets: grouped by exercise, every group closed until it is opened,
-		// and no study links — those moved to the clock's ready state (#110).
-		test('closes every preset group, and links no study from the list', async () => {
+		// The presets: grouped by exercise, closed until opened, except today's
+		// (#119). Seeded Thursday schedules sloper density and abrahangs, so those
+		// two are open and every other group is a closed line with a count. Each
+		// open group ends on its study, labelled the way the clock's ready state
+		// labels it.
+		test('opens today’s preset groups, closes the rest, and cites each open one’s study', async () => {
 			const timer = await render('/timer');
 			const screen = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
 			const presets = screen.slice(
 				screen.indexOf(locale === 'en-US' ? '>Presets<' : '>Predefinidos<'),
 			);
-			// The exercise heads are there, as closed disclosures with a count.
-			expect(presets).toContain('>Max Hangs<');
-			const groups = presets.match(/aria-expanded="(true|false)"/g) ?? [];
-			expect(groups.length).toBeGreaterThan(5);
-			expect(groups.every((g) => g === 'aria-expanded="false"')).toBe(true);
+			const heads = [
+				...presets.matchAll(
+					/<h3[^>]*><button[^>]*aria-expanded="(true|false)"[^>]*>([\s\S]*?)<\/button>/g,
+				),
+			];
+			expect(heads.length).toBe(8);
+			const open = heads.filter((h) => h[1] === 'true').map((h) => h[2]);
+			expect(open).toHaveLength(2);
+			expect(open[0]).toContain(locale === 'en-US' ? 'Sloper Density' : 'Density em Sloper');
+			expect(open[1]).toContain('Abrahangs');
 			expect(presets).toContain(locale === 'en-US' ? '2 presets' : '2 predefinidos');
-			// Their rows wait behind the tap.
+			// Today's rows are listed; a closed group's wait behind the tap.
+			expect(presets).toContain(
+				locale === 'en-US' ? 'Sloper bottom-edge hangs' : 'Parte de baixo de um sloper',
+			);
+			expect(presets).toContain(
+				locale === 'en-US' ? 'Block · 1 hand · fast' : 'Block · 1 mão · rápido',
+			);
 			expect(presets).not.toContain(
 				locale === 'en-US'
 					? '7/3 · 20mm half-crimp + open hand'
 					: '7/3 · 20mm half-crimp + mão aberta',
 			);
-			expect(screen).not.toContain('pubmed.ncbi.nlm.nih.gov');
+			// One study per open group, each a link worded one way.
+			const studies = [...presets.matchAll(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
+			expect(studies.map((a) => a[2].replace(/<[^>]+>/g, ''))).toEqual(
+				locale === 'en-US'
+					? [
+							'Study: Sloper &amp; open-hand activation',
+							'Study: Collagen loading &amp; tendon adaptation',
+						]
+					: [
+							'Estudo: Ativação em sloper e mão aberta',
+							'Estudo: Carga de colágeno e adaptação do tendão',
+						],
+			);
 		});
 
-		// The cue settings' shortcut (#105): one discreet control in the header,
-		// beside the title, opening the same component Settings shows. A closed
-		// popover renders nothing in a string render, so what is asserted is the
-		// control and what it says it opens.
-		test('puts the cue settings behind a control in the Timer header', async () => {
+		// The cue settings' shortcut (#105) is the screen's one action, so it sits in
+		// the top strip's slot (#119), as DESIGN.md's header pattern has it: the
+		// header keeps readings. A closed popover renders nothing in a string
+		// render, so what is asserted is the control and what it says it opens.
+		test('puts the cue settings in the top strip, not in the Timer header', async () => {
 			const timer = await render('/timer');
-			const header = timer.slice(
-				timer.indexOf('<h1'),
-				timer.indexOf('</header>', timer.indexOf('<h1')),
-			);
-			expect(header).toContain(
-				locale === 'en-US' ? 'aria-label="Timer cues"' : 'aria-label="Sinais do timer"',
-			);
-			expect(header).toContain('aria-haspopup="dialog"');
-			expect(header).toContain('min-h-11');
+			const label = locale === 'en-US' ? 'aria-label="Timer cues"' : 'aria-label="Sinais do timer"';
+			const strip = timer.slice(timer.indexOf('<header'), timer.indexOf('</header>'));
+			expect(strip).toContain('Send Lab');
+			expect(strip).toContain(label);
+			const control = strip.slice(strip.lastIndexOf('<button', strip.indexOf(label)));
+			expect(control.slice(0, control.indexOf('>'))).toContain('aria-haspopup="dialog"');
+			expect(control.slice(0, control.indexOf('>'))).toContain('size-11');
+			const main = timer.slice(timer.indexOf('<main'), timer.indexOf('</main>'));
+			expect(main).not.toContain(label);
+			// And no other screen carries it.
+			expect(await render('/train')).not.toContain(label);
 		});
 
 		// The editor's rows (#112), which `/train`'s Adjust uses too: in the order a
@@ -1264,17 +1293,28 @@ describe('Recent on the Timer screen', () => {
 	});
 });
 
-// The tapped group head stays under the finger as its group opens or closes
-// (#111). jsdom lays nothing out, so where the head is is told to it: the page
-// is expected to scroll by exactly what the head moved.
-describe('opening a preset group on the Timer screen', () => {
+// The protocol the clock is on is marked on the list as the navigation marks the
+// current destination (#119): `aria-current`, and the bar's look. A tap on a row
+// moves it there; the clock opening and closing does not move it back.
+describe('the selected protocol on the Timer screen', () => {
 	beforeAll(() => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 	});
 	beforeEach(() => overwriteGetLocale(() => 'en-US'));
-	afterEach(() => vi.restoreAllMocks());
 
-	test('scrolls the page by what the tapped head moved', async () => {
+	const marked = () =>
+		[...document.querySelectorAll<HTMLButtonElement>('main button[aria-current]')].map((b) => ({
+			current: b.getAttribute('aria-current'),
+			text: b.textContent ?? '',
+		}));
+	const close = () =>
+		act(() =>
+			document
+				.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')
+				?.click(),
+		);
+
+	test('marks the row last opened, and only that protocol', async () => {
 		const router = createRouter({
 			routeTree,
 			history: createMemoryHistory({ initialEntries: ['/timer'] }),
@@ -1283,22 +1323,75 @@ describe('opening a preset group on the Timer screen', () => {
 		const root = createRoot(document);
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
-			const heads = [
-				...document.querySelectorAll<HTMLButtonElement>('main h3 > button[aria-expanded]'),
-			];
-			const head = heads[1];
-			if (!head) throw new Error('no second preset group');
-			// Read once at the tap, and once after the group above it changed.
-			const tops = [400, 340];
-			vi.spyOn(head, 'getBoundingClientRect').mockImplementation(
-				() => ({ top: tops.shift() ?? 340 }) as DOMRect,
-			);
-			const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
-			act(() => head.click());
-			expect(head.getAttribute('aria-expanded')).toBe('true');
-			expect(scrollBy).toHaveBeenCalledWith(0, -60);
+			act(() => listRow('Tabata finisher')?.click());
+			close();
+			expect(marked()).toEqual([
+				{ current: 'true', text: expect.stringContaining('Tabata finisher') },
+			]);
+			// A preset in today's open group takes the mark from it.
+			act(() => listRow('Sloper bottom-edge hangs')?.click());
+			close();
+			const now = marked();
+			expect(now.length).toBeGreaterThan(0);
+			expect(now.every((r) => r.text.includes('Sloper bottom-edge hangs'))).toBe(true);
 		} finally {
 			act(() => root.unmount());
+		}
+	});
+});
+
+// The tapped group head stays under the finger as its group closes (#111, #119).
+// Presets is the end of the page, so closing a group there would shorten the
+// page under the scroll position and the browser would clamp it, sliding
+// everything down. jsdom lays nothing out, so the geometry is told to it: the
+// page keeps, at its end, what the closing panel takes that the room below the
+// screen cannot absorb, and an open hands it back once there is room.
+describe('closing a preset group on the Timer screen', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+	afterEach(() => vi.restoreAllMocks());
+
+	test('keeps the page as long as it was, so nothing moves under the finger', async () => {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		const page = document.documentElement;
+		const geometry = (scrollHeight: number, scrollY: number) => {
+			Object.defineProperty(page, 'scrollHeight', { configurable: true, value: scrollHeight });
+			Object.defineProperty(window, 'scrollY', { configurable: true, value: scrollY });
+			Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 });
+		};
+		try {
+			const head = [
+				...document.querySelectorAll<HTMLButtonElement>('main h3 > button[aria-expanded="true"]'),
+			].find((b) => b.textContent?.includes('Sloper Density'));
+			if (!head) throw new Error('today’s group is not open');
+			const panel = document.getElementById(head.getAttribute('aria-controls') ?? '');
+			if (!panel) throw new Error('no panel under the open head');
+			vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ height: 400 } as DOMRect);
+			const tail = () => document.querySelector<HTMLElement>('main [data-tail]');
+
+			// 100px of page left below the screen, a 400px panel closing: 300px kept.
+			geometry(2000, 1100);
+			act(() => head.click());
+			expect(head.getAttribute('aria-expanded')).toBe('false');
+			expect(tail()?.style.height).toBe('300px');
+
+			// Scrolled up, with room to spare: opening a group gives it back.
+			geometry(1700, 200);
+			act(() => head.click());
+			expect(head.getAttribute('aria-expanded')).toBe('true');
+			expect(tail()?.style.height).toBe('');
+		} finally {
+			act(() => root.unmount());
+			Reflect.deleteProperty(page, 'scrollHeight');
+			Reflect.deleteProperty(window, 'scrollY');
 		}
 	});
 });

@@ -12,21 +12,29 @@
 // The sticky clock strip and the Protocols | Stopwatch tabs went: the strip
 // carried eleven things and the same total three times, above a list it was
 // competing with. A clock is now a screen of its own, opened from a row, and
-// the list is four groups, top to bottom:
+// the list is four groups, top to bottom (#119 put Saved first):
 //
-//   1. **Stopwatch**, one row, opening the stopwatch's clock.
-//   2. **Saved**, the athlete's own protocols, always open, and New protocol.
+//   1. **Saved**, the athlete's own protocols, always open, and New protocol:
+//      the ones they made are where they look first.
+//   2. **Stopwatch**, one row, opening the stopwatch's clock.
 //   3. **Recent**, the last three run that Saved does not already show — a
 //      draft on this device (`recentProtocols.ts`), not training record.
-//   4. **Presets**, grouped by exercise and closed until a group is opened, so
-//      twenty-odd rows in nine groups are nine lines until one is wanted.
+//   4. **Presets**, grouped by exercise in one `RowGroup`, today's exercises'
+//      groups open and the rest closed, so twenty-four rows in eight groups are
+//      eight lines and the ones the session needs. Each group ends on the study
+//      it cites, worded as the clock's ready state words it (`StudyLink`).
+//
+// The protocol the clock is on is marked on its row the way the navigation marks
+// the current destination (DESIGN.md › Navigation, one selection language):
+// chalk, semibold, a raised panel. The cue settings are the screen's one action,
+// in the top strip's slot (#119), as the header pattern has it.
 //
 // A row is its name (the strongest text on it), its shape and how long it runs,
 // and a tap on it opens its clock's ready state (#110): the sequence, the total,
 // the study a preset cites, one Start. Nothing on a row starts a clock. What a
-// row can do besides run is behind its own ⋯ beside it — a separate, bordered
-// 44px control, because an icon attached to a larger control does not read as
-// one (`component-vocabulary.md`, the measured rules).
+// row can do besides run is behind its own ⋯ beside it (`RowMenu`) — a
+// separate, bordered 44px control, because an icon attached to a larger control
+// does not read as one (`component-vocabulary.md`, the measured rules).
 //
 // THE MINI BAR
 // ------------
@@ -40,18 +48,9 @@
 // Leaving the screen unmounts every clock, which is today's rule: they pause,
 // and come back paused.
 
-import { Menu } from '@base-ui/react/menu';
 import { createFileRoute } from '@tanstack/react-router';
-import { ChevronRight, Ellipsis, Plus, Timer as TimerIcon } from 'lucide-react';
-import {
-	type ReactNode,
-	useCallback,
-	useId,
-	useLayoutEffect,
-	useMemo,
-	useRef,
-	useState,
-} from 'react';
+import { ChevronRight, Plus, Timer as TimerIcon } from 'lucide-react';
+import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useClockFront } from '$lib/clockFront';
 import { getContent } from '$lib/content';
 import { clock } from '$lib/format';
@@ -65,6 +64,7 @@ import {
 	type ProtocolListing,
 	resolveTimer,
 	type SavedProtocolListing,
+	todaysPresetGroups,
 } from '$lib/screens/timer';
 import { useTrainingRecord } from '$lib/store/record';
 import {
@@ -78,17 +78,25 @@ import { cn } from '$lib/utils';
 import { CueSettingsShortcut } from '../components/CueSettings';
 import { type EditorTarget, ProtocolEditor } from '../components/ProtocolEditor';
 import { Stopwatch } from '../components/Stopwatch';
-import { type ClockHandle, Timer } from '../components/Timer';
+import { type ClockHandle, StudyLink, Timer } from '../components/Timer';
 import { AlertDialog } from '../components/ui/AlertDialog';
-import { Empty, Pane, ScreenHeader } from '../components/ui/primitives';
+import { type MenuAction, RowMenu } from '../components/ui/Menu';
+import { Empty, Pane, ScreenHeader, Section } from '../components/ui/primitives';
+import { Row, RowGroup } from '../components/ui/Rows';
 import { button } from '../components/ui/variants';
 
-export const Route = createFileRoute('/timer')({ component: TimerScreen });
+export const Route = createFileRoute('/timer')({
+	component: TimerScreen,
+	// The screen's one action, in the top strip (#119): the header keeps readings
+	// (DESIGN.md › The screen header), and the Timer has none to show.
+	staticData: { screenAction: CueSettingsShortcut },
+});
 
 function TimerScreen() {
 	const locale = getLocale();
 	const record = useTrainingRecord();
-	const screen = useMemo(() => resolveTimer(getContent(locale), record, locale), [record, locale]);
+	const content = getContent(locale);
+	const screen = useMemo(() => resolveTimer(content, record, locale), [content, record, locale]);
 	const { runnable } = screen;
 
 	// WHICH PROTOCOL THE CLOCK IS ON, held by identity.
@@ -99,15 +107,19 @@ function TimerScreen() {
 	// changes it. Each protocol keeps its own place (`ClockShelf` in
 	// `timerSetup.ts`), so a tap on another row and back finds the first one
 	// where it was left.
+	//
+	// `selected` is the athlete's: the row they last opened, or the one the clock
+	// was left in. It is what the list marks (#119), so it is `null` until there
+	// is one — a fresh visit marks nothing rather than whatever is listed first.
 	const last = useLastTimerProtocol();
 	const [selected, setSelected] = useState<ProtocolKey | null>(
-		() => runnable.find((r) => r.key === last)?.key ?? runnable[0]?.key ?? null,
+		() => runnable.find((r) => r.key === last)?.key ?? null,
 	);
 	// The protocol the bar belongs to: the one started last, and at first the
 	// one the clock was left in, so a place left mid-run is in the bar on return.
 	// Kept apart from `selected` because a look at another row while one runs
 	// must not stop it: the running clock stays mounted beside the one opened.
-	const [running, setRunning] = useState(selected);
+	const [running, setRunning] = useState(() => selected ?? runnable[0]?.key ?? null);
 	// Which clock is up, owned here rather than by the Timer: a tap on a row
 	// picks the protocol and opens its clock in one go.
 	const [openKey, setOpenKey] = useState<ProtocolKey | null>(null);
@@ -117,8 +129,9 @@ function TimerScreen() {
 	// was started last — a stopwatch left mid-count comes back in the bar.
 	const [front, setFront] = useClockFront();
 	// A deleted saved protocol takes the selection with it; the clock moves to the
-	// top of the list rather than vanishing.
-	const current = runnable.find((r) => r.key === selected) ?? runnable[0] ?? null;
+	// top of the list rather than vanishing, and the list marks nothing.
+	const marked = runnable.find((r) => r.key === selected)?.key ?? null;
+	const current = runnable.find((r) => r.key === marked) ?? runnable[0] ?? null;
 	const behind = running === current?.key ? null : runnable.find((r) => r.key === running);
 	const clocks = useRef(new Map<string, ClockHandle>());
 	const stopwatch = useRef<ClockHandle>(null);
@@ -136,43 +149,41 @@ function TimerScreen() {
 		setOpenKey(key);
 	};
 
-	// THE TAPPED ROW STAYS UNDER THE FINGER.
+	// WHICH PRESET GROUPS ARE OPEN: today's, at first (#119) — the exercises the
+	// plan schedules today that carry presets — and after that whatever the
+	// athlete opens. Read once, at mount: a group does not fold under the athlete
+	// because the clock crossed midnight.
+	const [openGroups, setOpenGroups] = useState<string[]>(() =>
+		todaysPresetGroups(screen, content, record, Date.now()),
+	);
+
+	// THE TAPPED HEAD STAYS UNDER THE FINGER.
 	//
-	// Opening a group pushes everything under it down, and closing one near the
-	// end of the page shortens the page under a scroll position that may no
-	// longer exist — and a quick second tap, chalky and one-handed, lands on a
-	// neighbour. So the tapped head's position is read at the tap and the page is
-	// scrolled by whatever the re-render moved it, before paint. Where the page
-	// has become too short to scroll that far, it is given the height back at
-	// its end until the next toggle.
-	const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(() => new Set());
-	const anchor = useRef<{ el: HTMLElement; top: number } | null>(null);
+	// Presets is the last thing on the page, so closing a group near the end
+	// shortens the page under a scroll position that may no longer exist: the
+	// browser clamps it, everything slides down, and a quick second tap, chalky
+	// and one-handed, lands on a neighbour. So before the change renders, the
+	// page is given back at its end whatever the closing panel takes that the
+	// room below the screen cannot absorb, and an open hands back what is no
+	// longer needed. Measured at the press rather than after it, because the
+	// panel closes over 190ms (`.a-panel`) and nothing has moved yet when the
+	// render lands.
 	const tail = useRef<HTMLDivElement>(null);
-	const toggleGroup = (exercise: string, el: HTMLElement) => {
-		if (tail.current) tail.current.style.height = '';
-		anchor.current = { el, top: el.getBoundingClientRect().top };
-		setOpenGroups((open) => {
-			const next = new Set(open);
-			if (!next.delete(exercise)) next.add(exercise);
-			return next;
-		});
+	const toggleGroups = (next: string[], event: Event) => {
+		const end = tail.current;
+		if (end) {
+			const head = event.target instanceof Element ? event.target.closest('[aria-controls]') : null;
+			const closing = openGroups.some((g) => !next.includes(g));
+			const panelId = closing ? head?.getAttribute('aria-controls') : null;
+			const panel = panelId ? document.getElementById(panelId) : null;
+			const shrink = panel?.getBoundingClientRect().height ?? 0;
+			const room = document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+			const held = Number.parseFloat(end.style.height) || 0;
+			const keep = Math.max(0, held + shrink - room);
+			end.style.height = keep ? `${keep}px` : '';
+		}
+		setOpenGroups(next);
 	};
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `openGroups` is read by no line of the effect on purpose; the toggle changing it is the re-render to measure.
-	useLayoutEffect(() => {
-		const held = anchor.current;
-		anchor.current = null;
-		if (!held) return;
-		const moved = held.el.getBoundingClientRect().top - held.top;
-		if (!moved) return;
-		// Closing a group at the end of the page clamps the scroll, which pushes
-		// the head down; there is then no page left below to scroll into.
-		const room = Math.max(
-			0,
-			document.documentElement.scrollHeight - window.innerHeight - window.scrollY,
-		);
-		if (moved > room && tail.current) tail.current.style.height = `${moved - room}px`;
-		window.scrollBy(0, moved);
-	}, [openGroups]);
 
 	// A copy or a new protocol lands at the end of Saved, which may be off the
 	// screen — the athlete was looking at a preset further down — so the new row
@@ -188,7 +199,7 @@ function TimerScreen() {
 	// Duplicate scrolled under a thumb still coming down for a second tap; since
 	// #111 Duplicate is behind each row's ⋯, two taps from any thumb, so that tap
 	// cannot land on it. What is left is the menu fading out under the finger,
-	// which takes no taps while it does (`RowActions`): no window to choose.
+	// which takes no taps while it does (`RowMenu`): no window to choose.
 	const duplicate = async (source: ProtocolListing) => {
 		const row = await createSavedProtocol({ name: source.copyName, protocol: source.protocol });
 		setMade(savedProtocolKey(row.id));
@@ -236,43 +247,53 @@ function TimerScreen() {
 	 * for a saved protocol Edit and Delete. A preset is the library's, so the one
 	 * thing to do with it besides running it is to keep a copy that is the
 	 * athlete's. Picked from the ready state, each leaves the clock first, for
-	 * the list, the editor or the question it leads to.
+	 * the list, the editor or the question it leads to. Delete is worded, not
+	 * coloured; the question it opens is what guards it.
 	 */
 	const rowActions = (p: ProtocolListing, placement: 'row' | 'header') => {
 		const own = screen.saved.find((s) => s.key === p.key);
 		const leave = () => setOpenKey(null);
-		return (
-			<RowActions
-				name={p.name}
-				placement={placement}
-				onDuplicate={() => {
+		const actions: MenuAction[] = [
+			{
+				label: m.timer_duplicate(),
+				onSelect: () => {
 					leave();
 					void duplicate(p);
-				}}
-				onEdit={
-					own
-						? () => {
-								leave();
-								openEditor(own);
-							}
-						: undefined
-				}
-				onDelete={
-					own
-						? () => {
-								leave();
-								setDoomed(own);
-								setConfirming(true);
-							}
-						: undefined
-				}
+				},
+			},
+		];
+		if (own)
+			actions.push(
+				{
+					label: m.timer_edit(),
+					onSelect: () => {
+						leave();
+						openEditor(own);
+					},
+				},
+				{
+					label: m.btn_delete(),
+					onSelect: () => {
+						leave();
+						setDoomed(own);
+						setConfirming(true);
+					},
+				},
+			);
+		return (
+			<RowMenu
+				label={m.timer_row_actions({ name: p.name })}
+				actions={actions}
+				placement={placement}
 			/>
 		);
 	};
-	const row = (p: ProtocolListing) => (
+	const row = (p: ProtocolListing, inGroup = false) => (
 		<ProtocolRow
 			key={p.key}
 			row={p}
+			current={p.key === marked}
+			inGroup={inGroup}
 			onOpen={() => openClock(p.key)}
 			reveal={p.key === made ? reveal : undefined}
 			actions={rowActions(p, 'row')}
@@ -282,28 +303,13 @@ function TimerScreen() {
 	return (
 		// Capped, like Train: one list, picked one-handed, and a wider list says
 		// nothing more about a protocol.
-		<Pane className="gap-6">
-			{/* The cue settings are the header's `action`, centred on the title row:
-			    an icon has no baseline to share with the title. */}
-			<ScreenHeader title={m.nav_timer()} action={<CueSettingsShortcut />} />
+		<Pane className="gap-sections">
+			<ScreenHeader title={m.nav_timer()} />
 
-			<button
-				type="button"
-				aria-haspopup="dialog"
-				onClick={() => setWatchOpen(true)}
-				className={cn(ROW, 'w-full')}
-			>
-				<TimerIcon size={20} aria-hidden="true" className="shrink-0 text-ink-dim" />
-				<span className="min-w-0 flex-1 text-[16px] leading-tight font-semibold text-ink">
-					{m.timer_stopwatch()}
-				</span>
-				<ChevronRight size={18} aria-hidden="true" className="shrink-0 text-ink-faint" />
-			</button>
-
-			<ListSection label={m.timer_saved()}>
+			<Section face="sans" label={m.timer_saved()}>
 				{screen.saved.length ? (
-					<div className="flex flex-col gap-1.5">
-						{screen.saved.map(row)}
+					<div className="flex flex-col gap-row">
+						{screen.saved.map((p) => row(p))}
 						<NewProtocol onClick={() => openEditor(null)} />
 					</div>
 				) : (
@@ -314,31 +320,56 @@ function TimerScreen() {
 						action={<NewProtocol onClick={() => openEditor(null)} />}
 					/>
 				)}
-			</ListSection>
+			</Section>
 
-			<ListSection label={m.timer_recent()}>
+			{/* One row, not a section: a heading saying "Stopwatch" over a row saying
+			    it again would be the same word twice. Its leading icon is what sets it
+			    apart from the protocol rows above it. */}
+			<button
+				type="button"
+				aria-haspopup="dialog"
+				onClick={() => setWatchOpen(true)}
+				className={cn(ROW, 'w-full')}
+			>
+				<TimerIcon
+					size={20}
+					strokeWidth={1.75}
+					aria-hidden="true"
+					className="shrink-0 text-ink-dim"
+				/>
+				<span className="min-w-0 flex-1 text-[16px] leading-tight font-semibold text-ink">
+					{m.timer_stopwatch()}
+				</span>
+				<ChevronRight
+					size={18}
+					strokeWidth={2}
+					aria-hidden="true"
+					className="shrink-0 text-ink-faint"
+				/>
+			</button>
+
+			<Section face="sans" label={m.timer_recent()}>
 				{recent.length ? (
-					<div className="flex flex-col gap-1.5">{recent.map(row)}</div>
+					<div className="flex flex-col gap-row">{recent.map((p) => row(p))}</div>
 				) : (
 					<Empty value={m.timer_recent_empty()} />
 				)}
-			</ListSection>
+			</Section>
 
-			<ListSection label={m.timer_presets()}>
-				<div className="flex flex-col">
+			<Section face="sans" label={m.timer_presets()}>
+				<RowGroup multiple value={openGroups} onValueChange={toggleGroups}>
 					{screen.presets.map((g) => (
-						<PresetGroupList
-							key={g.exercise}
-							group={g}
-							open={openGroups.has(g.exercise)}
-							onToggle={(el) => toggleGroup(g.exercise, el)}
-						>
-							{g.presets.map(row)}
-						</PresetGroupList>
+						<Row key={g.exercise} value={g.exercise} touch summary={<GroupHead group={g} />}>
+							<div className="flex flex-col gap-row">{g.presets.map((p) => row(p, true))}</div>
+							{/* Every group's citation in one place, its last line, on the
+							    rows' left edge, worded as the ready state words it. A
+							    group whose exercise cites no study has no line. */}
+							{g.study ? <StudyLink study={g.study} className="mt-1 px-2.5" /> : null}
+						</Row>
 					))}
-				</div>
-			</ListSection>
-			<div ref={tail} aria-hidden="true" className="-mt-6" />
+				</RowGroup>
+			</Section>
+			<div ref={tail} aria-hidden="true" data-tail="" className="-mt-sections" />
 
 			{[behind, current].map((p) => {
 				if (!p) return null;
@@ -422,21 +453,6 @@ function TimerScreen() {
 }
 
 /**
- * One of the list's four groups, under the section rank in Inter
- * (`.h-section-sans`), as the approved mockup draws it: #110 took the mono caps
- * out of the Timer screens' headings, and the list's heads are words, not
- * furniture.
- */
-function ListSection({ label, children }: { label: string; children: ReactNode }) {
-	return (
-		<section className="flex flex-col gap-2.5">
-			<h2 className="h-section-sans px-1">{label}</h2>
-			{children}
-		</section>
-	);
-}
-
-/**
  * The surface every row on the list shares — the stopwatch's, a protocol's —
  * so their left edges, their height and their padding are one rule.
  */
@@ -447,14 +463,27 @@ const ROW =
  * One protocol: its name, its shape, how long it runs; and beside it, not in
  * it, what else it can do. A tap opens its clock's ready state, which is where
  * Start is, so a stray tap on the list never starts anything.
+ *
+ * In Saved and Recent a row is its own surface. Inside a preset group it is a
+ * line in the group's card with no surface of its own, because a card is never
+ * inside another card (DESIGN.md › The group pattern).
+ *
+ * The protocol the clock is on is marked as the navigation marks the current
+ * destination (#119): a raised panel, and chalk on every line, with the shape
+ * line in semibold — the name is semibold on every row, so the weight that
+ * changes is the line under it.
  */
 function ProtocolRow({
 	row,
+	current,
+	inGroup,
 	onOpen,
 	actions,
 	reveal,
 }: {
 	row: { name: string; shape: string; total: number; named: boolean };
+	current: boolean;
+	inGroup: boolean;
 	onOpen: () => void;
 	actions: ReactNode;
 	/** Scrolls a row just made into view. */
@@ -463,22 +492,48 @@ function ProtocolRow({
 	return (
 		// Clear of the app bar above and the mini bar below when it is scrolled to.
 		<div ref={reveal} className="flex scroll-mt-16 scroll-mb-24 items-stretch gap-1.5">
-			<button type="button" aria-haspopup="dialog" onClick={onOpen} className={cn(ROW, 'flex-1')}>
+			<button
+				type="button"
+				aria-haspopup="dialog"
+				aria-current={current ? 'true' : undefined}
+				onClick={onOpen}
+				className={cn(
+					ROW,
+					'flex-1',
+					inGroup && 'rounded-lg bg-transparent px-2.5',
+					current && 'bg-panel-3 hover:bg-panel-3',
+				)}
+			>
 				{/* The separators are spoken only: without them a screen reader runs the
 				    name, the shape and the length into one word. */}
 				<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-					<span className="line-clamp-2 text-[16px] leading-tight font-semibold text-ink">
+					<span
+						className={cn(
+							'line-clamp-2 text-[16px] leading-tight font-semibold',
+							current ? 'text-chalk' : 'text-ink',
+						)}
+					>
 						{row.name}
 						<span className="sr-only">. </span>
 					</span>
 					{/* An unnamed saved protocol is listed under its shape (#112), so the
 					    line under it says it has no name rather than the shape twice. */}
-					<span className="text-[13px] leading-snug font-medium text-ink-dim">
+					<span
+						className={cn(
+							'text-[13px] leading-snug',
+							current ? 'font-semibold text-chalk' : 'font-medium text-ink-dim',
+						)}
+					>
 						{row.named ? row.shape : m.timer_unnamed()}
 						<span className="sr-only">. {m.timer_total()}: </span>
 					</span>
 				</span>
-				<span className="display shrink-0 text-[22px] leading-none font-semibold text-ink">
+				<span
+					className={cn(
+						'display shrink-0 text-[22px] leading-none font-semibold',
+						current ? 'text-chalk' : 'text-ink',
+					)}
+				>
 					{clock(row.total)}
 				</span>
 			</button>
@@ -487,113 +542,18 @@ function ProtocolRow({
 	);
 }
 
-/**
- * A row's ⋯: its own 44px control, bordered, beside the row (#111), labelled
- * with the protocol it acts on — "Delete" alone does not say what goes. Its
- * menu: Duplicate, and for a saved protocol Edit and Delete. Delete is not
- * coloured apart, since colour here reports state; its question is what guards
- * it.
- */
-function RowActions({
-	name,
-	placement,
-	onDuplicate,
-	onEdit,
-	onDelete,
-}: {
-	name: string;
-	/** Beside a row, the row's height; in the ready state's header, the 48px
-	 *  square of the Close beside it. */
-	placement: 'row' | 'header';
-	onDuplicate: () => void;
-	onEdit?: () => void;
-	onDelete?: () => void;
-}) {
-	const item =
-		'flex min-h-11 cursor-default items-center rounded-md px-3 text-[15px] text-ink outline-none select-none data-[highlighted]:bg-panel-3';
-	return (
-		<Menu.Root>
-			<Menu.Trigger
-				aria-label={m.timer_row_actions({ name })}
-				className={cn(
-					'flex shrink-0 items-center justify-center border border-line text-ink-dim transition-colors hover:bg-panel-2 hover:text-ink data-[popup-open]:bg-panel-3 data-[popup-open]:text-ink',
-					placement === 'row'
-						? 'min-h-11 w-11 self-stretch rounded-xl'
-						: 'size-12 self-start rounded-md bg-panel-2',
-				)}
-			>
-				<Ellipsis size={20} aria-hidden="true" />
-			</Menu.Trigger>
-			<Menu.Portal>
-				<Menu.Positioner sideOffset={6} align="end" className="z-50">
-					{/* Closing, it takes no taps: an item tapped again as the menu fades
-					    would run twice. */}
-					<Menu.Popup className="min-w-[180px] rounded-lg border border-line bg-panel p-1 shadow-lg transition-[opacity,transform] duration-150 data-[ending-style]:pointer-events-none data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0">
-						<Menu.Item className={item} onClick={onDuplicate}>
-							{m.timer_duplicate()}
-						</Menu.Item>
-						{onEdit ? (
-							<Menu.Item className={item} onClick={onEdit}>
-								{m.timer_edit()}
-							</Menu.Item>
-						) : null}
-						{onDelete ? (
-							<Menu.Item className={item} onClick={onDelete}>
-								{m.btn_delete()}
-							</Menu.Item>
-						) : null}
-					</Menu.Popup>
-				</Menu.Positioner>
-			</Menu.Portal>
-		</Menu.Root>
-	);
-}
-
-/**
- * One exercise's presets, closed until its head is tapped: the name and how
- * many presets it holds. The study it cites is on each preset's ready state.
- */
-function PresetGroupList({
-	group,
-	open,
-	onToggle,
-	children,
-}: {
-	group: PresetGroup;
-	open: boolean;
-	onToggle: (el: HTMLElement) => void;
-	children: ReactNode;
-}) {
-	const id = useId();
+/** A preset group's head: the exercise, and how many presets it holds — a
+ *  count to the eye, the words to a screen reader. */
+function GroupHead({ group }: { group: PresetGroup }) {
 	const n = group.presets.length;
 	return (
-		<section className="flex flex-col">
-			<h3>
-				<button
-					type="button"
-					aria-expanded={open}
-					aria-controls={open ? id : undefined}
-					onClick={(e) => onToggle(e.currentTarget)}
-					className="flex min-h-12 w-full items-center gap-2.5 border-b border-line-soft px-1 text-left text-[15px] font-semibold text-ink transition-colors hover:text-chalk"
-				>
-					<ChevronRight
-						size={16}
-						aria-hidden="true"
-						className={cn('shrink-0 text-ink-dim transition-transform', open && 'rotate-90')}
-					/>
-					<span className="min-w-0 flex-1">{group.name}</span>
-					<span aria-hidden="true" className="shrink-0 text-[13px] font-medium text-ink-dim">
-						{n}
-					</span>
-					<span className="sr-only">{m.timer_group_count({ n })}</span>
-				</button>
-			</h3>
-			{open ? (
-				<div id={id} className="flex flex-col gap-1.5 pt-2 pb-3">
-					{children}
-				</div>
-			) : null}
-		</section>
+		<span className="flex items-baseline gap-2.5">
+			<span className="min-w-0 flex-1">{group.name}</span>
+			<span aria-hidden="true" className="shrink-0 text-[13px] font-medium text-ink-dim">
+				{n}
+			</span>
+			<span className="sr-only">{m.timer_group_count({ n })}</span>
+		</span>
 	);
 }
 

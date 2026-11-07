@@ -62,7 +62,8 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `StickyStrip` | `primitives.tsx` | A strip held under the 44px app bar while the page scrolls beneath it — the clock on Train. Its `backdrop-blur` traps a fixed descendant, which is why the full-screen clock is a portalled dialog |
 | `BottomBar` | `primitives.tsx` | A bar held at the bottom of the screen while the page scrolls above it — the Timer screen's mini bar (#111), a clock running behind the list. Fixed, so no ancestor may carry a `backdrop-filter`; it leaves its own height at the end of the page so the last row scrolls clear of it. It sits on the navigation bar (`--nav-clear`, #115), and from `lg` right of the rail on the measure's left edge, capped at `max-w-pane` as `Pane` is |
 | `Picker` | `Picker.tsx` | The one select — variant, add-exercise, per-set grip. `wrap` lets the label take a second line instead of truncating, and `chevron={false}` gives a set-grid cell its 18px back: the pt-BR grips clipped to "Slop…" and "Half…" in a 68px cell (#118) |
-| `RowGroup` / `Row` | `Rows.tsx` | The expanding row; the Log screen's whole structure |
+| `RowGroup` / `Row` | `Rows.tsx` | The expanding row, in one card; the Log screen's whole structure and the Timer's preset groups. `multiple` lets several rows stay open; `value` / `onValueChange` hand the open rows to the caller (the change arrives before it renders, with the press that made it). `touch` gives a row a 48px head in the rows' 15px semibold, for a list worked through mid-set. The trailing chevron is the row icon (18px, stroke 2, faint) |
+| `RowMenu` | `Menu.tsx` | A row's ⋯ (#119): Base UI's menu behind a separate, bordered 44px square beside the row (or the 48px square in a dialog's header), labelled with what it acts on. Takes `{ label, onSelect }` actions in order; nothing in it is coloured apart, and a destructive item's guard is the `AlertDialog` the caller opens next |
 | `Sparkline` | `Sparkline.tsx` | The one chart the rebuild still has data for |
 | `Switch` | `Switch.tsx` | On or off — a preference in force or not. Base UI, so it announces as a switch; state is the chalk fill, never opacity |
 | `AlertDialog` | `AlertDialog.tsx` | A question that must be answered before something irreversible. Base UI; modal, not dismissable by clicking outside, its confirm the one `primary` on its surface |
@@ -82,7 +83,7 @@ cannot do that without an `asChild` hatch nobody remembers to reach for.
 | `ProtocolEditor` | How a saved protocol is typed in: an optional name (its placeholder the shape an unnamed one is listed under) over `ProtocolRows`, and when to say a field cannot run (`readProtocolForm` decides that it cannot). Its own screen since #112 — a full-viewport dialog with ✕ and Save at the top — not a sheet over a blacked-out list |
 | `ProtocolRows` | The seven numbers as rows in the order a run goes (prepare; rounds: work, rest, how many; sets: how many, rest between; cooldown — the first group headed **Rounds**, never "Block", which is the glossary's run of weeks), each a label, a value the numeric keyboard opens on, and 48px − / + (#112). The editor's body and `/train`'s Adjust. A time reads m:ss from a minute up and is typed in seconds; the step (`nudged`) and the reading (`shownOf`) are `screens/timer.ts`'s |
 | `Stopwatch` | The count-up's tick, its laps, and the same two faces — the mini bar and full-screen — in the clock's type and controls, through the same `FullScreenClock`, on a neutral field: running or paused is said in the word and the weight of ink, never a segment's colour (#110). Every lap is listed under its number |
-| `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind the Timer header's `CueSettingsShortcut` |
+| `CueSettings` | Which cue preferences exist and how each is asked — the countdown as a choice of lengths, the rest as switches. Mounted in Settings and behind `CueSettingsShortcut`, the Timer's screen action in the top strip (#119) |
 | `SetEditor` / `SetTable` | How seven loggable fields fit 360px, and how a past set differs from a live one |
 | `TaskCard` | One task mid-session: header, prescription, sets. Open or folded to its header (#118), which the page decides; held and done marks on the header; the sets counted against `setTarget` |
 | `ReadinessCheck` | The readiness check as a sheet, one question per step (#116): the step `lib/readinessFlow.ts` names, its rationale and study collapsed under it, its options with nothing preselected. Full height from a phone's bottom edge, a 400px dialog centred from `lg`. Today holds the answers; the sheet holds only which step is showing |
@@ -434,8 +435,8 @@ spacing scale, so they work under every spacing prefix:
 | `gutter` | 12px, 20px from `lg` | The page's side margin and the gap between two panes; one variable, so `px-gutter` is right at both widths |
 
 `Pane`, `Panes`, `Section`, `Bare`, `Empty`, the small `card` and the shell use
-them already. Screens still carry literal steps (`gap-6` on the Timer is drift, 24px
-against 28px; Train moved in #118); each screen ticket moves its own. The inside of a
+them already. Every screen ticket moves its own literal steps to them (Train in #118, the
+Timer in #119). The inside of a
 component keeps the plain 4px steps.
 
 **Every screen sets its title through `ScreenHeader`.** The right-hand side is a
@@ -445,9 +446,9 @@ both, and the types refuse both. Neither sets the title's height: the slot
 overhangs the title's 24px line by up to 10px each way, so a 44px control beside
 it leaves the title where every other screen has it (before that, the title sat at
 61.5, 69 and 71.5px across the screens and jumped on navigation). Today's week
-reading is a link and goes in `reading`. A screen action can go in the top
-strip's slot since #115 (below); the Timer's cue settings stay the header's
-`action` until #119 decides where they live. `tests/screens.test.ts` asserts
+reading is a link and goes in `reading`. A screen action goes in the top
+strip's slot since #115 (below), and the header keeps readings: the Timer's cue
+settings moved there in #119, so no screen uses the header's `action` today. `tests/screens.test.ts` asserts
 every screen opens with it.
 
 **Two decisions for later tickets, written in DESIGN.md.** From `lg`, every
@@ -529,8 +530,9 @@ keeps a control reached by Tab clear of the bar.
 reads two keys: `navigation: false` (the intake: no bar, no rail, nothing reserved)
 and `screenAction`, a component the strip renders on its right as the screen's one
 action. Read in `__root.tsx` and held at the baked answer (navigation, no action)
-until the app has hydrated, the same deferral the locale gets. No route names a
-`screenAction` yet; the Timer's cue settings are the obvious first, #119's call.
+until the app has hydrated, the same deferral the locale gets. The Timer names one,
+its cue settings (#119); the strip renders it in the strip's locale, so a screen
+action takes `locale` as a prop rather than reading the ambient one.
 
 **From `lg` a page starts on the measure's left edge.** `Pane` no longer centres
 in the 1000px measure, so a one-pane page's title, a two-pane page's title and the
@@ -740,6 +742,49 @@ minutes, the autosave line. Then the finish, disabled with its reason.
 **Not done here, and why.** Finish and Repeat last session have no handler; that predates
 #118, and wiring them is new behaviour. The set rows are bordered boxes inside the card,
 and the open card's band labels are mono eyebrows; both predate #118 and are #125's.
+
+## The Timer list
+
+Built by [#119](https://github.com/YgorPerez/send-lab/issues/119) from spec #113's
+Timer decisions.
+
+**Saved first.** Saved, then the stopwatch's row, Recent, Presets. The stopwatch
+stays one row with no heading of its own (a "Stopwatch" head over a "Stopwatch" row
+says it twice); its leading icon is what sets it apart from the protocol rows above.
+The sections sit `gap-sections` apart and their heads are `Section face="sans"`.
+
+**Presets are one `RowGroup`**, a `touch` row per exercise (its name and a count),
+`multiple`. Open by default are today's groups: `todaysPresetGroups`
+(`lib/screens/timer.ts`) reads the plan's exercises for today and keeps those with
+presets, in list order, read once at mount. Seeded Thursday opens Sloper Density and
+Abrahangs; a rest day opens none. Inside a group the presets are lines in the card,
+not surfaces of their own (a card is never inside a card), each with its `RowMenu`.
+
+**Each open group ends on its study**, through `StudyLink` (`Timer.tsx`): "Study:
+<title>" and the 12px external mark, on the rows' left edge, the same component the
+clock's ready state uses, so every citation on the Timer is one sentence shape. An
+exercise with no study (Wrist / Sloper Strength) has no line.
+
+**The selection is the bar's.** The protocol the clock is on (the row last opened, or
+the one the clock was left in) carries `aria-current="true"`, a `panel-3` surface and
+chalk on every line, with its shape line in semibold, since the name is semibold on
+every row. A fresh visit marks nothing rather than whatever is listed first. The same
+protocol listed twice (Recent and its group) is marked twice.
+
+**Closing a group keeps the page as long as it was.** Presets is the end of the page,
+so a close near the end would clamp the scroll and slide the list under the finger.
+The page measures at the press, before the change renders (the panel takes 190ms to
+close, so nothing has moved when the render lands), and holds back at its end what
+the closing panel takes that the room below the screen cannot absorb; an open hands
+it back. The #111 version scrolled by what the head moved after the render, which
+reads zero once the panel animates.
+
+**The cue settings are the strip's screen action**, a 44px ghost square (no border:
+alone on the strip's right it is attached to nothing larger, and a border would sit
+on the strip's edges), its icon 20px at stroke 1.75.
+
+**Heights.** Seeded `/timer` at 360px: 1,783px (en-US), 1,799px (pt-BR), with two
+groups open; 1,641px at 1280px. Empty: 1,728 / 1,706px at 360px.
 
 ## The idiom
 

@@ -23,6 +23,7 @@
 // And what the saved-protocol editor accepts (#104), at the end: the one place
 // that decides whether what was typed is a protocol.
 import type { Content } from '$lib/content/types';
+import { isoDayOf } from '$lib/dates';
 import { protocolShape, STUDY_TITLE, shortTime } from '$lib/format';
 import {
 	asExerciseId,
@@ -31,7 +32,9 @@ import {
 	presetKey,
 	type SavedProtocolId,
 	savedProtocolKey,
+	weekdayKeyOf,
 } from '$lib/ids';
+import { type ResolverState, trainableExerciseIds } from '$lib/prescription';
 import { studyOf } from '$lib/progression';
 import {
 	PROTOCOL_FIELDS,
@@ -159,6 +162,25 @@ export function resolveTimer(
 		};
 	});
 	return { presets, saved, runnable: [...saved, ...presets.flatMap((g) => g.presets)] };
+}
+
+/**
+ * The preset groups the Timer screen opens by default (#119): today's, the
+ * exercises the plan schedules today that the library has a protocol for, in
+ * the list's order. None on a rest day. Every other group waits for a tap, so
+ * twenty-four presets are nine lines with the ones the session needs already
+ * open.
+ */
+export function todaysPresetGroups(
+	screen: Pick<TimerScreen, 'presets'>,
+	content: Content,
+	record: ResolverState,
+	now: number,
+): ExerciseId[] {
+	const today = new Set(
+		trainableExerciseIds(content, record, record.currentWeek, weekdayKeyOf(isoDayOf(now))),
+	);
+	return screen.presets.filter((g) => today.has(g.exercise)).map((g) => g.exercise);
 }
 
 /**

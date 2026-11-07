@@ -17,10 +17,38 @@
 import { Accordion } from '@base-ui/react/accordion';
 import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { cn } from '$lib/utils';
 
-export function RowGroup({ children }: { children: ReactNode }) {
+/**
+ * The rows, in one card. One row open at a time unless `multiple`; the open ones
+ * are the group's own state unless the caller holds `value` (the Timer's preset
+ * groups open today's by default and keep the tapped head under the finger,
+ * #119).
+ */
+export function RowGroup({
+	children,
+	multiple,
+	value,
+	onValueChange,
+}: {
+	children: ReactNode;
+	multiple?: boolean;
+	/** The open rows' `value`s, when the caller holds them. */
+	value?: readonly string[];
+	/** Called before the change renders: `event` is the press that made it. */
+	onValueChange?: (value: string[], event: Event) => void;
+}) {
 	return (
-		<Accordion.Root className="flex flex-col overflow-hidden rounded-lg border border-line bg-panel">
+		<Accordion.Root
+			multiple={multiple}
+			value={value as string[] | undefined}
+			onValueChange={
+				onValueChange
+					? (next, details) => onValueChange(next as string[], details.event)
+					: undefined
+			}
+			className="flex flex-col overflow-hidden rounded-lg border border-line bg-panel"
+		>
 			{children}
 		</Accordion.Root>
 	);
@@ -29,11 +57,15 @@ export function RowGroup({ children }: { children: ReactNode }) {
 export function Row({
 	value,
 	summary,
+	touch,
 	children,
 }: {
 	/** A stable id for this row — never a display label (ADR-0003). */
 	value: string;
 	summary: ReactNode;
+	/** A 48px head in the rows' 15px, for a list worked through mid-set (the
+	 *  Timer's preset groups); 44px otherwise. */
+	touch?: boolean;
 	children: ReactNode;
 }) {
 	return (
@@ -42,10 +74,18 @@ export function Row({
 			className="border-b border-line-soft last:border-b-0 data-[open]:bg-panel-2/40"
 		>
 			<Accordion.Header>
-				<Accordion.Trigger className="group flex min-h-11 w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-panel-2 active:bg-panel-2">
+				<Accordion.Trigger
+					className={cn(
+						'group flex w-full items-center gap-2 px-2.5 py-2 text-left transition-colors hover:bg-panel-2 active:bg-panel-2',
+						touch ? 'min-h-12 text-[15px] font-semibold text-ink' : 'min-h-11',
+					)}
+				>
 					<span className="min-w-0 flex-1">{summary}</span>
+					{/* A row's trailing chevron (DESIGN.md › Icons): 18px at stroke 2, faint. */}
 					<ChevronDown
-						size={14}
+						size={18}
+						strokeWidth={2}
+						aria-hidden="true"
 						className="shrink-0 text-ink-faint transition-transform duration-200 group-data-[panel-open]:rotate-180"
 					/>
 				</Accordion.Trigger>
