@@ -41,7 +41,14 @@ import type { WorkingLoad, WorkingLoadSource } from '$lib/types';
 import { TaskCard } from '../components/TaskCard';
 import { Timer } from '../components/Timer';
 import { Picker } from '../components/ui/Picker';
-import { Empty, Eyebrow, Pane, Section, StickyStrip } from '../components/ui/primitives';
+import {
+	Empty,
+	Eyebrow,
+	Pane,
+	ScreenHeader,
+	Section,
+	StickyStrip,
+} from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 
 export const Route = createFileRoute('/train')({ component: Train });
@@ -178,14 +185,18 @@ function Train() {
 		// own label. So the page keeps the phone layout and caps itself, and the
 		// desktop width is spent on nothing.
 		<Pane className="gap-6">
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
-				<h1 className="h-screen-title min-w-0">
-					{m.sec_train()} · {screen.weekdayLabel}
-				</h1>
-				<span className="num shrink-0 text-[11px] text-ink-faint">
-					{doneSets}/{totalSets} {m.timer_sets().toLowerCase()}
-				</span>
-			</header>
+			<ScreenHeader
+				title={
+					<>
+						{m.sec_train()} · {screen.weekdayLabel}
+					</>
+				}
+				reading={
+					<>
+						{doneSets}/{totalSets} {m.timer_sets().toLowerCase()}
+					</>
+				}
+			/>
 
 			{/* Sticky under the 44px app bar. The clock is the one element that has to
 			    survive scrolling to a set row three cards down. */}

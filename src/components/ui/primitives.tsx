@@ -24,6 +24,58 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
 }
 
 /**
+ * How every screen opens (#114, spec #113 story 78): the title in the top rank,
+ * one line of meta under it, and at most one thing on the right.
+ *
+ * The one `<h1>` on a screen goes through here, so the title's rank, where the
+ * meta sits and the space below are decided once. The space below is the page's
+ * own `gap-sections`: the header is the first of the screen's sections.
+ *
+ * The right-hand side holds one of two things, never both:
+ * - `reading` — a short count or reading about the whole screen (`3/12 sets`,
+ *   `Week 5`), baseline-aligned with the title so the two read as one line.
+ * - `action` — a single icon control, centred on the title row because an
+ *   icon has no baseline. A screen action belongs in the top strip's slot once
+ *   the shell has one (#115); this is where the Timer's cue settings sit until
+ *   then.
+ *
+ * `lede` is a sentence under the title for a screen that has to explain itself
+ * before it asks anything (the intake). Most screens have none.
+ */
+export function ScreenHeader({
+	title,
+	meta,
+	lede,
+	reading,
+	action,
+}: {
+	title: ReactNode;
+	/** One line, furniture: the date, the phase. Truncated, never wrapped. */
+	meta?: ReactNode;
+	lede?: ReactNode;
+	reading?: ReactNode;
+	action?: ReactNode;
+}) {
+	return (
+		<header
+			data-screen-header=""
+			className={cn(
+				'flex justify-between gap-2 pt-1.5',
+				action ? 'items-center' : 'items-baseline',
+			)}
+		>
+			<div className="min-w-0">
+				<h1 className="h-screen-title">{title}</h1>
+				{meta ? <p className="mt-1 truncate text-[11px] text-ink-faint">{meta}</p> : null}
+				{lede ? <p className="mt-1.5 text-[13px] leading-snug text-ink-dim">{lede}</p> : null}
+			</div>
+			{reading ? <div className="num shrink-0 text-[11px] text-ink-faint">{reading}</div> : null}
+			{action ?? null}
+		</header>
+	);
+}
+
+/**
  * A strip held under the 44px app bar while the page scrolls beneath it.
  *
  * The clock on Train and on the Timer screen, and the stopwatch: each is the one
@@ -74,7 +126,7 @@ export function BottomBar({ children }: { children: ReactNode }) {
  * The gap under the heading is deliberately larger than the gaps within the
  * body. The athlete asked for the hierarchy to be carried by *space* as well as
  * by type, and a heading sitting 6px off its content reads as a caption rather
- * than as a heading. Sections themselves sit `gap-7` apart on a screen, so the
+ * than as a heading. Sections themselves sit `gap-sections` (28px) apart, so the
  * space between things is larger than the space inside them — which is what
  * makes eight things read as eight rather than as one long column.
  */
@@ -94,7 +146,7 @@ export function Section({
 	className?: string;
 }) {
 	return (
-		<section id={id} className={cn('flex flex-col gap-2.5', className)}>
+		<section id={id} className={cn('flex flex-col gap-group', className)}>
 			<header className="flex items-baseline justify-between gap-2">
 				<h2 className="h-section min-w-0">{label}</h2>
 				{meta ? <div className="eyebrow shrink-0 normal-case">{meta}</div> : null}
@@ -112,7 +164,7 @@ export function Section({
  * whitespace say the same thing for nothing and read quieter at this density.
  */
 export function Bare({ children, className }: { children: ReactNode; className?: string }) {
-	return <div className={cn('border-t border-line-soft pt-3', className)}>{children}</div>;
+	return <div className={cn('border-t border-line-soft pt-inset', className)}>{children}</div>;
 }
 
 /** One control on its own line: what it is on the left, the control on the right.
@@ -168,7 +220,7 @@ export function Empty({
 	className?: string;
 }) {
 	return (
-		<Bare className={cn('flex flex-col items-start gap-2.5', className)}>
+		<Bare className={cn('flex flex-col items-start gap-group', className)}>
 			{/* `text-pretty`: a two-line sentence that leaves its last word alone
 			    on a third reads as a mistake (#104's review, the Timer's copy). */}
 			<p className="prose-inline text-[13px] leading-snug text-pretty text-ink-dim">
@@ -211,7 +263,9 @@ export function Empty({
  */
 export function Pane({ children, className }: { children: ReactNode; className?: string }) {
 	return (
-		<div className={cn('flex flex-col gap-7 lg:mx-auto lg:max-w-pane', className)}>{children}</div>
+		<div className={cn('flex flex-col gap-sections lg:mx-auto lg:max-w-pane', className)}>
+			{children}
+		</div>
 	);
 }
 
@@ -241,11 +295,11 @@ export function Panes({
 	return (
 		<div
 			className={cn(
-				'flex flex-col gap-7 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-5',
+				'flex flex-col gap-sections lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-gutter',
 				className,
 			)}
 		>
-			{/* `gap: inherit` rather than a second literal `gap-7`: below `lg` these
+			{/* `gap: inherit` rather than a second `gap-sections`: below `lg` these
 			    wrappers are not boxes at all and the outer gap is what separates every
 			    child, so the vertical rhythm has one definition either way. */}
 			<div className="contents lg:flex lg:flex-col lg:gap-[inherit]">{primary}</div>

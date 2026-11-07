@@ -47,7 +47,15 @@ import {
 } from '$lib/store/record';
 import { CueSettings } from '../components/CueSettings';
 import { AlertDialog } from '../components/ui/AlertDialog';
-import { Bare, ControlRow, Empty, Eyebrow, Pane, Section } from '../components/ui/primitives';
+import {
+	Bare,
+	ControlRow,
+	Empty,
+	Eyebrow,
+	Pane,
+	ScreenHeader,
+	Section,
+} from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { Switch } from '../components/ui/Switch';
 import { button, card } from '../components/ui/variants';
@@ -70,9 +78,7 @@ function Settings() {
 			    to need it. What stays is the line below it, which is this page's own
 			    half of the answer: not *that* the device is offline, but which of
 			    these controls that stops working. */}
-			<header className="pt-1.5">
-				<h1 className="h-screen-title">{m.sec_settings()}</h1>
-			</header>
+			<ScreenHeader title={m.sec_settings()} />
 
 			{online ? null : (
 				<p className="-mt-3 text-[12.5px] leading-snug text-ink-dim">{m.set_offline_note()}</p>

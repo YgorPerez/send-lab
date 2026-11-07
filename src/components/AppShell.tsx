@@ -122,7 +122,7 @@ export function AppShell({
 			    them because ADR 0008 requires the athlete to see unsent work from
 			    *any* screen, and this is the only surface every screen has. */}
 			<header
-				className="fixed inset-x-0 top-0 z-20 flex h-11 items-center justify-between gap-2 border-b border-line bg-bg/95 px-3 backdrop-blur lg:px-5"
+				className="fixed inset-x-0 top-0 z-20 flex h-11 items-center justify-between gap-2 border-b border-line bg-bg/95 px-gutter backdrop-blur"
 				style={{ viewTransitionName: 'topbar' }}
 			>
 				{/* The wordmark is anchored left, so the sync state is put beside it
@@ -156,7 +156,7 @@ export function AppShell({
 			    Which pages spend it on a second column and which cap themselves back
 			    down is the page's own call; `Panes` is where they say so. */}
 			<main
-				className="mx-auto w-full max-w-[520px] px-3 pt-[52px] pb-14 lg:max-w-[1000px] lg:px-5 lg:pt-[60px]"
+				className="mx-auto w-full max-w-[520px] px-gutter pt-[52px] pb-14 lg:max-w-[1000px] lg:pt-[60px]"
 				style={{ viewTransitionName: 'screen' }}
 			>
 				{children}

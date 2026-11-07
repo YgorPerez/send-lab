@@ -80,7 +80,7 @@ import { type EditorTarget, ProtocolEditor } from '../components/ProtocolEditor'
 import { Stopwatch } from '../components/Stopwatch';
 import { type ClockHandle, Timer } from '../components/Timer';
 import { AlertDialog } from '../components/ui/AlertDialog';
-import { Empty, Pane } from '../components/ui/primitives';
+import { Empty, Pane, ScreenHeader } from '../components/ui/primitives';
 import { button } from '../components/ui/variants';
 
 export const Route = createFileRoute('/timer')({ component: TimerScreen });
@@ -283,13 +283,9 @@ function TimerScreen() {
 		// Capped, like Train: one list, picked one-handed, and a wider list says
 		// nothing more about a protocol.
 		<Pane className="gap-6">
-			{/* Centred, not baseline-aligned like the other screens' headers: the
-			    cue settings' 44px control would otherwise leave the title riding
-			    high beside it. The title is one word in both locales. */}
-			<header className="flex items-center justify-between gap-2 pt-1.5">
-				<h1 className="h-screen-title min-w-0">{m.nav_timer()}</h1>
-				<CueSettingsShortcut />
-			</header>
+			{/* The cue settings are the header's `action`, centred on the title row:
+			    an icon has no baseline to share with the title. */}
+			<ScreenHeader title={m.nav_timer()} action={<CueSettingsShortcut />} />
 
 			<button
 				type="button"

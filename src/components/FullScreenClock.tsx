@@ -79,7 +79,9 @@ export const SEGMENT_COLOR: Record<Segment, string> = {
 export function clockControl(
 	shape: 'main' | 'side',
 	onField: boolean,
-	kind: 'primary' | 'quiet' = 'quiet',
+	/** `clock` is the outlined clock control (`ui/variants.ts`), the one Train and
+	 *  the Timer move their start and pause onto (#118). */
+	kind: 'primary' | 'quiet' | 'clock' = 'quiet',
 ): string {
 	if (shape === 'side') {
 		return onField

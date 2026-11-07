@@ -25,7 +25,7 @@ import { getLocale } from '$lib/paraglide/runtime';
 import { resolveLog } from '$lib/screens/log';
 import { useTrainingRecord } from '$lib/store/record';
 import { SetTable } from '../components/SetRows';
-import { Empty, Eyebrow, Panes, Section } from '../components/ui/primitives';
+import { Empty, Eyebrow, Panes, ScreenHeader, Section } from '../components/ui/primitives';
 import { Row, RowGroup } from '../components/ui/Rows';
 import { button, chip } from '../components/ui/variants';
 
@@ -45,13 +45,15 @@ function Log() {
 	return (
 		// The page's frame, not a `Column`: at `lg` this is two columns, so the frame
 		// is the full width the shell hands over and the header spans both.
-		<div className="flex flex-col gap-7">
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
-				<h1 className="h-screen-title">{m.sec_log()}</h1>
-				<span className="num shrink-0 text-[11px] text-ink-faint">
-					{sessions.length} · {checks.length}
-				</span>
-			</header>
+		<div className="flex flex-col gap-sections">
+			<ScreenHeader
+				title={m.sec_log()}
+				reading={
+					<>
+						{sessions.length} · {checks.length}
+					</>
+				}
+			/>
 
 			{/* THE CUT (#52).
 			    Log's two lists are genuinely independent — a check and a session are

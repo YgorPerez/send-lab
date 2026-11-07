@@ -48,7 +48,7 @@ import * as m from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 import { resolveWeek, type SlotState, type WeekSlot } from '$lib/screens/week';
 import { useTrainingRecord } from '$lib/store/record';
-import { Bare, Empty, Panes, Section } from '../components/ui/primitives';
+import { Bare, Empty, Panes, ScreenHeader, Section } from '../components/ui/primitives';
 import { card, chip } from '../components/ui/variants';
 
 /** `chip`'s own tone set, read off the recipe. */
@@ -135,16 +135,12 @@ function Week() {
 	return (
 		// The page's frame, not a pane: at `lg` this is two panes, so the frame is
 		// the full width the shell hands over and the header spans both.
-		<div className="flex flex-col gap-7">
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
-				<div className="min-w-0">
-					<h1 className="h-screen-title">{m.nav_week()}</h1>
-					<p className="mt-1 truncate text-[11.5px] text-ink-faint">{w.phase.name}</p>
-				</div>
-				<span className="num shrink-0 text-[11px] text-ink-faint">
-					{m.week_label({ n: w.weekNumber })}
-				</span>
-			</header>
+		<div className="flex flex-col gap-sections">
+			<ScreenHeader
+				title={m.nav_week()}
+				meta={w.phase.name}
+				reading={m.week_label({ n: w.weekNumber })}
+			/>
 
 			{/* THE CUT (#52).
 			    `week` was recorded as "two columns, expected" before it was built, and

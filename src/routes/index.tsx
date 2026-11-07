@@ -61,6 +61,7 @@ import {
 	Meter,
 	Panes,
 	Prose,
+	ScreenHeader,
 	Section,
 	Stat,
 } from '../components/ui/primitives';
@@ -195,36 +196,33 @@ function Today() {
 		// The page's own frame, not a `Pane`: this is a two-pane page at `lg`, so the
 		// frame is the full width the shell hands over and the header sits outside
 		// `Panes` in order to span both.
-		<div className="flex flex-col gap-7">
+		<div className="flex flex-col gap-sections">
 			{/* ---- day header. Two lines, no card: the frame for everything below. */}
-			<header className="flex items-baseline justify-between gap-2 pt-1.5">
-				<div className="min-w-0">
-					<h1 className="h-screen-title">
+			<ScreenHeader
+				title={
+					<>
 						{m.td_today_label()} · {t.weekdayLabel}
-					</h1>
-					<p className="num mt-1 truncate text-[11px] text-ink-faint">{t.dateLabel}</p>
-				</div>
-				{/* THE WAY IN TO WEEK (#63). The page needs one, and it is not a fourth
-				    tab: #52 settled that the bar carries exactly three destinations —
-				    the three places the athlete goes on a training day — and a fourth
-				    contradicts that claim rather than extending it. This reading was
-				    already the week affordance on this screen and already sat in the
-				    right place; it becomes the control.
-				    It goes through the `button` recipe like every other actionable
-				    `<Link>` in a route, which is what the recipes exist for — "the same
-				    button has to be able to be … an `<a>`". Hand-rolling the classes
-				    here also undershot the hit area at 36px, where every sibling link
-				    is 44px. */}
-				<Link
-					to="/week"
-					className={button({
-						size: 'sm',
-						class: 'num min-h-11 shrink-0 text-[11px] text-ink-faint',
-					})}
-				>
-					{m.week_label({ n: t.weekNumber })}
-				</Link>
-			</header>
+					</>
+				}
+				meta={<span className="num">{t.dateLabel}</span>}
+				reading={
+					// THE WAY IN TO WEEK (#63): the week reading is the header's reading
+					// and the control at once, until the bar carries Week (#115). It goes
+					// through the `button` recipe like every other actionable `<Link>` in a
+					// route — "the same button has to be able to be … an `<a>`" — and
+					// hand-rolling it undershot the hit area at 36px, where every sibling
+					// link is 44px.
+					<Link
+						to="/week"
+						className={button({
+							size: 'sm',
+							class: 'num min-h-11 shrink-0 text-[11px] text-ink-faint',
+						})}
+					>
+						{m.week_label({ n: t.weekNumber })}
+					</Link>
+				}
+			/>
 
 			{/* THE CUT (#52).
 			    Today is the page a wide screen most obviously earns something on: it

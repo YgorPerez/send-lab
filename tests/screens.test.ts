@@ -1492,9 +1492,30 @@ describe('the vocabulary holds across the screens', () => {
 	// on one page is how that unravels. `/login` is excluded: its body does not
 	// render without a session (see above).
 	test('every screen sets exactly one screen title, in the top rank', async () => {
-		for (const path of ['/', '/train', '/timer', '/log', '/settings']) {
+		for (const path of ['/', '/train', '/timer', '/log', '/settings', '/week', '/welcome']) {
 			const html = await render(path);
 			expect(html.match(/h-screen-title/g) ?? [], path).toHaveLength(1);
+		}
+	});
+
+	// Spec #113, story 78: every screen opens the same way. The title is the
+	// first thing in the page, inside the screen header (`ScreenHeader`), and
+	// nothing the page draws comes before it. `/login` is left out for the reason
+	// above; it goes through the same primitive.
+	test('every screen opens with the screen header, holding its one title', async () => {
+		for (const path of ['/', '/train', '/timer', '/log', '/settings', '/week', '/welcome']) {
+			const doc = new DOMParser().parseFromString(await render(path), 'text/html');
+			const main = doc.querySelector('main');
+			const titles = main?.querySelectorAll('h1') ?? [];
+			expect(titles, path).toHaveLength(1);
+			const header = titles[0]?.closest('header');
+			expect(header?.dataset.screenHeader, path).toBe('');
+			// The first element in the page that is not one of its frames is the
+			// header itself: nothing sits above the title.
+			const first = [...(main?.querySelectorAll('*') ?? [])].find(
+				(el) => el === header || !el.contains(header ?? null),
+			);
+			expect(first, path).toBe(header);
 		}
 	});
 

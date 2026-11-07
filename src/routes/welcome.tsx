@@ -78,7 +78,7 @@ import {
 	type Level,
 	type Program,
 } from '$lib/types';
-import { Bare, Eyebrow, Pane, Prose, Section } from '../components/ui/primitives';
+import { Bare, Eyebrow, Pane, Prose, ScreenHeader, Section } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { type Step, Stepper } from '../components/ui/Stepper';
 import { button, card, chip, input, option } from '../components/ui/variants';
@@ -299,10 +299,7 @@ function Flow({
 
 	return (
 		<>
-			<header className="pt-1.5">
-				<h1 className="h-screen-title">{m.welcome_title()}</h1>
-				<p className="mt-1.5 text-[13px] leading-snug text-ink-dim">{m.welcome_sub()}</p>
-			</header>
+			<ScreenHeader title={m.welcome_title()} lede={m.welcome_sub()} />
 
 			<Stepper
 				steps={steps}
@@ -683,14 +680,17 @@ function ProposalView({
 }) {
 	return (
 		<>
-			<header className="pt-1.5">
-				<h1 className="h-screen-title">{m.prop_title()}</h1>
-				<p className="mt-1.5 text-[13px] leading-snug text-ink-dim">
-					{m.prop_intro()} <b className="font-semibold text-chalk">{GOAL_LABEL[baseline.goal]()}</b>{' '}
-					· <b className="font-semibold text-chalk">{FOCUS_LABEL[baseline.focus]()}</b> ·{' '}
-					{LEVEL_LABEL[baseline.level]()}
-				</p>
-			</header>
+			<ScreenHeader
+				title={m.prop_title()}
+				lede={
+					<>
+						{m.prop_intro()}{' '}
+						<b className="font-semibold text-chalk">{GOAL_LABEL[baseline.goal]()}</b> ·{' '}
+						<b className="font-semibold text-chalk">{FOCUS_LABEL[baseline.focus]()}</b> ·{' '}
+						{LEVEL_LABEL[baseline.level]()}
+					</>
+				}
+			/>
 
 			<Section label={m.prop_training_days({ n: proposal.trainingDays })}>
 				<div className={card({ pad: 'sm', class: 'flex flex-col gap-3' })}>

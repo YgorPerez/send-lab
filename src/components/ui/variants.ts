@@ -13,7 +13,12 @@
 // Animation lives here too, in the variant rather than as a Motion prop (#46).
 // There is deliberately very little of it: the whole direction rests on
 // repetition, and a dense screen where things move is not a calm one.
-import { tv } from 'tailwind-variants';
+import { createTV } from 'tailwind-variants';
+import { twMergeConfig } from '$lib/utils';
+
+// Merging with the spacing tokens known, so `card({ class: 'p-0' })` beats
+// `p-inset` the way `cn` does (`lib/utils.ts`).
+const tv = createTV({ twMergeConfig });
 
 /**
  * The one surface.
@@ -30,7 +35,7 @@ import { tv } from 'tailwind-variants';
 export const card = tv({
 	base: 'rounded-lg border border-line bg-panel',
 	variants: {
-		pad: { none: '', sm: 'p-3', md: 'p-3.5' },
+		pad: { none: '', sm: 'p-inset', md: 'p-3.5' },
 		tone: {
 			plain: '',
 			inset: 'border-line-soft bg-panel-2',
@@ -127,6 +132,15 @@ export const button = tv({
 			quiet:
 				'border-line bg-panel-2 text-ink-dim hover:bg-panel-3 hover:text-ink active:bg-panel-3 active:text-ink',
 			bare: 'border-transparent bg-transparent text-ink-faint hover:text-ink active:text-ink',
+			// A clock's start, pause and resume off the coloured field (#114, spec
+			// #113): large and outlined, never filled vermilion. The fill is rationed
+			// to the screen's one primary, and on Train that is "finish and log the
+			// session"; the clock is a tool on the screen, not what the screen is for.
+			// A 2px outline in dim ink (≥7:1 on the ground and on a panel, past the
+			// 3:1 a control's edge needs), bright ink inside. Hover takes the border
+			// to chalk and a press steps the surface, so no measured pair moves. Pair
+			// it with `touch` or larger: a clock is operated without looking.
+			clock: 'border-2 border-ink-dim bg-transparent text-ink hover:border-chalk active:bg-panel-2',
 		},
 		size: {
 			sm: 'min-h-8 px-2 py-1',

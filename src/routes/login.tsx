@@ -49,7 +49,7 @@ import {
 import { heldAccounts } from '$lib/store/collections';
 import { setActiveAccount, useActiveAccount } from '$lib/store/record';
 import { cn } from '$lib/utils';
-import { Bare, Eyebrow, Pane } from '../components/ui/primitives';
+import { Bare, Eyebrow, Pane, ScreenHeader } from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 import { authClient, signIn, signUp } from '../lib/auth-client';
 
@@ -114,11 +114,9 @@ function Login() {
 			    rather than on the two that said it for themselves. `login_offline`
 			    below is what this page adds to it: sign-in is the one thing here
 			    that a connection is required for. */}
-			<header className="pt-1.5">
-				<h1 className="h-screen-title">
-					{screen.signedIn ? m.set_account() : signup ? m.signup_title() : m.login_title()}
-				</h1>
-			</header>
+			<ScreenHeader
+				title={screen.signedIn ? m.set_account() : signup ? m.signup_title() : m.login_title()}
+			/>
 
 			{screen.signedIn ? (
 				<SignedIn />
