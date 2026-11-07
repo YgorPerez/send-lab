@@ -80,8 +80,7 @@ import {
 	type Level,
 	type Program,
 } from '$lib/types';
-import { cn } from '$lib/utils';
-import { Bare, Pane, Prose, ScreenHeader, Section } from '../components/ui/primitives';
+import { Bare, Field, Pane, Prose, ScreenHeader, Section } from '../components/ui/primitives';
 import { Segmented } from '../components/ui/Segmented';
 import { type Step, Stepper } from '../components/ui/Stepper';
 import { button, card, chip, input, option } from '../components/ui/variants';
@@ -453,9 +452,8 @@ function Choices<T extends string>({
 /**
  * One typed value.
  *
- * A real `<label>` and never a placeholder, for login's reason: a placeholder
- * disappears on focus and is not an accessible name. The 16px floor comes from
- * the `input` recipe — anything smaller makes iOS zoom the viewport on focus.
+ * A `Field` (its label in words over it). The 16px floor comes from the `input`
+ * recipe: anything smaller makes iOS zoom the viewport on focus.
  */
 function TextField({
 	label,
@@ -481,16 +479,7 @@ function TextField({
 }) {
 	const id = useId();
 	return (
-		<div
-			className={cn('flex min-w-0 flex-1 flex-col', rank === 'question' ? 'gap-group' : 'gap-1')}
-		>
-			<label
-				className={rank === 'question' ? 'h-section-sans' : 'text-[13px] leading-snug text-ink'}
-				htmlFor={id}
-			>
-				{label}
-				{hint ? <span className="font-normal text-ink-faint"> {hint}</span> : null}
-			</label>
+		<Field id={id} label={label} hint={hint} rank={rank}>
 			<input
 				id={id}
 				type={type}
@@ -499,7 +488,7 @@ function TextField({
 				onChange={(e) => onChange(e.currentTarget.value)}
 				className={input({ align: 'left', class: 'min-h-11' })}
 			/>
-		</div>
+		</Field>
 	);
 }
 

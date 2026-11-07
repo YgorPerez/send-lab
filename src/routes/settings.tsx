@@ -32,7 +32,7 @@
 // the switch is turned on, not before.
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Check, Copy, Eye, EyeOff, RefreshCw } from 'lucide-react';
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { readToken, regenerateToken } from '$lib/apiTokenClient';
 import { useOnline } from '$lib/online';
 import * as m from '$lib/paraglide/messages';
@@ -54,6 +54,7 @@ import {
 	ControlRow,
 	Empty,
 	Eyebrow,
+	Notice,
 	Pane,
 	ScreenHeader,
 	Section,
@@ -86,7 +87,7 @@ function Settings() {
 			    a sections gap below it (#122), not a second meta line pulled up
 			    into the header. Gold, as sign-in says offline: a warning about
 			    this device. */}
-			{online ? null : <Caveat>{m.set_offline_note()}</Caveat>}
+			{online ? null : <Notice tone="warn">{m.set_offline_note()}</Notice>}
 
 			{/* Every group below is the same thing (#122, spec story 69): an Inter
 			    section head over one `ControlList`, a card of 56px `ControlRow`s,
@@ -101,14 +102,6 @@ function Settings() {
 			<Account online={online} />
 		</Pane>
 	);
-}
-
-/** One line about the device that is not under a control's row: the page
- *  offline, a token the server could not be reached for. Gold, because it is a
- *  warning about this device rather than a stop; `ControlNote` is the same line
- *  under a row. */
-function Caveat({ children }: { children: ReactNode }) {
-	return <p className="text-[13px] leading-snug text-pretty text-gold">{children}</p>;
 }
 
 const WEIGHT = [
@@ -507,9 +500,9 @@ function ApiToken({ online }: { online: boolean }) {
 				{/* Offline nothing was asked, so the line says what the token waits for;
 				    online, a request that failed says the server could not be reached. */}
 				{!online ? (
-					<Caveat>{m.set_token_offline()}</Caveat>
+					<Notice tone="warn">{m.set_token_offline()}</Notice>
 				) : unreachable ? (
-					<Caveat>{m.set_token_unavailable()}</Caveat>
+					<Notice tone="warn">{m.set_token_unavailable()}</Notice>
 				) : null}
 
 				<div className="flex flex-wrap gap-2">

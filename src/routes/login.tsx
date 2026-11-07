@@ -48,8 +48,14 @@ import {
 } from '$lib/screens/login';
 import { heldAccounts } from '$lib/store/collections';
 import { setActiveAccount, useActiveAccount } from '$lib/store/record';
-import { cn } from '$lib/utils';
-import { Bare, Eyebrow, Pane, ScreenHeader } from '../components/ui/primitives';
+import {
+	Bare,
+	Field,
+	Notice,
+	type NoticeTone,
+	Pane,
+	ScreenHeader,
+} from '../components/ui/primitives';
 import { button, input } from '../components/ui/variants';
 import { authClient, signIn, signUp } from '../lib/auth-client';
 
@@ -76,12 +82,27 @@ const FAILURE: Record<AuthFailure, () => string> = {
 	refused: m.auth_error,
 };
 
-/** Gold for the offline line — a warning about this device, the same colour
- *  Settings gives its caveats — and dim ink for the two that are information. */
-const NOTICE_TONE: Record<LoginNotice, string> = {
-	offline: 'text-gold',
-	'has-record': 'text-ink-dim',
-	'no-record': 'text-ink-dim',
+/** Whose problem a failure is, in `Notice`'s tones (#124). The ones the
+ *  athlete fixes by typing something else (wrong credentials, an email that has
+ *  an account, the generic refusal) are a stop, vermilion as a refused value's
+ *  rule is. The two that say *change nothing and try again* are about the
+ *  network or the server, gold as the offline line: painting "it isn't your
+ *  details" as a stop would contradict the sentence. */
+const FAILURE_TONE: Record<AuthFailure, NoticeTone> = {
+	credentials: 'stop',
+	taken: 'stop',
+	refused: 'stop',
+	unreachable: 'warn',
+	server: 'warn',
+};
+
+/** What each line asks of the athlete, in `Notice`'s tones: offline is a
+ *  warning about this device, gold as Settings says it; the two about what the
+ *  device holds change nothing the athlete has to do, so dim ink. */
+const NOTICE_TONE: Record<LoginNotice, NoticeTone> = {
+	offline: 'warn',
+	'has-record': 'info',
+	'no-record': 'info',
 };
 
 function Login() {
@@ -122,18 +143,16 @@ function Login() {
 				<SignedIn />
 			) : (
 				<>
-					{/* The lede and the notices are one group, not three children of the
-					    pane: `Pane` sets 28px between sections, which is the space that
-					    makes eight things read as eight — and this is one thing said in
-					    two or three sentences. */}
-					<div className="-mt-4 flex flex-col gap-2">
-						<p className="text-[13px] leading-snug text-ink-dim">
-							{signup ? m.signup_subtitle() : m.login_subtitle()}
-						</p>
+					{/* What the page has to say is the first group under the header, a
+					    sections gap below it (#124, as Settings' offline line since #122),
+					    never pulled up into it. One group, a group gap between its lines:
+					    offline and what the device holds are said together. The title
+					    already says what the page is for, so no lede repeats it. */}
+					<div className="flex flex-col gap-group">
 						{screen.notices.map((notice) => (
-							<p key={notice} className={cn('text-[12.5px] leading-snug', NOTICE_TONE[notice])}>
+							<Notice key={notice} tone={NOTICE_TONE[notice]}>
 								{NOTICE[notice]()}
-							</p>
+							</Notice>
 						))}
 					</div>
 					<SignInForm
@@ -157,10 +176,12 @@ function Login() {
  * one-tap path to losing training, which is the exact outcome the rule exists to
  * prevent.
  *
- * The email comes with the sign-in, so on a cold offline load there is none: the
- * eyebrow stands alone rather than showing a guess, the same way Settings does
- * it. The store already told us an account is signed in; the sign-in only adds
- * the address once it has answered.
+ * Who is signed in is a lone reading, so a `Bare` (DESIGN.md › The group
+ * pattern), said in words as Settings' account row says it: "Signed in", then
+ * the address. The address comes with the sign-in, so on a cold offline load
+ * there is none and "Signed in" stands alone rather than showing a guess. The
+ * store already told us an account is signed in; the sign-in only adds the
+ * address once it has answered.
  */
 function SignedIn() {
 	const { data: session } = authClient.useSession();
@@ -168,17 +189,21 @@ function SignedIn() {
 
 	return (
 		<>
-			<Bare>
-				<Eyebrow>{m.field_email()}</Eyebrow>
-				{email ? <p className="truncate text-[13px] text-ink">{email}</p> : null}
+			<Bare className="flex flex-col gap-1">
+				<p className="text-[13px] leading-snug text-ink-dim">{m.set_signed_in()}</p>
+				{email ? (
+					<p className="truncate text-[13px] font-medium text-ink" title={email}>
+						{email}
+					</p>
+				) : null}
 			</Bare>
-			{/* The way out and the line about the way *further* out, grouped: the
-			    pane's 28px belongs between sections, and these are one. */}
-			<div className="flex flex-col gap-2.5">
+			{/* The way out and the line about the way *further* out, one group: the
+			    pane's sections gap belongs between sections, and these are one. */}
+			<div className="flex flex-col gap-group">
 				<Link to="/" className={button({ kind: 'primary', size: 'touch' })}>
 					{m.btn_go_today()}
 				</Link>
-				<p className="text-[12.5px] leading-snug text-ink-dim">{m.login_signout_note()}</p>
+				<Notice tone="info">{m.login_signout_note()}</Notice>
 			</div>
 		</>
 	);
@@ -252,68 +277,78 @@ function SignInForm({
 	}
 
 	return (
-		<form className="flex flex-col gap-3" onSubmit={submit}>
-			<label className="flex flex-col gap-1" htmlFor={emailId}>
-				<Eyebrow>{m.field_email()}</Eyebrow>
-				<input
-					id={emailId}
-					className={input({ align: 'left', class: 'min-h-11' })}
-					type="email"
-					autoComplete="email"
-					required
-					value={email}
-					onChange={(e) => setEmail(e.target.value)}
-				/>
-			</label>
-			<label className="flex flex-col gap-1" htmlFor={passwordId}>
-				<Eyebrow>{m.field_password()}</Eyebrow>
-				<input
+		// Two groups a sections gap apart, the intake's step rhythm: the fields,
+		// then what the athlete does with them. The advance sits where a step's
+		// advance sits, under its questions.
+		<form className="flex flex-col gap-sections" onSubmit={submit}>
+			<div className="flex flex-col gap-group">
+				<Field id={emailId} label={m.field_email()}>
+					<input
+						id={emailId}
+						className={input({ align: 'left', class: 'min-h-11' })}
+						type="email"
+						autoComplete="email"
+						required
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+					/>
+				</Field>
+				<Field
 					id={passwordId}
-					className={input({ align: 'left', class: 'min-h-11' })}
-					type="password"
-					// New on sign-up, current on sign-in: the wrong one here is how a
-					// password manager offers to overwrite a saved credential.
-					autoComplete={signup ? 'new-password' : 'current-password'}
-					required
-					// better-auth's floor. Said up front rather than as a round trip
-					// through the server for something the field already knows.
-					minLength={signup ? 8 : undefined}
-					value={password}
-					onChange={(e) => setPassword(e.target.value)}
-				/>
-			</label>
-			{signup ? <p className="text-[12px] text-ink-faint">{m.auth_password_min()}</p> : null}
+					label={m.field_password()}
+					// better-auth's floor, said with the field it applies to, the way the
+					// intake says "(optional)": beside the label, in faint ink.
+					hint={signup ? m.auth_password_min() : undefined}
+				>
+					<input
+						id={passwordId}
+						className={input({ align: 'left', class: 'min-h-11' })}
+						type="password"
+						// New on sign-up, current on sign-in: the wrong one here is how a
+						// password manager offers to overwrite a saved credential.
+						autoComplete={signup ? 'new-password' : 'current-password'}
+						required
+						// Said up front rather than as a round trip through the server for
+						// something the field already knows.
+						minLength={signup ? 8 : undefined}
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+					/>
+				</Field>
+			</div>
 
-			{failure ? (
-				// `role="alert"` because the sentence appears after a tap and is the
-				// only thing that changed on the screen.
-				<p role="alert" className="text-[13px] leading-snug text-flag">
-					{FAILURE[failure]()}
-				</p>
-			) : null}
+			<div className="flex flex-col gap-group">
+				{failure ? (
+					// `role="alert"` because the sentence appears after a tap and is the
+					// only thing that changed on the screen.
+					<Notice role="alert" tone={FAILURE_TONE[failure]}>
+						{FAILURE[failure]()}
+					</Notice>
+				) : null}
 
-			{/* The screen's one `primary`: signing in is the thing this page exists
-			    for. Disabled offline rather than hidden — a control that vanishes
-			    leaves the athlete looking for it, and the line above already says
-			    why it cannot be used. */}
-			<button
-				type="submit"
-				disabled={!reachable || busy}
-				className={button({ kind: 'primary', size: 'touch' })}
-			>
-				{signup ? m.btn_sign_up() : m.btn_sign_in()}
-			</button>
+				{/* The screen's one `primary`: signing in is the thing this page exists
+				    for. Disabled offline rather than hidden — a control that vanishes
+				    leaves the athlete looking for it, and the first line under the
+				    header already says why it cannot be used. */}
+				<button
+					type="submit"
+					disabled={!reachable || busy}
+					className={button({ kind: 'primary', size: 'touch' })}
+				>
+					{signup ? m.btn_sign_up() : m.btn_sign_in()}
+				</button>
 
-			<button
-				type="button"
-				onClick={() => {
-					setFailure(null);
-					onMode();
-				}}
-				className={button({ kind: 'bare', size: 'md', class: 'min-h-11' })}
-			>
-				{signup ? m.auth_to_login() : m.auth_to_signup()}
-			</button>
+				<button
+					type="button"
+					onClick={() => {
+						setFailure(null);
+						onMode();
+					}}
+					className={button({ kind: 'bare', size: 'md', class: 'min-h-11' })}
+				>
+					{signup ? m.auth_to_login() : m.auth_to_signup()}
+				</button>
+			</div>
 		</form>
 	);
 }

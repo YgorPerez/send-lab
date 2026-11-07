@@ -284,6 +284,95 @@ export function ControlNote({
 }
 
 /**
+ * A typed field: its label in words over the input (#123, promoted by #124 when
+ * sign-in took the intake's field rhythm).
+ *
+ * A real `<label>` and never a placeholder: a placeholder disappears on focus
+ * and is not an accessible name. The rank is where the field sits: `field` under
+ * a question or a heading that heads it (13px ink, 4px over the input: the
+ * intake's grades, sign-in's email and password), `question` when the field is
+ * one of its step's questions and heads itself in the section rank (the intake's
+ * session length). `hint` follows the label in faint ink and is part of its
+ * name: a unit, "(optional)", a password's minimum.
+ */
+export function Field({
+	id,
+	label,
+	hint,
+	rank = 'field',
+	children,
+}: {
+	/** The input's id: the label points at it. */
+	id: string;
+	label: ReactNode;
+	hint?: ReactNode;
+	rank?: 'question' | 'field';
+	children: ReactNode;
+}) {
+	return (
+		<div
+			className={cn('flex min-w-0 flex-1 flex-col', rank === 'question' ? 'gap-group' : 'gap-1')}
+		>
+			<label
+				className={rank === 'question' ? 'h-section-sans' : 'text-[13px] leading-snug text-ink'}
+				htmlFor={id}
+			>
+				{label}
+				{hint ? <span className="font-normal text-ink-faint"> {hint}</span> : null}
+			</label>
+			{children}
+		</div>
+	);
+}
+
+/** What a notice's colour says. `warn` is about this device or the network
+ *  (offline, a server that could not be reached): gold. `stop` refuses what the
+ *  athlete typed: vermilion, as a refused value's rule is. `info` changes nothing
+ *  the athlete has to do: dim ink. */
+export type NoticeTone = 'info' | 'warn' | 'stop';
+
+const NOTICE_TONE: Record<NoticeTone, string> = {
+	info: 'text-ink-dim',
+	warn: 'text-gold',
+	stop: 'text-flag',
+};
+
+/**
+ * A line a screen says that is not under a control's row (#124): the page
+ * offline, what this device is holding, a sign-in the server refused. One
+ * family, so the weight of a line is its colour alone: 13px, wrapping evenly,
+ * and the tone says how much it asks of the athlete. `ControlNote` is the same
+ * line under a row.
+ *
+ * A notice about the whole screen is the first group after `ScreenHeader`
+ * (DESIGN.md › The screen header), never a line pulled up into it. One that
+ * answers a tap takes `role` (`alert` when it is the only thing that changed
+ * after a submit, `status` otherwise).
+ */
+export function Notice({
+	tone,
+	id,
+	role,
+	children,
+}: {
+	tone: NoticeTone;
+	id?: string;
+	role?: 'alert' | 'status';
+	children: ReactNode;
+}) {
+	return (
+		<p
+			id={id}
+			role={role}
+			data-notice={tone}
+			className={cn('text-[13px] leading-snug text-pretty', NOTICE_TONE[tone])}
+		>
+			{children}
+		</p>
+	);
+}
+
+/**
  * What a group says when it has nothing to list (#61).
  *
  * Copy, not furniture: a `Bare`, one line of training copy with its emphasis
