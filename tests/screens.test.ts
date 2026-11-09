@@ -622,9 +622,24 @@ describe('the full-screen clock on Train', () => {
 			// to jump within, so no skip or back at all.
 			expect(labelled(clock, 'Skip to the next segment')).toBeNull();
 			expect(labelled(clock, 'Back a segment')).toBeNull();
+			// The session's time left (#129) is a running clock's: the ready state
+			// says the total instead.
+			const timeLeft = /\d+:\d\d left/;
+			expect(clock.textContent).not.toMatch(timeLeft);
 
 			press(worded(clock, 'Start'));
+			// Running, the clock says how long the whole session has left, and says
+			// it to a screen reader too.
+			// In the header, just left of Close, where the athlete asked for it.
+			expect(labelled(clock, 'Close')?.previousElementSibling?.textContent).toMatch(
+				/^Left\d+:\d\d$/,
+			);
+			const described = () =>
+				[...clock.querySelectorAll('.sr-only')].map((el) => el.textContent ?? '').join(' ');
+			expect(described()).toMatch(timeLeft);
 			press(worded(clock, 'Pause'));
+			expect(described()).toMatch(timeLeft);
+			expect(labelled(clock, 'Close')?.previousElementSibling?.textContent).toMatch(/^Left/);
 			// Paused, Reset stands where skip was (#110): it only exists while
 			// nothing counts, so a slip mid-hang cannot throw the run away.
 			expect(labelled(clock, 'Skip to the next segment')).toBeNull();
@@ -686,9 +701,27 @@ describe('the full-screen clock on Train', () => {
 			const run = document.querySelector<HTMLElement>('[role="dialog"]');
 			if (!run) throw new Error('the full-screen clock did not reopen');
 			press(worded(run, 'Start'));
-			for (let i = 0; i < 200 && run.getAttribute('aria-label') !== 'Done'; i++)
+			// In the last segment the time left would be the face's own number, so
+			// it goes (#129's critique).
+			let last = false;
+			for (let i = 0; i < 200 && run.getAttribute('aria-label') !== 'Done'; i++) {
+				if (run.textContent?.includes('Next up: Done')) {
+					last = true;
+					expect(
+						[...run.querySelectorAll('span')].some((el) =>
+							/^Left\d+:\d\d$/.test(el.textContent ?? ''),
+						),
+					).toBe(false);
+					expect(run.textContent).not.toMatch(/\d+:\d\d left/);
+				}
 				press(labelled(run, 'Skip to the next segment'));
+			}
+			expect(last).toBe(true);
 			expect(run.getAttribute('aria-label')).toBe('Done');
+			expect(run.textContent).not.toMatch(/\d+:\d\d left/);
+			expect(labelled(run, 'Close')?.previousElementSibling?.textContent ?? '').not.toMatch(
+				/^Left/,
+			);
 			press(labelled(run, 'Close'));
 			expect(labelled(document, 'Full-screen clock')?.textContent).not.toMatch(shapeOrTotal);
 
