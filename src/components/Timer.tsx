@@ -179,6 +179,19 @@ function positionOf({ run, config }: Reading): string {
 	return `${m.timer_round({ n: run.round, total: config.rounds })} · ${m.timer_set({ n: run.set, total: config.sets })}`;
 }
 
+/** How long the whole session has left, `12:34 left` (#129): the one line of
+ *  the run's arithmetic the athlete asked back onto the running clock. Always
+ *  `m:ss`, so it never reads as the segment's own seconds. */
+function timeLeftOf({ left }: Reading): string {
+	return m.timer_time_left({ time: clock(left) });
+}
+
+/** Whether the time left is worth saying: while underway, but not in the last
+ *  segment, where it is the face's own number a second time (#129's critique). */
+function leftShown({ run, next }: Reading): boolean {
+	return underway(run) && next?.segment !== 'done';
+}
+
 /** The seconds on the clock, as words a screen reader says well — `0:07` reads
  *  out as "zero colon zero seven". */
 function secondsSpoken(seconds: number): string {
@@ -196,6 +209,7 @@ function spokenReading(reading: Reading): string {
 	const { run, shown, next } = reading;
 	const parts = [`${SEGMENT_LABEL[run.segment]()}, ${secondsSpoken(shown)}`];
 	if (counted(run)) parts.push(positionOf(reading));
+	if (leftShown(reading)) parts.push(timeLeftOf(reading));
 	if (next) parts.push(`${m.timer_next()}: ${SEGMENT_LABEL[next.segment]()}`);
 	return parts.join('. ');
 }
@@ -349,6 +363,12 @@ export interface Study {
  * answer, in the grill, to "has any of them changed a decision mid-hang?" — and
  * so did the ring, whose job the field now does from further away. Paused, the
  * colour drains: "no colour" is "not running", from across the room.
+ *
+ * #129 brought one of them back: the session's time left, asked for by the
+ * athlete once the clock had been used for real. It sits in the header, left of
+ * Close, where the athlete asked for it: out of the face's way and the detail's,
+ * a quiet answer to "how long is this", never a second face — so it goes in the
+ * last segment, where it would be the face's number twice.
  */
 function ProtocolFullScreen({
 	open,
@@ -441,6 +461,24 @@ function ProtocolFullScreen({
 				) : counted(run) ? (
 					<span className="display text-[28px] leading-none font-semibold tracking-[0.03em] uppercase">
 						{positionOf(reading)}
+					</span>
+				) : null
+			}
+			aside={
+				leftShown(reading) ? (
+					// Stacked, the word over the number, so it takes the number's width
+					// and not the sentence's. Beside it, the widest title it can share
+					// the header with is `ENTRE SÉRIES` (131px at 30px), in 170px on a
+					// 320px phone or a 640px one on its side; `DESAQUECIMENTO` is the
+					// last segment's, where this is gone.
+					<span
+						className={cn(
+							'display flex h-12 shrink-0 flex-col items-end justify-center gap-1 self-start leading-none uppercase',
+							!running && 'text-ink-dim',
+						)}
+					>
+						<span className="text-[13px] font-semibold tracking-[0.08em]">{m.timer_left()}</span>
+						<span className="text-[24px] font-bold">{clock(reading.left)}</span>
 					</span>
 				) : null
 			}

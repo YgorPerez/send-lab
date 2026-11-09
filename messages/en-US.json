@@ -305,6 +305,7 @@
 	"timer_sets": "Sets",
 	"timer_total": "Total",
 	"timer_left": "Left",
+	"timer_time_left": "{time} left",
 	"timer_paused": "Paused",
 	"timer_in_total": "in total",
 	"timer_seq_no_setrest": "no rest between",
