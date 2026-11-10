@@ -1207,7 +1207,8 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 	// The sweep over it is CSS, and `check:motion` measures what is left.
 	test('a ring in the ink shows Close armed, a step a second', async () => {
 		const root = await mount('/train');
-		const ring = () => close()?.querySelector('[data-ring]') ?? armed()?.querySelector('[data-ring]');
+		const ring = () =>
+			close()?.querySelector('[data-ring]') ?? armed()?.querySelector('[data-ring]');
 		const drawn = () =>
 			armed()?.querySelector<SVGPathElement>('[data-ring] path')?.style.strokeDashoffset;
 		try {

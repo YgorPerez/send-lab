@@ -49,6 +49,12 @@
 // something to reset, so the ready state and a stopwatch at zero have Back
 // alone. Everything else that closes a dialog — Escape, a tap outside, the
 // system back gesture — is Back's: a shortcut never throws a run away.
+//
+// Where there is progress to lose, Close asks for a second tap (#132): the
+// first arms it and a ring runs once round it for 3 seconds, a second inside
+// that resets and closes, and any other tap in the clock disarms it. The clock
+// says when there is progress (`closeAsks`); the arming is this file's, since
+// both clocks share the header it guards.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronLeft, X } from 'lucide-react';
 import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
@@ -278,9 +284,9 @@ export function FullScreenClock({
 	/** Opens the clock, and closes it leaving the run as it is: Back, Escape, a
 	 *  tap outside, the system back gesture. */
 	onOpenChange: (open: boolean) => void;
-	/** Close (✕): resets the run and closes the clock, one function so the
-	 *  confirmation #132 adds can wrap it. Absent where there is nothing to
-	 *  reset, and then only Back shows. */
+	/** Close (✕): resets the run and closes the clock — on the second tap where
+	 *  `closeAsks`. Absent where there is nothing to reset, and then only Back
+	 *  shows. */
 	onResetAndClose?: () => void;
 	/** Close asks for a second tap first (#132): there is progress to lose — a
 	 *  protocol running or paused, a stopwatch with time on it. */
