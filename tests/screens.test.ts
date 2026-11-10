@@ -1431,6 +1431,28 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 		}
 	});
 
+	// The name and the live region in the same render said it twice to a
+	// screen reader on Close (#130's review). Where focus is on Close the new
+	// name is what is read, so the live region stays quiet; it speaks only for
+	// a tap that left focus elsewhere (the previous test).
+	test('with focus on Close, arming is said once, by its name', async () => {
+		const root = await mount('/train');
+		const said = () =>
+			[...(dialog()?.querySelectorAll('[aria-live]') ?? [])].map((el) => el.textContent).join('|');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			act(() => close()?.focus());
+			press(close());
+			expect(armed()).toBeTruthy();
+			expect(document.activeElement).toBe(armed());
+			expect(said()).not.toContain(ARMED);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
 	test('the armed name in pt-BR', async () => {
 		overwriteGetLocale(() => 'pt-BR');
 		const root = await mount('/train');

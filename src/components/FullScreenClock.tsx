@@ -381,9 +381,17 @@ export function FullScreenClock({
 	const disarmOnOtherTap = (event: { target: EventTarget }) => {
 		if (armed && !closeRef.current?.contains(event.target as Node)) setArmedFor(0);
 	};
+	// Whether the live region says the arming. With focus on Close, its new
+	// name is read out, and the region saying the same words in the same render
+	// was the arming said twice (#130's review); with focus elsewhere (a tap
+	// that does not focus, as on iOS) the name change may not be read, so the
+	// region says it.
+	const [voiced, setVoiced] = useState(false);
 	const onClose = () => {
-		if (closeAsks && !armed) setArmedFor(ARMED_SECONDS);
-		else onResetAndClose?.();
+		if (closeAsks && !armed) {
+			setArmedFor(ARMED_SECONDS);
+			setVoiced(document.activeElement !== closeRef.current);
+		} else onResetAndClose?.();
 	};
 	// A browser presses a focused button on Enter's keydown, and a held key
 	// repeats it: one keypress armed Close and then confirmed it. A repeat is
@@ -411,10 +419,10 @@ export function FullScreenClock({
 				>
 					{layer}
 					{announcer}
-					{/* Arming said once, out loud (#132): not every screen reader reads
-					    a new name on the control that has focus. Never shown. */}
+					{/* Arming said once, out loud (#132), where Close's new name is not
+					    what gets read: a tap that left focus elsewhere. Never shown. */}
 					<p aria-live="assertive" className="sr-only">
-						{armed ? m.timer_reset_close_armed() : ''}
+						{armed && voiced ? m.timer_reset_close_armed() : ''}
 					</p>
 					<p id={readingId} className="sr-only">
 						{spoken}
