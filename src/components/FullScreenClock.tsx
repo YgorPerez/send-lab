@@ -57,7 +57,7 @@
 // both clocks share the header it guards.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronLeft, X } from 'lucide-react';
-import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
@@ -398,6 +398,13 @@ export function FullScreenClock({
 		if (closeAsks && !armed) setArmedFor(ARMED_SECONDS);
 		else onResetAndClose?.();
 	};
+	// A browser presses a focused button on Enter's keydown, and a held key
+	// repeats it: one keypress armed Close and then confirmed it. A repeat is
+	// the same press, so it presses nothing; letting go and pressing again is
+	// the second press. Space presses on its keyup, which does not repeat.
+	const holdRepeat = (event: KeyboardEvent) => {
+		if (event.repeat && event.key === 'Enter') event.preventDefault();
+	};
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
@@ -460,6 +467,7 @@ export function FullScreenClock({
 								type="button"
 								aria-label={armed ? m.timer_reset_close_armed() : m.timer_reset_close()}
 								onClick={onClose}
+								onKeyDown={holdRepeat}
 								className={cn(
 									headerControl(onField),
 									// The focus ring sits 2–4px outside the button, where the armed

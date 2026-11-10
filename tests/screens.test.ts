@@ -1201,6 +1201,44 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 		}
 	});
 
+	// A browser presses a focused button on Enter's keydown, and a held key
+	// repeats the keydown, so holding Enter on Close armed it and then confirmed
+	// it from one keypress (#130's review). jsdom presses nothing on a key, so
+	// the browser's part is stood in: a keydown nobody cancelled is a press.
+	test('a held Enter on Close arms it once; a second Enter resets and closes', async () => {
+		const root = await mount('/train');
+		const enter = (el: HTMLButtonElement | null | undefined, repeat = false) => {
+			expect(el, 'button to press').toBeTruthy();
+			act(() => {
+				el?.focus();
+				const down = new KeyboardEvent('keydown', {
+					key: 'Enter',
+					repeat,
+					bubbles: true,
+					cancelable: true,
+				});
+				if (el?.dispatchEvent(down)) el.click();
+			});
+		};
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			enter(close());
+			expect(armed()).toBeTruthy();
+			// The key held: its repeats are not a second press.
+			for (let i = 0; i < 10; i++) enter(armed(), true);
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			// Let go and pressed again: that is the second press.
+			enter(armed());
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
 	// Running is progress from the press of Start (#130's review): before the
 	// first 100 ms tick there is no time on the watch yet, and Close was missing
 	// for that tick, then there and asking.
