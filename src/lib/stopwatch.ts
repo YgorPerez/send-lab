@@ -72,6 +72,16 @@ export function lap(s: Stopwatch): Stopwatch {
 	return { ...s, marks: [...s.marks, s.elapsed] };
 }
 
+/**
+ * Whether there is a count to lose: running, from the press of Start and
+ * before any time has run, or holding time. Laps need time before them, so a
+ * watch with laps always has time. What the full-screen stopwatch's Close
+ * guards, and whether it is there at all (#130).
+ */
+export function underway(s: Stopwatch): boolean {
+	return s.running || s.elapsed > 0;
+}
+
 /** Back to zero, stopped, with its laps gone — from any state, as the protocol's
  *  reset is. */
 export function reset(_s: Stopwatch): Stopwatch {

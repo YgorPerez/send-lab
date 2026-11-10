@@ -34,6 +34,7 @@ import {
 	reset,
 	start,
 	tick,
+	underway,
 	type Stopwatch as Watch,
 } from '$lib/stopwatch';
 import { restoredStopwatch, useStopwatchDraft } from '$lib/stopwatchDraft';
@@ -296,14 +297,16 @@ function FullScreenStopwatch({
 	onResetAndClose: () => void;
 }) {
 	const face = stopwatchClock(watch.elapsed, getLocale());
-	// At zero with no laps there is nothing to clear, so Back alone.
-	const clearable = watch.elapsed > 0 || watch.marks.length > 0;
+	// One reading for both, so Close is never there without asking: stopped at
+	// zero there is nothing to clear, and Back alone; running, even before its
+	// first tick, or holding time, Close is there and asks for a second tap.
+	const progress = underway(watch);
 	return (
 		<FullScreenClock
 			open={open}
 			onOpenChange={onOpenChange}
-			onResetAndClose={clearable ? onResetAndClose : undefined}
-			closeAsks={watch.elapsed > 0}
+			onResetAndClose={progress ? onResetAndClose : undefined}
+			closeAsks={progress}
 			label={m.timer_stopwatch()}
 			status={status}
 			name={m.timer_stopwatch()}

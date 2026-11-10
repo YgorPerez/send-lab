@@ -1201,6 +1201,30 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 		}
 	});
 
+	// Running is progress from the press of Start (#130's review): before the
+	// first 100 ms tick there is no time on the watch yet, and Close was missing
+	// for that tick, then there and asking.
+	test('a running stopwatch has Close, asking, before its first tick', async () => {
+		const root = await mount('/timer');
+		try {
+			press(listRow('Stopwatch'));
+			const pause = worded(dialog() ?? document, 'Pause');
+			if (pause) press(pause);
+			while (close() || armed()) press(close() ?? armed());
+			if (!dialog()) press(listRow('Stopwatch'));
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			press(close());
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			press(armed());
+			expect(dialog()).toBeNull();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
 	// The ring is the only sign Close is armed: no icon swap, no text. It is
 	// drawn in the ink, and what jsdom can see is its resting drawing, the one
 	// reduced motion shows: a step a second, three steps (ADR 0011's note).

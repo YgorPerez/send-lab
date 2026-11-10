@@ -15,6 +15,7 @@ import {
 	type Stopwatch,
 	start,
 	tick,
+	underway,
 	ZERO,
 } from '../src/lib/stopwatch.ts';
 import { restoredStopwatch } from '../src/lib/stopwatchDraft.ts';
@@ -79,6 +80,27 @@ describe('the stopwatch', () => {
 		expect(lap(marked)).toBe(marked);
 		const fresh = start(ZERO);
 		expect(lap(fresh)).toBe(fresh);
+	});
+});
+
+// What the full-screen stopwatch's Close guards (#130's review): a watch
+// running counts as progress from the press of Start, before its first tick
+// has added any time, and a paused one counts while it holds time. Laps never
+// stand alone: a lap needs time before it.
+describe('a stopwatch underway', () => {
+	test('at zero and stopped it is not underway', () => {
+		expect(underway(ZERO)).toBe(false);
+		expect(underway(reset(play(start, 4000, lap, 1000)))).toBe(false);
+	});
+
+	test('running it is underway, before any time has run', () => {
+		expect(underway(start(ZERO))).toBe(true);
+		expect(underway(play(start, 1500))).toBe(true);
+	});
+
+	test('paused with time on it, laps or none, it is underway', () => {
+		expect(underway(play(start, 2000, pause))).toBe(true);
+		expect(underway(play(start, 2000, lap, 300, pause))).toBe(true);
 	});
 });
 
