@@ -473,9 +473,10 @@ function ProtocolFullScreen({
 				leftShown(reading) ? (
 					// Stacked, the word over the number, so it takes the number's width
 					// and not the sentence's. Beside it, the widest title it can share
-					// the header with is `ENTRE SÉRIES` (131px at 30px), in 170px on a
-					// 320px phone or a 640px one on its side; `DESAQUECIMENTO` is the
-					// last segment's, where this is gone.
+					// the header is `ENTRE SÉRIES` (164px at 30px), which since Back
+					// (#131) has 114px on a 320px phone or a 640px one on its side, so
+					// the title steps down to fit (`FullScreenClock`'s `titleSize`);
+					// `DESAQUECIMENTO` is the last segment's, where this is gone.
 					<span
 						className={cn(
 							'display flex h-12 shrink-0 flex-col items-end justify-center gap-1 self-start leading-none uppercase',

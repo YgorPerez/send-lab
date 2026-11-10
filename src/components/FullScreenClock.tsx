@@ -174,6 +174,24 @@ function headerControl(onField: boolean): string {
 		: button({ kind: 'quiet', size: 'touch', class: 'size-12 shrink-0 self-start px-0' });
 }
 
+/**
+ * The running title's size: 30px, or less when the word does not fit between
+ * Back and Close. With Back beside it (#131) a phone on its side has 168px
+ * for the title, 114px with the time left beside it, and `DESAQUECIMENTO` is
+ * 206px and `ENTRE SÉRIES` 164px at 30px. On one line, always: the segment's
+ * name is one word to read from the wall, and a title that wrapped would push
+ * the face down at the segment change. Stepped by glyph count, as `faceSize`
+ * is, against the title's own width (`cqi`): measured in Barlow Condensed
+ * caps, a glyph of a long label takes at most 0.54em with its tracking
+ * (`COOLDOWN`). The short labels that take more (`WORK`, 0.57em) are never
+ * short of room. The cost is pt-BR's `ENTRE SÉRIES` beside the time left on a
+ * 320px column, at 18px: the field's colour says the segment from further
+ * away than any size of the word does.
+ */
+function titleSize(label: string): string {
+	return `min(30px, calc(100cqi / ${(label.length * 0.54).toFixed(2)}))`;
+}
+
 /** The part of the platform's `CloseWatcher` the clock uses, declared here
  *  because not every browser has one. */
 type CloseWatcherClass = new () => { onclose: (() => void) | null; destroy: () => void };
@@ -240,8 +258,8 @@ export function FullScreenClock({
 	layer?: ReactNode;
 	/** A live region, if the clock says its changes out loud. */
 	announcer?: ReactNode;
-	/** What the protocol can do besides run, beside Close in the ready state's
-	 *  header — the list row's own ⋯ (#110, #111). */
+	/** What the protocol can do besides run, at the right of the ready state's
+	 *  header, where there is no Close — the list row's own ⋯ (#110, #111). */
 	actions?: ReactNode;
 	/** A short reading beside Close once the clock is past its ready state —
 	 *  the protocol's session time left (#129) — in the header's own colour. */
@@ -306,15 +324,18 @@ export function FullScreenClock({
 						<Dialog.Close aria-label={m.btn_back()} className={headerControl(onField)}>
 							<ChevronLeft size={22} aria-hidden="true" />
 						</Dialog.Close>
-						<div className="min-w-0 flex-1">
+						<div className="@container min-w-0 flex-1">
 							{summary ? (
 								<Dialog.Title className="text-[25px] leading-[1.15] font-semibold tracking-[-0.015em] text-ink">
 									{label}
 								</Dialog.Title>
 							) : (
 								<Dialog.Title
-									className="display text-[30px] leading-none font-bold tracking-[0.04em] uppercase"
-									style={onField ? undefined : { color: status.color }}
+									className="display leading-none font-bold tracking-[0.04em] whitespace-nowrap uppercase"
+									style={{
+										fontSize: titleSize(status.label),
+										...(onField ? {} : { color: status.color }),
+									}}
 								>
 									{status.label}
 								</Dialog.Title>
