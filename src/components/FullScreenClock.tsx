@@ -57,10 +57,11 @@
 // both clocks share the header it guards.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronLeft, X } from 'lucide-react';
-import { type KeyboardEvent, type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
+import { useCloseRequest } from './ui/closeRequest';
 import { button } from './ui/variants';
 
 /**
@@ -261,10 +262,6 @@ function titleSize(label: string): string {
 /** How long Close stays armed for its second tap (#132). */
 const ARMED_SECONDS = 3;
 
-/** The part of the platform's `CloseWatcher` the clock uses, declared here
- *  because not every browser has one. */
-type CloseWatcherClass = new () => { onclose: (() => void) | null; destroy: () => void };
-
 /** Where the clock is, in a word and a colour: a segment, or running/paused. */
 export interface ClockStatus {
 	label: string;
@@ -356,20 +353,10 @@ export function FullScreenClock({
 		root.classList.add('clock-field');
 		return () => root.classList.remove('clock-field');
 	}, [open]);
-	// The system back gesture is Back (#131). The dialog hears Escape and a tap
-	// outside on its own, but Android's back reaches a page as a close request,
-	// which only a `CloseWatcher` hears; without one the gesture went back a page,
-	// out from under a clock that was counting. Where there is no `CloseWatcher`
-	// the gesture does what it did before.
-	const leave = useEffectEvent(() => onOpenChange(false));
-	useEffect(() => {
-		if (!open) return;
-		const Watcher = (globalThis as { CloseWatcher?: CloseWatcherClass }).CloseWatcher;
-		if (!Watcher) return;
-		const watcher = new Watcher();
-		watcher.onclose = () => leave();
-		return () => watcher.destroy();
-	}, [open]);
+	// The system back gesture is Back (#131): without a watcher it went back a
+	// page, out from under a clock that was counting. With the ready state's ⋯
+	// open, it closes the menu first, as Escape does (#130's review).
+	useCloseRequest(open, () => onOpenChange(false));
 	// Close armed (#132): the seconds left in which a second tap resets and
 	// closes, 0 when it is not armed. Counted down once a second, so the ring
 	// can step by the second under reduced motion.
