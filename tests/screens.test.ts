@@ -963,7 +963,11 @@ describe('Back and Close on the full-screen clock', () => {
 			const segment = dialog()?.getAttribute('aria-label') ?? '';
 			const live = watchers.filter((w) => !w.destroyed);
 			expect(live).toHaveLength(1);
-			act(() => live[0].onclose?.());
+			// As the platform does: a watcher that closes is spent.
+			act(() => {
+				live[0].destroyed = true;
+				live[0].onclose?.();
+			});
 			expect(dialog()).toBeNull();
 			expect(document.querySelector('main')?.textContent).toContain(segment);
 			expect(worded(document.querySelector('main') ?? document, 'Pause')).toBeTruthy();
@@ -972,6 +976,110 @@ describe('Back and Close on the full-screen clock', () => {
 		} finally {
 			act(() => root.unmount());
 			vi.unstubAllGlobals();
+		}
+	});
+});
+
+// A menu inside the clock — the ready state's ⋯ on the Timer screen — is a
+// popup over a popup, and a close request is for the top one (#130's review).
+// The browser's part is stood in: Android's back reaches the newest live
+// `CloseWatcher`, which closes; Escape is a keydown first, and reaches the
+// watchers only if no one cancelled it.
+describe('a close request with a menu open in the full-screen clock', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+
+	type Stand = { onclose: (() => void) | null; destroyed: boolean };
+	let watchers: Stand[] = [];
+	/** How many close requests reached a watcher. */
+	let heard = 0;
+	beforeEach(() => {
+		overwriteGetLocale(() => 'en-US');
+		watchers = [];
+		heard = 0;
+		vi.stubGlobal(
+			'CloseWatcher',
+			class {
+				onclose: (() => void) | null = null;
+				destroyed = false;
+				constructor() {
+					watchers.push(this);
+				}
+				destroy() {
+					this.destroyed = true;
+				}
+			},
+		);
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	const request = () => {
+		const w = watchers.findLast((x) => !x.destroyed);
+		if (!w) return;
+		heard++;
+		w.destroyed = true;
+		w.onclose?.();
+	};
+	const back = () => act(request);
+	const pressEscape = () =>
+		act(() => {
+			const down = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+			(document.activeElement ?? document.body).dispatchEvent(down);
+			if (!down.defaultPrevented) request();
+		});
+	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const menu = () => document.querySelector('[role="menu"]');
+	const more = () =>
+		dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Actions for Warm-up hangs"]');
+
+	async function mount() {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		return root;
+	}
+	async function openMenu() {
+		if (!dialog()) openProtocolClock('/timer');
+		expect(more(), 'the ready state’s ⋯').toBeTruthy();
+		act(() => more()?.click());
+		expect(menu()).toBeTruthy();
+		await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+	}
+
+	test('the system back gesture closes the menu, and the next one the clock', async () => {
+		const root = await mount();
+		try {
+			await openMenu();
+			back();
+			expect(menu()).toBeNull();
+			expect(dialog()).toBeTruthy();
+			// The clock still hears the gesture: the next one is Back.
+			back();
+			expect(dialog()).toBeNull();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('Escape closes the menu, and the next one the clock, each once', async () => {
+		const root = await mount();
+		try {
+			await openMenu();
+			pressEscape();
+			expect(menu()).toBeNull();
+			expect(dialog()).toBeTruthy();
+			pressEscape();
+			expect(dialog()).toBeNull();
+			// Each Escape was taken by the popup it closed; none went on to the
+			// clock's watcher and closed it a second time.
+			expect(heard).toBe(0);
+		} finally {
+			act(() => root.unmount());
 		}
 	});
 });
@@ -1201,6 +1309,68 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 		}
 	});
 
+	// A browser presses a focused button on Enter's keydown, and a held key
+	// repeats the keydown, so holding Enter on Close armed it and then confirmed
+	// it from one keypress (#130's review). jsdom presses nothing on a key, so
+	// the browser's part is stood in: a keydown nobody cancelled is a press.
+	test('a held Enter on Close arms it once; a second Enter resets and closes', async () => {
+		const root = await mount('/train');
+		const enter = (el: HTMLButtonElement | null | undefined, repeat = false) => {
+			expect(el, 'button to press').toBeTruthy();
+			act(() => {
+				el?.focus();
+				const down = new KeyboardEvent('keydown', {
+					key: 'Enter',
+					repeat,
+					bubbles: true,
+					cancelable: true,
+				});
+				if (el?.dispatchEvent(down)) el.click();
+			});
+		};
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			enter(close());
+			expect(armed()).toBeTruthy();
+			// The key held: its repeats are not a second press.
+			for (let i = 0; i < 10; i++) enter(armed(), true);
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			// Let go and pressed again: that is the second press.
+			enter(armed());
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// Running is progress from the press of Start (#130's review): before the
+	// first 100 ms tick there is no time on the watch yet, and Close was missing
+	// for that tick, then there and asking.
+	test('a running stopwatch has Close, asking, before its first tick', async () => {
+		const root = await mount('/timer');
+		try {
+			press(listRow('Stopwatch'));
+			const pause = worded(dialog() ?? document, 'Pause');
+			if (pause) press(pause);
+			while (close() || armed()) press(close() ?? armed());
+			if (!dialog()) press(listRow('Stopwatch'));
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			press(close());
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			press(armed());
+			expect(dialog()).toBeNull();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
 	// The ring is the only sign Close is armed: no icon swap, no text. It is
 	// drawn in the ink, and what jsdom can see is its resting drawing, the one
 	// reduced motion shows: a step a second, three steps (ADR 0011's note).
@@ -1255,6 +1425,28 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 			press(close());
 			expect(said()).toContain(ARMED);
 			wait(3000);
+			expect(said()).not.toContain(ARMED);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// The name and the live region in the same render said it twice to a
+	// screen reader on Close (#130's review). Where focus is on Close the new
+	// name is what is read, so the live region stays quiet; it speaks only for
+	// a tap that left focus elsewhere (the previous test).
+	test('with focus on Close, arming is said once, by its name', async () => {
+		const root = await mount('/train');
+		const said = () =>
+			[...(dialog()?.querySelectorAll('[aria-live]') ?? [])].map((el) => el.textContent).join('|');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			act(() => close()?.focus());
+			press(close());
+			expect(armed()).toBeTruthy();
+			expect(document.activeElement).toBe(armed());
 			expect(said()).not.toContain(ARMED);
 		} finally {
 			act(() => root.unmount());
