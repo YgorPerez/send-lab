@@ -39,9 +39,19 @@
 // A `summary` replaces the face with what the clock is about to run — the
 // ready state, before Start — so tapping a protocol lands on its shape, not on
 // a number nobody is counting yet.
+//
+// TWO WAYS OUT (#131, spec #130)
+// ------------------------------
+// Leaving a run and abandoning it are different things, so the header has one
+// control for each. Back (‹), on the left, closes the clock and leaves the run
+// as it is, running or paused. Close (✕), on the right, resets the run and then
+// closes: what the clock hands in as `onResetAndClose`, and only where there is
+// something to reset, so the ready state and a stopwatch at zero have Back
+// alone. Everything else that closes a dialog — Escape, a tap outside, the
+// system back gesture — is Back's: a shortcut never throws a run away.
 import { Dialog } from '@base-ui/react/dialog';
-import { X } from 'lucide-react';
-import { type ReactNode, useEffect, useId } from 'react';
+import { ChevronLeft, X } from 'lucide-react';
+import { type ReactNode, useEffect, useEffectEvent, useId } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
@@ -156,6 +166,18 @@ export function Face({
 	);
 }
 
+/** The header's two controls, Back and Close: a 48px square, outlined in the
+ *  ink on a field (#110) and the quiet control off one. */
+function headerControl(onField: boolean): string {
+	return onField
+		? 'flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
+		: button({ kind: 'quiet', size: 'touch', class: 'size-12 shrink-0 self-start px-0' });
+}
+
+/** The part of the platform's `CloseWatcher` the clock uses, declared here
+ *  because not every browser has one. */
+type CloseWatcherClass = new () => { onclose: (() => void) | null; destroy: () => void };
+
 /** Where the clock is, in a word and a colour: a segment, or running/paused. */
 export interface ClockStatus {
 	label: string;
@@ -165,6 +187,7 @@ export interface ClockStatus {
 export function FullScreenClock({
 	open,
 	onOpenChange,
+	onResetAndClose,
 	label,
 	status,
 	field = null,
@@ -182,7 +205,13 @@ export function FullScreenClock({
 	aside,
 }: {
 	open: boolean;
+	/** Opens the clock, and closes it leaving the run as it is: Back, Escape, a
+	 *  tap outside, the system back gesture. */
 	onOpenChange: (open: boolean) => void;
+	/** Close (✕): resets the run and closes the clock, one function so the
+	 *  confirmation #132 adds can wrap it. Absent where there is nothing to
+	 *  reset, and then only Back shows. */
+	onResetAndClose?: () => void;
 	/** The dialog's accessible name. */
 	label: string;
 	/** The title: where the clock is. */
@@ -236,6 +265,20 @@ export function FullScreenClock({
 		root.classList.add('clock-field');
 		return () => root.classList.remove('clock-field');
 	}, [open]);
+	// The system back gesture is Back (#131). The dialog hears Escape and a tap
+	// outside on its own, but Android's back reaches a page as a close request,
+	// which only a `CloseWatcher` hears; without one the gesture went back a page,
+	// out from under a clock that was counting. Where there is no `CloseWatcher`
+	// the gesture does what it did before.
+	const leave = useEffectEvent(() => onOpenChange(false));
+	useEffect(() => {
+		if (!open) return;
+		const Watcher = (globalThis as { CloseWatcher?: CloseWatcherClass }).CloseWatcher;
+		if (!Watcher) return;
+		const watcher = new Watcher();
+		watcher.onclose = () => leave();
+		return () => watcher.destroy();
+	}, [open]);
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
@@ -257,7 +300,12 @@ export function FullScreenClock({
 					<p id={readingId} className="sr-only">
 						{spoken}
 					</p>
-					<div className="flex items-center gap-3 px-4 pt-4 pl-5 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-1">
+					<div className="flex items-center gap-3 px-4 pt-4 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-1">
+						{/* Back, not "back a segment" (⏮), which can be on the same
+						    screen: this one leaves the clock. */}
+						<Dialog.Close aria-label={m.btn_back()} className={headerControl(onField)}>
+							<ChevronLeft size={22} aria-hidden="true" />
+						</Dialog.Close>
 						<div className="min-w-0 flex-1">
 							{summary ? (
 								<Dialog.Title className="text-[25px] leading-[1.15] font-semibold tracking-[-0.015em] text-ink">
@@ -276,20 +324,16 @@ export function FullScreenClock({
 							) : null}
 						</div>
 						{summary ? actions : aside}
-						<Dialog.Close
-							aria-label={m.btn_close()}
-							className={
-								onField
-									? 'flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
-									: button({
-											kind: 'quiet',
-											size: 'touch',
-											class: 'size-12 shrink-0 self-start px-0',
-										})
-							}
-						>
-							<X size={22} />
-						</Dialog.Close>
+						{onResetAndClose ? (
+							<button
+								type="button"
+								aria-label={m.timer_reset_close()}
+								onClick={onResetAndClose}
+								className={headerControl(onField)}
+							>
+								<X size={22} aria-hidden="true" />
+							</button>
+						) : null}
 					</div>
 
 					{summary ? (
