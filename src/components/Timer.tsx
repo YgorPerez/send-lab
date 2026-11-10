@@ -419,6 +419,8 @@ function ProtocolFullScreen({
 			onOpenChange={onOpenChange}
 			// Nothing to reset before the start, so the ready state has Back alone.
 			onResetAndClose={ready ? undefined : onResetAndClose}
+			// Done has nothing left to lose, so one tap; running or paused, two.
+			closeAsks={underway(run)}
 			label={ready ? (label ?? m.timer_title()) : segmentLabel}
 			name={ready ? subtitle : null}
 			status={{ label: segmentLabel, color: accent }}

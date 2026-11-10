@@ -51,7 +51,7 @@
 // system back gesture — is Back's: a shortcut never throws a run away.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronLeft, X } from 'lucide-react';
-import { type ReactNode, useEffect, useEffectEvent, useId } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useId, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
@@ -199,6 +199,9 @@ function titleSize(label: string): string {
 	return `max(${oneLine}, min(24px, calc(100cqi / ${em(longest)})))`;
 }
 
+/** How long Close stays armed for its second tap (#132). */
+const ARMED_SECONDS = 3;
+
 /** The part of the platform's `CloseWatcher` the clock uses, declared here
  *  because not every browser has one. */
 type CloseWatcherClass = new () => { onclose: (() => void) | null; destroy: () => void };
@@ -213,6 +216,7 @@ export function FullScreenClock({
 	open,
 	onOpenChange,
 	onResetAndClose,
+	closeAsks = false,
 	label,
 	status,
 	field = null,
@@ -237,6 +241,9 @@ export function FullScreenClock({
 	 *  confirmation #132 adds can wrap it. Absent where there is nothing to
 	 *  reset, and then only Back shows. */
 	onResetAndClose?: () => void;
+	/** Close asks for a second tap first (#132): there is progress to lose — a
+	 *  protocol running or paused, a stopwatch with time on it. */
+	closeAsks?: boolean;
 	/** The dialog's accessible name. */
 	label: string;
 	/** The title: where the clock is. */
@@ -304,6 +311,28 @@ export function FullScreenClock({
 		watcher.onclose = () => leave();
 		return () => watcher.destroy();
 	}, [open]);
+	// Close armed (#132): the seconds left in which a second tap resets and
+	// closes, 0 when it is not armed. Counted down once a second, so the ring
+	// can step by the second under reduced motion.
+	const [armedFor, setArmedFor] = useState(0);
+	// However the clock closed, it opens disarmed: set from the change of `open`
+	// itself, React's idiom for state that follows a prop (as `Timer`'s
+	// `openSeen`), so no frame of the reopened clock is armed.
+	const [openSeen, setOpenSeen] = useState(open);
+	if (open !== openSeen) {
+		setOpenSeen(open);
+		setArmedFor(0);
+	}
+	const armed = armedFor > 0;
+	useEffect(() => {
+		if (!armed) return;
+		const id = setInterval(() => setArmedFor((s) => s - 1), 1000);
+		return () => clearInterval(id);
+	}, [armed]);
+	const onClose = () => {
+		if (closeAsks && !armed) setArmedFor(ARMED_SECONDS);
+		else onResetAndClose?.();
+	};
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
@@ -357,8 +386,8 @@ export function FullScreenClock({
 						{onResetAndClose ? (
 							<button
 								type="button"
-								aria-label={m.timer_reset_close()}
-								onClick={onResetAndClose}
+								aria-label={armed ? m.timer_reset_close_armed() : m.timer_reset_close()}
+								onClick={onClose}
 								className={headerControl(onField)}
 							>
 								<X size={22} aria-hidden="true" />

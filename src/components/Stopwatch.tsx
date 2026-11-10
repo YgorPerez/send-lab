@@ -303,6 +303,7 @@ function FullScreenStopwatch({
 			open={open}
 			onOpenChange={onOpenChange}
 			onResetAndClose={clearable ? onResetAndClose : undefined}
+			closeAsks={watch.elapsed > 0}
 			label={m.timer_stopwatch()}
 			status={status}
 			name={m.timer_stopwatch()}
