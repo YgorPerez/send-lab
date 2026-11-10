@@ -49,9 +49,15 @@
 // something to reset, so the ready state and a stopwatch at zero have Back
 // alone. Everything else that closes a dialog — Escape, a tap outside, the
 // system back gesture — is Back's: a shortcut never throws a run away.
+//
+// Where there is progress to lose, Close asks for a second tap (#132): the
+// first arms it and a ring runs once round it for 3 seconds, a second inside
+// that resets and closes, and any other tap in the clock disarms it. The clock
+// says when there is progress (`closeAsks`); the arming is this file's, since
+// both clocks share the header it guards.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronLeft, X } from 'lucide-react';
-import { type ReactNode, useEffect, useEffectEvent, useId } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
@@ -170,8 +176,61 @@ export function Face({
  *  ink on a field (#110) and the quiet control off one. */
 function headerControl(onField: boolean): string {
 	return onField
-		? 'flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
-		: button({ kind: 'quiet', size: 'touch', class: 'size-12 shrink-0 self-start px-0' });
+		? 'relative flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
+		: button({ kind: 'quiet', size: 'touch', class: 'relative size-12 shrink-0 self-start px-0' });
+}
+
+/**
+ * Close armed (#132): a ring once round the button for the window, the only
+ * sign that a second tap resets and closes — no overlay, no icon swap, no
+ * text. Drawn in the button's own ink, so it shows on a field and off one,
+ * 3.5px outside the button's edge so it never sits on the field's outline.
+ * It runs from the top round the outer edge and its end draws back to the
+ * top, so what is left at the last is on the screen's edge: emptied the other
+ * way, the last third hooked round the session's time left beside it and read
+ * as a bracket on that number (#132's critique).
+ *
+ * The drawing is part of Close while it is armed: a tap on the ring, up to
+ * 5px outside the button, is a tap on Close, not a stray tap that disarms it.
+ *
+ * With motion, `.a-ring` sweeps it in one pass (`app.css`). Under reduced
+ * motion there is no animation: the drawing is the seconds left, stepped once
+ * a second, three steps. A countdown is a reading of time, like the face
+ * changing every second, not an animation (ADR 0011's note).
+ */
+function ArmedRing({ left, onField }: { left: number; onField: boolean }) {
+	// The button's corner (14px on a field, `rounded-md`'s 8px off one) plus
+	// the 3.5px the stroke's centre sits outside it, on a 55px square inset
+	// 1.5px in the 58px drawing: the button's 48px and 5px either side. An
+	// absolute child is placed from inside the border, so the drawing steps
+	// out by the border too (2px on a field, 1px off one), or the ring would
+	// sit on the field's outline.
+	const r = onField ? 17.5 : 11.5;
+	const [lo, hi] = [1.5 + r, 56.5 - r];
+	const d = `M29 1.5H${hi}A${r} ${r} 0 0 1 56.5 ${lo}V${hi}A${r} ${r} 0 0 1 ${hi} 56.5H${lo}A${r} ${r} 0 0 1 1.5 ${hi}V${lo}A${r} ${r} 0 0 1 ${lo} 1.5Z`;
+	const gone = ((ARMED_SECONDS - left) / ARMED_SECONDS) * 100;
+	return (
+		<svg
+			data-ring
+			aria-hidden="true"
+			viewBox="0 0 58 58"
+			className={cn(
+				'absolute size-[58px] overflow-visible',
+				onField ? '-top-[7px] -left-[7px]' : '-top-[6px] -left-[6px]',
+			)}
+		>
+			<path
+				d={d}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth={3}
+				pathLength={100}
+				strokeDasharray="100 100"
+				className="a-ring"
+				style={{ strokeDashoffset: gone, animationDuration: `${ARMED_SECONDS}s` }}
+			/>
+		</svg>
+	);
 }
 
 /**
@@ -199,6 +258,9 @@ function titleSize(label: string): string {
 	return `max(${oneLine}, min(24px, calc(100cqi / ${em(longest)})))`;
 }
 
+/** How long Close stays armed for its second tap (#132). */
+const ARMED_SECONDS = 3;
+
 /** The part of the platform's `CloseWatcher` the clock uses, declared here
  *  because not every browser has one. */
 type CloseWatcherClass = new () => { onclose: (() => void) | null; destroy: () => void };
@@ -213,6 +275,7 @@ export function FullScreenClock({
 	open,
 	onOpenChange,
 	onResetAndClose,
+	closeAsks = false,
 	label,
 	status,
 	field = null,
@@ -233,10 +296,13 @@ export function FullScreenClock({
 	/** Opens the clock, and closes it leaving the run as it is: Back, Escape, a
 	 *  tap outside, the system back gesture. */
 	onOpenChange: (open: boolean) => void;
-	/** Close (✕): resets the run and closes the clock, one function so the
-	 *  confirmation #132 adds can wrap it. Absent where there is nothing to
-	 *  reset, and then only Back shows. */
+	/** Close (✕): resets the run and closes the clock — on the second tap where
+	 *  `closeAsks`. Absent where there is nothing to reset, and then only Back
+	 *  shows. */
 	onResetAndClose?: () => void;
+	/** Close asks for a second tap first (#132): there is progress to lose — a
+	 *  protocol running or paused, a stopwatch with time on it. */
+	closeAsks?: boolean;
 	/** The dialog's accessible name. */
 	label: string;
 	/** The title: where the clock is. */
@@ -304,11 +370,40 @@ export function FullScreenClock({
 		watcher.onclose = () => leave();
 		return () => watcher.destroy();
 	}, [open]);
+	// Close armed (#132): the seconds left in which a second tap resets and
+	// closes, 0 when it is not armed. Counted down once a second, so the ring
+	// can step by the second under reduced motion.
+	const [armedFor, setArmedFor] = useState(0);
+	// However the clock closed, it opens disarmed: set from the change of `open`
+	// itself, React's idiom for state that follows a prop (as `Timer`'s
+	// `openSeen`), so no frame of the reopened clock is armed.
+	const [openSeen, setOpenSeen] = useState(open);
+	if (open !== openSeen) {
+		setOpenSeen(open);
+		setArmedFor(0);
+	}
+	const armed = armedFor > 0;
+	useEffect(() => {
+		if (!armed) return;
+		const id = setInterval(() => setArmedFor((s) => s - 1), 1000);
+		return () => clearInterval(id);
+	}, [armed]);
+	// Any other tap — the face, the control row, Back — disarms Close and goes
+	// on to do its own job: heard on the way down, before the control acts.
+	const closeRef = useRef<HTMLButtonElement>(null);
+	const disarmOnOtherTap = (event: { target: EventTarget }) => {
+		if (armed && !closeRef.current?.contains(event.target as Node)) setArmedFor(0);
+	};
+	const onClose = () => {
+		if (closeAsks && !armed) setArmedFor(ARMED_SECONDS);
+		else onResetAndClose?.();
+	};
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Popup
 					aria-label={label}
+					onClickCapture={disarmOnOtherTap}
 					style={onField ? { background: field, color: 'var(--bg)' } : undefined}
 					className={cn(
 						'fixed inset-0 z-50 flex h-dvh w-dvw flex-col overflow-y-auto bg-bg text-ink transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
@@ -322,6 +417,11 @@ export function FullScreenClock({
 				>
 					{layer}
 					{announcer}
+					{/* Arming said once, out loud (#132): not every screen reader reads
+					    a new name on the control that has focus. Never shown. */}
+					<p aria-live="assertive" className="sr-only">
+						{armed ? m.timer_reset_close_armed() : ''}
+					</p>
 					<p id={readingId} className="sr-only">
 						{spoken}
 					</p>
@@ -356,12 +456,20 @@ export function FullScreenClock({
 						{summary ? actions : aside}
 						{onResetAndClose ? (
 							<button
+								ref={closeRef}
 								type="button"
-								aria-label={m.timer_reset_close()}
-								onClick={onResetAndClose}
-								className={headerControl(onField)}
+								aria-label={armed ? m.timer_reset_close_armed() : m.timer_reset_close()}
+								onClick={onClose}
+								className={cn(
+									headerControl(onField),
+									// The focus ring sits 2–4px outside the button, where the armed
+									// ring is drawn; on a field both are the ink, and the sweep was
+									// lost under it. While armed, focus is drawn inside the edge.
+									armed && 'focus-visible:outline-offset-[-7px]',
+								)}
 							>
 								<X size={22} aria-hidden="true" />
+								{armed ? <ArmedRing left={armedFor} onField={onField} /> : null}
 							</button>
 						) : null}
 					</div>

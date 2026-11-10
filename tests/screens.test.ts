@@ -759,6 +759,13 @@ describe('Back and Close on the full-screen clock', () => {
 	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
 	const back = () => labelled(dialog() ?? document, 'Back');
 	const close = () => labelled(dialog() ?? document, 'Reset and close');
+	/** Close where there is progress: armed by the first tap, so a second one
+	 *  inside the window (#132). */
+	const armed = () => labelled(dialog() ?? document, 'Tap again to reset and close');
+	const closeTwice = () => {
+		press(close());
+		press(armed());
+	};
 
 	async function mount(path: string) {
 		const router = createRouter({
@@ -775,8 +782,7 @@ describe('Back and Close on the full-screen clock', () => {
 		openProtocolClock('/train');
 		const reset = labelled(dialog() ?? document, 'Reset');
 		if (reset) press(reset);
-		const left = close();
-		if (left) press(left);
+		while (close() || armed()) press(close() ?? armed());
 		if (!dialog()) openProtocolClock('/train');
 	}
 
@@ -834,7 +840,7 @@ describe('Back and Close on the full-screen clock', () => {
 		try {
 			openReady();
 			press(worded(dialog() ?? document, 'Start'));
-			press(close());
+			closeTwice();
 			expect(dialog()).toBeNull();
 			// Idle: the strip is the protocol's name and Start, no number.
 			expect(worded(document.querySelector('main') ?? document, 'Start')).toBeTruthy();
@@ -846,11 +852,11 @@ describe('Back and Close on the full-screen clock', () => {
 			// Paused mid-run, the same.
 			press(worded(dialog() ?? document, 'Start'));
 			press(worded(dialog() ?? document, 'Pause'));
-			press(close());
+			closeTwice();
 			expect(dialog()).toBeNull();
 			expect(resume()).toBeUndefined();
 
-			// Done: nothing left to lose, and Close still resets.
+			// Done: nothing left to lose, so one tap resets and closes (#132).
 			openProtocolClock('/train');
 			press(worded(dialog() ?? document, 'Start'));
 			for (let i = 0; i < 200 && dialog()?.getAttribute('aria-label') !== 'Done'; i++)
@@ -876,8 +882,7 @@ describe('Back and Close on the full-screen clock', () => {
 			press(listRow('Stopwatch'));
 			const pause = worded(dialog() ?? document, 'Pause');
 			if (pause) press(pause);
-			const left = close();
-			if (left) press(left);
+			while (close() || armed()) press(close() ?? armed());
 			if (!dialog()) press(listRow('Stopwatch'));
 
 			// At zero with no laps there is nothing to reset: Back alone.
@@ -902,7 +907,7 @@ describe('Back and Close on the full-screen clock', () => {
 			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
 			expect(laps()).toBeTruthy();
 
-			press(close());
+			closeTwice();
 			expect(dialog()).toBeNull();
 			expect(bar()).toBeFalsy();
 			press(listRow('Stopwatch'));
@@ -967,6 +972,313 @@ describe('Back and Close on the full-screen clock', () => {
 		} finally {
 			act(() => root.unmount());
 			vi.unstubAllGlobals();
+		}
+	});
+});
+
+// #132 (spec #130): Close throws a run away, so where there is progress — a
+// protocol running or paused, a stopwatch with time on it — it asks for a second
+// tap. The first arms it, and a ring runs once round it for 3 seconds; a second
+// tap inside that window resets and closes, and when the ring runs out Close
+// disarms. The window is pinned on faked timers, which also drive the clocks'
+// own ticks, so "still counting" is read off the face.
+describe('Close asks for a second tap on the full-screen clock', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+	// The suite fakes `Date` alone; these fake the timers too, from after the
+	// route has loaded, and hand the suite its clock back.
+	const fakeTimers = () => {
+		vi.useFakeTimers({
+			toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance'],
+		});
+		vi.setSystemTime(THURSDAY);
+	};
+	afterEach(() => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(THURSDAY);
+	});
+
+	const ARMED = 'Tap again to reset and close';
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
+	const labelled = (scope: ParentNode, label: string) =>
+		scope.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const inClock = (label: string) => labelled(dialog() ?? document, label);
+	const close = () => inClock('Reset and close');
+	const armed = () => inClock(ARMED);
+	/** The face's number, as drawn. */
+	const face = () =>
+		[...(dialog()?.querySelectorAll<HTMLButtonElement>('button[aria-describedby]') ?? [])][0]
+			?.textContent ?? '';
+	const strip = () => document.querySelector('main') ?? document;
+
+	async function mount(path: string) {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: [path] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		return root;
+	}
+	/** Train's clock, open on its ready state whatever an earlier test left. */
+	function openReady() {
+		openProtocolClock('/train');
+		const reset = inClock('Reset');
+		if (reset) press(reset);
+		while (close() || armed()) press(close() ?? armed());
+		if (!dialog()) openProtocolClock('/train');
+		expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+	}
+
+	test('with progress, one tap arms and leaves the run counting; a second resets and closes', async () => {
+		const root = await mount('/train');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			wait(1000);
+			press(close());
+			// Armed: still open, still running, and Close says what a tap does now.
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			expect(close()).toBeNull();
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			const before = face();
+			wait(2000);
+			expect(face()).not.toBe(before);
+			// 2.999 s after the first tap: still armed, so this one resets and closes.
+			wait(999);
+			press(armed());
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Start')).toBeTruthy();
+			expect(worded(strip(), 'Resume')).toBeUndefined();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('with no second tap Close disarms after 3 s, and the next tap arms again', async () => {
+		const root = await mount('/train');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			press(worded(dialog() ?? document, 'Pause'));
+			const paused = face();
+			press(close());
+			wait(2999);
+			expect(armed()).toBeTruthy();
+			wait(1);
+			// Run out: disarmed, and nothing has changed.
+			expect(armed()).toBeNull();
+			expect(close()).toBeTruthy();
+			expect(face()).toBe(paused);
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// So the next tap arms again rather than throwing the run away.
+			press(close());
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			expect(face()).toBe(paused);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('a run that reaches Done inside the window leaves Close armed', async () => {
+		const root = await mount('/train');
+		const spoken = () =>
+			[...(dialog()?.querySelectorAll('.sr-only') ?? [])].map((el) => el.textContent).join(' ');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			for (let i = 0; i < 200 && !spoken().includes('Next up: Done'); i++)
+				press(inClock('Skip to the next segment'));
+			// The last segment, counted down to its last two seconds.
+			for (let i = 0; i < 600 && face() !== '2'; i++) wait(1000);
+			expect(face()).toBe('2');
+			press(close());
+			wait(2000);
+			expect(dialog()?.getAttribute('aria-label')).toBe('Done');
+			expect(armed()).toBeTruthy();
+			press(armed());
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('any other tap disarms Close and does its own job', async () => {
+		const root = await mount('/train');
+		const segment = () => dialog()?.getAttribute('aria-label');
+		const faceButton = () =>
+			dialog()?.querySelector<HTMLButtonElement>('button[aria-describedby]') ?? null;
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(segment()).toBe('Prepare');
+
+			// The face: paused.
+			press(close());
+			press(faceButton());
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// ▶: running again.
+			press(close());
+			press(worded(dialog() ?? document, 'Resume'));
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			// ⏭: the next segment.
+			press(close());
+			press(inClock('Skip to the next segment'));
+			expect(armed()).toBeNull();
+			expect(segment()).toBe('Work');
+			// ⏮: back a segment.
+			press(close());
+			press(inClock('Back a segment'));
+			expect(armed()).toBeNull();
+			expect(segment()).toBe('Prepare');
+			// ⏸: paused.
+			press(close());
+			press(worded(dialog() ?? document, 'Pause'));
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// Back: left, with the run as it was, and the clock reopens disarmed.
+			press(close());
+			press(inClock('Back'));
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Resume')).toBeTruthy();
+			openProtocolClock('/train');
+			expect(armed()).toBeNull();
+			expect(close()).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('the stopwatch with time on it asks too, and Lap disarms', async () => {
+		const root = await mount('/timer');
+		const laps = () => dialog()?.querySelector('section[aria-label="Laps"]') ?? null;
+		try {
+			press(listRow('Stopwatch'));
+			const pause = worded(dialog() ?? document, 'Pause');
+			if (pause) press(pause);
+			while (close() || armed()) press(close() ?? armed());
+			if (!dialog()) press(listRow('Stopwatch'));
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			wait(1500);
+			press(close());
+			expect(armed()).toBeTruthy();
+			const before = face();
+			wait(500);
+			expect(face()).not.toBe(before);
+			press(inClock('Lap'));
+			expect(armed()).toBeNull();
+			expect(laps()).toBeTruthy();
+
+			press(close());
+			press(armed());
+			expect(dialog()).toBeNull();
+			press(listRow('Stopwatch'));
+			expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+			expect(laps()).toBeNull();
+			press(inClock('Back'));
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// The ring is the only sign Close is armed: no icon swap, no text. It is
+	// drawn in the ink, and what jsdom can see is its resting drawing, the one
+	// reduced motion shows: a step a second, three steps (ADR 0011's note).
+	// The sweep over it is CSS, and `check:motion` measures what is left.
+	test('a ring in the ink shows Close armed, a step a second', async () => {
+		const root = await mount('/train');
+		const ring = () =>
+			close()?.querySelector('[data-ring]') ?? armed()?.querySelector('[data-ring]');
+		const drawn = () =>
+			armed()?.querySelector<SVGPathElement>('[data-ring] path')?.style.strokeDashoffset;
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(ring()).toBeFalsy();
+			const icon = close()?.innerHTML;
+			press(close());
+			expect(ring()).toBeTruthy();
+			expect(ring()?.getAttribute('aria-hidden')).toBe('true');
+			expect(armed()?.querySelector('[data-ring] path')?.getAttribute('stroke')).toBe(
+				'currentColor',
+			);
+			// The X is still the X, and nothing is written.
+			expect(armed()?.textContent).toBe('');
+			expect(armed()?.innerHTML).toContain(icon ?? '');
+			// Full, then its end draws back towards the top a third at a time, so
+			// what is left at the end is on the screen's edge, away from the
+			// session's time left (#132's critique).
+			expect(drawn()).toBe('0');
+			wait(1000);
+			expect(Number(drawn())).toBeCloseTo(100 / 3, 1);
+			wait(1000);
+			expect(Number(drawn())).toBeCloseTo(200 / 3, 1);
+			wait(1000);
+			expect(ring()).toBeFalsy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// A name change on the focused control is not read out by every screen
+	// reader, so arming is also said once, out loud, and never shown.
+	test('arming is said out loud, and the saying goes when Close disarms', async () => {
+		const root = await mount('/train');
+		const said = () =>
+			[...(dialog()?.querySelectorAll('[aria-live]') ?? [])].map((el) => el.textContent).join('|');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(said()).not.toContain(ARMED);
+			press(close());
+			expect(said()).toContain(ARMED);
+			wait(3000);
+			expect(said()).not.toContain(ARMED);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('the armed name in pt-BR', async () => {
+		overwriteGetLocale(() => 'pt-BR');
+		const root = await mount('/train');
+		const open = () => press(labelled(document, 'Relógio em tela cheia'));
+		try {
+			open();
+			const reset = inClock('Zerar');
+			if (reset) press(reset);
+			while (inClock('Zerar e fechar') || inClock('Toque de novo para zerar e fechar'))
+				press(inClock('Zerar e fechar') ?? inClock('Toque de novo para zerar e fechar'));
+			if (!dialog()) open();
+			press(worded(dialog() ?? document, 'Iniciar'));
+			press(inClock('Zerar e fechar'));
+			expect(inClock('Toque de novo para zerar e fechar')).toBeTruthy();
+			press(inClock('Toque de novo para zerar e fechar'));
+			expect(dialog()).toBeNull();
+		} finally {
+			act(() => root.unmount());
 		}
 	});
 });
