@@ -195,7 +195,10 @@ function headerControl(onField: boolean): string {
 function ArmedRing({ left, onField }: { left: number; onField: boolean }) {
 	// The button's corner (14px on a field, `rounded-md`'s 8px off one) plus
 	// the 3.5px the stroke's centre sits outside it, on a 55px square inset
-	// 1.5px in the 58px drawing: the button's 48px and 5px either side.
+	// 1.5px in the 58px drawing: the button's 48px and 5px either side. An
+	// absolute child is placed from inside the border, so the drawing steps
+	// out by the border too (2px on a field, 1px off one), or the ring would
+	// sit on the field's outline.
 	const r = onField ? 17.5 : 11.5;
 	const [lo, hi] = [1.5 + r, 56.5 - r];
 	const d = `M29 1.5H${hi}A${r} ${r} 0 0 1 56.5 ${lo}V${hi}A${r} ${r} 0 0 1 ${hi} 56.5H${lo}A${r} ${r} 0 0 1 1.5 ${hi}V${lo}A${r} ${r} 0 0 1 ${lo} 1.5Z`;
@@ -205,7 +208,10 @@ function ArmedRing({ left, onField }: { left: number; onField: boolean }) {
 			data-ring
 			aria-hidden="true"
 			viewBox="0 0 58 58"
-			className="pointer-events-none absolute -inset-[5px] size-[58px] overflow-visible"
+			className={cn(
+				'pointer-events-none absolute size-[58px] overflow-visible',
+				onField ? '-top-[7px] -left-[7px]' : '-top-[6px] -left-[6px]',
+			)}
 		>
 			<path
 				d={d}
