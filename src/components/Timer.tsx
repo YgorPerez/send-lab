@@ -380,6 +380,7 @@ function ProtocolFullScreen({
 	setup,
 	onToggle,
 	onReset,
+	onResetAndClose,
 	onSkip,
 	onBack,
 	flash,
@@ -395,6 +396,8 @@ function ProtocolFullScreen({
 	setup: ReactNode;
 	onToggle: () => void;
 	onReset: () => void;
+	/** The header's Close: the control row's Reset, then closed. */
+	onResetAndClose: () => void;
 	onSkip: () => void;
 	onBack: () => void;
 	flash: Flash | null;
@@ -414,6 +417,8 @@ function ProtocolFullScreen({
 		<FullScreenClock
 			open={open}
 			onOpenChange={onOpenChange}
+			// Nothing to reset before the start, so the ready state has Back alone.
+			onResetAndClose={ready ? undefined : onResetAndClose}
 			label={ready ? (label ?? m.timer_title()) : segmentLabel}
 			name={ready ? subtitle : null}
 			status={{ label: segmentLabel, color: accent }}
@@ -468,9 +473,10 @@ function ProtocolFullScreen({
 				leftShown(reading) ? (
 					// Stacked, the word over the number, so it takes the number's width
 					// and not the sentence's. Beside it, the widest title it can share
-					// the header with is `ENTRE SÉRIES` (131px at 30px), in 170px on a
-					// 320px phone or a 640px one on its side; `DESAQUECIMENTO` is the
-					// last segment's, where this is gone.
+					// the header is `ENTRE SÉRIES` (164px at 30px), which since Back
+					// (#131) has 114px on a 320px phone or a 640px one on its side, so
+					// the title steps down to fit (`FullScreenClock`'s `titleSize`);
+					// `DESAQUECIMENTO` is the last segment's, where this is gone.
 					<span
 						className={cn(
 							'display flex h-12 shrink-0 flex-col items-end justify-center gap-1 self-start leading-none uppercase',
@@ -764,6 +770,12 @@ export function Timer({
 		setRunning(false);
 		setRun(IDLE);
 	};
+	// The full-screen clock's Close (#131): the run thrown away, then the clock
+	// shut. Back, Escape and the system back gesture shut it and keep the run.
+	const resetAndClose = () => {
+		reset();
+		showClock(false);
+	};
 	const toggle = () => (running ? setRunning(false) : start());
 	useImperativeHandle(ref, () => ({ pause: () => setRunning(false) }), []);
 	// Paused stays paused and running stays running: a jump moves the clock and
@@ -971,6 +983,7 @@ export function Timer({
 				setup={setup}
 				onToggle={toggle}
 				onReset={reset}
+				onResetAndClose={resetAndClose}
 				onSkip={() => jump(skip)}
 				onBack={() => jump(back)}
 				flash={flash}

@@ -39,9 +39,19 @@
 // A `summary` replaces the face with what the clock is about to run — the
 // ready state, before Start — so tapping a protocol lands on its shape, not on
 // a number nobody is counting yet.
+//
+// TWO WAYS OUT (#131, spec #130)
+// ------------------------------
+// Leaving a run and abandoning it are different things, so the header has one
+// control for each. Back (‹), on the left, closes the clock and leaves the run
+// as it is, running or paused. Close (✕), on the right, resets the run and then
+// closes: what the clock hands in as `onResetAndClose`, and only where there is
+// something to reset, so the ready state and a stopwatch at zero have Back
+// alone. Everything else that closes a dialog — Escape, a tap outside, the
+// system back gesture — is Back's: a shortcut never throws a run away.
 import { Dialog } from '@base-ui/react/dialog';
-import { X } from 'lucide-react';
-import { type ReactNode, useEffect, useId } from 'react';
+import { ChevronLeft, X } from 'lucide-react';
+import { type ReactNode, useEffect, useEffectEvent, useId } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
@@ -156,6 +166,43 @@ export function Face({
 	);
 }
 
+/** The header's two controls, Back and Close: a 48px square, outlined in the
+ *  ink on a field (#110) and the quiet control off one. */
+function headerControl(onField: boolean): string {
+	return onField
+		? 'flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
+		: button({ kind: 'quiet', size: 'touch', class: 'size-12 shrink-0 self-start px-0' });
+}
+
+/**
+ * The running title's size: 30px, or less when the label does not fit between
+ * Back and Close. With Back beside it (#131) a phone on its side has 168px
+ * for the title, 114px with the time left beside it, and `DESAQUECIMENTO` is
+ * 206px and `ENTRE SÉRIES` 164px at 30px. Sized by glyph count, as `faceSize`
+ * is, against the title's own width (`cqi`): measured in Barlow Condensed
+ * caps, a letter of a long label takes at most 0.54em with its tracking
+ * (`COOLDOWN`) and a space about half that. The short labels that take more
+ * (`WORK`, 0.57em) are never short of room.
+ *
+ * A label of two words may instead take two lines at up to 24px, two lines
+ * being the 48px of Back and Close beside it, so the header never grows and
+ * the face never moves at a segment change. Whichever is larger wins: at
+ * 114px `ENTRE SÉRIES` is 24px on two lines, not 18px on one, under the time
+ * left's 24px number (#131's critique).
+ */
+function titleSize(label: string): string {
+	const words = label.split(' ');
+	const em = (glyphs: number) => (glyphs * 0.54).toFixed(2);
+	const oneLine = `min(30px, calc(100cqi / ${em(label.length - (words.length - 1) / 2)}))`;
+	if (words.length === 1) return oneLine;
+	const longest = Math.max(...words.map((w) => w.length));
+	return `max(${oneLine}, min(24px, calc(100cqi / ${em(longest)})))`;
+}
+
+/** The part of the platform's `CloseWatcher` the clock uses, declared here
+ *  because not every browser has one. */
+type CloseWatcherClass = new () => { onclose: (() => void) | null; destroy: () => void };
+
 /** Where the clock is, in a word and a colour: a segment, or running/paused. */
 export interface ClockStatus {
 	label: string;
@@ -165,6 +212,7 @@ export interface ClockStatus {
 export function FullScreenClock({
 	open,
 	onOpenChange,
+	onResetAndClose,
 	label,
 	status,
 	field = null,
@@ -182,7 +230,13 @@ export function FullScreenClock({
 	aside,
 }: {
 	open: boolean;
+	/** Opens the clock, and closes it leaving the run as it is: Back, Escape, a
+	 *  tap outside, the system back gesture. */
 	onOpenChange: (open: boolean) => void;
+	/** Close (✕): resets the run and closes the clock, one function so the
+	 *  confirmation #132 adds can wrap it. Absent where there is nothing to
+	 *  reset, and then only Back shows. */
+	onResetAndClose?: () => void;
 	/** The dialog's accessible name. */
 	label: string;
 	/** The title: where the clock is. */
@@ -211,8 +265,8 @@ export function FullScreenClock({
 	layer?: ReactNode;
 	/** A live region, if the clock says its changes out loud. */
 	announcer?: ReactNode;
-	/** What the protocol can do besides run, beside Close in the ready state's
-	 *  header — the list row's own ⋯ (#110, #111). */
+	/** What the protocol can do besides run, at the right of the ready state's
+	 *  header, where there is no Close — the list row's own ⋯ (#110, #111). */
 	actions?: ReactNode;
 	/** A short reading beside Close once the clock is past its ready state —
 	 *  the protocol's session time left (#129) — in the header's own colour. */
@@ -236,6 +290,20 @@ export function FullScreenClock({
 		root.classList.add('clock-field');
 		return () => root.classList.remove('clock-field');
 	}, [open]);
+	// The system back gesture is Back (#131). The dialog hears Escape and a tap
+	// outside on its own, but Android's back reaches a page as a close request,
+	// which only a `CloseWatcher` hears; without one the gesture went back a page,
+	// out from under a clock that was counting. Where there is no `CloseWatcher`
+	// the gesture does what it did before.
+	const leave = useEffectEvent(() => onOpenChange(false));
+	useEffect(() => {
+		if (!open) return;
+		const Watcher = (globalThis as { CloseWatcher?: CloseWatcherClass }).CloseWatcher;
+		if (!Watcher) return;
+		const watcher = new Watcher();
+		watcher.onclose = () => leave();
+		return () => watcher.destroy();
+	}, [open]);
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
@@ -257,16 +325,26 @@ export function FullScreenClock({
 					<p id={readingId} className="sr-only">
 						{spoken}
 					</p>
-					<div className="flex items-center gap-3 px-4 pt-4 pl-5 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-1">
-						<div className="min-w-0 flex-1">
+					<div className="flex items-center gap-3 px-4 pt-4 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-1">
+						{/* Back, not "back a segment" (⏮), which can be on the same
+						    screen: this one leaves the clock. The chevron is 26px to the
+						    X's 22px because it draws half the X's ink, and the way out
+						    that keeps the run must not be the fainter of the two. */}
+						<Dialog.Close aria-label={m.btn_back()} className={headerControl(onField)}>
+							<ChevronLeft size={26} aria-hidden="true" />
+						</Dialog.Close>
+						<div className="@container min-w-0 flex-1">
 							{summary ? (
 								<Dialog.Title className="text-[25px] leading-[1.15] font-semibold tracking-[-0.015em] text-ink">
 									{label}
 								</Dialog.Title>
 							) : (
 								<Dialog.Title
-									className="display text-[30px] leading-none font-bold tracking-[0.04em] uppercase"
-									style={onField ? undefined : { color: status.color }}
+									className="display leading-none font-bold tracking-[0.04em] uppercase"
+									style={{
+										fontSize: titleSize(status.label),
+										...(onField ? {} : { color: status.color }),
+									}}
 								>
 									{status.label}
 								</Dialog.Title>
@@ -276,20 +354,16 @@ export function FullScreenClock({
 							) : null}
 						</div>
 						{summary ? actions : aside}
-						<Dialog.Close
-							aria-label={m.btn_close()}
-							className={
-								onField
-									? 'flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
-									: button({
-											kind: 'quiet',
-											size: 'touch',
-											class: 'size-12 shrink-0 self-start px-0',
-										})
-							}
-						>
-							<X size={22} />
-						</Dialog.Close>
+						{onResetAndClose ? (
+							<button
+								type="button"
+								aria-label={m.timer_reset_close()}
+								onClick={onResetAndClose}
+								className={headerControl(onField)}
+							>
+								<X size={22} aria-hidden="true" />
+							</button>
+						) : null}
 					</div>
 
 					{summary ? (

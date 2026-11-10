@@ -161,6 +161,12 @@ export function Stopwatch({
 		setWatch((s) => lap(tick(s, ms)));
 	};
 	const clear = () => setWatch(reset);
+	// The full-screen clock's Close (#131): time and laps gone, then the clock
+	// shut. Back and Escape shut it and keep them.
+	const clearAndClose = () => {
+		clear();
+		onOpenChange(false);
+	};
 	const toggle = () => (watch.running ? hold() : begin());
 	useImperativeHandle(ref, () => ({ pause: hold }));
 
@@ -182,6 +188,7 @@ export function Stopwatch({
 				onToggle={toggle}
 				onLap={mark}
 				onReset={clear}
+				onResetAndClose={clearAndClose}
 			/>
 			<LapAnnouncer laps={laps} />
 			<p id={readingId} className="sr-only">
@@ -274,6 +281,7 @@ function FullScreenStopwatch({
 	onToggle,
 	onLap,
 	onReset,
+	onResetAndClose,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
@@ -284,12 +292,17 @@ function FullScreenStopwatch({
 	onToggle: () => void;
 	onLap: () => void;
 	onReset: () => void;
+	/** The header's Close: cleared, then closed. */
+	onResetAndClose: () => void;
 }) {
 	const face = stopwatchClock(watch.elapsed, getLocale());
+	// At zero with no laps there is nothing to clear, so Back alone.
+	const clearable = watch.elapsed > 0 || watch.marks.length > 0;
 	return (
 		<FullScreenClock
 			open={open}
 			onOpenChange={onOpenChange}
+			onResetAndClose={clearable ? onResetAndClose : undefined}
 			label={m.timer_stopwatch()}
 			status={status}
 			name={m.timer_stopwatch()}
