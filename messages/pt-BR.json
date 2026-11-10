@@ -313,6 +313,8 @@
 	"timer_use": "Usar no timer",
 	"timer_skip": "Pular para o próximo segmento",
 	"timer_back": "Voltar um segmento",
+	"timer_reset_close": "Zerar e fechar",
+	"timer_reset_close_armed": "Toque de novo para zerar e fechar",
 	"nav_timer": "Timer",
 	"timer_presets": "Predefinidos",
 	"timer_group_count": "{n} predefinidos",

@@ -34,6 +34,7 @@ import {
 	reset,
 	start,
 	tick,
+	underway,
 	type Stopwatch as Watch,
 } from '$lib/stopwatch';
 import { restoredStopwatch, useStopwatchDraft } from '$lib/stopwatchDraft';
@@ -161,6 +162,12 @@ export function Stopwatch({
 		setWatch((s) => lap(tick(s, ms)));
 	};
 	const clear = () => setWatch(reset);
+	// The full-screen clock's Close (#131): time and laps gone, then the clock
+	// shut. Back and Escape shut it and keep them.
+	const clearAndClose = () => {
+		clear();
+		onOpenChange(false);
+	};
 	const toggle = () => (watch.running ? hold() : begin());
 	useImperativeHandle(ref, () => ({ pause: hold }));
 
@@ -182,6 +189,7 @@ export function Stopwatch({
 				onToggle={toggle}
 				onLap={mark}
 				onReset={clear}
+				onResetAndClose={clearAndClose}
 			/>
 			<LapAnnouncer laps={laps} />
 			<p id={readingId} className="sr-only">
@@ -274,6 +282,7 @@ function FullScreenStopwatch({
 	onToggle,
 	onLap,
 	onReset,
+	onResetAndClose,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
@@ -284,12 +293,20 @@ function FullScreenStopwatch({
 	onToggle: () => void;
 	onLap: () => void;
 	onReset: () => void;
+	/** The header's Close: cleared, then closed. */
+	onResetAndClose: () => void;
 }) {
 	const face = stopwatchClock(watch.elapsed, getLocale());
+	// One reading for both, so Close is never there without asking: stopped at
+	// zero there is nothing to clear, and Back alone; running, even before its
+	// first tick, or holding time, Close is there and asks for a second tap.
+	const progress = underway(watch);
 	return (
 		<FullScreenClock
 			open={open}
 			onOpenChange={onOpenChange}
+			onResetAndClose={progress ? onResetAndClose : undefined}
+			closeAsks={progress}
 			label={m.timer_stopwatch()}
 			status={status}
 			name={m.timer_stopwatch()}

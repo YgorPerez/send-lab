@@ -39,12 +39,29 @@
 // A `summary` replaces the face with what the clock is about to run — the
 // ready state, before Start — so tapping a protocol lands on its shape, not on
 // a number nobody is counting yet.
+//
+// TWO WAYS OUT (#131, spec #130)
+// ------------------------------
+// Leaving a run and abandoning it are different things, so the header has one
+// control for each. Back (‹), on the left, closes the clock and leaves the run
+// as it is, running or paused. Close (✕), on the right, resets the run and then
+// closes: what the clock hands in as `onResetAndClose`, and only where there is
+// something to reset, so the ready state and a stopwatch at zero have Back
+// alone. Everything else that closes a dialog — Escape, a tap outside, the
+// system back gesture — is Back's: a shortcut never throws a run away.
+//
+// Where there is progress to lose, Close asks for a second tap (#132): the
+// first arms it and a ring runs once round it for 3 seconds, a second inside
+// that resets and closes, and any other tap in the clock disarms it. The clock
+// says when there is progress (`closeAsks`); the arming is this file's, since
+// both clocks share the header it guards.
 import { Dialog } from '@base-ui/react/dialog';
-import { X } from 'lucide-react';
-import { type ReactNode, useEffect, useId } from 'react';
+import { ChevronLeft, X } from 'lucide-react';
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
+import { useCloseRequest } from './ui/closeRequest';
 import { button } from './ui/variants';
 
 /**
@@ -156,6 +173,95 @@ export function Face({
 	);
 }
 
+/** The header's two controls, Back and Close: a 48px square, outlined in the
+ *  ink on a field (#110) and the quiet control off one. */
+function headerControl(onField: boolean): string {
+	return onField
+		? 'relative flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
+		: button({ kind: 'quiet', size: 'touch', class: 'relative size-12 shrink-0 self-start px-0' });
+}
+
+/**
+ * Close armed (#132): a ring once round the button for the window, the only
+ * sign that a second tap resets and closes — no overlay, no icon swap, no
+ * text. Drawn in the button's own ink, so it shows on a field and off one,
+ * 3.5px outside the button's edge so it never sits on the field's outline.
+ * It runs from the top round the outer edge and its end draws back to the
+ * top, so what is left at the last is on the screen's edge: emptied the other
+ * way, the last third hooked round the session's time left beside it and read
+ * as a bracket on that number (#132's critique).
+ *
+ * The drawing is part of Close while it is armed: a tap on the ring, up to
+ * 5px outside the button, is a tap on Close, not a stray tap that disarms it.
+ *
+ * With motion, `.a-ring` sweeps it in one pass (`app.css`). Under reduced
+ * motion there is no animation: the drawing is the seconds left, stepped once
+ * a second, three steps. A countdown is a reading of time, like the face
+ * changing every second, not an animation (ADR 0011's note).
+ */
+function ArmedRing({ left, onField }: { left: number; onField: boolean }) {
+	// The button's corner (14px on a field, `rounded-md`'s 8px off one) plus
+	// the 3.5px the stroke's centre sits outside it, on a 55px square inset
+	// 1.5px in the 58px drawing: the button's 48px and 5px either side. An
+	// absolute child is placed from inside the border, so the drawing steps
+	// out by the border too (2px on a field, 1px off one), or the ring would
+	// sit on the field's outline.
+	const r = onField ? 17.5 : 11.5;
+	const [lo, hi] = [1.5 + r, 56.5 - r];
+	const d = `M29 1.5H${hi}A${r} ${r} 0 0 1 56.5 ${lo}V${hi}A${r} ${r} 0 0 1 ${hi} 56.5H${lo}A${r} ${r} 0 0 1 1.5 ${hi}V${lo}A${r} ${r} 0 0 1 ${lo} 1.5Z`;
+	const gone = ((ARMED_SECONDS - left) / ARMED_SECONDS) * 100;
+	return (
+		<svg
+			data-ring
+			aria-hidden="true"
+			viewBox="0 0 58 58"
+			className={cn(
+				'absolute size-[58px] overflow-visible',
+				onField ? '-top-[7px] -left-[7px]' : '-top-[6px] -left-[6px]',
+			)}
+		>
+			<path
+				d={d}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth={3}
+				pathLength={100}
+				strokeDasharray="100 100"
+				className="a-ring"
+				style={{ strokeDashoffset: gone, animationDuration: `${ARMED_SECONDS}s` }}
+			/>
+		</svg>
+	);
+}
+
+/**
+ * The running title's size: 30px, or less when the label does not fit between
+ * Back and Close. With Back beside it (#131) a phone on its side has 168px
+ * for the title, 114px with the time left beside it, and `DESAQUECIMENTO` is
+ * 206px and `ENTRE SÉRIES` 164px at 30px. Sized by glyph count, as `faceSize`
+ * is, against the title's own width (`cqi`): measured in Barlow Condensed
+ * caps, a letter of a long label takes at most 0.54em with its tracking
+ * (`COOLDOWN`) and a space about half that. The short labels that take more
+ * (`WORK`, 0.57em) are never short of room.
+ *
+ * A label of two words may instead take two lines at up to 24px, two lines
+ * being the 48px of Back and Close beside it, so the header never grows and
+ * the face never moves at a segment change. Whichever is larger wins: at
+ * 114px `ENTRE SÉRIES` is 24px on two lines, not 18px on one, under the time
+ * left's 24px number (#131's critique).
+ */
+function titleSize(label: string): string {
+	const words = label.split(' ');
+	const em = (glyphs: number) => (glyphs * 0.54).toFixed(2);
+	const oneLine = `min(30px, calc(100cqi / ${em(label.length - (words.length - 1) / 2)}))`;
+	if (words.length === 1) return oneLine;
+	const longest = Math.max(...words.map((w) => w.length));
+	return `max(${oneLine}, min(24px, calc(100cqi / ${em(longest)})))`;
+}
+
+/** How long Close stays armed for its second tap (#132). */
+const ARMED_SECONDS = 3;
+
 /** Where the clock is, in a word and a colour: a segment, or running/paused. */
 export interface ClockStatus {
 	label: string;
@@ -165,6 +271,8 @@ export interface ClockStatus {
 export function FullScreenClock({
 	open,
 	onOpenChange,
+	onResetAndClose,
+	closeAsks = false,
 	label,
 	status,
 	field = null,
@@ -182,7 +290,16 @@ export function FullScreenClock({
 	aside,
 }: {
 	open: boolean;
+	/** Opens the clock, and closes it leaving the run as it is: Back, Escape, a
+	 *  tap outside, the system back gesture. */
 	onOpenChange: (open: boolean) => void;
+	/** Close (✕): resets the run and closes the clock — on the second tap where
+	 *  `closeAsks`. Absent where there is nothing to reset, and then only Back
+	 *  shows. */
+	onResetAndClose?: () => void;
+	/** Close asks for a second tap first (#132): there is progress to lose — a
+	 *  protocol running or paused, a stopwatch with time on it. */
+	closeAsks?: boolean;
 	/** The dialog's accessible name. */
 	label: string;
 	/** The title: where the clock is. */
@@ -211,8 +328,8 @@ export function FullScreenClock({
 	layer?: ReactNode;
 	/** A live region, if the clock says its changes out loud. */
 	announcer?: ReactNode;
-	/** What the protocol can do besides run, beside Close in the ready state's
-	 *  header — the list row's own ⋯ (#110, #111). */
+	/** What the protocol can do besides run, at the right of the ready state's
+	 *  header, where there is no Close — the list row's own ⋯ (#110, #111). */
 	actions?: ReactNode;
 	/** A short reading beside Close once the clock is past its ready state —
 	 *  the protocol's session time left (#129) — in the header's own colour. */
@@ -236,11 +353,59 @@ export function FullScreenClock({
 		root.classList.add('clock-field');
 		return () => root.classList.remove('clock-field');
 	}, [open]);
+	// The system back gesture is Back (#131): without a watcher it went back a
+	// page, out from under a clock that was counting. With the ready state's ⋯
+	// open, it closes the menu first, as Escape does (#130's review).
+	useCloseRequest(open, () => onOpenChange(false));
+	// Close armed (#132): the seconds left in which a second tap resets and
+	// closes, 0 when it is not armed. Counted down once a second, so the ring
+	// can step by the second under reduced motion.
+	const [armedFor, setArmedFor] = useState(0);
+	// However the clock closed, it opens disarmed: set from the change of `open`
+	// itself, React's idiom for state that follows a prop (as `Timer`'s
+	// `openSeen`), so no frame of the reopened clock is armed.
+	const [openSeen, setOpenSeen] = useState(open);
+	if (open !== openSeen) {
+		setOpenSeen(open);
+		setArmedFor(0);
+	}
+	const armed = armedFor > 0;
+	useEffect(() => {
+		if (!armed) return;
+		const id = setInterval(() => setArmedFor((s) => s - 1), 1000);
+		return () => clearInterval(id);
+	}, [armed]);
+	// Any other tap — the face, the control row, Back — disarms Close and goes
+	// on to do its own job: heard on the way down, before the control acts.
+	const closeRef = useRef<HTMLButtonElement>(null);
+	const disarmOnOtherTap = (event: { target: EventTarget }) => {
+		if (armed && !closeRef.current?.contains(event.target as Node)) setArmedFor(0);
+	};
+	// Whether the live region says the arming. With focus on Close, its new
+	// name is read out, and the region saying the same words in the same render
+	// was the arming said twice (#130's review); with focus elsewhere (a tap
+	// that does not focus, as on iOS) the name change may not be read, so the
+	// region says it.
+	const [voiced, setVoiced] = useState(false);
+	const onClose = () => {
+		if (closeAsks && !armed) {
+			setArmedFor(ARMED_SECONDS);
+			setVoiced(document.activeElement !== closeRef.current);
+		} else onResetAndClose?.();
+	};
+	// A browser presses a focused button on Enter's keydown, and a held key
+	// repeats it: one keypress armed Close and then confirmed it. A repeat is
+	// the same press, so it presses nothing; letting go and pressing again is
+	// the second press. Space presses on its keyup, which does not repeat.
+	const holdRepeat = (event: KeyboardEvent) => {
+		if (event.repeat && event.key === 'Enter') event.preventDefault();
+	};
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Popup
 					aria-label={label}
+					onClickCapture={disarmOnOtherTap}
 					style={onField ? { background: field, color: 'var(--bg)' } : undefined}
 					className={cn(
 						'fixed inset-0 z-50 flex h-dvh w-dvw flex-col overflow-y-auto bg-bg text-ink transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
@@ -254,19 +419,34 @@ export function FullScreenClock({
 				>
 					{layer}
 					{announcer}
+					{/* Arming said once, out loud (#132), where Close's new name is not
+					    what gets read: a tap that left focus elsewhere. Never shown. */}
+					<p aria-live="assertive" className="sr-only">
+						{armed && voiced ? m.timer_reset_close_armed() : ''}
+					</p>
 					<p id={readingId} className="sr-only">
 						{spoken}
 					</p>
-					<div className="flex items-center gap-3 px-4 pt-4 pl-5 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-1">
-						<div className="min-w-0 flex-1">
+					<div className="flex items-center gap-3 px-4 pt-4 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-1">
+						{/* Back, not "back a segment" (⏮), which can be on the same
+						    screen: this one leaves the clock. The chevron is 26px to the
+						    X's 22px because it draws half the X's ink, and the way out
+						    that keeps the run must not be the fainter of the two. */}
+						<Dialog.Close aria-label={m.btn_back()} className={headerControl(onField)}>
+							<ChevronLeft size={26} aria-hidden="true" />
+						</Dialog.Close>
+						<div className="@container min-w-0 flex-1">
 							{summary ? (
 								<Dialog.Title className="text-[25px] leading-[1.15] font-semibold tracking-[-0.015em] text-ink">
 									{label}
 								</Dialog.Title>
 							) : (
 								<Dialog.Title
-									className="display text-[30px] leading-none font-bold tracking-[0.04em] uppercase"
-									style={onField ? undefined : { color: status.color }}
+									className="display leading-none font-bold tracking-[0.04em] uppercase"
+									style={{
+										fontSize: titleSize(status.label),
+										...(onField ? {} : { color: status.color }),
+									}}
 								>
 									{status.label}
 								</Dialog.Title>
@@ -276,20 +456,25 @@ export function FullScreenClock({
 							) : null}
 						</div>
 						{summary ? actions : aside}
-						<Dialog.Close
-							aria-label={m.btn_close()}
-							className={
-								onField
-									? 'flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
-									: button({
-											kind: 'quiet',
-											size: 'touch',
-											class: 'size-12 shrink-0 self-start px-0',
-										})
-							}
-						>
-							<X size={22} />
-						</Dialog.Close>
+						{onResetAndClose ? (
+							<button
+								ref={closeRef}
+								type="button"
+								aria-label={armed ? m.timer_reset_close_armed() : m.timer_reset_close()}
+								onClick={onClose}
+								onKeyDown={holdRepeat}
+								className={cn(
+									headerControl(onField),
+									// The focus ring sits 2–4px outside the button, where the armed
+									// ring is drawn; on a field both are the ink, and the sweep was
+									// lost under it. While armed, focus is drawn inside the edge.
+									armed && 'focus-visible:outline-offset-[-7px]',
+								)}
+							>
+								<X size={22} aria-hidden="true" />
+								{armed ? <ArmedRing left={armedFor} onField={onField} /> : null}
+							</button>
+						) : null}
 					</div>
 
 					{summary ? (

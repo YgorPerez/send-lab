@@ -49,3 +49,15 @@ nothing and gives the check something ambiguous to measure.
   by default**, so both passes were reduced and a green result meant nothing.
 - Not in `pnpm verify`, which stays jsdom-only and browserless. `pnpm build &&
   pnpm check:motion`, beside `check:contrast`.
+
+## Note: a countdown is a reading, not an animation (#132)
+
+The full-screen clock's Close arms for 3 seconds before it resets a run, and a
+ring round it shows the window running out. With motion allowed the ring sweeps
+(`.a-ring` in `src/app.css`). Under reduced motion it does not sweep, and it
+does not vanish in one frame either: it steps once a second, three steps, from
+the seconds the clock counts. That is not an exception to this ADR. A countdown
+is a reading of time, like the face changing every second, and the face is not
+an animation. Removing the steps would leave the athlete no sign that Close is
+armed, so do not "fix" it. No CSS animation or transition runs for it under
+reduced motion, so `pnpm check:motion` has nothing to measure there.

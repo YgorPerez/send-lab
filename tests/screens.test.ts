@@ -631,7 +631,7 @@ describe('the full-screen clock on Train', () => {
 			// Running, the clock says how long the whole session has left, and says
 			// it to a screen reader too.
 			// In the header, just left of Close, where the athlete asked for it.
-			expect(labelled(clock, 'Close')?.previousElementSibling?.textContent).toMatch(
+			expect(labelled(clock, 'Reset and close')?.previousElementSibling?.textContent).toMatch(
 				/^Left\d+:\d\d$/,
 			);
 			const described = () =>
@@ -639,7 +639,9 @@ describe('the full-screen clock on Train', () => {
 			expect(described()).toMatch(timeLeft);
 			press(worded(clock, 'Pause'));
 			expect(described()).toMatch(timeLeft);
-			expect(labelled(clock, 'Close')?.previousElementSibling?.textContent).toMatch(/^Left/);
+			expect(labelled(clock, 'Reset and close')?.previousElementSibling?.textContent).toMatch(
+				/^Left/,
+			);
 			// Paused, Reset stands where skip was (#110): it only exists while
 			// nothing counts, so a slip mid-hang cannot throw the run away.
 			expect(labelled(clock, 'Skip to the next segment')).toBeNull();
@@ -692,7 +694,7 @@ describe('the full-screen clock on Train', () => {
 			const reset = labelled(clock, 'Reset');
 			if (reset) press(reset);
 			const name = clock.getAttribute('aria-label');
-			press(labelled(clock, 'Close'));
+			press(labelled(clock, 'Back'));
 			expect(labelled(document, 'Full-screen clock')?.textContent).not.toMatch(shapeOrTotal);
 
 			// Run it to the end. A closed clock's dialog is gone from the document,
@@ -719,10 +721,10 @@ describe('the full-screen clock on Train', () => {
 			expect(last).toBe(true);
 			expect(run.getAttribute('aria-label')).toBe('Done');
 			expect(run.textContent).not.toMatch(/\d+:\d\d left/);
-			expect(labelled(run, 'Close')?.previousElementSibling?.textContent ?? '').not.toMatch(
-				/^Left/,
-			);
-			press(labelled(run, 'Close'));
+			expect(
+				labelled(run, 'Reset and close')?.previousElementSibling?.textContent ?? '',
+			).not.toMatch(/^Left/);
+			press(labelled(run, 'Back'));
 			expect(labelled(document, 'Full-screen clock')?.textContent).not.toMatch(shapeOrTotal);
 
 			press(labelled(document, 'Full-screen clock'));
@@ -730,6 +732,743 @@ describe('the full-screen clock on Train', () => {
 			expect(again?.getAttribute('aria-label')).toBe(name);
 			expect(again?.textContent).toContain('in total');
 			expect(worded(again ?? document, 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+});
+
+// #131 (spec #130): two ways out of the full-screen clock. Back (‹, top left)
+// leaves and keeps the run as it is; Close (✕, top right) resets the run and
+// leaves. Where there is nothing to reset only Back shows. Escape, a tap outside
+// and the system back gesture are Back's: a shortcut never throws a run away.
+describe('Back and Close on the full-screen clock', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const labelled = (scope: ParentNode, label: string) =>
+		scope.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const back = () => labelled(dialog() ?? document, 'Back');
+	const close = () => labelled(dialog() ?? document, 'Reset and close');
+	/** Close where there is progress: armed by the first tap, so a second one
+	 *  inside the window (#132). */
+	const armed = () => labelled(dialog() ?? document, 'Tap again to reset and close');
+	const closeTwice = () => {
+		press(close());
+		press(armed());
+	};
+
+	async function mount(path: string) {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: [path] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		return root;
+	}
+	/** Train's clock, opened from its strip on its ready state. */
+	function openReady() {
+		openProtocolClock('/train');
+		const reset = labelled(dialog() ?? document, 'Reset');
+		if (reset) press(reset);
+		while (close() || armed()) press(close() ?? armed());
+		if (!dialog()) openProtocolClock('/train');
+	}
+
+	test('the ready state has only Back, and Back leaves', async () => {
+		const root = await mount('/train');
+		try {
+			openReady();
+			expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+			// Back, not "Back a segment": the ⏮ in the running row is that one.
+			expect(back()).toBeTruthy();
+			expect(close()).toBeNull();
+			expect(labelled(dialog() ?? document, 'Close')).toBeNull();
+			press(back());
+			expect(dialog()).toBeNull();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('Back leaves a protocol underway where it was, running or paused', async () => {
+		const root = await mount('/train');
+		const strip = () => document.querySelector('main')?.textContent ?? '';
+		try {
+			openReady();
+			press(worded(dialog() ?? document, 'Start'));
+			press(labelled(dialog() ?? document, 'Skip to the next segment'));
+			const segment = dialog()?.getAttribute('aria-label') ?? '';
+			expect(segment).toBe('Work');
+			// Underway, both: Back on the left of the title, Close on the right.
+			const header = back()?.parentElement;
+			expect(header?.firstElementChild).toBe(back());
+			expect(header?.lastElementChild).toBe(close());
+
+			// Running: the strip goes on counting the same segment.
+			press(back());
+			expect(dialog()).toBeNull();
+			expect(strip()).toContain(segment);
+			expect(worded(document.querySelector('main') ?? document, 'Pause')).toBeTruthy();
+
+			// Paused: the strip holds it paused at the same point.
+			openProtocolClock('/train');
+			press(worded(dialog() ?? document, 'Pause'));
+			press(back());
+			expect(dialog()).toBeNull();
+			expect(strip()).toContain(segment);
+			expect(worded(document.querySelector('main') ?? document, 'Resume')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('Close leaves a protocol idle, underway or done, and closes', async () => {
+		const root = await mount('/train');
+		const resume = () => worded(document.querySelector('main') ?? document, 'Resume');
+		try {
+			openReady();
+			press(worded(dialog() ?? document, 'Start'));
+			closeTwice();
+			expect(dialog()).toBeNull();
+			// Idle: the strip is the protocol's name and Start, no number.
+			expect(worded(document.querySelector('main') ?? document, 'Start')).toBeTruthy();
+			expect(resume()).toBeUndefined();
+			openProtocolClock('/train');
+			expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+			expect(close()).toBeNull();
+
+			// Paused mid-run, the same.
+			press(worded(dialog() ?? document, 'Start'));
+			press(worded(dialog() ?? document, 'Pause'));
+			closeTwice();
+			expect(dialog()).toBeNull();
+			expect(resume()).toBeUndefined();
+
+			// Done: nothing left to lose, so one tap resets and closes (#132).
+			openProtocolClock('/train');
+			press(worded(dialog() ?? document, 'Start'));
+			for (let i = 0; i < 200 && dialog()?.getAttribute('aria-label') !== 'Done'; i++)
+				press(labelled(dialog() ?? document, 'Skip to the next segment'));
+			expect(dialog()?.getAttribute('aria-label')).toBe('Done');
+			press(close());
+			expect(dialog()).toBeNull();
+			expect(labelled(document, 'Full-screen clock')?.textContent).not.toContain('Done');
+			expect(worded(document.querySelector('main') ?? document, 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('the stopwatch: Back keeps time and laps, Close clears them', async () => {
+		const root = await mount('/timer');
+		/** Let the stopwatch's 100ms tick run a couple of times, on the real clock. */
+		const count = () => act(() => new Promise((resolve) => setTimeout(resolve, 250)));
+		const laps = () => dialog()?.querySelector('section[aria-label="Laps"]') ?? null;
+		const bar = () =>
+			miniBar()?.querySelector<HTMLButtonElement>('button[aria-label="Full-screen stopwatch"]');
+		try {
+			press(listRow('Stopwatch'));
+			const pause = worded(dialog() ?? document, 'Pause');
+			if (pause) press(pause);
+			while (close() || armed()) press(close() ?? armed());
+			if (!dialog()) press(listRow('Stopwatch'));
+
+			// At zero with no laps there is nothing to reset: Back alone.
+			expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+			expect(back()).toBeTruthy();
+			expect(close()).toBeNull();
+
+			press(worded(dialog() ?? document, 'Start'));
+			await count();
+			press(labelled(dialog() ?? document, 'Lap'));
+			expect(close()).toBeTruthy();
+			press(back());
+			expect(dialog()).toBeNull();
+			expect(bar()).toBeTruthy();
+
+			press(bar());
+			expect(laps()).toBeTruthy();
+			press(worded(dialog() ?? document, 'Pause'));
+			press(back());
+			press(bar());
+			// Back where it was: paused, its time and its lap kept.
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			expect(laps()).toBeTruthy();
+
+			closeTwice();
+			expect(dialog()).toBeNull();
+			expect(bar()).toBeFalsy();
+			press(listRow('Stopwatch'));
+			expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+			expect(laps()).toBeNull();
+			expect(close()).toBeNull();
+			press(back());
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('Escape is Back: it closes and keeps the run', async () => {
+		const root = await mount('/train');
+		try {
+			openReady();
+			press(worded(dialog() ?? document, 'Start'));
+			const segment = dialog()?.getAttribute('aria-label') ?? '';
+			act(() => {
+				dialog()?.dispatchEvent(
+					new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+				);
+			});
+			expect(dialog()).toBeNull();
+			expect(document.querySelector('main')?.textContent).toContain(segment);
+			expect(worded(document.querySelector('main') ?? document, 'Pause')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// The system back gesture reaches a page as a close request, which a
+	// `CloseWatcher` hears (Chrome on Android); jsdom has none, so one is stood in.
+	test('the system back gesture is Back: it closes and keeps the run', async () => {
+		const watchers: { onclose: (() => void) | null; destroyed: boolean }[] = [];
+		vi.stubGlobal(
+			'CloseWatcher',
+			class {
+				onclose: (() => void) | null = null;
+				destroyed = false;
+				constructor() {
+					watchers.push(this);
+				}
+				destroy() {
+					this.destroyed = true;
+				}
+			},
+		);
+		const root = await mount('/train');
+		try {
+			openReady();
+			press(worded(dialog() ?? document, 'Start'));
+			const segment = dialog()?.getAttribute('aria-label') ?? '';
+			const live = watchers.filter((w) => !w.destroyed);
+			expect(live).toHaveLength(1);
+			// As the platform does: a watcher that closes is spent.
+			act(() => {
+				live[0].destroyed = true;
+				live[0].onclose?.();
+			});
+			expect(dialog()).toBeNull();
+			expect(document.querySelector('main')?.textContent).toContain(segment);
+			expect(worded(document.querySelector('main') ?? document, 'Pause')).toBeTruthy();
+			// Closed, it no longer listens: the gesture goes back to the page.
+			expect(watchers.every((w) => w.destroyed)).toBe(true);
+		} finally {
+			act(() => root.unmount());
+			vi.unstubAllGlobals();
+		}
+	});
+});
+
+// A menu inside the clock — the ready state's ⋯ on the Timer screen — is a
+// popup over a popup, and a close request is for the top one (#130's review).
+// The browser's part is stood in: Android's back reaches the newest live
+// `CloseWatcher`, which closes; Escape is a keydown first, and reaches the
+// watchers only if no one cancelled it.
+describe('a close request with a menu open in the full-screen clock', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+
+	type Stand = { onclose: (() => void) | null; destroyed: boolean };
+	let watchers: Stand[] = [];
+	/** How many close requests reached a watcher. */
+	let heard = 0;
+	beforeEach(() => {
+		overwriteGetLocale(() => 'en-US');
+		watchers = [];
+		heard = 0;
+		vi.stubGlobal(
+			'CloseWatcher',
+			class {
+				onclose: (() => void) | null = null;
+				destroyed = false;
+				constructor() {
+					watchers.push(this);
+				}
+				destroy() {
+					this.destroyed = true;
+				}
+			},
+		);
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	const request = () => {
+		const w = watchers.findLast((x) => !x.destroyed);
+		if (!w) return;
+		heard++;
+		w.destroyed = true;
+		w.onclose?.();
+	};
+	const back = () => act(request);
+	const pressEscape = () =>
+		act(() => {
+			const down = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+			(document.activeElement ?? document.body).dispatchEvent(down);
+			if (!down.defaultPrevented) request();
+		});
+	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const menu = () => document.querySelector('[role="menu"]');
+	const more = () =>
+		dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Actions for Warm-up hangs"]');
+
+	async function mount() {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: ['/timer'] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		return root;
+	}
+	async function openMenu() {
+		if (!dialog()) openProtocolClock('/timer');
+		expect(more(), 'the ready state’s ⋯').toBeTruthy();
+		act(() => more()?.click());
+		expect(menu()).toBeTruthy();
+		await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+	}
+
+	test('the system back gesture closes the menu, and the next one the clock', async () => {
+		const root = await mount();
+		try {
+			await openMenu();
+			back();
+			expect(menu()).toBeNull();
+			expect(dialog()).toBeTruthy();
+			// The clock still hears the gesture: the next one is Back.
+			back();
+			expect(dialog()).toBeNull();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('Escape closes the menu, and the next one the clock, each once', async () => {
+		const root = await mount();
+		try {
+			await openMenu();
+			pressEscape();
+			expect(menu()).toBeNull();
+			expect(dialog()).toBeTruthy();
+			pressEscape();
+			expect(dialog()).toBeNull();
+			// Each Escape was taken by the popup it closed; none went on to the
+			// clock's watcher and closed it a second time.
+			expect(heard).toBe(0);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+});
+
+// #132 (spec #130): Close throws a run away, so where there is progress — a
+// protocol running or paused, a stopwatch with time on it — it asks for a second
+// tap. The first arms it, and a ring runs once round it for 3 seconds; a second
+// tap inside that window resets and closes, and when the ring runs out Close
+// disarms. The window is pinned on faked timers, which also drive the clocks'
+// own ticks, so "still counting" is read off the face.
+describe('Close asks for a second tap on the full-screen clock', () => {
+	beforeAll(() => {
+		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+	});
+	beforeEach(() => overwriteGetLocale(() => 'en-US'));
+	// The suite fakes `Date` alone; these fake the timers too, from after the
+	// route has loaded, and hand the suite its clock back.
+	const fakeTimers = () => {
+		vi.useFakeTimers({
+			toFake: ['Date', 'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance'],
+		});
+		vi.setSystemTime(THURSDAY);
+	};
+	afterEach(() => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(THURSDAY);
+	});
+
+	const ARMED = 'Tap again to reset and close';
+	const press = (el: HTMLButtonElement | null | undefined) => {
+		expect(el, 'button to press').toBeTruthy();
+		act(() => el?.click());
+	};
+	const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
+	const labelled = (scope: ParentNode, label: string) =>
+		scope.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+	const worded = (scope: ParentNode, text: string) =>
+		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
+	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+	const inClock = (label: string) => labelled(dialog() ?? document, label);
+	const close = () => inClock('Reset and close');
+	const armed = () => inClock(ARMED);
+	/** The face's number, as drawn. */
+	const face = () =>
+		[...(dialog()?.querySelectorAll<HTMLButtonElement>('button[aria-describedby]') ?? [])][0]
+			?.textContent ?? '';
+	const strip = () => document.querySelector('main') ?? document;
+
+	async function mount(path: string) {
+		const router = createRouter({
+			routeTree,
+			history: createMemoryHistory({ initialEntries: [path] }),
+		});
+		await router.load();
+		const root = createRoot(document);
+		act(() => root.render(createElement(RouterProvider, { router } as never)));
+		return root;
+	}
+	/** Train's clock, open on its ready state whatever an earlier test left. */
+	function openReady() {
+		openProtocolClock('/train');
+		const reset = inClock('Reset');
+		if (reset) press(reset);
+		while (close() || armed()) press(close() ?? armed());
+		if (!dialog()) openProtocolClock('/train');
+		expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+	}
+
+	test('with progress, one tap arms and leaves the run counting; a second resets and closes', async () => {
+		const root = await mount('/train');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			wait(1000);
+			press(close());
+			// Armed: still open, still running, and Close says what a tap does now.
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			expect(close()).toBeNull();
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			const before = face();
+			wait(2000);
+			expect(face()).not.toBe(before);
+			// 2.999 s after the first tap: still armed, so this one resets and closes.
+			wait(999);
+			press(armed());
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Start')).toBeTruthy();
+			expect(worded(strip(), 'Resume')).toBeUndefined();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('with no second tap Close disarms after 3 s, and the next tap arms again', async () => {
+		const root = await mount('/train');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			press(worded(dialog() ?? document, 'Pause'));
+			const paused = face();
+			press(close());
+			wait(2999);
+			expect(armed()).toBeTruthy();
+			wait(1);
+			// Run out: disarmed, and nothing has changed.
+			expect(armed()).toBeNull();
+			expect(close()).toBeTruthy();
+			expect(face()).toBe(paused);
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// So the next tap arms again rather than throwing the run away.
+			press(close());
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			expect(face()).toBe(paused);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('a run that reaches Done inside the window leaves Close armed', async () => {
+		const root = await mount('/train');
+		const spoken = () =>
+			[...(dialog()?.querySelectorAll('.sr-only') ?? [])].map((el) => el.textContent).join(' ');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			for (let i = 0; i < 200 && !spoken().includes('Next up: Done'); i++)
+				press(inClock('Skip to the next segment'));
+			// The last segment, counted down to its last two seconds.
+			for (let i = 0; i < 600 && face() !== '2'; i++) wait(1000);
+			expect(face()).toBe('2');
+			press(close());
+			wait(2000);
+			expect(dialog()?.getAttribute('aria-label')).toBe('Done');
+			expect(armed()).toBeTruthy();
+			press(armed());
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('any other tap disarms Close and does its own job', async () => {
+		const root = await mount('/train');
+		const segment = () => dialog()?.getAttribute('aria-label');
+		const faceButton = () =>
+			dialog()?.querySelector<HTMLButtonElement>('button[aria-describedby]') ?? null;
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(segment()).toBe('Prepare');
+
+			// The face: paused.
+			press(close());
+			press(faceButton());
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// ▶: running again.
+			press(close());
+			press(worded(dialog() ?? document, 'Resume'));
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			// ⏭: the next segment.
+			press(close());
+			press(inClock('Skip to the next segment'));
+			expect(armed()).toBeNull();
+			expect(segment()).toBe('Work');
+			// ⏮: back a segment.
+			press(close());
+			press(inClock('Back a segment'));
+			expect(armed()).toBeNull();
+			expect(segment()).toBe('Prepare');
+			// ⏸: paused.
+			press(close());
+			press(worded(dialog() ?? document, 'Pause'));
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// Back: left, with the run as it was, and the clock reopens disarmed.
+			press(close());
+			press(inClock('Back'));
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Resume')).toBeTruthy();
+			openProtocolClock('/train');
+			expect(armed()).toBeNull();
+			expect(close()).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('the stopwatch with time on it asks too, and Lap disarms', async () => {
+		const root = await mount('/timer');
+		const laps = () => dialog()?.querySelector('section[aria-label="Laps"]') ?? null;
+		try {
+			press(listRow('Stopwatch'));
+			const pause = worded(dialog() ?? document, 'Pause');
+			if (pause) press(pause);
+			while (close() || armed()) press(close() ?? armed());
+			if (!dialog()) press(listRow('Stopwatch'));
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			wait(1500);
+			press(close());
+			expect(armed()).toBeTruthy();
+			const before = face();
+			wait(500);
+			expect(face()).not.toBe(before);
+			press(inClock('Lap'));
+			expect(armed()).toBeNull();
+			expect(laps()).toBeTruthy();
+
+			press(close());
+			press(armed());
+			expect(dialog()).toBeNull();
+			press(listRow('Stopwatch'));
+			expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+			expect(laps()).toBeNull();
+			press(inClock('Back'));
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// A browser presses a focused button on Enter's keydown, and a held key
+	// repeats the keydown, so holding Enter on Close armed it and then confirmed
+	// it from one keypress (#130's review). jsdom presses nothing on a key, so
+	// the browser's part is stood in: a keydown nobody cancelled is a press.
+	test('a held Enter on Close arms it once; a second Enter resets and closes', async () => {
+		const root = await mount('/train');
+		const enter = (el: HTMLButtonElement | null | undefined, repeat = false) => {
+			expect(el, 'button to press').toBeTruthy();
+			act(() => {
+				el?.focus();
+				const down = new KeyboardEvent('keydown', {
+					key: 'Enter',
+					repeat,
+					bubbles: true,
+					cancelable: true,
+				});
+				if (el?.dispatchEvent(down)) el.click();
+			});
+		};
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			enter(close());
+			expect(armed()).toBeTruthy();
+			// The key held: its repeats are not a second press.
+			for (let i = 0; i < 10; i++) enter(armed(), true);
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			// Let go and pressed again: that is the second press.
+			enter(armed());
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// Running is progress from the press of Start (#130's review): before the
+	// first 100 ms tick there is no time on the watch yet, and Close was missing
+	// for that tick, then there and asking.
+	test('a running stopwatch has Close, asking, before its first tick', async () => {
+		const root = await mount('/timer');
+		try {
+			press(listRow('Stopwatch'));
+			const pause = worded(dialog() ?? document, 'Pause');
+			if (pause) press(pause);
+			while (close() || armed()) press(close() ?? armed());
+			if (!dialog()) press(listRow('Stopwatch'));
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			press(close());
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			press(armed());
+			expect(dialog()).toBeNull();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// The ring is the only sign Close is armed: no icon swap, no text. It is
+	// drawn in the ink, and what jsdom can see is its resting drawing, the one
+	// reduced motion shows: a step a second, three steps (ADR 0011's note).
+	// The sweep over it is CSS, and `check:motion` measures what is left.
+	test('a ring in the ink shows Close armed, a step a second', async () => {
+		const root = await mount('/train');
+		const ring = () =>
+			close()?.querySelector('[data-ring]') ?? armed()?.querySelector('[data-ring]');
+		const drawn = () =>
+			armed()?.querySelector<SVGPathElement>('[data-ring] path')?.style.strokeDashoffset;
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(ring()).toBeFalsy();
+			const icon = close()?.innerHTML;
+			press(close());
+			expect(ring()).toBeTruthy();
+			expect(ring()?.getAttribute('aria-hidden')).toBe('true');
+			expect(armed()?.querySelector('[data-ring] path')?.getAttribute('stroke')).toBe(
+				'currentColor',
+			);
+			// The X is still the X, and nothing is written.
+			expect(armed()?.textContent).toBe('');
+			expect(armed()?.innerHTML).toContain(icon ?? '');
+			// Full, then its end draws back towards the top a third at a time, so
+			// what is left at the end is on the screen's edge, away from the
+			// session's time left (#132's critique).
+			expect(drawn()).toBe('0');
+			wait(1000);
+			expect(Number(drawn())).toBeCloseTo(100 / 3, 1);
+			wait(1000);
+			expect(Number(drawn())).toBeCloseTo(200 / 3, 1);
+			wait(1000);
+			expect(ring()).toBeFalsy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// A name change on the focused control is not read out by every screen
+	// reader, so arming is also said once, out loud, and never shown.
+	test('arming is said out loud, and the saying goes when Close disarms', async () => {
+		const root = await mount('/train');
+		const said = () =>
+			[...(dialog()?.querySelectorAll('[aria-live]') ?? [])].map((el) => el.textContent).join('|');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(said()).not.toContain(ARMED);
+			press(close());
+			expect(said()).toContain(ARMED);
+			wait(3000);
+			expect(said()).not.toContain(ARMED);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// The name and the live region in the same render said it twice to a
+	// screen reader on Close (#130's review). Where focus is on Close the new
+	// name is what is read, so the live region stays quiet; it speaks only for
+	// a tap that left focus elsewhere (the previous test).
+	test('with focus on Close, arming is said once, by its name', async () => {
+		const root = await mount('/train');
+		const said = () =>
+			[...(dialog()?.querySelectorAll('[aria-live]') ?? [])].map((el) => el.textContent).join('|');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			act(() => close()?.focus());
+			press(close());
+			expect(armed()).toBeTruthy();
+			expect(document.activeElement).toBe(armed());
+			expect(said()).not.toContain(ARMED);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('the armed name in pt-BR', async () => {
+		overwriteGetLocale(() => 'pt-BR');
+		const root = await mount('/train');
+		const open = () => press(labelled(document, 'Relógio em tela cheia'));
+		try {
+			open();
+			const reset = inClock('Zerar');
+			if (reset) press(reset);
+			while (inClock('Zerar e fechar') || inClock('Toque de novo para zerar e fechar'))
+				press(inClock('Zerar e fechar') ?? inClock('Toque de novo para zerar e fechar'));
+			if (!dialog()) open();
+			press(worded(dialog() ?? document, 'Iniciar'));
+			press(inClock('Zerar e fechar'));
+			expect(inClock('Toque de novo para zerar e fechar')).toBeTruthy();
+			press(inClock('Toque de novo para zerar e fechar'));
+			expect(dialog()).toBeNull();
 		} finally {
 			act(() => root.unmount());
 		}
@@ -853,8 +1592,8 @@ describe('the Timer screen runs one clock at a time, in the mini bar', () => {
 	const worded = (scope: ParentNode, text: string) =>
 		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
 	const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
-	const close = () =>
-		press(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]'));
+	const leave = () =>
+		press(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Back"]'));
 
 	test('a run left for the list goes on in the bar, and the bar goes back to its clock', async () => {
 		const router = createRouter({
@@ -870,7 +1609,7 @@ describe('the Timer screen runs one clock at a time, in the mini bar', () => {
 
 			openProtocolClock('/timer');
 			press(worded(dialog() ?? document, 'Start'));
-			close();
+			leave();
 			// Back on the list, still counting: the bar has the segment, the number
 			// and Pause, and the clock's own way back.
 			const bar = miniBar();
@@ -878,13 +1617,13 @@ describe('the Timer screen runs one clock at a time, in the mini bar', () => {
 			expect(worded(bar ?? document, 'Pause')).toBeTruthy();
 			press(bar?.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
 			expect(dialog()?.getAttribute('aria-label')).toBe('Prepare');
-			close();
+			leave();
 
 			// The stopwatch's row opens the stopwatch; starting it pauses the
 			// protocol, and the bar is now the stopwatch's.
 			press(listRow('Stopwatch'));
 			press(worded(dialog() ?? document, 'Start'));
-			close();
+			leave();
 			expect(miniBar()?.querySelector('button[aria-label="Full-screen stopwatch"]')).toBeTruthy();
 			expect(miniBar()?.querySelector('button[aria-label="Full-screen clock"]')).toBeNull();
 			expect(worded(miniBar() ?? document, 'Pause')).toBeTruthy();
@@ -893,19 +1632,19 @@ describe('the Timer screen runs one clock at a time, in the mini bar', () => {
 			// never "Start" mid-run), and that pauses the stopwatch.
 			openProtocolClock('/timer');
 			press(worded(dialog() ?? document, 'Resume'));
-			close();
+			leave();
 			expect(miniBar()?.querySelector('button[aria-label="Full-screen clock"]')).toBeTruthy();
 			expect(worded(miniBar() ?? document, 'Pause')).toBeTruthy();
 			// A look at another protocol while this one runs leaves it running: the
 			// other row opens its own ready state, and the bar is still this run's.
 			press(listRow('Tabata finisher'));
 			expect(dialog()?.getAttribute('aria-label')).toBe('Tabata finisher');
-			close();
+			leave();
 			expect(worded(miniBar() ?? document, 'Pause')).toBeTruthy();
 			press(miniBar()?.querySelector<HTMLButtonElement>('button[aria-label="Full-screen clock"]'));
 			expect(dialog()?.getAttribute('aria-label')).not.toBe('Tabata finisher');
 			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
-			close();
+			leave();
 			// Paused from the bar, it stays on the list, as a paused bar.
 			press(worded(miniBar() ?? document, 'Pause'));
 			expect(dialog()).toBeNull();
@@ -968,7 +1707,7 @@ describe('the stopwatch on the Timer screen', () => {
 			press(worded(dialog() ?? document, 'Pause'));
 			expect(resetButton()).toBeTruthy();
 			expect(dialog()?.innerHTML).not.toMatch(SEGMENT_COLOURS);
-			press(dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+			press(dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Back"]'));
 		} finally {
 			act(() => root.unmount());
 		}
@@ -980,7 +1719,7 @@ describe('the stopwatch on the Timer screen', () => {
 			openAtZero();
 			press(worded(dialog() ?? document, 'Start'));
 			await count();
-			press(dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+			press(dialog()?.querySelector<HTMLButtonElement>('button[aria-label="Back"]'));
 			expect(miniBar()?.querySelector('button[aria-label="Full-screen stopwatch"]')).toBeTruthy();
 		} finally {
 			act(() => first.unmount());
@@ -1165,8 +1904,7 @@ describe('the Timer screen keeps each protocol’s place', () => {
 	const worded = (scope: ParentNode, text: string) =>
 		[...scope.querySelectorAll('button')].find((b) => b.textContent?.trim() === text);
 	const clock = () => document.querySelector<HTMLElement>('[role="dialog"]');
-	const close = () =>
-		press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+	const leave = () => press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Back"]'));
 
 	test('a protocol left paused is still paused there after opening another', async () => {
 		const router = createRouter({
@@ -1186,20 +1924,20 @@ describe('the Timer screen keeps each protocol’s place', () => {
 			);
 			press(worded(clock() ?? document, 'Pause'));
 			expect(clock()?.getAttribute('aria-label')).toBe('Work');
-			close();
+			leave();
 
 			// The other saved protocol has no place: its row lands on the ready
 			// state, named for it, with one Start.
 			press(listRow('Tabata finisher'));
 			expect(clock()?.getAttribute('aria-label')).toBe('Tabata finisher');
 			expect(worded(clock() ?? document, 'Start')).toBeTruthy();
-			close();
+			leave();
 
 			// And the first is where it was left, paused, as every restored clock is.
 			press(listRow('Warm-up hangs'));
 			expect(clock()?.getAttribute('aria-label')).toBe('Work');
 			expect(worded(clock() ?? document, 'Resume')).toBeTruthy();
-			close();
+			leave();
 		} finally {
 			act(() => root.unmount());
 		}
@@ -1227,13 +1965,13 @@ describe('the Timer screen keeps each protocol’s place', () => {
 					),
 				);
 			expect(clock()?.getAttribute('aria-label')).toBe('Done');
-			close();
+			leave();
 
 			press(listRow('Tabata finisher'));
 			expect(clock()?.getAttribute('aria-label')).toBe('Tabata finisher');
 			expect(clock()?.textContent).toContain('in total');
 			expect(worded(clock() ?? document, 'Start')).toBeTruthy();
-			close();
+			leave();
 		} finally {
 			act(() => root.unmount());
 		}
@@ -1267,7 +2005,7 @@ describe('the Timer screen keeps each protocol’s place', () => {
 			).toBeTruthy();
 			// Opened, not started: the row starts nothing, and nothing is in the bar.
 			expect(worded(ready ?? document, 'Start')).toBeTruthy();
-			close();
+			leave();
 			expect(miniBar()).toBeNull();
 		} finally {
 			act(() => root.unmount());
@@ -1296,7 +2034,7 @@ describe('Recent on the Timer screen', () => {
 		if (reset && !reset.disabled) press(reset);
 		press(worded(clock() ?? document, 'Start'));
 		press(worded(clock() ?? document, 'Pause'));
-		press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Close"]'));
+		press(clock()?.querySelector<HTMLButtonElement>('button[aria-label="Back"]'));
 	};
 	const recent = () =>
 		[...document.querySelectorAll('main section')].find(
@@ -1356,10 +2094,10 @@ describe('the selected protocol on the Timer screen', () => {
 			current: b.getAttribute('aria-current'),
 			text: b.textContent ?? '',
 		}));
-	const close = () =>
+	const leave = () =>
 		act(() =>
 			document
-				.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')
+				.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Back"]')
 				?.click(),
 		);
 
@@ -1373,13 +2111,13 @@ describe('the selected protocol on the Timer screen', () => {
 		act(() => root.render(createElement(RouterProvider, { router } as never)));
 		try {
 			act(() => listRow('Tabata finisher')?.click());
-			close();
+			leave();
 			expect(marked()).toEqual([
 				{ current: 'true', text: expect.stringContaining('Tabata finisher') },
 			]);
 			// A preset in today's open group takes the mark from it.
 			act(() => listRow('Sloper bottom-edge hangs')?.click());
-			close();
+			leave();
 			const now = marked();
 			expect(now.length).toBeGreaterThan(0);
 			expect(now.every((r) => r.text.includes('Sloper bottom-edge hangs'))).toBe(true);

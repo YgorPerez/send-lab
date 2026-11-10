@@ -313,6 +313,8 @@
 	"timer_use": "Use in timer",
 	"timer_skip": "Skip to the next segment",
 	"timer_back": "Back a segment",
+	"timer_reset_close": "Reset and close",
+	"timer_reset_close_armed": "Tap again to reset and close",
 	"nav_timer": "Timer",
 	"timer_presets": "Presets",
 	"timer_group_count": "{n} presets",
