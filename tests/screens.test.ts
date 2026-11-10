@@ -1066,6 +1066,107 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 			act(() => root.unmount());
 		}
 	});
+
+	test('with no second tap Close disarms after 3 s, and the next tap arms again', async () => {
+		const root = await mount('/train');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			press(worded(dialog() ?? document, 'Pause'));
+			const paused = face();
+			press(close());
+			wait(2999);
+			expect(armed()).toBeTruthy();
+			wait(1);
+			// Run out: disarmed, and nothing has changed.
+			expect(armed()).toBeNull();
+			expect(close()).toBeTruthy();
+			expect(face()).toBe(paused);
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// So the next tap arms again rather than throwing the run away.
+			press(close());
+			expect(dialog()).toBeTruthy();
+			expect(armed()).toBeTruthy();
+			expect(face()).toBe(paused);
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('a run that reaches Done inside the window leaves Close armed', async () => {
+		const root = await mount('/train');
+		const spoken = () =>
+			[...(dialog()?.querySelectorAll('.sr-only') ?? [])].map((el) => el.textContent).join(' ');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			for (let i = 0; i < 200 && !spoken().includes('Next up: Done'); i++)
+				press(inClock('Skip to the next segment'));
+			// The last segment, counted down to its last two seconds.
+			for (let i = 0; i < 600 && face() !== '2'; i++) wait(1000);
+			expect(face()).toBe('2');
+			press(close());
+			wait(2000);
+			expect(dialog()?.getAttribute('aria-label')).toBe('Done');
+			expect(armed()).toBeTruthy();
+			press(armed());
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Start')).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('any other tap disarms Close and does its own job', async () => {
+		const root = await mount('/train');
+		const segment = () => dialog()?.getAttribute('aria-label');
+		const faceButton = () =>
+			dialog()?.querySelector<HTMLButtonElement>('button[aria-describedby]') ?? null;
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(segment()).toBe('Prepare');
+
+			// The face: paused.
+			press(close());
+			press(faceButton());
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// ▶: running again.
+			press(close());
+			press(worded(dialog() ?? document, 'Resume'));
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Pause')).toBeTruthy();
+			// ⏭: the next segment.
+			press(close());
+			press(inClock('Skip to the next segment'));
+			expect(armed()).toBeNull();
+			expect(segment()).toBe('Work');
+			// ⏮: back a segment.
+			press(close());
+			press(inClock('Back a segment'));
+			expect(armed()).toBeNull();
+			expect(segment()).toBe('Prepare');
+			// ⏸: paused.
+			press(close());
+			press(worded(dialog() ?? document, 'Pause'));
+			expect(armed()).toBeNull();
+			expect(worded(dialog() ?? document, 'Resume')).toBeTruthy();
+			// Back: left, with the run as it was, and the clock reopens disarmed.
+			press(close());
+			press(inClock('Back'));
+			expect(dialog()).toBeNull();
+			expect(worded(strip(), 'Resume')).toBeTruthy();
+			openProtocolClock('/train');
+			expect(armed()).toBeNull();
+			expect(close()).toBeTruthy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
 });
 
 // #112: the clock's ready state on Train adjusts the prescribed protocol with the

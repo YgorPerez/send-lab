@@ -51,7 +51,7 @@
 // system back gesture — is Back's: a shortcut never throws a run away.
 import { Dialog } from '@base-ui/react/dialog';
 import { ChevronLeft, X } from 'lucide-react';
-import { type ReactNode, useEffect, useEffectEvent, useId, useState } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import * as m from '$lib/paraglide/messages';
 import type { Segment } from '$lib/protocol';
 import { cn } from '$lib/utils';
@@ -329,6 +329,12 @@ export function FullScreenClock({
 		const id = setInterval(() => setArmedFor((s) => s - 1), 1000);
 		return () => clearInterval(id);
 	}, [armed]);
+	// Any other tap — the face, the control row, Back — disarms Close and goes
+	// on to do its own job: heard on the way down, before the control acts.
+	const closeRef = useRef<HTMLButtonElement>(null);
+	const disarmOnOtherTap = (event: { target: EventTarget }) => {
+		if (armed && !closeRef.current?.contains(event.target as Node)) setArmedFor(0);
+	};
 	const onClose = () => {
 		if (closeAsks && !armed) setArmedFor(ARMED_SECONDS);
 		else onResetAndClose?.();
@@ -338,6 +344,7 @@ export function FullScreenClock({
 			<Dialog.Portal>
 				<Dialog.Popup
 					aria-label={label}
+					onClickCapture={disarmOnOtherTap}
 					style={onField ? { background: field, color: 'var(--bg)' } : undefined}
 					className={cn(
 						'fixed inset-0 z-50 flex h-dvh w-dvw flex-col overflow-y-auto bg-bg text-ink transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0',
@@ -385,6 +392,7 @@ export function FullScreenClock({
 						{summary ? actions : aside}
 						{onResetAndClose ? (
 							<button
+								ref={closeRef}
 								type="button"
 								aria-label={armed ? m.timer_reset_close_armed() : m.timer_reset_close()}
 								onClick={onClose}
