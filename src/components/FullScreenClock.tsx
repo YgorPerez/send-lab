@@ -184,8 +184,14 @@ function headerControl(onField: boolean): string {
  * Close armed (#132): a ring once round the button for the window, the only
  * sign that a second tap resets and closes — no overlay, no icon swap, no
  * text. Drawn in the button's own ink, so it shows on a field and off one,
- * 3.5px outside the button's edge so it never sits on the field's outline,
- * and starting at the top, emptied clockwise as a clock hand sweeps.
+ * 3.5px outside the button's edge so it never sits on the field's outline.
+ * It runs from the top round the outer edge and its end draws back to the
+ * top, so what is left at the last is on the screen's edge: emptied the other
+ * way, the last third hooked round the session's time left beside it and read
+ * as a bracket on that number (#132's critique).
+ *
+ * The drawing is part of Close while it is armed: a tap on the ring, up to
+ * 5px outside the button, is a tap on Close, not a stray tap that disarms it.
  *
  * With motion, `.a-ring` sweeps it in one pass (`app.css`). Under reduced
  * motion there is no animation: the drawing is the seconds left, stepped once
@@ -209,7 +215,7 @@ function ArmedRing({ left, onField }: { left: number; onField: boolean }) {
 			aria-hidden="true"
 			viewBox="0 0 58 58"
 			className={cn(
-				'pointer-events-none absolute size-[58px] overflow-visible',
+				'absolute size-[58px] overflow-visible',
 				onField ? '-top-[7px] -left-[7px]' : '-top-[6px] -left-[6px]',
 			)}
 		>
@@ -221,7 +227,7 @@ function ArmedRing({ left, onField }: { left: number; onField: boolean }) {
 				pathLength={100}
 				strokeDasharray="100 100"
 				className="a-ring"
-				style={{ strokeDashoffset: gone === 0 ? 0 : -gone, animationDuration: `${ARMED_SECONDS}s` }}
+				style={{ strokeDashoffset: gone, animationDuration: `${ARMED_SECONDS}s` }}
 			/>
 		</svg>
 	);
@@ -411,6 +417,11 @@ export function FullScreenClock({
 				>
 					{layer}
 					{announcer}
+					{/* Arming said once, out loud (#132): not every screen reader reads
+					    a new name on the control that has focus. Never shown. */}
+					<p aria-live="assertive" className="sr-only">
+						{armed ? m.timer_reset_close_armed() : ''}
+					</p>
 					<p id={readingId} className="sr-only">
 						{spoken}
 					</p>
@@ -449,7 +460,13 @@ export function FullScreenClock({
 								type="button"
 								aria-label={armed ? m.timer_reset_close_armed() : m.timer_reset_close()}
 								onClick={onClose}
-								className={headerControl(onField)}
+								className={cn(
+									headerControl(onField),
+									// The focus ring sits 2–4px outside the button, where the armed
+									// ring is drawn; on a field both are the ink, and the sweep was
+									// lost under it. While armed, focus is drawn inside the edge.
+									armed && 'focus-visible:outline-offset-[-7px]',
+								)}
 							>
 								<X size={22} aria-hidden="true" />
 								{armed ? <ArmedRing left={armedFor} onField={onField} /> : null}

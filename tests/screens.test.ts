@@ -1226,13 +1226,36 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 			// The X is still the X, and nothing is written.
 			expect(armed()?.textContent).toBe('');
 			expect(armed()?.innerHTML).toContain(icon ?? '');
+			// Full, then its end draws back towards the top a third at a time, so
+			// what is left at the end is on the screen's edge, away from the
+			// session's time left (#132's critique).
 			expect(drawn()).toBe('0');
 			wait(1000);
-			expect(Number(drawn())).toBeCloseTo(-100 / 3, 1);
+			expect(Number(drawn())).toBeCloseTo(100 / 3, 1);
 			wait(1000);
-			expect(Number(drawn())).toBeCloseTo(-200 / 3, 1);
+			expect(Number(drawn())).toBeCloseTo(200 / 3, 1);
 			wait(1000);
 			expect(ring()).toBeFalsy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// A name change on the focused control is not read out by every screen
+	// reader, so arming is also said once, out loud, and never shown.
+	test('arming is said out loud, and the saying goes when Close disarms', async () => {
+		const root = await mount('/train');
+		const said = () =>
+			[...(dialog()?.querySelectorAll('[aria-live]') ?? [])].map((el) => el.textContent).join('|');
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(said()).not.toContain(ARMED);
+			press(close());
+			expect(said()).toContain(ARMED);
+			wait(3000);
+			expect(said()).not.toContain(ARMED);
 		} finally {
 			act(() => root.unmount());
 		}
