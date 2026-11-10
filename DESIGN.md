@@ -435,7 +435,7 @@ The system is flat and tonal. Depth is the panel ramp (ground, panel, inset, rai
 
 ## Shapes
 
-Corners are gently rounded and grow with the element's size and with how far it is read from. Panels, cards and menus use 10px; buttons, inputs, chips and options 8px; list rows 14px. The clock's controls are softer because they are bigger and found by feel: the strip and mini bar 16px, the strip toggle and the clock's back and close 14px, the side controls 18px, the main control 22px. Dots (the segment mark beside a row) and the switch are fully round.
+Corners are gently rounded and grow with the element's size and with how far it is read from. Panels, cards and menus use 10px; buttons, inputs, chips and options 8px; list rows 14px. The clock's controls are softer because they are bigger and found by feel: the strip and mini bar 16px, the strip toggle 14px, the clock's back and close 14px on a field and the quiet button's 8px off one (the armed ring's corner follows the button's, so it is 17.5px and 11.5px), the side controls 18px, the main control 22px. Dots (the segment mark beside a row) and the switch are fully round.
 
 A typed number in the protocol editor has no box at all, only a 2px bottom rule in `ink-faint`, the shape that says "a field the keyboard opens on". A refused value turns that rule `stop`.
 
