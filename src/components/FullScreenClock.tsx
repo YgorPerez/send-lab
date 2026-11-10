@@ -175,21 +175,28 @@ function headerControl(onField: boolean): string {
 }
 
 /**
- * The running title's size: 30px, or less when the word does not fit between
+ * The running title's size: 30px, or less when the label does not fit between
  * Back and Close. With Back beside it (#131) a phone on its side has 168px
  * for the title, 114px with the time left beside it, and `DESAQUECIMENTO` is
- * 206px and `ENTRE SÉRIES` 164px at 30px. On one line, always: the segment's
- * name is one word to read from the wall, and a title that wrapped would push
- * the face down at the segment change. Stepped by glyph count, as `faceSize`
+ * 206px and `ENTRE SÉRIES` 164px at 30px. Sized by glyph count, as `faceSize`
  * is, against the title's own width (`cqi`): measured in Barlow Condensed
- * caps, a glyph of a long label takes at most 0.54em with its tracking
- * (`COOLDOWN`). The short labels that take more (`WORK`, 0.57em) are never
- * short of room. The cost is pt-BR's `ENTRE SÉRIES` beside the time left on a
- * 320px column, at 18px: the field's colour says the segment from further
- * away than any size of the word does.
+ * caps, a letter of a long label takes at most 0.54em with its tracking
+ * (`COOLDOWN`) and a space about half that. The short labels that take more
+ * (`WORK`, 0.57em) are never short of room.
+ *
+ * A label of two words may instead take two lines at up to 24px, two lines
+ * being the 48px of Back and Close beside it, so the header never grows and
+ * the face never moves at a segment change. Whichever is larger wins: at
+ * 114px `ENTRE SÉRIES` is 24px on two lines, not 18px on one, under the time
+ * left's 24px number (#131's critique).
  */
 function titleSize(label: string): string {
-	return `min(30px, calc(100cqi / ${(label.length * 0.54).toFixed(2)}))`;
+	const words = label.split(' ');
+	const em = (glyphs: number) => (glyphs * 0.54).toFixed(2);
+	const oneLine = `min(30px, calc(100cqi / ${em(label.length - (words.length - 1) / 2)}))`;
+	if (words.length === 1) return oneLine;
+	const longest = Math.max(...words.map((w) => w.length));
+	return `max(${oneLine}, min(24px, calc(100cqi / ${em(longest)})))`;
 }
 
 /** The part of the platform's `CloseWatcher` the clock uses, declared here
@@ -320,9 +327,11 @@ export function FullScreenClock({
 					</p>
 					<div className="flex items-center gap-3 px-4 pt-4 lg:mx-auto lg:w-full lg:max-w-pane sideways:col-start-2 sideways:row-start-1">
 						{/* Back, not "back a segment" (⏮), which can be on the same
-						    screen: this one leaves the clock. */}
+						    screen: this one leaves the clock. The chevron is 26px to the
+						    X's 22px because it draws half the X's ink, and the way out
+						    that keeps the run must not be the fainter of the two. */}
 						<Dialog.Close aria-label={m.btn_back()} className={headerControl(onField)}>
-							<ChevronLeft size={22} aria-hidden="true" />
+							<ChevronLeft size={26} aria-hidden="true" />
 						</Dialog.Close>
 						<div className="@container min-w-0 flex-1">
 							{summary ? (
@@ -331,7 +340,7 @@ export function FullScreenClock({
 								</Dialog.Title>
 							) : (
 								<Dialog.Title
-									className="display leading-none font-bold tracking-[0.04em] whitespace-nowrap uppercase"
+									className="display leading-none font-bold tracking-[0.04em] uppercase"
 									style={{
 										fontSize: titleSize(status.label),
 										...(onField ? {} : { color: status.color }),
