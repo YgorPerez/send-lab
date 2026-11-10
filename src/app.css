@@ -558,6 +558,33 @@ html.clock-field {
 }
 
 /* -------------------------------------------------------------------------
+   Close armed on the full-screen clock (#132).
+
+   The ring round Close sweeps empty once over the 3-second window in which a
+   second tap resets and closes; the clock sets the duration inline from the
+   window's own constant. Only with motion allowed: under reduced motion there
+   is no animation at all, and the ring's resting drawing is the seconds left,
+   stepped once a second by the clock (ADR 0011's note). Both ends are given,
+   because that resting drawing changes under the sweep each second and an
+   implicit `from` would restart from it.
+   ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+	.a-ring {
+		animation-name: a-ring;
+		animation-timing-function: linear;
+		animation-fill-mode: forwards;
+	}
+}
+@keyframes a-ring {
+	from {
+		stroke-dashoffset: 0;
+	}
+	to {
+		stroke-dashoffset: -100;
+	}
+}
+
+/* -------------------------------------------------------------------------
    The accordion panel.
 
    Owned here rather than taken from `tw-animate-css` (#53, obligation 7).

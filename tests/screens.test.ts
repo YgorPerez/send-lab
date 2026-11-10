@@ -1167,6 +1167,96 @@ describe('Close asks for a second tap on the full-screen clock', () => {
 			act(() => root.unmount());
 		}
 	});
+
+	test('the stopwatch with time on it asks too, and Lap disarms', async () => {
+		const root = await mount('/timer');
+		const laps = () => dialog()?.querySelector('section[aria-label="Laps"]') ?? null;
+		try {
+			press(listRow('Stopwatch'));
+			const pause = worded(dialog() ?? document, 'Pause');
+			if (pause) press(pause);
+			while (close() || armed()) press(close() ?? armed());
+			if (!dialog()) press(listRow('Stopwatch'));
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			wait(1500);
+			press(close());
+			expect(armed()).toBeTruthy();
+			const before = face();
+			wait(500);
+			expect(face()).not.toBe(before);
+			press(inClock('Lap'));
+			expect(armed()).toBeNull();
+			expect(laps()).toBeTruthy();
+
+			press(close());
+			press(armed());
+			expect(dialog()).toBeNull();
+			press(listRow('Stopwatch'));
+			expect(worded(dialog() ?? document, 'Start')).toBeTruthy();
+			expect(laps()).toBeNull();
+			press(inClock('Back'));
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	// The ring is the only sign Close is armed: no icon swap, no text. It is
+	// drawn in the ink, and what jsdom can see is its resting drawing, the one
+	// reduced motion shows: a step a second, three steps (ADR 0011's note).
+	// The sweep over it is CSS, and `check:motion` measures what is left.
+	test('a ring in the ink shows Close armed, a step a second', async () => {
+		const root = await mount('/train');
+		const ring = () => close()?.querySelector('[data-ring]') ?? armed()?.querySelector('[data-ring]');
+		const drawn = () =>
+			armed()?.querySelector<SVGPathElement>('[data-ring] path')?.style.strokeDashoffset;
+		try {
+			openReady();
+			fakeTimers();
+			press(worded(dialog() ?? document, 'Start'));
+			expect(ring()).toBeFalsy();
+			const icon = close()?.innerHTML;
+			press(close());
+			expect(ring()).toBeTruthy();
+			expect(ring()?.getAttribute('aria-hidden')).toBe('true');
+			expect(armed()?.querySelector('[data-ring] path')?.getAttribute('stroke')).toBe(
+				'currentColor',
+			);
+			// The X is still the X, and nothing is written.
+			expect(armed()?.textContent).toBe('');
+			expect(armed()?.innerHTML).toContain(icon ?? '');
+			expect(drawn()).toBe('0');
+			wait(1000);
+			expect(Number(drawn())).toBeCloseTo(-100 / 3, 1);
+			wait(1000);
+			expect(Number(drawn())).toBeCloseTo(-200 / 3, 1);
+			wait(1000);
+			expect(ring()).toBeFalsy();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
+
+	test('the armed name in pt-BR', async () => {
+		overwriteGetLocale(() => 'pt-BR');
+		const root = await mount('/train');
+		const open = () => press(labelled(document, 'Relógio em tela cheia'));
+		try {
+			open();
+			const reset = inClock('Zerar');
+			if (reset) press(reset);
+			while (inClock('Zerar e fechar') || inClock('Toque de novo para zerar e fechar'))
+				press(inClock('Zerar e fechar') ?? inClock('Toque de novo para zerar e fechar'));
+			if (!dialog()) open();
+			press(worded(dialog() ?? document, 'Iniciar'));
+			press(inClock('Zerar e fechar'));
+			expect(inClock('Toque de novo para zerar e fechar')).toBeTruthy();
+			press(inClock('Toque de novo para zerar e fechar'));
+			expect(dialog()).toBeNull();
+		} finally {
+			act(() => root.unmount());
+		}
+	});
 });
 
 // #112: the clock's ready state on Train adjusts the prescribed protocol with the

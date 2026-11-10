@@ -170,8 +170,49 @@ export function Face({
  *  ink on a field (#110) and the quiet control off one. */
 function headerControl(onField: boolean): string {
 	return onField
-		? 'flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
-		: button({ kind: 'quiet', size: 'touch', class: 'size-12 shrink-0 self-start px-0' });
+		? 'relative flex size-12 shrink-0 items-center justify-center self-start rounded-[14px] border-2 border-current'
+		: button({ kind: 'quiet', size: 'touch', class: 'relative size-12 shrink-0 self-start px-0' });
+}
+
+/**
+ * Close armed (#132): a ring once round the button for the window, the only
+ * sign that a second tap resets and closes — no overlay, no icon swap, no
+ * text. Drawn in the button's own ink, so it shows on a field and off one,
+ * 3.5px outside the button's edge so it never sits on the field's outline,
+ * and starting at the top, emptied clockwise as a clock hand sweeps.
+ *
+ * With motion, `.a-ring` sweeps it in one pass (`app.css`). Under reduced
+ * motion there is no animation: the drawing is the seconds left, stepped once
+ * a second, three steps. A countdown is a reading of time, like the face
+ * changing every second, not an animation (ADR 0011's note).
+ */
+function ArmedRing({ left, onField }: { left: number; onField: boolean }) {
+	// The button's corner (14px on a field, `rounded-md`'s 8px off one) plus
+	// the 3.5px the stroke's centre sits outside it, on a 55px square inset
+	// 1.5px in the 58px drawing: the button's 48px and 5px either side.
+	const r = onField ? 17.5 : 11.5;
+	const [lo, hi] = [1.5 + r, 56.5 - r];
+	const d = `M29 1.5H${hi}A${r} ${r} 0 0 1 56.5 ${lo}V${hi}A${r} ${r} 0 0 1 ${hi} 56.5H${lo}A${r} ${r} 0 0 1 1.5 ${hi}V${lo}A${r} ${r} 0 0 1 ${lo} 1.5Z`;
+	const gone = ((ARMED_SECONDS - left) / ARMED_SECONDS) * 100;
+	return (
+		<svg
+			data-ring
+			aria-hidden="true"
+			viewBox="0 0 58 58"
+			className="pointer-events-none absolute -inset-[5px] size-[58px] overflow-visible"
+		>
+			<path
+				d={d}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth={3}
+				pathLength={100}
+				strokeDasharray="100 100"
+				className="a-ring"
+				style={{ strokeDashoffset: gone === 0 ? 0 : -gone, animationDuration: `${ARMED_SECONDS}s` }}
+			/>
+		</svg>
+	);
 }
 
 /**
@@ -399,6 +440,7 @@ export function FullScreenClock({
 								className={headerControl(onField)}
 							>
 								<X size={22} aria-hidden="true" />
+								{armed ? <ArmedRing left={armedFor} onField={onField} /> : null}
 							</button>
 						) : null}
 					</div>
